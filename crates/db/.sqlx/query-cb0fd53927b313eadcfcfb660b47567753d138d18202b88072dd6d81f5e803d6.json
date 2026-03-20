@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      path,\n                      name,\n                      display_name,\n                      setup_script,\n                      cleanup_script,\n                      archive_script,\n                      copy_files,\n                      parallel_setup_script as \"parallel_setup_script!: bool\",\n                      dev_server_script,\n                      default_target_branch,\n                      default_working_dir,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM repos\n               WHERE name = '__NEEDS_BACKFILL__'",
+  "query": "SELECT DISTINCT r.id as \"id!: Uuid\",\n                      r.path,\n                      r.name,\n                      r.display_name,\n                      r.setup_script,\n                      r.cleanup_script,\n                      r.archive_script,\n                      r.copy_files,\n                      r.parallel_setup_script as \"parallel_setup_script!: bool\",\n                      r.dev_server_script,\n                      r.default_target_branch,\n                      r.default_working_dir,\n                      r.editor_type_override,\n                      r.editor_launch_target,\n                      r.created_at as \"created_at!: DateTime<Utc>\",\n                      r.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM repos r\n               JOIN workspace_repos wr ON r.id = wr.repo_id\n               JOIN workspaces w ON wr.workspace_id = w.id\n               WHERE w.task_id = $1\n               ORDER BY r.display_name ASC",
   "describe": {
     "columns": [
       {
@@ -64,18 +64,28 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "editor_type_override",
         "ordinal": 12,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "editor_launch_target",
         "ordinal": 13,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 14,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 15,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       true,
@@ -90,9 +100,11 @@
       true,
       true,
       true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "5884e7baa4a061166cb2911f717d3fd92852d62975a910dd9cb05e7908fdf8b6"
+  "hash": "cb0fd53927b313eadcfcfb660b47567753d138d18202b88072dd6d81f5e803d6"
 }

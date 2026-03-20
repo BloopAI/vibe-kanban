@@ -131,6 +131,8 @@ fn generate_types_content() -> String {
         server::routes::sessions::review::ReviewError::decl(),
         server::routes::workspaces::integration::OpenEditorRequest::decl(),
         server::routes::workspaces::integration::OpenEditorResponse::decl(),
+        server::routes::workspaces::integration::EditorPickerRepo::decl(),
+        server::routes::workspaces::integration::EditorPickerResponse::decl(),
         db::models::requests::LinkedIssueInfo::decl(),
         server::routes::workspaces::pr::CreatePrApiRequest::decl(),
         server::routes::attachments::AttachmentResponse::decl(),

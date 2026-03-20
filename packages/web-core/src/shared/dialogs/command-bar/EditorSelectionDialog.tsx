@@ -23,10 +23,12 @@ import { defineModal } from '@/shared/lib/modals';
 export interface EditorSelectionDialogProps {
   selectedAttemptId?: string;
   filePath?: string;
+  repoId?: string;
+  hasExistingOverride?: boolean;
 }
 
 const EditorSelectionDialogImpl = create<EditorSelectionDialogProps>(
-  ({ selectedAttemptId, filePath }) => {
+  ({ selectedAttemptId, filePath, repoId, hasExistingOverride }) => {
     const modal = useModal();
     const handleOpenInEditor = useOpenInEditor(selectedAttemptId, () =>
       modal.hide()
@@ -35,7 +37,18 @@ const EditorSelectionDialogImpl = create<EditorSelectionDialogProps>(
       EditorType.VS_CODE
     );
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
+      // If triggered from a repo context with an existing override, update the repo override
+      if (repoId && hasExistingOverride) {
+        try {
+          const { repoApi } = await import('@/shared/lib/api');
+          await repoApi.update(repoId, {
+            editor_type_override: selectedEditor,
+          });
+        } catch {
+          // Ignore — the user can update it manually later
+        }
+      }
       handleOpenInEditor({ editorType: selectedEditor, filePath });
       modal.resolve(selectedEditor);
       modal.hide();

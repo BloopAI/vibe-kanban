@@ -94,6 +94,7 @@ import {
   RelayPairedClient,
   ListRelayPairedClientsResponse,
   RemoveRelayPairedClientResponse,
+  EditorPickerResponse,
 } from 'shared/types';
 import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
@@ -473,6 +474,15 @@ export const workspacesApi = {
       }
     );
     return handleApiResponse<OpenEditorResponse>(response);
+  },
+
+  getEditorPicker: async (
+    workspaceId: string
+  ): Promise<EditorPickerResponse> => {
+    const response = await makeRequest(
+      `/api/workspaces/${workspaceId}/integration/editor/picker`
+    );
+    return handleApiResponse<EditorPickerResponse>(response);
   },
 
   getBranchStatus: async (workspaceId: string): Promise<RepoBranchStatus[]> => {
