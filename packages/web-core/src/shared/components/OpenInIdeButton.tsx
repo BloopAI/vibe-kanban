@@ -19,7 +19,10 @@ export function OpenInIdeButton({
   editorTypeOverride,
 }: OpenInIdeButtonProps) {
   const { config } = useUserSystem();
-  const editorType = (editorTypeOverride as EditorType | null) ?? config?.editor?.editor_type ?? null;
+  const editorType =
+    (editorTypeOverride as EditorType | null) ??
+    config?.editor?.editor_type ??
+    null;
 
   const label = useMemo(() => {
     const ideName = getIdeName(editorType);
