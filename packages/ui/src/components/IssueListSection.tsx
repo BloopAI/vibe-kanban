@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type MouseEvent } from 'react';
 import { cn } from '../lib/cn';
 import { Droppable } from '@hello-pangea/dnd';
 import { CaretDownIcon } from '@phosphor-icons/react';
@@ -29,8 +29,11 @@ export interface IssueListSectionProps {
   getResolvedRelationshipsForIssue?: (
     issueId: string
   ) => IssueListRowRelationship[];
-  onIssueClick: (issueId: string) => void;
+  onIssueClick: (issueId: string, e: MouseEvent) => void;
   selectedIssueId: string | null;
+  selectedIssueIds?: Set<string>;
+  isMultiSelectActive?: boolean;
+  onIssueCheckboxChange?: (issueId: string, checked: boolean) => void;
   className?: string;
 }
 
@@ -43,6 +46,9 @@ export function IssueListSection({
   getResolvedRelationshipsForIssue,
   onIssueClick,
   selectedIssueId,
+  selectedIssueIds,
+  isMultiSelectActive,
+  onIssueCheckboxChange,
   className,
 }: IssueListSectionProps) {
   const storageKey = `ui.issue-list-section.${status.id}`;
@@ -111,8 +117,13 @@ export function IssueListSection({
                     tags={getTagObjectsForIssue(issue.id)}
                     relationships={getResolvedRelationshipsForIssue?.(issue.id)}
                     assignees={issueAssigneesMap[issue.id] ?? []}
-                    onClick={() => onIssueClick(issue.id)}
+                    onClick={(e) => onIssueClick(issue.id, e)}
                     isSelected={selectedIssueId === issue.id}
+                    isMultiSelectActive={isMultiSelectActive}
+                    isChecked={selectedIssueIds?.has(issue.id)}
+                    onCheckboxChange={(checked) =>
+                      onIssueCheckboxChange?.(issue.id, checked)
+                    }
                   />
                 );
               })}

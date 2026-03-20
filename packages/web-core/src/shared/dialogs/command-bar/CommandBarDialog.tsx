@@ -23,6 +23,7 @@ import type { SelectionPage } from './SelectionDialog';
 import type { RepoSelectionResult } from './selections/repoSelection';
 import { useCommandBarState } from './commandBar/useCommandBarState';
 import { useResolvedPage } from './commandBar/useResolvedPage';
+import { useIssueSelectionStore } from '@/shared/stores/useIssueSelectionStore';
 
 export interface CommandBarDialogProps {
   page?: PageId;
@@ -53,17 +54,21 @@ function CommandBarContent({
   const { executeAction, getLabel } = useActions();
   const { workspaceId: contextWorkspaceId, repos } = useWorkspaceContext();
 
-  // Get issue context from props or route params (URL is single source of truth)
+  // Get issue context from props, multi-selection store, or route params
   const { projectId: routeProjectId, issueId: routeIssueId } = useParams({
     strict: false,
   });
-
-  // Effective issue context
-  const effectiveProjectId = propProjectId ?? routeProjectId;
-  const effectiveIssueIds = useMemo(
-    () => propIssueIds ?? (routeIssueId ? [routeIssueId] : []),
-    [propIssueIds, routeIssueId]
+  const multiSelectedIssueIds = useIssueSelectionStore(
+    (s) => s.selectedIssueIds
   );
+
+  // Effective issue context: props > multi-selection > route param
+  const effectiveProjectId = propProjectId ?? routeProjectId;
+  const effectiveIssueIds = useMemo(() => {
+    if (propIssueIds) return propIssueIds;
+    if (multiSelectedIssueIds.size > 0) return [...multiSelectedIssueIds];
+    return routeIssueId ? [routeIssueId] : [];
+  }, [propIssueIds, multiSelectedIssueIds, routeIssueId]);
   const visibilityContext = useActionVisibilityContext({
     projectId: effectiveProjectId,
     issueIds: effectiveIssueIds,

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO notification_digest_deliveries (notification_id)\n            SELECT notification_id\n            FROM UNNEST($1::uuid[]) AS delivered(notification_id)\n            ON CONFLICT (notification_id) DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c48b9162c22c3d0ad7d2e2f34ecca353b807876aebf3540e5a024669ac2bb613"
+}

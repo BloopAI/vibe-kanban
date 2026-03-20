@@ -72,58 +72,49 @@ export function MarkdownListContinuePlugin() {
         }
 
         const text = parent.getTextContent();
+        const currentLineStart = text.lastIndexOf('\n') + 1;
+        const currentLine = text.slice(currentLineStart);
+        const anchorLineStart = anchorText.lastIndexOf('\n') + 1;
 
-        // Check for empty bullet prefix (just "- " / "* " / "+ ")
-        const emptyBullet = text.match(BULLET_PREFIX_RE);
-        if (emptyBullet) {
-          event.preventDefault();
-          // Remove the prefix to end the list — clear all children, keep
-          // only leading whitespace in a single text node.
-          const firstChild = parent.getFirstChild();
-          if (firstChild && $isTextNode(firstChild)) {
-            // Remove all siblings after the first text node
-            let sibling = firstChild.getNextSibling();
-            while (sibling) {
-              const next = sibling.getNextSibling();
-              sibling.remove();
-              sibling = next;
-            }
-            firstChild.setTextContent(emptyBullet[1]);
-            const nodeKey = firstChild.getKey();
-            const newSel = $createRangeSelection();
-            const newOffset = emptyBullet[1].length;
+        const replaceAnchorCurrentLine = (replacement: string) => {
+          const nextText = `${anchorText.slice(0, anchorLineStart)}${replacement}`;
+          anchorNode.setTextContent(nextText);
+          const newSel = $createRangeSelection();
+
+          // Keep caret visually on the blank line when text ends with '\n'.
+          if (nextText.endsWith('\n')) {
+            const parentKey = parent.getKey();
+            const childCount = parent.getChildrenSize();
+            newSel.anchor.set(parentKey, childCount, 'element');
+            newSel.focus.set(parentKey, childCount, 'element');
+          } else {
+            const nodeKey = anchorNode.getKey();
+            const newOffset = nextText.length;
             newSel.anchor.set(nodeKey, newOffset, 'text');
             newSel.focus.set(nodeKey, newOffset, 'text');
-            $setSelection(newSel);
           }
+
+          $setSelection(newSel);
+        };
+
+        // Check for empty bullet prefix (just "- " / "* " / "+ ")
+        const emptyBullet = currentLine.match(BULLET_PREFIX_RE);
+        if (emptyBullet) {
+          event.preventDefault();
+          replaceAnchorCurrentLine(emptyBullet[1]);
           return true;
         }
 
         // Check for empty number prefix (just "1. ")
-        const emptyNumber = text.match(NUMBER_PREFIX_RE);
+        const emptyNumber = currentLine.match(NUMBER_PREFIX_RE);
         if (emptyNumber) {
           event.preventDefault();
-          const firstChild = parent.getFirstChild();
-          if (firstChild && $isTextNode(firstChild)) {
-            let sibling = firstChild.getNextSibling();
-            while (sibling) {
-              const next = sibling.getNextSibling();
-              sibling.remove();
-              sibling = next;
-            }
-            firstChild.setTextContent(emptyNumber[1]);
-            const nodeKey = firstChild.getKey();
-            const newSel = $createRangeSelection();
-            const newOffset = emptyNumber[1].length;
-            newSel.anchor.set(nodeKey, newOffset, 'text');
-            newSel.focus.set(nodeKey, newOffset, 'text');
-            $setSelection(newSel);
-          }
+          replaceAnchorCurrentLine(emptyNumber[1]);
           return true;
         }
 
         // Check for bullet line with content
-        const bulletMatch = text.match(BULLET_LINE_RE);
+        const bulletMatch = currentLine.match(BULLET_LINE_RE);
         if (bulletMatch) {
           event.preventDefault();
           const [, indent, marker] = bulletMatch;
@@ -133,7 +124,7 @@ export function MarkdownListContinuePlugin() {
         }
 
         // Check for numbered line with content
-        const numberMatch = text.match(NUMBER_LINE_RE);
+        const numberMatch = currentLine.match(NUMBER_LINE_RE);
         if (numberMatch) {
           event.preventDefault();
           const [, indent, numStr] = numberMatch;

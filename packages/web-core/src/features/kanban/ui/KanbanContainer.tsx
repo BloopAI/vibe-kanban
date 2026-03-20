@@ -1,4 +1,11 @@
-import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import {
+  useMemo,
+  useCallback,
+  useState,
+  useEffect,
+  useRef,
+  type MouseEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
@@ -63,6 +70,9 @@ import {
 } from '@vibe/ui/components/Dropdown';
 import { SearchableTagDropdownContainer } from '@/shared/components/SearchableTagDropdownContainer';
 import type { IssuePriority } from 'shared/remote-types';
+import { useIssueMultiSelect } from '@/shared/hooks/useIssueMultiSelect';
+import { useIssueSelectionStore } from '@/shared/stores/useIssueSelectionStore';
+import { BulkActionBarContainer } from './BulkActionBarContainer';
 
 const areStringSetsEqual = (left: string[], right: string[]): boolean => {
   if (left.length !== right.length) {
@@ -702,11 +712,64 @@ export function KanbanContainer() {
     [kanbanFilters.sortField, calculateSortOrder]
   );
 
+  // Multi-select support
+  const {
+    selectedIssueIds,
+    isMultiSelectActive,
+    handleIssueClick,
+    handleCheckboxChange,
+    clearSelection,
+  } = useIssueMultiSelect();
+  const setOrderedIssueIds = useIssueSelectionStore(
+    (s) => s.setOrderedIssueIds
+  );
+  const setAnchor = useIssueSelectionStore((s) => s.setAnchor);
+
+  // Compute ordered issue IDs for range selection
+  const orderedIssueIds = useMemo(() => {
+    const statusOrder =
+      kanbanViewMode === 'kanban' ? visibleStatuses : listViewStatuses;
+    return statusOrder.flatMap((status) => items[status.id] ?? []);
+  }, [kanbanViewMode, visibleStatuses, listViewStatuses, items]);
+
+  // Keep the store's ordered IDs in sync
+  useEffect(() => {
+    setOrderedIssueIds(orderedIssueIds);
+  }, [orderedIssueIds, setOrderedIssueIds]);
+
+  // Clear multi-selection when project or view mode changes
+  useEffect(() => {
+    clearSelection();
+  }, [projectId, kanbanViewMode, clearSelection]);
+
+  // Keep anchor in sync with the currently opened issue (e.g. from URL on
+  // page load) so Shift/Cmd+Click on another issue includes it.
+  useEffect(() => {
+    if (selectedKanbanIssueId) {
+      setAnchor(selectedKanbanIssueId);
+    }
+  }, [selectedKanbanIssueId, setAnchor]);
+
   const handleCardClick = useCallback(
-    (issueId: string) => {
-      openIssue(issueId);
+    (issueId: string, e?: MouseEvent) => {
+      if (e && (e.metaKey || e.ctrlKey || e.shiftKey)) {
+        handleIssueClick(issueId, e);
+      } else {
+        if (selectedIssueIds.size > 0) {
+          clearSelection();
+        }
+        // Set as anchor so Shift+Click from this issue works
+        setAnchor(issueId);
+        openIssue(issueId);
+      }
     },
-    [openIssue]
+    [
+      openIssue,
+      handleIssueClick,
+      selectedIssueIds.size,
+      clearSelection,
+      setAnchor,
+    ]
   );
 
   const handleAddTask = useCallback(
@@ -723,29 +786,33 @@ export function KanbanContainer() {
   );
 
   // Inline editing callbacks for kanban cards
+  // When multi-select is active, apply to all selected issues
   const handleCardPriorityClick = useCallback(
     (issueId: string) => {
-      openPrioritySelection(projectId, [issueId]);
+      const ids = isMultiSelectActive ? [...selectedIssueIds] : [issueId];
+      openPrioritySelection(projectId, ids);
     },
-    [projectId, openPrioritySelection]
+    [projectId, openPrioritySelection, selectedIssueIds, isMultiSelectActive]
   );
 
   const handleCardAssigneeClick = useCallback(
     (issueId: string) => {
-      openAssigneeSelection(projectId, [issueId]);
+      const ids = isMultiSelectActive ? [...selectedIssueIds] : [issueId];
+      openAssigneeSelection(projectId, ids);
     },
-    [projectId, openAssigneeSelection]
+    [projectId, openAssigneeSelection, selectedIssueIds, isMultiSelectActive]
   );
 
   const handleCardMoreActionsClick = useCallback(
     (issueId: string) => {
+      const ids = isMultiSelectActive ? [...selectedIssueIds] : [issueId];
       CommandBarDialog.show({
         page: 'issueActions',
         projectId,
-        issueIds: [issueId],
+        issueIds: ids,
       });
     },
-    [projectId]
+    [projectId, selectedIssueIds, isMultiSelectActive]
   );
 
   const handleCardTagToggle = useCallback(
@@ -928,9 +995,11 @@ export function KanbanContainer() {
                             name={issue.title}
                             index={index}
                             className="group"
-                            onClick={() => handleCardClick(issue.id)}
+                            onClick={(e) => handleCardClick(issue.id, e)}
                             isOpen={selectedKanbanIssueId === issue.id}
                             isMobile={isMobile}
+                            isSelected={selectedIssueIds.has(issue.id)}
+                            dragDisabled={isMultiSelectActive}
                           >
                             <KanbanCardContent
                               displayId={issue.simple_id}
@@ -1031,10 +1100,15 @@ export function KanbanContainer() {
               }
               onIssueClick={handleCardClick}
               selectedIssueId={selectedKanbanIssueId}
+              selectedIssueIds={selectedIssueIds}
+              isMultiSelectActive={isMultiSelectActive}
+              onIssueCheckboxChange={handleCheckboxChange}
             />
           </KanbanProvider>
         </div>
       )}
+
+      {isMultiSelectActive && <BulkActionBarContainer projectId={projectId} />}
     </div>
   );
 }

@@ -40,6 +40,12 @@ async fn show_system_notification(title: String, body: String) -> Result<(), Str
     Ok(())
 }
 
+#[tauri::command]
+fn read_clipboard_text() -> Result<String, String> {
+    let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+    clipboard.get_text().map_err(|e| e.to_string())
+}
+
 #[async_trait]
 impl PushNotifier for TauriNotifier {
     async fn send(&self, title: &str, message: &str, workspace_id: Option<Uuid>) {
@@ -97,7 +103,10 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
-        .invoke_handler(tauri::generate_handler![show_system_notification]);
+        .invoke_handler(tauri::generate_handler![
+            show_system_notification,
+            read_clipboard_text
+        ]);
 
     // Only register the updater plugin in release builds — dev builds have a
     // placeholder endpoint that fails config deserialization.
