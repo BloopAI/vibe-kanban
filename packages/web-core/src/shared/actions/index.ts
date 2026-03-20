@@ -1113,11 +1113,14 @@ export const Actions = {
     icon: DesktopIcon,
     requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    execute: async (_ctx, _workspaceId, repoId) => {
+    execute: async (_ctx, workspaceId, repoId) => {
       try {
-        const response = await repoApi.openEditor(repoId, {
+        const repos = await workspacesApi.getRepos(workspaceId);
+        const selectedRepo = repos.find((repo) => repo.id === repoId);
+        const response = await workspacesApi.openEditor(workspaceId, {
           editor_type: null,
-          file_path: null,
+          file_path:
+            selectedRepo && repos.length > 1 ? selectedRepo.name : null,
         });
         if (response.url) {
           window.open(response.url, '_blank');
