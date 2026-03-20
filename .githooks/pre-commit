@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# pre-commit hook: run quality checks gated on which files are staged.
+#
+# Enable for all checkouts (including worktrees) with:
+#   git config core.hooksPath .githooks
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Staged files (added, copied, modified).
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+
+has_staged() {
+  echo "$STAGED" | grep -qE "$1"
+}
+
+FAILED=0
+
+# --- Rust: fmt, clippy, test (scoped to affected crates) ---
+# affected-crates.py is the single source of truth for whether Rust checks
+# are needed and which crates to check.  It handles .rs, .toml, Cargo.lock,
+# rust-toolchain.toml, etc.
+if command -v cargo &>/dev/null && command -v python3 &>/dev/null; then
+  # Capture exit code without tripping set -e.
+  SCOPE_EXIT=0
+  SCOPE=$(echo "$STAGED" | python3 "$REPO_ROOT/scripts/affected-crates.py" --stdin) || SCOPE_EXIT=$?
+
+  if [ "$SCOPE_EXIT" -eq 2 ]; then
+    # Global file changed (Cargo.lock, rust-toolchain, etc.) — full workspace.
+    echo "pre-commit: global Rust file changed, checking full workspace..."
+    SCOPE="--workspace"
+  elif [ "$SCOPE_EXIT" -ne 0 ]; then
+    echo "pre-commit: affected-crates.py failed (exit $SCOPE_EXIT)" >&2
+    FAILED=1
+    SCOPE=""
+  fi
+
+  if [ -n "$SCOPE" ]; then
+    # fmt always runs workspace-wide (fast, no compilation).
+    echo "pre-commit: cargo fmt..."
+    cargo fmt --all --manifest-path "$REPO_ROOT/Cargo.toml" -- --check || FAILED=1
+
+    echo "pre-commit: cargo clippy $SCOPE..."
+    # shellcheck disable=SC2086
+    cargo clippy $SCOPE --all-targets --locked \
+      --manifest-path "$REPO_ROOT/Cargo.toml" -- -D warnings || FAILED=1
+
+    echo "pre-commit: cargo test $SCOPE..."
+    # shellcheck disable=SC2086
+    cargo test $SCOPE --all-targets --locked \
+      --manifest-path "$REPO_ROOT/Cargo.toml" || FAILED=1
+  fi
+fi
+
+# --- Frontend: format, typecheck, lint (scoped to affected packages) ---
+if command -v pnpm &>/dev/null; then
+  # Package directory -> pnpm filter name.
+  # Only local-web and ui have an eslint "lint" script.
+  declare -A PKG_FILTER=(
+    [packages/local-web]="@vibe/local-web"
+    [packages/web-core]="@vibe/web-core"
+    [packages/remote-web]="@vibe/remote-web"
+    [packages/ui]="@vibe/ui"
+  )
+  declare -A PKG_HAS_LINT=(
+    [packages/local-web]=1
+    [packages/ui]=1
+  )
+
+  AFFECTED_PKGS=()
+  for pkg_dir in "${!PKG_FILTER[@]}"; do
+    if has_staged "^${pkg_dir}/"; then
+      AFFECTED_PKGS+=("$pkg_dir")
+    fi
+  done
+
+  if [ ${#AFFECTED_PKGS[@]} -gt 0 ]; then
+    for pkg_dir in "${AFFECTED_PKGS[@]}"; do
+      filter="${PKG_FILTER[$pkg_dir]}"
+
+      echo "pre-commit: prettier --check ($filter)..."
+      pnpm --filter "$filter" run format:check || FAILED=1
+
+      echo "pre-commit: tsc --noEmit ($filter)..."
+      pnpm --filter "$filter" run check || FAILED=1
+
+      if [ "${PKG_HAS_LINT[$pkg_dir]:-}" = "1" ]; then
+        echo "pre-commit: eslint ($filter)..."
+        pnpm --filter "$filter" run lint || FAILED=1
+      fi
+    done
+  fi
+
+  # --- Legacy frontend paths guard ---
+  if has_staged '^packages/local-web/|^packages/web-core/'; then
+    echo "pre-commit: legacy frontend paths check..."
+    "$REPO_ROOT/scripts/check-legacy-frontend-paths.sh" || FAILED=1
+  fi
+
+  # --- Unused i18n keys ---
+  if has_staged '^packages/.*/src/.*\.(ts|tsx)$|^packages/web-core/src/i18n/'; then
+    echo "pre-commit: unused i18n keys check..."
+    node "$REPO_ROOT/scripts/check-unused-i18n-keys.mjs" || FAILED=1
+  fi
+fi
+
+exit "$FAILED"
