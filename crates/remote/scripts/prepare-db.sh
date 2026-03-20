@@ -41,7 +41,7 @@ if [ "$CHECK_MODE" = "--check" ]; then
 
   RELAY_TUNNEL_DIR="$(cd "$REMOTE_DIR/../../crates/relay-tunnel" && pwd)"
   echo "➤ Checking SQLx data for relay-tunnel (offline mode)..."
-  (cd "$RELAY_TUNNEL_DIR" && SQLX_OFFLINE=true cargo sqlx prepare --check -- --features server)
+  (cd "$RELAY_TUNNEL_DIR" && SQLX_OFFLINE=true cargo sqlx prepare --check)
 
   echo "✅ sqlx check complete"
   exit 0
@@ -81,7 +81,7 @@ cargo sqlx prepare
 
 RELAY_TUNNEL_DIR="$(cd "$REMOTE_DIR/../../crates/relay-tunnel" && pwd)"
 echo "➤ Preparing SQLx data for relay-tunnel..."
-(cd "$RELAY_TUNNEL_DIR" && cargo sqlx prepare -- --features server)
+(cd "$RELAY_TUNNEL_DIR" && cargo sqlx prepare)
 
 echo "➤ Stopping Postgres..."
 pg_ctl -D "$DATA_DIR" -m fast -w stop > /dev/null

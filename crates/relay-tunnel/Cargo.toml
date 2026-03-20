@@ -4,52 +4,30 @@ version = "0.1.6"
 edition = "2024"
 publish = false
 
-[features]
-default = []
-server = [
-    "dep:sqlx",
-    "dep:jsonwebtoken",
-    "dep:secrecy",
-    "dep:sha2",
-    "dep:base64",
-    "dep:chrono",
-    "dep:axum-extra",
-    "dep:api-types",
-    "dep:relay-types",
-    "dep:uuid",
-    "dep:tower-http",
-    "dep:tracing-subscriber",
-    "dep:serde",
-    "dep:thiserror",
-]
-
 [[bin]]
 name = "relay-server"
 path = "src/bin/relay_server.rs"
-required-features = ["server"]
 
 [dependencies]
 relay-tunnel-core = { path = "../relay-tunnel-core" }
+api-types = { path = "../api-types" }
+relay-types = { path = "../relay-types" }
 anyhow = "1.0"
 axum = { version = "0.8.4", features = ["macros", "multipart", "ws"] }
-tokio = { version = "1.0", features = ["full"] }
-tracing = "0.1.43"
-
-# Optional deps for the relay-server binary
-api-types = { path = "../api-types", optional = true }
-axum-extra = { version = "0.10.3", features = ["typed-header"], optional = true }
-base64 = { version = "0.22", optional = true }
-chrono = { version = "0.4", features = ["serde"], optional = true }
-jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"], optional = true }
-relay-types = { path = "../relay-types", optional = true }
+axum-extra = { version = "0.10.3", features = ["typed-header"] }
+base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
+jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"] }
 rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
-secrecy = { version = "0.10.3", optional = true }
-serde = { version = "1.0", features = ["derive"], optional = true }
-sha2 = { version = "0.10", optional = true }
-sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "postgres", "uuid", "chrono", "macros"], optional = true }
-thiserror = { version = "2.0.12", optional = true }
-tower-http = { version = "0.5", features = ["cors", "request-id", "trace", "fs", "validate-request"], optional = true }
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"], optional = true }
-uuid = { version = "1", features = ["serde", "v4"], optional = true }
+secrecy = "0.10.3"
+serde = { version = "1.0", features = ["derive"] }
+sha2 = "0.10"
+sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "postgres", "uuid", "chrono", "macros"] }
+thiserror = "2.0.12"
+tokio = { version = "1.0", features = ["full"] }
+tower-http = { version = "0.5", features = ["cors", "request-id", "trace", "fs", "validate-request"] }
+tracing = "0.1.43"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+uuid = { version = "1", features = ["serde", "v4"] }
 
 [workspace]

@@ -42,7 +42,7 @@ RUN mkdir -p /app/bin
 RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=cargo-git,target=/usr/local/cargo/git \
     --mount=type=cache,id=relay-target,target=/app/target \
-    cargo build --locked --release --manifest-path crates/relay-tunnel/Cargo.toml --features server \
+    cargo build --locked --release --manifest-path crates/relay-tunnel/Cargo.toml \
  && cp /app/target/release/relay-server /app/bin/relay-server
 
 FROM debian:bookworm-slim
