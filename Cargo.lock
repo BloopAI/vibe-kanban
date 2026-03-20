@@ -199,7 +199,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "api-types"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "chrono",
  "schemars 1.2.1",
@@ -217,26 +217,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
 dependencies = [
  "derive_arbitrary",
-]
-
-[[package]]
-name = "arboard"
-version = "3.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0348a1c054491f4bfe6ab86a7b6ab1e44e45d899005de92f58b3df180b36ddaf"
-dependencies = [
- "clipboard-win",
- "image",
- "log",
- "objc2",
- "objc2-app-kit",
- "objc2-core-foundation",
- "objc2-core-graphics",
- "objc2-foundation",
- "parking_lot",
- "percent-encoding",
- "windows-sys 0.60.2",
- "x11rb",
 ]
 
 [[package]]
@@ -1619,7 +1599,7 @@ checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
 name = "db"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1661,7 +1641,7 @@ dependencies = [
 
 [[package]]
 name = "deployment"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2288,7 +2268,7 @@ dependencies = [
 
 [[package]]
 name = "executors"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "agent-client-protocol",
  "async-stream",
@@ -2342,26 +2322,6 @@ name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
-
-[[package]]
-name = "fax"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f05de7d48f37cd6730705cbca900770cab77a89f413d23e100ad7fad7795a0ab"
-dependencies = [
- "fax_derive",
-]
-
-[[package]]
-name = "fax_derive"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0aca10fb742cb43f9e7bb8467c91aa9bcb8e3ffbc6a6f7389bb93ffc920577d"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.117",
-]
 
 [[package]]
 name = "fd-lock"
@@ -2828,16 +2788,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gethostname"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bd49230192a3797a9a4d6abe9b3eed6f7fa4c8a8a4947977c6f80025f92cbd8"
-dependencies = [
- "rustix",
- "windows-link 0.2.1",
-]
-
-[[package]]
 name = "getrandom"
 version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2939,7 +2889,7 @@ dependencies = [
 
 [[package]]
 name = "git"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "chrono",
  "dirs 5.0.1",
@@ -2954,7 +2904,7 @@ dependencies = [
 
 [[package]]
 name = "git-host"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "async-trait",
  "backon",
@@ -3146,17 +3096,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
-]
-
-[[package]]
-name = "half"
-version = "2.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ea2d84b969582b4b1864a92dc5d27cd2b77b622a8d79306834f1be5ba20d84b"
-dependencies = [
- "cfg-if",
- "crunchy",
- "zerocopy",
 ]
 
 [[package]]
@@ -3642,7 +3581,6 @@ dependencies = [
  "moxcms",
  "num-traits",
  "png 0.18.1",
- "tiff",
  "zune-core",
  "zune-jpeg",
 ]
@@ -4186,7 +4124,7 @@ checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
 
 [[package]]
 name = "local-deployment"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "anyhow",
  "api-types",
@@ -4374,7 +4312,7 @@ checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
 name = "mcp"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "anyhow",
  "api-types",
@@ -4857,7 +4795,6 @@ dependencies = [
  "block2",
  "objc2",
  "objc2-core-foundation",
- "objc2-core-graphics",
  "objc2-foundation",
 ]
 
@@ -6091,7 +6028,7 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
 name = "relay-control"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "base64 0.22.1",
  "ed25519-dalek",
@@ -6204,7 +6141,7 @@ dependencies = [
 
 [[package]]
 name = "review"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -7062,7 +6999,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "anyhow",
  "api-types",
@@ -7116,14 +7053,14 @@ dependencies = [
 
 [[package]]
 name = "server-info"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "tokio",
 ]
 
 [[package]]
 name = "services"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "anyhow",
  "api-types",
@@ -8470,20 +8407,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tiff"
-version = "0.11.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b63feaf3343d35b6ca4d50483f94843803b0f51634937cc2ec519fc32232bc52"
-dependencies = [
- "fax",
- "flate2",
- "half",
- "quick-error",
- "weezl",
- "zune-jpeg",
-]
-
-[[package]]
 name = "time"
 version = "0.3.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8951,7 +8874,7 @@ dependencies = [
 
 [[package]]
 name = "trusted-key-auth"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "base64 0.22.1",
  "ed25519-dalek",
@@ -9283,7 +9206,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "axum",
  "bytes",
@@ -9357,9 +9280,8 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vibe-kanban-tauri"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
- "arboard",
  "async-trait",
  "objc2-web-kit",
  "rustls",
@@ -10367,7 +10289,7 @@ dependencies = [
 
 [[package]]
 name = "workspace-manager"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "db",
  "git",
@@ -10382,7 +10304,7 @@ dependencies = [
 
 [[package]]
 name = "worktree-manager"
-version = "0.1.33"
+version = "0.1.33-ntrols.0"
 dependencies = [
  "dunce",
  "git",
@@ -10464,23 +10386,6 @@ dependencies = [
  "once_cell",
  "pkg-config",
 ]
-
-[[package]]
-name = "x11rb"
-version = "0.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9993aa5be5a26815fe2c3eacfc1fde061fc1a1f094bf1ad2a18bf9c495dd7414"
-dependencies = [
- "gethostname",
- "rustix",
- "x11rb-protocol",
-]
-
-[[package]]
-name = "x11rb-protocol"
-version = "0.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea6fc2961e4ef194dcbfe56bb845534d0dc8098940c7e5c012a258bfec6701bd"
 
 [[package]]
 name = "xattr"
