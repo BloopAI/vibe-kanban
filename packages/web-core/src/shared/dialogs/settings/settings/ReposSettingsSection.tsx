@@ -12,6 +12,7 @@ import { getProjectRepoDefaults } from '@/shared/hooks/useProjectRepoDefaults';
 import { repoApi, ApiError } from '@/shared/lib/api';
 import { defineModal } from '@/shared/lib/modals';
 import type { Repo, UpdateRepo } from 'shared/types';
+import { EditorType } from 'shared/types';
 import { SearchableDropdownContainer } from '@/shared/components/ui-new/containers/SearchableDropdownContainer';
 import { FolderPickerDialog } from '@/shared/dialogs/shared/FolderPickerDialog';
 import { Button } from '@vibe/ui/components/Button';
@@ -37,13 +38,18 @@ import {
   SettingsInput,
   SettingsTextarea,
   SettingsCheckbox,
+  SettingsSelect,
   SettingsSaveBar,
 } from './SettingsComponents';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
+import { getIdeName } from '@/shared/lib/ideName';
 
 interface RepoScriptsFormState {
   display_name: string;
   default_working_dir: string;
   default_target_branch: string;
+  editor_type_override: string;
+  editor_launch_target: string;
   setup_script: string;
   parallel_setup_script: boolean;
   cleanup_script: string;
@@ -57,6 +63,8 @@ function repoToFormState(repo: Repo): RepoScriptsFormState {
     display_name: repo.display_name,
     default_working_dir: repo.default_working_dir ?? '',
     default_target_branch: repo.default_target_branch ?? '',
+    editor_type_override: repo.editor_type_override ?? '',
+    editor_launch_target: repo.editor_launch_target ?? '',
     setup_script: repo.setup_script ?? '',
     parallel_setup_script: repo.parallel_setup_script,
     cleanup_script: repo.cleanup_script ?? '',
@@ -120,6 +128,54 @@ const RemoveRepoDialogImpl = create<RemoveRepoDialogProps>(({ repoName }) => {
 const RemoveRepoDialog = defineModal<RemoveRepoDialogProps, RemoveRepoResult>(
   RemoveRepoDialogImpl
 );
+
+// ── Editor override fields ───────────────────────────────────────────
+function EditorOverrideFields({
+  draft,
+  updateDraft,
+}: {
+  draft: RepoScriptsFormState;
+  updateDraft: (updates: Partial<RepoScriptsFormState>) => void;
+}) {
+  const { config } = useUserSystem();
+  const globalEditorType = config?.editor?.editor_type ?? null;
+  const globalEditorName = getIdeName(globalEditorType);
+
+  const editorOptions = [
+    { value: '', label: `Use default (${globalEditorName})` },
+    ...Object.values(EditorType).map((editor) => ({
+      value: editor,
+      label: getIdeName(editor),
+    })),
+  ];
+
+  return (
+    <>
+      <SettingsField
+        label="IDE / Editor"
+        description="Override the global IDE setting for this repository."
+      >
+        <SettingsSelect
+          value={draft.editor_type_override as EditorType | ''}
+          options={editorOptions}
+          onChange={(value) => updateDraft({ editor_type_override: value })}
+          placeholder={`Use default (${globalEditorName})`}
+        />
+      </SettingsField>
+
+      <SettingsField
+        label="Launch target"
+        description="Optional file path (relative to repo root) to open instead of the folder. Useful for .sln, .xcworkspace, etc."
+      >
+        <SettingsInput
+          value={draft.editor_launch_target}
+          onChange={(value) => updateDraft({ editor_launch_target: value })}
+          placeholder="e.g. MyProject.sln"
+        />
+      </SettingsField>
+    </>
+  );
+}
 
 // ── Main section ─────────────────────────────────────────────────────
 interface ReposSettingsSectionProps {
@@ -322,6 +378,8 @@ export function ReposSettingsSection({
         display_name: draft.display_name.trim() || null,
         default_working_dir: draft.default_working_dir.trim() || null,
         default_target_branch: draft.default_target_branch.trim() || null,
+        editor_type_override: draft.editor_type_override || null,
+        editor_launch_target: draft.editor_launch_target.trim() || null,
         setup_script: draft.setup_script.trim() || null,
         cleanup_script: draft.cleanup_script.trim() || null,
         archive_script: draft.archive_script.trim() || null,
@@ -537,6 +595,8 @@ export function ReposSettingsSection({
                 }
               />
             </SettingsField>
+
+            <EditorOverrideFields draft={draft} updateDraft={updateDraft} />
 
             <div className="border-t border-primary pt-base mt-base">
               <div className="flex items-center justify-between">

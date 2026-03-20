@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT r.id as \"id!: Uuid\",\n                      r.path,\n                      r.name,\n                      r.display_name,\n                      r.setup_script,\n                      r.cleanup_script,\n                      r.archive_script,\n                      r.copy_files,\n                      r.parallel_setup_script as \"parallel_setup_script!: bool\",\n                      r.dev_server_script,\n                      r.default_target_branch,\n                      r.default_working_dir,\n                      r.created_at as \"created_at!: DateTime<Utc>\",\n                      r.updated_at as \"updated_at!: DateTime<Utc>\",\n                      wr.target_branch\n               FROM repos r\n               JOIN workspace_repos wr ON r.id = wr.repo_id\n               WHERE wr.workspace_id = $1\n               ORDER BY r.display_name ASC",
+  "query": "SELECT r.id as \"id!: Uuid\",\n                      r.path,\n                      r.name,\n                      r.display_name,\n                      r.setup_script,\n                      r.cleanup_script,\n                      r.archive_script,\n                      r.copy_files,\n                      r.parallel_setup_script as \"parallel_setup_script!: bool\",\n                      r.dev_server_script,\n                      r.default_target_branch,\n                      r.default_working_dir,\n                      r.editor_type_override,\n                      r.editor_launch_target,\n                      r.created_at as \"created_at!: DateTime<Utc>\",\n                      r.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM repos r\n               LEFT JOIN (\n                   SELECT repo_id, MAX(updated_at) AS last_used_at\n                   FROM workspace_repos\n                   GROUP BY repo_id\n               ) wr ON wr.repo_id = r.id\n               ORDER BY wr.last_used_at DESC, r.display_name ASC",
   "describe": {
     "columns": [
       {
@@ -64,23 +64,28 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "editor_type_override",
         "ordinal": 12,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "editor_launch_target",
         "ordinal": 13,
         "type_info": "Text"
       },
       {
-        "name": "target_branch",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 14,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 15,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
       true,
@@ -95,10 +100,11 @@
       true,
       true,
       true,
-      false,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "9f783d1b275548a59429235991e5299b7aaf071effebbd62f006404b3ce83dc8"
+  "hash": "e46f46feeac03631911b92a45993569aee6af3d2ad55bddf3c981e86ed6e80b4"
 }

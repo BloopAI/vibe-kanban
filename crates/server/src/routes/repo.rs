@@ -158,18 +158,32 @@ pub async fn open_repo_in_editor(
         .get_by_id(&deployment.db().pool, repo_id)
         .await?;
 
+    // Resolution order: request editor_type > repo editor_type_override > global config
+    let resolved_editor_type = payload
+        .as_ref()
+        .and_then(|req| req.editor_type.as_deref())
+        .or(repo.editor_type_override.as_deref());
+
     let editor_config = {
         let config = deployment.config().read().await;
-        let editor_type_str = payload.as_ref().and_then(|req| req.editor_type.as_deref());
-        config.editor.with_override(editor_type_str)
+        config.editor.with_override(resolved_editor_type)
     };
 
-    match editor_config.open_file(&repo.path).await {
+    // If editor_launch_target is set and no explicit file_path in request, open the launch target
+    let open_path = match (
+        repo.editor_launch_target.as_deref(),
+        payload.as_ref().and_then(|req| req.git_repo_path.as_ref()),
+    ) {
+        (Some(launch_target), None) => repo.path.join(launch_target),
+        _ => repo.path.clone(),
+    };
+
+    match editor_config.open_file(&open_path).await {
         Ok(url) => {
             tracing::info!(
                 "Opened editor for repo {} at path: {}{}",
                 repo_id,
-                repo.path.to_string_lossy(),
+                open_path.to_string_lossy(),
                 if url.is_some() { " (remote mode)" } else { "" }
             );
 
@@ -178,7 +192,7 @@ pub async fn open_repo_in_editor(
                     "repo_editor_opened",
                     serde_json::json!({
                         "repo_id": repo_id.to_string(),
-                        "editor_type": payload.as_ref().and_then(|req| req.editor_type.as_ref()),
+                        "editor_type": resolved_editor_type,
                         "remote_mode": url.is_some(),
                     }),
                 )

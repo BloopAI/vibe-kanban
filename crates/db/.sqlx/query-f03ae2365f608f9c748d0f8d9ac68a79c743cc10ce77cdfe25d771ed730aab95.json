@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "UPDATE repos\n               SET display_name = $1,\n                   setup_script = $2,\n                   cleanup_script = $3,\n                   archive_script = $4,\n                   copy_files = $5,\n                   parallel_setup_script = $6,\n                   dev_server_script = $7,\n                   default_target_branch = $8,\n                   default_working_dir = $9,\n                   updated_at = datetime('now', 'subsec')\n               WHERE id = $10\n               RETURNING id as \"id!: Uuid\",\n                         path,\n                         name,\n                         display_name,\n                         setup_script,\n                         cleanup_script,\n                         archive_script,\n                         copy_files,\n                         parallel_setup_script as \"parallel_setup_script!: bool\",\n                         dev_server_script,\n                         default_target_branch,\n                         default_working_dir,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id as \"id!: Uuid\",\n                      path,\n                      name,\n                      display_name,\n                      setup_script,\n                      cleanup_script,\n                      archive_script,\n                      copy_files,\n                      parallel_setup_script as \"parallel_setup_script!: bool\",\n                      dev_server_script,\n                      default_target_branch,\n                      default_working_dir,\n                      editor_type_override,\n                      editor_launch_target,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM repos\n               WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -64,18 +64,28 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "editor_type_override",
         "ordinal": 12,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "editor_launch_target",
         "ordinal": 13,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 14,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 15,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 10
+      "Right": 1
     },
     "nullable": [
       true,
@@ -90,9 +100,11 @@
       true,
       true,
       true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "79f6b9f999c33900ae87475d72651b274cc94ab3b1f36e9c5517bc5572ea9947"
+  "hash": "f03ae2365f608f9c748d0f8d9ac68a79c743cc10ce77cdfe25d771ed730aab95"
 }

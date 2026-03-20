@@ -74,6 +74,7 @@ import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CreateWorkspaceFromPrDialog } from '@/shared/dialogs/command-bar/CreateWorkspaceFromPrDialog';
 import { buildWorkspaceCreateInitialState } from '@/shared/lib/workspaceCreateState';
 import { setCreateModeSeedState } from '@/features/create-mode/model/createModeSeedStore';
+import { WorkspaceEditorPickerDialog } from '@/shared/dialogs/shared/WorkspaceEditorPickerDialog';
 
 // Mirrored sidebar icon for right sidebar toggle
 const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
@@ -743,6 +744,38 @@ export const Actions = {
     execute: async (ctx) => {
       if (!ctx.currentWorkspaceId) return;
       try {
+        // Check if workspace has multiple repos — show picker if so
+        const pickerData = await workspacesApi.getEditorPicker(
+          ctx.currentWorkspaceId
+        );
+        if (pickerData.repos.length > 1) {
+          const result = await WorkspaceEditorPickerDialog.show({
+            repos: pickerData.repos,
+            workspaceId: ctx.currentWorkspaceId,
+          });
+          if (!result) return;
+          if (result.type === 'repo') {
+            try {
+              const response = await workspacesApi.openEditor(
+                ctx.currentWorkspaceId,
+                {
+                  editor_type: null,
+                  file_path: null,
+                  repo_id: result.repoId,
+                }
+              );
+              if (response.url) {
+                window.open(response.url, '_blank');
+              }
+            } catch {
+              EditorSelectionDialog.show({
+                selectedAttemptId: ctx.currentWorkspaceId,
+              });
+            }
+            return;
+          }
+          // type === 'global' — fall through to open workspace folder
+        }
         const response = await workspacesApi.openEditor(
           ctx.currentWorkspaceId,
           {

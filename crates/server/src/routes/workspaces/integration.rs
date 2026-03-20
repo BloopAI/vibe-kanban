@@ -1,7 +1,10 @@
 use std::path::Path;
 
 use axum::{
-    Extension, Json, Router, extract::State, response::Json as ResponseJson, routing::post,
+    Extension, Json, Router,
+    extract::State,
+    response::Json as ResponseJson,
+    routing::{get, post},
 };
 use db::models::{workspace::Workspace, workspace_repo::WorkspaceRepo};
 use deployment::Deployment;
@@ -29,6 +32,9 @@ pub struct RunAgentSetupResponse {}
 pub struct OpenEditorRequest {
     editor_type: Option<String>,
     file_path: Option<String>,
+    /// When set, open this specific repo within the workspace (for multi-repo picker).
+    #[ts(optional)]
+    repo_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -36,9 +42,24 @@ pub struct OpenEditorResponse {
     pub url: Option<String>,
 }
 
+#[derive(Debug, Serialize, TS)]
+pub struct EditorPickerRepo {
+    pub id: String,
+    pub name: String,
+    pub display_name: String,
+    pub effective_editor_type: Option<String>,
+    pub editor_launch_target: Option<String>,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct EditorPickerResponse {
+    pub repos: Vec<EditorPickerRepo>,
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/editor/open", post(open_workspace_in_editor))
+        .route("/editor/picker", get(get_editor_picker))
         .route("/agent/setup", post(run_agent_setup))
         .route("/github/cli/setup", post(gh_cli_setup_handler))
 }
@@ -89,10 +110,35 @@ pub async fn open_workspace_in_editor(
     let workspace_path = Path::new(&container_ref);
     let workspace_repos =
         WorkspaceRepo::find_repos_for_workspace(&deployment.db().pool, workspace.id).await?;
-    let workspace_path = if workspace_repos.len() == 1 && payload.file_path.is_none() {
-        workspace_path.join(&workspace_repos[0].name)
+
+    // Resolve which repo to target (if any) and build the path within the worktree.
+    // Priority: explicit repo_id from picker > single-repo auto-select > workspace root.
+    let target_repo = if let Some(ref repo_id_str) = payload.repo_id {
+        let repo_id: uuid::Uuid = repo_id_str
+            .parse()
+            .map_err(|_| ApiError::BadRequest("Invalid repo ID".into()))?;
+        workspace_repos.iter().find(|r| r.id == repo_id)
+    } else if workspace_repos.len() == 1 && payload.file_path.is_none() {
+        Some(&workspace_repos[0])
     } else {
-        workspace_path.to_path_buf()
+        None
+    };
+
+    let (workspace_path, resolved_editor_type) = if let Some(repo) = target_repo {
+        let base = workspace_path.join(&repo.name);
+        let path = match repo.editor_launch_target.as_deref() {
+            Some(target) if payload.file_path.is_none() => base.join(target),
+            _ => base,
+        };
+        // Resolution order: request editor_type > repo override > global config
+        let editor_type = payload
+            .editor_type
+            .as_deref()
+            .map(|s| s.to_string())
+            .or_else(|| repo.editor_type_override.clone());
+        (path, editor_type)
+    } else {
+        (workspace_path.to_path_buf(), payload.editor_type.clone())
     };
 
     let path = if let Some(file_path) = payload.file_path.as_ref() {
@@ -103,8 +149,7 @@ pub async fn open_workspace_in_editor(
 
     let editor_config = {
         let config = deployment.config().read().await;
-        let editor_type_str = payload.editor_type.as_deref();
-        config.editor.with_override(editor_type_str)
+        config.editor.with_override(resolved_editor_type.as_deref())
     };
 
     match editor_config.open_file(path.as_path()).await {
@@ -121,7 +166,7 @@ pub async fn open_workspace_in_editor(
                     "task_attempt_editor_opened",
                     serde_json::json!({
                         "workspace_id": workspace.id.to_string(),
-                        "editor_type": payload.editor_type.as_ref(),
+                        "editor_type": resolved_editor_type.as_ref(),
                         "remote_mode": url.is_some(),
                     }),
                 )
@@ -140,6 +185,29 @@ pub async fn open_workspace_in_editor(
             Err(ApiError::EditorOpen(e))
         }
     }
+}
+
+pub async fn get_editor_picker(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<EditorPickerResponse>>, ApiError> {
+    let workspace_repos =
+        WorkspaceRepo::find_repos_for_workspace(&deployment.db().pool, workspace.id).await?;
+
+    let repos = workspace_repos
+        .into_iter()
+        .map(|repo| EditorPickerRepo {
+            id: repo.id.to_string(),
+            name: repo.name.clone(),
+            display_name: repo.display_name.clone(),
+            effective_editor_type: repo.editor_type_override.clone(),
+            editor_launch_target: repo.editor_launch_target.clone(),
+        })
+        .collect();
+
+    Ok(ResponseJson(ApiResponse::success(EditorPickerResponse {
+        repos,
+    })))
 }
 
 #[axum::debug_handler]

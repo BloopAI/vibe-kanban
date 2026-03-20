@@ -3,20 +3,26 @@ import { Button } from '@vibe/ui/components/Button';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { IdeIcon } from '@/shared/components/IdeIcon';
 import { getIdeName } from '@/shared/lib/ideName';
+import type { EditorType } from 'shared/types';
 
 type OpenInIdeButtonProps = {
   onClick: () => void;
   disabled?: boolean;
   className?: string;
+  editorTypeOverride?: string | null;
 };
 
 export function OpenInIdeButton({
   onClick,
   disabled = false,
   className,
+  editorTypeOverride,
 }: OpenInIdeButtonProps) {
   const { config } = useUserSystem();
-  const editorType = config?.editor?.editor_type ?? null;
+  const editorType =
+    (editorTypeOverride as EditorType | null) ??
+    config?.editor?.editor_type ??
+    null;
 
   const label = useMemo(() => {
     const ideName = getIdeName(editorType);
