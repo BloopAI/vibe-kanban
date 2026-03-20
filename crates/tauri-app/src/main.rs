@@ -23,25 +23,40 @@ use uuid::Uuid;
 
 const UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(60 * 60);
 
+#[cfg(target_os = "linux")]
+mod linux_notifications;
 #[cfg(target_os = "macos")]
 mod macos_notifications;
+#[cfg(target_os = "windows")]
+mod windows_notifications;
 
 /// Native push notifier for backend-initiated notifications.
-/// On macOS, uses `UNUserNotificationCenter` with click handling.
-/// On other platforms, falls back to `tauri-plugin-notification`.
+/// Uses platform-native APIs with click handling where available,
+/// falls back to `tauri-plugin-notification` otherwise.
 struct TauriNotifier {
     app_handle: tauri::AppHandle,
 }
 
-/// Whether native macOS notifications with click handling are available at runtime.
-#[cfg(target_os = "macos")]
+/// Whether platform-native notifications with click handling are available.
 fn use_native_notifications() -> bool {
-    macos_notifications::is_available()
+    #[cfg(target_os = "macos")]
+    return macos_notifications::is_available();
+    #[cfg(target_os = "windows")]
+    return windows_notifications::is_available();
+    #[cfg(target_os = "linux")]
+    return linux_notifications::is_available();
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    false
 }
 
-#[cfg(not(target_os = "macos"))]
-fn use_native_notifications() -> bool {
-    false
+/// Show a notification using the platform-native API (with click handling).
+fn show_native_notification(title: &str, body: &str, deeplink_path: Option<&str>) {
+    #[cfg(target_os = "macos")]
+    macos_notifications::show_notification(title, body, deeplink_path);
+    #[cfg(target_os = "windows")]
+    windows_notifications::show_notification(title, body, deeplink_path);
+    #[cfg(target_os = "linux")]
+    linux_notifications::show_notification(title, body, deeplink_path);
 }
 
 #[tauri::command]
@@ -50,13 +65,12 @@ async fn show_system_notification(
     body: String,
     deeplink_path: Option<String>,
 ) -> Result<(), String> {
-    #[cfg(target_os = "macos")]
     if use_native_notifications() {
-        macos_notifications::show_notification(&title, &body, deeplink_path.as_deref());
+        show_native_notification(&title, &body, deeplink_path.as_deref());
         return Ok(());
     }
 
-    // Fallback: generic NotificationService (non-macOS, or macOS dev mode).
+    // Fallback: generic NotificationService (e.g. macOS dev mode).
     let config = load_config_from_file(&config_path()).await;
     let notification_service = NotificationService::new(Arc::new(tokio::sync::RwLock::new(config)));
     notification_service.notify(&title, &body, None).await;
@@ -72,10 +86,10 @@ fn read_clipboard_text() -> Result<String, String> {
 #[async_trait]
 impl PushNotifier for TauriNotifier {
     async fn send(&self, title: &str, message: &str, workspace_id: Option<Uuid>) {
-        #[cfg(target_os = "macos")]
+        let deeplink_path = workspace_id.map(|id| format!("/workspaces/{id}"));
+
         if use_native_notifications() {
-            let deeplink_path = workspace_id.map(|id| format!("/workspaces/{id}"));
-            macos_notifications::show_notification(title, message, deeplink_path.as_deref());
+            show_native_notification(title, message, deeplink_path.as_deref());
             return;
         }
 
@@ -140,10 +154,14 @@ fn main() {
 
     builder
         .setup(move |app| {
-            // Initialize macOS native notifications (request permission,
-            // install click-handling delegate) before anything else.
+            // Initialize platform-native notifications (request permission,
+            // install click-handling delegates) before anything else.
             #[cfg(target_os = "macos")]
             macos_notifications::initialize(app.handle().clone());
+            #[cfg(target_os = "windows")]
+            windows_notifications::initialize(app.handle().clone());
+            #[cfg(target_os = "linux")]
+            linux_notifications::initialize(app.handle().clone());
 
             if cfg!(debug_assertions) {
                 // Dev mode: frontend dev server (Vite) and backend are started
