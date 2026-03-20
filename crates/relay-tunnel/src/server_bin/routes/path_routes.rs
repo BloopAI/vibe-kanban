@@ -5,6 +5,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use relay_tunnel_core::server::proxy_request_over_control;
 use uuid::Uuid;
 
 use super::super::{
@@ -15,7 +16,6 @@ use super::super::{
     },
     state::RelayAppState,
 };
-use relay_tunnel_core::server::proxy_request_over_control;
 
 const RELAY_PROXY_PREFIX: &str = "/relay/h";
 
