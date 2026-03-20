@@ -755,12 +755,15 @@ export const Actions = {
           });
           if (!result) return;
           if (result.type === 'repo') {
-            const repo = pickerData.repos.find((r) => r.id === result.repoId);
             try {
-              const response = await repoApi.openEditor(result.repoId, {
-                editor_type: repo?.effective_editor_type ?? null,
-                file_path: null,
-              });
+              const response = await workspacesApi.openEditor(
+                ctx.currentWorkspaceId,
+                {
+                  editor_type: null,
+                  file_path: null,
+                  repo_id: result.repoId,
+                }
+              );
               if (response.url) {
                 window.open(response.url, '_blank');
               }

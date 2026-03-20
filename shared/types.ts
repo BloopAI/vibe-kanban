@@ -338,7 +338,11 @@ export type StartReviewRequest = { executor_config: ExecutorConfig, additional_p
 
 export type ReviewError = { "type": "process_already_running" };
 
-export type OpenEditorRequest = { editor_type: string | null, file_path: string | null, };
+export type OpenEditorRequest = { editor_type: string | null, file_path: string | null, 
+/**
+ * When set, open this specific repo within the workspace (for multi-repo picker).
+ */
+repo_id?: string, };
 
 export type OpenEditorResponse = { url: string | null, };
 

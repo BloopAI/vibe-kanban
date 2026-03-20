@@ -32,6 +32,9 @@ pub struct RunAgentSetupResponse {}
 pub struct OpenEditorRequest {
     editor_type: Option<String>,
     file_path: Option<String>,
+    /// When set, open this specific repo within the workspace (for multi-repo picker).
+    #[ts(optional)]
+    repo_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -108,25 +111,35 @@ pub async fn open_workspace_in_editor(
     let workspace_repos =
         WorkspaceRepo::find_repos_for_workspace(&deployment.db().pool, workspace.id).await?;
 
-    // For single-repo workspaces, apply repo override and launch target
-    let (workspace_path, resolved_editor_type) =
-        if workspace_repos.len() == 1 && payload.file_path.is_none() {
-            let repo = &workspace_repos[0];
-            let base = workspace_path.join(&repo.name);
-            let path = match repo.editor_launch_target.as_deref() {
-                Some(target) if payload.file_path.is_none() => base.join(target),
-                _ => base,
-            };
-            // Resolution order: request editor_type > repo override > global config
-            let editor_type = payload
-                .editor_type
-                .as_deref()
-                .map(|s| s.to_string())
-                .or_else(|| repo.editor_type_override.clone());
-            (path, editor_type)
-        } else {
-            (workspace_path.to_path_buf(), payload.editor_type.clone())
+    // Resolve which repo to target (if any) and build the path within the worktree.
+    // Priority: explicit repo_id from picker > single-repo auto-select > workspace root.
+    let target_repo = if let Some(ref repo_id_str) = payload.repo_id {
+        let repo_id: uuid::Uuid = repo_id_str
+            .parse()
+            .map_err(|_| ApiError::BadRequest("Invalid repo ID".into()))?;
+        workspace_repos.iter().find(|r| r.id == repo_id)
+    } else if workspace_repos.len() == 1 && payload.file_path.is_none() {
+        Some(&workspace_repos[0])
+    } else {
+        None
+    };
+
+    let (workspace_path, resolved_editor_type) = if let Some(repo) = target_repo {
+        let base = workspace_path.join(&repo.name);
+        let path = match repo.editor_launch_target.as_deref() {
+            Some(target) if payload.file_path.is_none() => base.join(target),
+            _ => base,
         };
+        // Resolution order: request editor_type > repo override > global config
+        let editor_type = payload
+            .editor_type
+            .as_deref()
+            .map(|s| s.to_string())
+            .or_else(|| repo.editor_type_override.clone());
+        (path, editor_type)
+    } else {
+        (workspace_path.to_path_buf(), payload.editor_type.clone())
+    };
 
     let path = if let Some(file_path) = payload.file_path.as_ref() {
         workspace_path.join(file_path)
