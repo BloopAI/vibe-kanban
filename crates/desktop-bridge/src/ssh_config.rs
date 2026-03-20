@@ -4,7 +4,12 @@
 //! file and writes SSH config entries so VS Code Remote SSH can connect through
 //! the relay tunnel.
 
-use std::{fs, io::Write, path::PathBuf};
+use std::{
+    fs,
+    io::{self, Write},
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use relay_control::signing::RelaySigningService;
 use sha2::{Digest, Sha256};
@@ -75,7 +80,7 @@ pub fn update_ssh_config(
     // Read existing config and replace or append the entry for this alias
     let existing = fs::read_to_string(&config_path).unwrap_or_default();
     let new_config = replace_host_block(&existing, alias, &entry);
-    fs::write(&config_path, new_config)?;
+    atomic_write_text_file(&config_path, &new_config)?;
 
     Ok(())
 }
@@ -97,7 +102,7 @@ pub fn ensure_ssh_include() -> Result<(), DesktopBridgeError> {
 
     // Prepend the Include directive (SSH config is first-match)
     let new_content = format!("{include_line}\n{existing}");
-    fs::write(&config_path, new_content)?;
+    atomic_write_text_file(&config_path, &new_content)?;
 
     Ok(())
 }
@@ -105,6 +110,49 @@ pub fn ensure_ssh_include() -> Result<(), DesktopBridgeError> {
 fn vk_ssh_dir() -> Result<PathBuf, DesktopBridgeError> {
     let home = dirs::home_dir().ok_or(DesktopBridgeError::NoHomeDirectory)?;
     Ok(home.join(".vk-ssh"))
+}
+
+fn atomic_write_text_file(path: &Path, content: &str) -> Result<(), DesktopBridgeError> {
+    let parent = path.parent().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "cannot atomically write path without a parent directory",
+        )
+    })?;
+    fs::create_dir_all(parent)?;
+
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let file_name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("config");
+    let tmp_name = format!(".{file_name}.tmp-{}-{nonce}", std::process::id());
+    let tmp_path = parent.join(tmp_name);
+
+    let mut tmp_file = fs::OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(&tmp_path)?;
+    tmp_file.write_all(content.as_bytes())?;
+    tmp_file.sync_all()?;
+    drop(tmp_file);
+
+    if let Ok(existing_meta) = fs::metadata(path) {
+        let _ = fs::set_permissions(&tmp_path, existing_meta.permissions());
+    }
+
+    fs::rename(&tmp_path, path)?;
+
+    #[cfg(unix)]
+    {
+        let parent_dir = fs::File::open(parent)?;
+        parent_dir.sync_all()?;
+    }
+
+    Ok(())
 }
 
 fn short_key_hash(signing: &RelaySigningService) -> String {
