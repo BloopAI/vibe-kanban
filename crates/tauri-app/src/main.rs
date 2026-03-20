@@ -272,12 +272,10 @@ fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(
     // letting web content extend to the top of the window.
     // Traffic lights are vertically centered within the navbar height (~28px).
     #[cfg(target_os = "macos")]
-    {
-        builder = builder
-            .title_bar_style(tauri::TitleBarStyle::Overlay)
-            .hidden_title(true)
-            .traffic_light_position(tauri::LogicalPosition::new(8.0, 14.0));
-    }
+    let builder = builder
+        .title_bar_style(tauri::TitleBarStyle::Overlay)
+        .hidden_title(true)
+        .traffic_light_position(tauri::LogicalPosition::new(8.0, 14.0));
 
     builder
         .on_new_window(move |url, _features| {
