@@ -5,15 +5,14 @@
 
 #[cfg(unix)]
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
-use std::{
-    collections::HashMap,
-    fs,
-    io::{Read, Seek, Write},
-    path::PathBuf,
-};
+use std::{collections::HashMap, fs as std_fs, path::PathBuf};
 
 use russh_sftp::protocol::{
     Attrs, Data, File, FileAttributes, Handle, Name, OpenFlags, Status, StatusCode, Version,
+};
+use tokio::{
+    fs,
+    io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
 };
 
 #[derive(Default)]
@@ -24,7 +23,7 @@ pub struct SftpHandler {
 }
 
 struct FileHandle {
-    file: std::fs::File,
+    file: fs::File,
     #[allow(dead_code)]
     path: PathBuf,
 }
@@ -78,7 +77,7 @@ impl SftpHandler {
     }
 }
 
-fn metadata_to_file_attrs(meta: &fs::Metadata) -> FileAttributes {
+fn metadata_to_file_attrs(meta: &std_fs::Metadata) -> FileAttributes {
     #[cfg(unix)]
     {
         FileAttributes {
@@ -126,47 +125,41 @@ impl russh_sftp::server::Handler for SftpHandler {
         Ok(Version::new())
     }
 
-    fn open(
+    async fn open(
         &mut self,
         id: u32,
         filename: String,
         pflags: OpenFlags,
         _attrs: FileAttributes,
-    ) -> impl std::future::Future<Output = Result<Handle, Self::Error>> + Send {
+    ) -> Result<Handle, Self::Error> {
         let path = PathBuf::from(filename);
-        async move {
-            tokio::task::block_in_place(|| {
-                let mut opts = fs::OpenOptions::new();
+        let mut opts = fs::OpenOptions::new();
 
-                if pflags.contains(OpenFlags::READ) {
-                    opts.read(true);
-                }
-                if pflags.contains(OpenFlags::WRITE) {
-                    opts.write(true);
-                }
-                if pflags.contains(OpenFlags::APPEND) {
-                    opts.append(true);
-                }
-                if pflags.contains(OpenFlags::CREATE) {
-                    opts.create(true);
-                }
-                if pflags.contains(OpenFlags::TRUNCATE) {
-                    opts.truncate(true);
-                }
-                if pflags.contains(OpenFlags::EXCLUDE) {
-                    opts.create_new(true);
-                }
-
-                opts.open(&path)
-                    .map(|file| {
-                        let handle = self.alloc_handle();
-                        self.file_handles
-                            .insert(handle.clone(), FileHandle { file, path });
-                        Handle { id, handle }
-                    })
-                    .map_err(SftpError::from)
-            })
+        if pflags.contains(OpenFlags::READ) {
+            opts.read(true);
         }
+        if pflags.contains(OpenFlags::WRITE) {
+            opts.write(true);
+        }
+        if pflags.contains(OpenFlags::APPEND) {
+            opts.append(true);
+        }
+        if pflags.contains(OpenFlags::CREATE) {
+            opts.create(true);
+        }
+        if pflags.contains(OpenFlags::TRUNCATE) {
+            opts.truncate(true);
+        }
+        if pflags.contains(OpenFlags::EXCLUDE) {
+            opts.create_new(true);
+        }
+
+        let file = opts.open(&path).await.map_err(SftpError::from)?;
+        let handle = self.alloc_handle();
+        self.file_handles
+            .insert(handle.clone(), FileHandle { file, path });
+
+        Ok(Handle { id, handle })
     }
 
     async fn read(
@@ -176,26 +169,28 @@ impl russh_sftp::server::Handler for SftpHandler {
         offset: u64,
         len: u32,
     ) -> Result<Data, Self::Error> {
-        tokio::task::block_in_place(|| {
-            let fh = self.file_handles.get_mut(&handle).ok_or(SftpError {
-                code: StatusCode::Failure,
-                message: "Invalid handle".to_string(),
-            })?;
+        let fh = self.file_handles.get_mut(&handle).ok_or(SftpError {
+            code: StatusCode::Failure,
+            message: "Invalid handle".to_string(),
+        })?;
 
-            fh.file
-                .seek(std::io::SeekFrom::Start(offset))
-                .map_err(SftpError::from)?;
-            let mut buf = vec![0u8; len as usize];
-            let n = fh.file.read(&mut buf).map_err(SftpError::from)?;
-            if n == 0 {
-                return Err(SftpError {
-                    code: StatusCode::Eof,
-                    message: "EOF".to_string(),
-                });
-            }
-            buf.truncate(n);
-            Ok(Data { id, data: buf })
-        })
+        fh.file
+            .seek(std::io::SeekFrom::Start(offset))
+            .await
+            .map_err(SftpError::from)?;
+
+        let mut buf = vec![0u8; len as usize];
+        let n = fh.file.read(&mut buf).await.map_err(SftpError::from)?;
+
+        if n == 0 {
+            return Err(SftpError {
+                code: StatusCode::Eof,
+                message: "EOF".to_string(),
+            });
+        }
+
+        buf.truncate(n);
+        Ok(Data { id, data: buf })
     }
 
     async fn write(
@@ -205,101 +200,87 @@ impl russh_sftp::server::Handler for SftpHandler {
         offset: u64,
         data: Vec<u8>,
     ) -> Result<Status, Self::Error> {
-        tokio::task::block_in_place(|| {
-            let fh = self.file_handles.get_mut(&handle).ok_or(SftpError {
-                code: StatusCode::Failure,
-                message: "Invalid handle".to_string(),
-            })?;
+        let fh = self.file_handles.get_mut(&handle).ok_or(SftpError {
+            code: StatusCode::Failure,
+            message: "Invalid handle".to_string(),
+        })?;
 
-            fh.file
-                .seek(std::io::SeekFrom::Start(offset))
-                .map_err(SftpError::from)?;
-            fh.file.write_all(&data).map_err(SftpError::from)?;
-            Ok(self.ok_status(id))
-        })
+        fh.file
+            .seek(std::io::SeekFrom::Start(offset))
+            .await
+            .map_err(SftpError::from)?;
+        fh.file.write_all(&data).await.map_err(SftpError::from)?;
+
+        Ok(self.ok_status(id))
     }
 
-    fn close(
-        &mut self,
-        id: u32,
-        handle: String,
-    ) -> impl std::future::Future<Output = Result<Status, Self::Error>> + Send {
+    async fn close(&mut self, id: u32, handle: String) -> Result<Status, Self::Error> {
         let removed = self.file_handles.remove(&handle).is_some()
             || self.dir_handles.remove(&handle).is_some();
-        let status = self.ok_status(id);
-        async move {
-            if removed {
-                Ok(status)
-            } else {
-                Err(SftpError {
-                    code: StatusCode::Failure,
-                    message: "Invalid handle".to_string(),
-                })
-            }
+
+        if removed {
+            Ok(self.ok_status(id))
+        } else {
+            Err(SftpError {
+                code: StatusCode::Failure,
+                message: "Invalid handle".to_string(),
+            })
         }
     }
 
     async fn stat(&mut self, id: u32, path: String) -> Result<Attrs, Self::Error> {
-        tokio::task::block_in_place(|| {
-            fs::metadata(&path)
-                .map(|meta| Attrs {
-                    id,
-                    attrs: metadata_to_file_attrs(&meta),
-                })
-                .map_err(SftpError::from)
+        let meta = fs::metadata(&path).await.map_err(SftpError::from)?;
+        Ok(Attrs {
+            id,
+            attrs: metadata_to_file_attrs(&meta),
         })
     }
 
     async fn lstat(&mut self, id: u32, path: String) -> Result<Attrs, Self::Error> {
-        tokio::task::block_in_place(|| {
-            fs::symlink_metadata(&path)
-                .map(|meta| Attrs {
-                    id,
-                    attrs: metadata_to_file_attrs(&meta),
-                })
-                .map_err(SftpError::from)
+        let meta = fs::symlink_metadata(&path).await.map_err(SftpError::from)?;
+        Ok(Attrs {
+            id,
+            attrs: metadata_to_file_attrs(&meta),
         })
     }
 
     async fn fstat(&mut self, id: u32, handle: String) -> Result<Attrs, Self::Error> {
-        tokio::task::block_in_place(|| {
-            self.file_handles
-                .get(&handle)
-                .ok_or(SftpError {
-                    code: StatusCode::Failure,
-                    message: "Invalid handle".to_string(),
-                })
-                .and_then(|fh| fh.file.metadata().map_err(SftpError::from))
-                .map(|meta| Attrs {
-                    id,
-                    attrs: metadata_to_file_attrs(&meta),
-                })
+        let fh = self.file_handles.get_mut(&handle).ok_or(SftpError {
+            code: StatusCode::Failure,
+            message: "Invalid handle".to_string(),
+        })?;
+
+        let meta = fh.file.metadata().await.map_err(SftpError::from)?;
+        Ok(Attrs {
+            id,
+            attrs: metadata_to_file_attrs(&meta),
         })
     }
 
     async fn opendir(&mut self, id: u32, path: String) -> Result<Handle, Self::Error> {
-        tokio::task::block_in_place(|| {
-            let p = PathBuf::from(&path);
-            if !p.is_dir() {
-                return Err(SftpError {
-                    code: StatusCode::NoSuchFile,
-                    message: "Not a directory".to_string(),
-                });
-            }
-            let handle = self.alloc_handle();
-            self.dir_handles.insert(
-                handle.clone(),
-                DirHandle {
-                    path: p,
-                    entries_sent: false,
-                },
-            );
-            Ok(Handle { id, handle })
-        })
+        let p = PathBuf::from(&path);
+        let meta = fs::metadata(&p).await.map_err(SftpError::from)?;
+        if !meta.is_dir() {
+            return Err(SftpError {
+                code: StatusCode::NoSuchFile,
+                message: "Not a directory".to_string(),
+            });
+        }
+
+        let handle = self.alloc_handle();
+        self.dir_handles.insert(
+            handle.clone(),
+            DirHandle {
+                path: p,
+                entries_sent: false,
+            },
+        );
+
+        Ok(Handle { id, handle })
     }
 
     async fn readdir(&mut self, id: u32, handle: String) -> Result<Name, Self::Error> {
-        tokio::task::block_in_place(|| {
+        let dir_path = {
             let dh = self.dir_handles.get_mut(&handle).ok_or(SftpError {
                 code: StatusCode::Failure,
                 message: "Invalid handle".to_string(),
@@ -312,24 +293,30 @@ impl russh_sftp::server::Handler for SftpHandler {
                 });
             }
 
-            let mut files = Vec::new();
-            for entry in fs::read_dir(&dh.path).map_err(SftpError::from)? {
-                let entry = entry.map_err(SftpError::from)?;
-                let meta = entry.metadata().map_err(SftpError::from)?;
-                let filename = entry.file_name().to_string_lossy().into_owned();
-                let longname = format_longname(&filename, &meta);
-                let attrs = metadata_to_file_attrs(&meta);
+            dh.path.clone()
+        };
 
-                files.push(File {
-                    filename,
-                    longname,
-                    attrs,
-                });
-            }
+        let mut entries = fs::read_dir(&dir_path).await.map_err(SftpError::from)?;
+        let mut files = Vec::new();
 
+        while let Some(entry) = entries.next_entry().await.map_err(SftpError::from)? {
+            let meta = entry.metadata().await.map_err(SftpError::from)?;
+            let filename = entry.file_name().to_string_lossy().into_owned();
+            let longname = format_longname(&filename, &meta);
+            let attrs = metadata_to_file_attrs(&meta);
+
+            files.push(File {
+                filename,
+                longname,
+                attrs,
+            });
+        }
+
+        if let Some(dh) = self.dir_handles.get_mut(&handle) {
             dh.entries_sent = true;
-            Ok(Name { id, files })
-        })
+        }
+
+        Ok(Name { id, files })
     }
 
     async fn mkdir(
@@ -338,27 +325,18 @@ impl russh_sftp::server::Handler for SftpHandler {
         path: String,
         _attrs: FileAttributes,
     ) -> Result<Status, Self::Error> {
-        tokio::task::block_in_place(|| {
-            fs::create_dir_all(&path)
-                .map(|_| self.ok_status(id))
-                .map_err(SftpError::from)
-        })
+        fs::create_dir_all(&path).await.map_err(SftpError::from)?;
+        Ok(self.ok_status(id))
     }
 
     async fn rmdir(&mut self, id: u32, path: String) -> Result<Status, Self::Error> {
-        tokio::task::block_in_place(|| {
-            fs::remove_dir(&path)
-                .map(|_| self.ok_status(id))
-                .map_err(SftpError::from)
-        })
+        fs::remove_dir(&path).await.map_err(SftpError::from)?;
+        Ok(self.ok_status(id))
     }
 
     async fn remove(&mut self, id: u32, filename: String) -> Result<Status, Self::Error> {
-        tokio::task::block_in_place(|| {
-            fs::remove_file(&filename)
-                .map(|_| self.ok_status(id))
-                .map_err(SftpError::from)
-        })
+        fs::remove_file(&filename).await.map_err(SftpError::from)?;
+        Ok(self.ok_status(id))
     }
 
     async fn rename(
@@ -367,28 +345,23 @@ impl russh_sftp::server::Handler for SftpHandler {
         oldpath: String,
         newpath: String,
     ) -> Result<Status, Self::Error> {
-        tokio::task::block_in_place(|| {
-            fs::rename(&oldpath, &newpath)
-                .map(|_| self.ok_status(id))
-                .map_err(SftpError::from)
-        })
+        fs::rename(&oldpath, &newpath)
+            .await
+            .map_err(SftpError::from)?;
+        Ok(self.ok_status(id))
     }
 
     async fn realpath(&mut self, id: u32, path: String) -> Result<Name, Self::Error> {
-        tokio::task::block_in_place(|| {
-            fs::canonicalize(&path)
-                .map(|canonical| {
-                    let filename = canonical.to_string_lossy().into_owned();
-                    Name {
-                        id,
-                        files: vec![File {
-                            filename,
-                            longname: String::new(),
-                            attrs: FileAttributes::default(),
-                        }],
-                    }
-                })
-                .map_err(SftpError::from)
+        let canonical = fs::canonicalize(&path).await.map_err(SftpError::from)?;
+        let filename = canonical.to_string_lossy().into_owned();
+
+        Ok(Name {
+            id,
+            files: vec![File {
+                filename,
+                longname: String::new(),
+                attrs: FileAttributes::default(),
+            }],
         })
     }
 
@@ -398,16 +371,16 @@ impl russh_sftp::server::Handler for SftpHandler {
         path: String,
         attrs: FileAttributes,
     ) -> Result<Status, Self::Error> {
-        tokio::task::block_in_place(|| {
-            if let Some(perms) = attrs.permissions {
-                #[cfg(unix)]
-                fs::set_permissions(&path, fs::Permissions::from_mode(perms))
-                    .map_err(SftpError::from)?;
-                #[cfg(not(unix))]
-                let _ = perms;
-            }
-            Ok(self.ok_status(id))
-        })
+        if let Some(perms) = attrs.permissions {
+            #[cfg(unix)]
+            fs::set_permissions(&path, std_fs::Permissions::from_mode(perms))
+                .await
+                .map_err(SftpError::from)?;
+            #[cfg(not(unix))]
+            let _ = perms;
+        }
+
+        Ok(self.ok_status(id))
     }
 
     async fn symlink(
@@ -416,58 +389,61 @@ impl russh_sftp::server::Handler for SftpHandler {
         linkpath: String,
         targetpath: String,
     ) -> Result<Status, Self::Error> {
-        tokio::task::block_in_place(|| {
-            #[cfg(unix)]
-            {
-                std::os::unix::fs::symlink(&targetpath, &linkpath)
-                    .map(|_| self.ok_status(id))
-                    .map_err(SftpError::from)
+        #[cfg(unix)]
+        {
+            fs::symlink(&targetpath, &linkpath)
+                .await
+                .map_err(SftpError::from)?;
+            Ok(self.ok_status(id))
+        }
+
+        #[cfg(windows)]
+        {
+            let is_dir = fs::metadata(&targetpath)
+                .await
+                .map(|m| m.is_dir())
+                .unwrap_or(false);
+
+            if is_dir {
+                fs::symlink_dir(&targetpath, &linkpath)
+                    .await
+                    .map_err(SftpError::from)?;
+            } else {
+                fs::symlink_file(&targetpath, &linkpath)
+                    .await
+                    .map_err(SftpError::from)?;
             }
-            #[cfg(windows)]
-            {
-                let symlink_result = if fs::metadata(&targetpath)
-                    .map(|m| m.is_dir())
-                    .unwrap_or(false)
-                {
-                    std::os::windows::fs::symlink_dir(&targetpath, &linkpath)
-                } else {
-                    std::os::windows::fs::symlink_file(&targetpath, &linkpath)
-                };
-                symlink_result
-                    .map(|_| self.ok_status(id))
-                    .map_err(SftpError::from)
-            }
-            #[cfg(not(any(unix, windows)))]
-            {
-                Err(SftpError {
-                    code: StatusCode::OpUnsupported,
-                    message: "Symlink is unsupported on this platform".to_string(),
-                })
-            }
-        })
+
+            Ok(self.ok_status(id))
+        }
+
+        #[cfg(not(any(unix, windows)))]
+        {
+            let _ = (id, linkpath, targetpath);
+            Err(SftpError {
+                code: StatusCode::OpUnsupported,
+                message: "Symlink is unsupported on this platform".to_string(),
+            })
+        }
     }
 
     async fn readlink(&mut self, id: u32, path: String) -> Result<Name, Self::Error> {
-        tokio::task::block_in_place(|| {
-            fs::read_link(&path)
-                .map(|target| {
-                    let filename = target.to_string_lossy().into_owned();
-                    Name {
-                        id,
-                        files: vec![File {
-                            filename,
-                            longname: String::new(),
-                            attrs: FileAttributes::default(),
-                        }],
-                    }
-                })
-                .map_err(SftpError::from)
+        let target = fs::read_link(&path).await.map_err(SftpError::from)?;
+        let filename = target.to_string_lossy().into_owned();
+
+        Ok(Name {
+            id,
+            files: vec![File {
+                filename,
+                longname: String::new(),
+                attrs: FileAttributes::default(),
+            }],
         })
     }
 }
 
 #[cfg(unix)]
-fn format_longname(name: &str, meta: &fs::Metadata) -> String {
+fn format_longname(name: &str, meta: &std_fs::Metadata) -> String {
     let file_type = if meta.is_dir() {
         "d"
     } else if meta.file_type().is_symlink() {
@@ -484,7 +460,7 @@ fn format_longname(name: &str, meta: &fs::Metadata) -> String {
 }
 
 #[cfg(not(unix))]
-fn format_longname(name: &str, meta: &fs::Metadata) -> String {
+fn format_longname(name: &str, meta: &std_fs::Metadata) -> String {
     let file_type = if meta.is_dir() {
         "d"
     } else if meta.file_type().is_symlink() {
