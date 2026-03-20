@@ -119,7 +119,7 @@ impl SshSessionHandler {
         });
 
         let handle = session.handle();
-        tokio::spawn(async move {
+        let stdout_task = tokio::spawn(async move {
             let mut stdout = stdout;
             let mut buf = vec![0u8; 8192];
             loop {
@@ -140,7 +140,7 @@ impl SshSessionHandler {
         });
 
         let handle = session.handle();
-        tokio::spawn(async move {
+        let stderr_task = tokio::spawn(async move {
             let mut stderr = stderr;
             let mut buf = vec![0u8; 8192];
             loop {
@@ -169,6 +169,10 @@ impl SshSessionHandler {
                     1
                 }
             };
+
+            // Ensure both streams are fully drained before signaling EOF/close.
+            let _ = stdout_task.await;
+            let _ = stderr_task.await;
 
             let _ = handle.exit_status_request(channel_id, exit_code).await;
             let _ = handle.eof(channel_id).await;

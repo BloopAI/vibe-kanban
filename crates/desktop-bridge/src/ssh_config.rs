@@ -4,7 +4,7 @@
 //! file and writes SSH config entries so VS Code Remote SSH can connect through
 //! the relay tunnel.
 
-use std::{fs, path::PathBuf};
+use std::{fs, io::Write, path::PathBuf};
 
 use relay_control::signing::RelaySigningService;
 use sha2::{Digest, Sha256};
@@ -31,12 +31,25 @@ pub fn provision_ssh_key(
 
     // Write the OpenSSH PEM private key
     let pem = signing_key_to_openssh_pem(signing)?;
-    fs::write(&key_path, pem.as_bytes())?;
-
     #[cfg(unix)]
     {
-        use std::os::unix::fs::PermissionsExt;
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
+        // Create with restrictive mode from the start to avoid exposing the key
+        // under default umask-derived permissions during creation.
+        let mut file = fs::OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .mode(0o600)
+            .open(&key_path)?;
+        file.write_all(pem.as_bytes())?;
+        file.flush()?;
         fs::set_permissions(&key_path, fs::Permissions::from_mode(0o600))?;
+    }
+    #[cfg(not(unix))]
+    {
+        fs::write(&key_path, pem.as_bytes())?;
     }
 
     Ok((key_path, alias))
