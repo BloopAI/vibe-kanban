@@ -6,9 +6,16 @@ use serde_json::json;
 
 use crate::digest::DigestError;
 
-const LOOPS_INVITE_TEMPLATE_ID: &str = "cmhvy2wgs3s13z70i1pxakij9";
-const LOOPS_REVIEW_READY_TEMPLATE_ID: &str = "cmj47k5ge16990iylued9by17";
-const LOOPS_REVIEW_FAILED_TEMPLATE_ID: &str = "cmj49ougk1c8s0iznavijdqpo";
+const DEFAULT_INVITE_TEMPLATE_ID: &str = "cmhvy2wgs3s13z70i1pxakij9";
+const DEFAULT_REVIEW_READY_TEMPLATE_ID: &str = "cmj47k5ge16990iylued9by17";
+const DEFAULT_REVIEW_FAILED_TEMPLATE_ID: &str = "cmj49ougk1c8s0iznavijdqpo";
+
+fn env_or(var: &str, default: &str) -> String {
+    std::env::var(var)
+        .ok()
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(|| default.to_owned())
+}
 
 pub const DIGEST_PREVIEW_COUNT: usize = 5;
 
@@ -107,6 +114,9 @@ impl Mailer for NoopMailer {
 pub struct LoopsMailer {
     client: reqwest::Client,
     api_key: String,
+    invite_template_id: String,
+    review_ready_template_id: String,
+    review_failed_template_id: String,
 }
 
 impl LoopsMailer {
@@ -116,7 +126,20 @@ impl LoopsMailer {
             .build()
             .expect("failed to build reqwest client");
 
-        Self { client, api_key }
+        let invite_template_id =
+            env_or("LOOPS_INVITE_TEMPLATE_ID", DEFAULT_INVITE_TEMPLATE_ID);
+        let review_ready_template_id =
+            env_or("LOOPS_REVIEW_READY_TEMPLATE_ID", DEFAULT_REVIEW_READY_TEMPLATE_ID);
+        let review_failed_template_id =
+            env_or("LOOPS_REVIEW_FAILED_TEMPLATE_ID", DEFAULT_REVIEW_FAILED_TEMPLATE_ID);
+
+        Self {
+            client,
+            api_key,
+            invite_template_id,
+            review_ready_template_id,
+            review_failed_template_id,
+        }
     }
 }
 
@@ -147,7 +170,7 @@ impl Mailer for LoopsMailer {
         }
 
         let payload = json!({
-            "transactionalId": LOOPS_INVITE_TEMPLATE_ID,
+            "transactionalId": self.invite_template_id,
             "email": email,
             "dataVariables": {
                 "org_name": org_name,
@@ -189,7 +212,7 @@ impl Mailer for LoopsMailer {
         }
 
         let payload = json!({
-            "transactionalId": LOOPS_REVIEW_READY_TEMPLATE_ID,
+            "transactionalId": self.review_ready_template_id,
             "email": email,
             "dataVariables": {
                 "review_url": review_url,
@@ -230,7 +253,7 @@ impl Mailer for LoopsMailer {
         }
 
         let payload = json!({
-            "transactionalId": LOOPS_REVIEW_FAILED_TEMPLATE_ID,
+            "transactionalId": self.review_failed_template_id,
             "email": email,
             "dataVariables": {
                 "pr_name": pr_name,
