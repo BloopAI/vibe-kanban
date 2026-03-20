@@ -32,11 +32,7 @@ required-features = ["server"]
 relay-tunnel-core = { path = "../relay-tunnel-core" }
 anyhow = "1.0"
 axum = { version = "0.8.4", features = ["macros", "multipart", "ws"] }
-futures-util = "0.3"
-hyper = { version = "1", features = ["client", "server", "http1"] }
-hyper-util = { version = "0.1", features = ["tokio"] }
 tokio = { version = "1.0", features = ["full"] }
-tokio-yamux = "0.3.17"
 tracing = "0.1.43"
 
 # Optional deps for the relay-server binary

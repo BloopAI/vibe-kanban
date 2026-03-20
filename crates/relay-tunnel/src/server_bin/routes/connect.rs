@@ -17,7 +17,7 @@ use super::super::{
     relay_registry::{ActiveRelay, RelayRegistry},
     state::RelayAppState,
 };
-use crate::server::run_control_channel;
+use relay_tunnel_core::server::run_control_channel;
 
 #[derive(Debug, Deserialize)]
 pub struct ConnectQuery {

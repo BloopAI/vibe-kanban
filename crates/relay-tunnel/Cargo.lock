@@ -1693,14 +1693,9 @@ dependencies = [
  "axum",
  "axum-extra",
  "base64",
- "bytes",
  "chrono",
- "futures",
- "futures-util",
- "http",
- "hyper",
- "hyper-util",
  "jsonwebtoken",
+ "relay-tunnel-core",
  "relay-types",
  "rustls",
  "secrecy",
@@ -1709,13 +1704,30 @@ dependencies = [
  "sqlx",
  "thiserror",
  "tokio",
- "tokio-tungstenite 0.26.2",
- "tokio-util",
- "tokio-yamux",
  "tower-http",
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "relay-tunnel-core"
+version = "0.1.34"
+dependencies = [
+ "anyhow",
+ "axum",
+ "bytes",
+ "futures",
+ "futures-util",
+ "http",
+ "hyper",
+ "hyper-util",
+ "rustls",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
+ "tokio-util",
+ "tokio-yamux",
+ "tracing",
 ]
 
 [[package]]

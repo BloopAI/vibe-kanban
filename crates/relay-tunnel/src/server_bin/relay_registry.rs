@@ -9,7 +9,7 @@ use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
-use crate::server::SharedControl;
+use relay_tunnel_core::server::SharedControl;
 
 /// An active relay connection from a local server.
 pub struct ActiveRelay {

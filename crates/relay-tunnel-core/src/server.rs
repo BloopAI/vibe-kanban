@@ -12,7 +12,7 @@ use hyper_util::rt::TokioIo;
 use tokio::sync::Mutex;
 use tokio_yamux::{Config as YamuxConfig, Control, Session};
 
-use relay_tunnel_core::ws_io::axum_ws_stream_io;
+use crate::ws_io::axum_ws_stream_io;
 
 pub type SharedControl = Arc<Mutex<Control>>;
 
