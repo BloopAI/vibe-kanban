@@ -4,13 +4,12 @@
 use std::{sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use services::services::{
-    config::load_config_from_file,
-    notification::{NotificationService, PushNotifier, set_global_push_notifier},
-};
-#[cfg(target_os = "macos")]
-use tauri::Manager;
-use tauri::{Emitter, Listener};
+#[cfg(not(target_os = "macos"))]
+use services::services::config::load_config_from_file;
+#[cfg(not(target_os = "macos"))]
+use services::services::notification::NotificationService;
+use services::services::notification::{PushNotifier, set_global_push_notifier};
+use tauri::{Emitter, Listener, Manager};
 #[cfg(not(target_os = "macos"))]
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
@@ -18,10 +17,9 @@ use tauri_plugin_updater::UpdaterExt;
 use tokio::{sync::Mutex, time::sleep};
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};
-use utils::{
-    assets::config_path,
-    sentry::{self as sentry_utils, SentrySource, sentry_layer},
-};
+#[cfg(not(target_os = "macos"))]
+use utils::assets::config_path;
+use utils::sentry::{self as sentry_utils, SentrySource, sentry_layer};
 use uuid::Uuid;
 
 const UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(60 * 60);
@@ -33,6 +31,7 @@ mod macos_notifications;
 /// On macOS, uses `UNUserNotificationCenter` with click handling.
 /// On other platforms, falls back to `tauri-plugin-notification`.
 struct TauriNotifier {
+    #[cfg_attr(target_os = "macos", allow(dead_code))]
     app_handle: tauri::AppHandle,
 }
 
@@ -46,7 +45,7 @@ async fn show_system_notification(
     #[cfg(target_os = "macos")]
     {
         macos_notifications::show_notification(&title, &body, deeplink_path.as_deref());
-        return Ok(());
+        Ok(())
     }
 
     // Other platforms: fall back to the generic NotificationService.
