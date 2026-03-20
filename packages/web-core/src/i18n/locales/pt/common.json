@@ -337,7 +337,7 @@
       "change-assignees": "Alterar Responsáveis",
       "make-sub-issue-of": "Tornar Sub-issue de",
       "add-sub-issue": "Adicionar Sub-issue",
-      "remove-parent-issue": "Remover Parente",
+      "remove-parent-issue": "Remover Issue Pai",
       "link-workspace": "Vincular Workspace",
       "duplicate-issue": "Duplicar Issue",
       "delete-issue": "Excluir Issue",
@@ -351,7 +351,7 @@
       "toggle-wrap-lines": "Alternar quebra de linha",
       "run-setup-script": "Executar script de setup",
       "run-cleanup-script": "Executar script de cleanup",
-      "run-archive-script": "Executar script de arquivo"
+      "run-archive-script": "Executar script de arquivamento"
     }
   },
   "typeahead": {
@@ -439,7 +439,7 @@
       "sortUpdatedAt": "Atualizado em",
       "sortCreatedAt": "Criado em",
       "filterDialogTitle": "Filtrar workspaces",
-      "filterDialogDescription": "Narrow down workspaces por projeto e estado do PR.",
+      "filterDialogDescription": "Filtrar workspaces por projeto e estado do PR.",
       "projectFilterLabel": "Projeto",
       "prFilterLabel": "PR",
       "prFilterAll": "Todos",
