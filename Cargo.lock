@@ -7892,6 +7892,7 @@ dependencies = [
  "ed25519-dalek",
  "embedded-ssh",
  "executors",
+ "flate2",
  "futures-util",
  "git",
  "git-host",
