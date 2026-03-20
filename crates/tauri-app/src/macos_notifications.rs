@@ -126,15 +126,20 @@ pub fn initialize(app_handle: tauri::AppHandle) {
     let _ = APP_HANDLE.set(app_handle);
 
     INIT.call_once(|| {
-        // UNUserNotificationCenter requires a proper app bundle with a
-        // bundle identifier. In dev mode the binary runs outside a .app
-        // bundle, so calling `currentNotificationCenter()` would crash
-        // with NSInternalInconsistencyException.
+        // UNUserNotificationCenter requires a properly code-signed .app
+        // bundle registered with Launch Services. In dev builds the binary
+        // isn't bundled correctly, so notifications get attributed to
+        // Script Editor and lack the app icon.
+        if cfg!(debug_assertions) {
+            tracing::info!(
+                "Debug build — native macOS notifications disabled (would open Script Editor)"
+            );
+            return;
+        }
+
         let has_bundle = NSBundle::mainBundle().bundleIdentifier().is_some();
         if !has_bundle {
-            tracing::warn!(
-                "No bundle identifier found — native macOS notifications disabled (dev mode)"
-            );
+            tracing::warn!("No bundle identifier found — native macOS notifications disabled");
             return;
         }
         AVAILABLE.store(true, Ordering::Relaxed);
