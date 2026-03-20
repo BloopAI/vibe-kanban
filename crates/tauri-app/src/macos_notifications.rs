@@ -6,7 +6,7 @@
 //! `deeplinkPath` stored in `userInfo`, then emits a Tauri event so the
 //! frontend can navigate.
 
-use std::sync::{LazyLock, Once, OnceLock};
+use std::sync::{Once, OnceLock};
 
 use block2::RcBlock;
 use objc2::{
@@ -14,7 +14,7 @@ use objc2::{
     rc::Retained,
     runtime::{Bool, NSObject, NSObjectProtocol, ProtocolObject},
 };
-use objc2_foundation::{NSArray, NSDictionary, NSError, NSSet, NSString, ns_string};
+use objc2_foundation::{NSDictionary, NSError, NSString, ns_string};
 use objc2_user_notifications::{
     UNAuthorizationOptions, UNMutableNotificationContent, UNNotification,
     UNNotificationPresentationOptions, UNNotificationRequest, UNNotificationResponse,
@@ -25,9 +25,12 @@ use tauri::{Emitter, Manager};
 /// Global app handle so the delegate can emit events and show the window.
 static APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
 
-/// Lazily-initialised reference to the current notification center.
-static CENTER: LazyLock<Retained<UNUserNotificationCenter>> =
-    LazyLock::new(|| unsafe { UNUserNotificationCenter::currentNotificationCenter() });
+/// Returns the shared `UNUserNotificationCenter` singleton.
+/// Called on-demand rather than stored in a static because
+/// `Retained<UNUserNotificationCenter>` is not `Send + Sync`.
+fn center() -> Retained<UNUserNotificationCenter> {
+    UNUserNotificationCenter::currentNotificationCenter()
+}
 
 // ---------------------------------------------------------------------------
 // Delegate
@@ -69,23 +72,23 @@ define_class!(
             let user_info = response.notification().request().content().userInfo();
             let deeplink = user_info.valueForKey(ns_string!("deeplinkPath"));
 
-            if let Some(value) = deeplink {
-                if let Ok(path) = value.downcast::<NSString>() {
-                    let path_str = path.to_string();
-                    tracing::info!("Notification clicked, navigating to {path_str}");
+            if let Some(value) = deeplink
+                && let Ok(path) = value.downcast::<NSString>()
+            {
+                let path_str = path.to_string();
+                tracing::info!("Notification clicked, navigating to {path_str}");
 
-                    if let Some(handle) = APP_HANDLE.get() {
-                        // Show / focus the window (it may be hidden).
-                        if let Some(window) = handle.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
-
-                        let _ = handle.emit(
-                            "notification-clicked",
-                            serde_json::json!({ "deeplinkPath": path_str }),
-                        );
+                if let Some(handle) = APP_HANDLE.get() {
+                    // Show / focus the window (it may be hidden).
+                    if let Some(window) = handle.get_webview_window("main") {
+                        let _ = window.show();
+                        let _ = window.set_focus();
                     }
+
+                    let _ = handle.emit(
+                        "notification-clicked",
+                        serde_json::json!({ "deeplinkPath": path_str }),
+                    );
                 }
             }
 
@@ -116,7 +119,7 @@ pub fn initialize(app_handle: tauri::AppHandle) {
         // Request permission (Provisional lets us show quietly without a
         // prompt — the user can later enable prominent delivery in System
         // Settings).
-        CENTER.requestAuthorizationWithOptions_completionHandler(
+        center().requestAuthorizationWithOptions_completionHandler(
             UNAuthorizationOptions::Alert
                 | UNAuthorizationOptions::Provisional
                 | UNAuthorizationOptions::Sound,
@@ -140,7 +143,7 @@ pub fn initialize(app_handle: tauri::AppHandle) {
         // (delegates are only weakly retained by the notification center).
         let delegate = VKNotifDelegate::new();
         let delegate_proto = ProtocolObject::from_retained(delegate.clone());
-        CENTER.setDelegate(Some(&delegate_proto));
+        center().setDelegate(Some(&delegate_proto));
         Retained::into_raw(delegate);
     });
 }
@@ -173,15 +176,15 @@ pub fn show_notification(title: &str, body: &str, deeplink_path: Option<&str>) {
         let identifier = uuid::Uuid::new_v4().to_string();
         let request = UNNotificationRequest::requestWithIdentifier_content_trigger(
             &NSString::from_str(&identifier),
-            &*content,
+            &content,
             None,
         );
 
-        CENTER.addNotificationRequest_withCompletionHandler(
-            &*request,
+        center().addNotificationRequest_withCompletionHandler(
+            &request,
             Some(&RcBlock::new(move |err: *mut NSError| {
                 if !err.is_null() {
-                    let msg = unsafe { (*err).localizedDescription().to_string() };
+                    let msg = (*err).localizedDescription().to_string();
                     tracing::error!(
                         "Failed to show notification: {msg}. \
                          The app must be code-signed for UNUserNotificationCenter to work."

@@ -33,7 +33,7 @@ arboard = "3.6.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", features = ["NSString", "NSDictionary", "NSArray", "NSSet", "NSError", "NSKeyValueCoding"] }
+objc2-foundation = { version = "0.3", features = ["NSString", "NSDictionary", "NSError", "NSKeyValueCoding"] }
 objc2-web-kit = { version = "0.3", features = ["WKWebView"] }
 tauri-plugin-macos-fps = "0.1"
 objc2-user-notifications = "0.3"
