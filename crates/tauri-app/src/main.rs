@@ -4,22 +4,21 @@
 use std::{sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-#[cfg(not(target_os = "macos"))]
-use services::services::config::load_config_from_file;
-#[cfg(not(target_os = "macos"))]
-use services::services::notification::NotificationService;
-use services::services::notification::{PushNotifier, set_global_push_notifier};
+use services::services::{
+    config::load_config_from_file,
+    notification::{NotificationService, PushNotifier, set_global_push_notifier},
+};
 use tauri::{Emitter, Listener, Manager};
-#[cfg(not(target_os = "macos"))]
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 use tokio::{sync::Mutex, time::sleep};
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};
-#[cfg(not(target_os = "macos"))]
-use utils::assets::config_path;
-use utils::sentry::{self as sentry_utils, SentrySource, sentry_layer};
+use utils::{
+    assets::config_path,
+    sentry::{self as sentry_utils, SentrySource, sentry_layer},
+};
 use uuid::Uuid;
 
 const UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(60 * 60);
@@ -31,8 +30,18 @@ mod macos_notifications;
 /// On macOS, uses `UNUserNotificationCenter` with click handling.
 /// On other platforms, falls back to `tauri-plugin-notification`.
 struct TauriNotifier {
-    #[cfg_attr(target_os = "macos", allow(dead_code))]
     app_handle: tauri::AppHandle,
+}
+
+/// Whether native macOS notifications with click handling are available at runtime.
+#[cfg(target_os = "macos")]
+fn use_native_notifications() -> bool {
+    macos_notifications::is_available()
+}
+
+#[cfg(not(target_os = "macos"))]
+fn use_native_notifications() -> bool {
+    false
 }
 
 #[tauri::command]
@@ -41,22 +50,17 @@ async fn show_system_notification(
     body: String,
     deeplink_path: Option<String>,
 ) -> Result<(), String> {
-    // On macOS use UNUserNotificationCenter directly so we get click callbacks.
     #[cfg(target_os = "macos")]
-    {
+    if use_native_notifications() {
         macos_notifications::show_notification(&title, &body, deeplink_path.as_deref());
-        Ok(())
+        return Ok(());
     }
 
-    // Other platforms: fall back to the generic NotificationService.
-    #[cfg(not(target_os = "macos"))]
-    {
-        let config = load_config_from_file(&config_path()).await;
-        let notification_service =
-            NotificationService::new(Arc::new(tokio::sync::RwLock::new(config)));
-        notification_service.notify(&title, &body, None).await;
-        Ok(())
-    }
+    // Fallback: generic NotificationService (non-macOS, or macOS dev mode).
+    let config = load_config_from_file(&config_path()).await;
+    let notification_service = NotificationService::new(Arc::new(tokio::sync::RwLock::new(config)));
+    notification_service.notify(&title, &body, None).await;
+    Ok(())
 }
 
 #[tauri::command]
@@ -68,32 +72,23 @@ fn read_clipboard_text() -> Result<String, String> {
 #[async_trait]
 impl PushNotifier for TauriNotifier {
     async fn send(&self, title: &str, message: &str, workspace_id: Option<Uuid>) {
-        let deeplink_path = workspace_id.map(|id| format!("/workspaces/{id}"));
-
         #[cfg(target_os = "macos")]
-        {
+        if use_native_notifications() {
+            let deeplink_path = workspace_id.map(|id| format!("/workspaces/{id}"));
             macos_notifications::show_notification(title, message, deeplink_path.as_deref());
+            return;
         }
 
-        #[cfg(not(target_os = "macos"))]
+        // Fallback: tauri-plugin-notification (no click handling).
+        if let Err(e) = self
+            .app_handle
+            .notification()
+            .builder()
+            .title(title)
+            .body(message)
+            .show()
         {
-            if let Err(e) = self
-                .app_handle
-                .notification()
-                .builder()
-                .title(title)
-                .body(message)
-                .show()
-            {
-                tracing::warn!("Failed to send Tauri notification: {}", e);
-            }
-
-            if let Some(id) = workspace_id {
-                let _ = self.app_handle.emit(
-                    "navigate-to-workspace",
-                    serde_json::json!({ "workspaceId": id.to_string() }),
-                );
-            }
+            tracing::warn!("Failed to send Tauri notification: {}", e);
         }
     }
 }

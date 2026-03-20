@@ -6,7 +6,10 @@
 //! `deeplinkPath` stored in `userInfo`, then emits a Tauri event so the
 //! frontend can navigate.
 
-use std::sync::{Once, OnceLock};
+use std::sync::{
+    Once, OnceLock,
+    atomic::{AtomicBool, Ordering},
+};
 
 use block2::RcBlock;
 use objc2::{
@@ -14,7 +17,7 @@ use objc2::{
     rc::Retained,
     runtime::{Bool, NSObject, NSObjectProtocol, ProtocolObject},
 };
-use objc2_foundation::{NSDictionary, NSError, NSString, ns_string};
+use objc2_foundation::{NSBundle, NSDictionary, NSError, NSString, ns_string};
 use objc2_user_notifications::{
     UNAuthorizationOptions, UNMutableNotificationContent, UNNotification,
     UNNotificationPresentationOptions, UNNotificationRequest, UNNotificationResponse,
@@ -25,9 +28,16 @@ use tauri::{Emitter, Manager};
 /// Global app handle so the delegate can emit events and show the window.
 static APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
 
+/// Whether native notifications are available (requires a proper app bundle).
+/// False in dev mode where the binary runs outside a .app bundle.
+static AVAILABLE: AtomicBool = AtomicBool::new(false);
+
 /// Returns the shared `UNUserNotificationCenter` singleton.
 /// Called on-demand rather than stored in a static because
 /// `Retained<UNUserNotificationCenter>` is not `Send + Sync`.
+///
+/// # Panics
+/// Panics if called without a valid app bundle — always check `AVAILABLE` first.
 fn center() -> Retained<UNUserNotificationCenter> {
     UNUserNotificationCenter::currentNotificationCenter()
 }
@@ -115,45 +125,65 @@ pub fn initialize(app_handle: tauri::AppHandle) {
 
     let _ = APP_HANDLE.set(app_handle);
 
-    INIT.call_once(|| unsafe {
-        // Request permission (Provisional lets us show quietly without a
-        // prompt — the user can later enable prominent delivery in System
-        // Settings).
-        center().requestAuthorizationWithOptions_completionHandler(
-            UNAuthorizationOptions::Alert
-                | UNAuthorizationOptions::Provisional
-                | UNAuthorizationOptions::Sound,
-            &RcBlock::new(|ok: Bool, err: *mut NSError| {
-                if ok.is_false() {
-                    let msg = if err.is_null() {
-                        "unknown error".to_string()
-                    } else {
-                        (*err).localizedDescription().to_string()
-                    };
-                    tracing::error!(
-                        "Notification authorization denied: {msg}. \
-                         The app must be code-signed for UNUserNotificationCenter to work."
-                    );
-                }
-            }),
-        );
+    INIT.call_once(|| {
+        // UNUserNotificationCenter requires a proper app bundle with a
+        // bundle identifier. In dev mode the binary runs outside a .app
+        // bundle, so calling `currentNotificationCenter()` would crash
+        // with NSInternalInconsistencyException.
+        let has_bundle = NSBundle::mainBundle().bundleIdentifier().is_some();
+        if !has_bundle {
+            tracing::warn!(
+                "No bundle identifier found — native macOS notifications disabled (dev mode)"
+            );
+            return;
+        }
+        AVAILABLE.store(true, Ordering::Relaxed);
 
-        // Create and install the delegate. We intentionally leak it via
-        // `Retained::into_raw` so it stays alive for the entire app lifetime
-        // (delegates are only weakly retained by the notification center).
-        let delegate = VKNotifDelegate::new();
-        let delegate_proto = ProtocolObject::from_retained(delegate.clone());
-        center().setDelegate(Some(&delegate_proto));
-        Retained::into_raw(delegate);
+        unsafe {
+            // Request permission (Provisional lets us show quietly without a
+            // prompt — the user can later enable prominent delivery in System
+            // Settings).
+            center().requestAuthorizationWithOptions_completionHandler(
+                UNAuthorizationOptions::Alert
+                    | UNAuthorizationOptions::Provisional
+                    | UNAuthorizationOptions::Sound,
+                &RcBlock::new(|ok: Bool, err: *mut NSError| {
+                    if ok.is_false() {
+                        let msg = if err.is_null() {
+                            "unknown error".to_string()
+                        } else {
+                            (*err).localizedDescription().to_string()
+                        };
+                        tracing::error!(
+                            "Notification authorization denied: {msg}. \
+                         The app must be code-signed for UNUserNotificationCenter to work."
+                        );
+                    }
+                }),
+            );
+
+            // Create and install the delegate. We intentionally leak it via
+            // `Retained::into_raw` so it stays alive for the entire app lifetime
+            // (delegates are only weakly retained by the notification center).
+            let delegate = VKNotifDelegate::new();
+            let delegate_proto = ProtocolObject::from_retained(delegate.clone());
+            center().setDelegate(Some(&delegate_proto));
+            Retained::into_raw(delegate);
+        }
     });
 }
 
 /// Show a native macOS notification. When the user clicks it, the delegate
 /// will emit a `notification-clicked` Tauri event with the `deeplink_path`.
+/// Returns `true` if native macOS notifications are available.
+/// Returns `false` in dev mode (no app bundle).
+pub fn is_available() -> bool {
+    AVAILABLE.load(Ordering::Relaxed)
+}
+
 pub fn show_notification(title: &str, body: &str, deeplink_path: Option<&str>) {
-    // Ensure initialised (no-op if already called).
-    if APP_HANDLE.get().is_none() {
-        tracing::warn!("show_notification called before initialize — skipping");
+    if !is_available() {
+        tracing::debug!("Native notifications unavailable — skipping");
         return;
     }
 
