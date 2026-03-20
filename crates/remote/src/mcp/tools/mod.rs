@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 
 use api_types::{
-    Issue, IssuePriority, ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse,
-    ListProjectsResponse, MemberRole, OrganizationMemberWithProfile, SearchIssuesRequest,
+    ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse, ListProjectsResponse,
+    McpIssueDetails, McpIssueSummary, McpListIssuesResponse, McpListOrgMembersResponse,
+    McpListOrganizationsResponse, McpListProjectsResponse, McpOrganizationMemberSummary,
+    McpOrganizationSummary, McpProjectSummary, MemberRole, OrganizationMemberWithProfile,
+    SearchIssuesRequest,
 };
 use axum::http::request::Parts;
 use rmcp::{
@@ -128,68 +131,16 @@ impl RemoteMcpServer {
     }
 }
 
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-struct OrganizationSummary {
-    id: String,
-    name: String,
-    slug: String,
-    is_personal: bool,
-    role: String,
-}
-
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-struct McpListOrganizationsResponse {
-    organizations: Vec<OrganizationSummary>,
-    count: usize,
-}
-
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListOrgMembersRequest {
     #[schemars(description = "The organization ID to list members from")]
     organization_id: Uuid,
 }
 
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-struct OrganizationMemberSummary {
-    user_id: String,
-    role: String,
-    joined_at: String,
-    first_name: Option<String>,
-    last_name: Option<String>,
-    username: Option<String>,
-    email: Option<String>,
-    avatar_url: Option<String>,
-}
-
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-struct McpListOrgMembersResponse {
-    organization_id: String,
-    members: Vec<OrganizationMemberSummary>,
-    count: usize,
-}
-
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListProjectsRequest {
     #[schemars(description = "The ID of the organization to list projects from")]
     organization_id: Uuid,
-}
-
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-struct ProjectSummary {
-    id: String,
-    organization_id: String,
-    name: String,
-    color: String,
-    sort_order: i32,
-    created_at: String,
-    updated_at: String,
-}
-
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-struct McpListProjectsResponse {
-    organization_id: String,
-    projects: Vec<ProjectSummary>,
-    count: usize,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -231,46 +182,8 @@ struct McpGetIssueRequest {
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
-struct IssueSummary {
-    id: String,
-    project_id: String,
-    simple_id: String,
-    title: String,
-    status: String,
-    priority: Option<String>,
-    parent_issue_id: Option<String>,
-    created_at: String,
-    updated_at: String,
-}
-
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-struct McpListIssuesResponse {
-    project_id: String,
-    total_count: usize,
-    returned_count: usize,
-    limit: usize,
-    offset: usize,
-    issues: Vec<IssueSummary>,
-}
-
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-struct IssueDetails {
-    id: String,
-    project_id: String,
-    simple_id: String,
-    title: String,
-    description: Option<String>,
-    status: String,
-    status_id: String,
-    priority: Option<String>,
-    parent_issue_id: Option<String>,
-    created_at: String,
-    updated_at: String,
-}
-
-#[derive(Debug, Serialize, schemars::JsonSchema)]
 struct McpGetIssueResponse {
-    issue: IssueDetails,
+    issue: McpIssueDetails,
 }
 
 #[tool_router(router = organization_tools_router, vis = "pub")]
@@ -287,17 +200,11 @@ impl RemoteMcpServer {
             .map(|organizations| ListOrganizationsResponse { organizations })
             .map_err(|error| ErrorData::internal_error(error.to_string(), None))?;
 
-        let organizations = response
+        let organizations: Vec<_> = response
             .organizations
             .into_iter()
-            .map(|organization| OrganizationSummary {
-                id: organization.id.to_string(),
-                name: organization.name,
-                slug: organization.slug,
-                is_personal: organization.is_personal,
-                role: format!("{:?}", organization.user_role).to_uppercase(),
-            })
-            .collect::<Vec<_>>();
+            .map(McpOrganizationSummary::from_org_with_role)
+            .collect();
 
         Self::success(&McpListOrganizationsResponse {
             count: organizations.len(),
@@ -322,20 +229,11 @@ impl RemoteMcpServer {
             .await
             .map_err(|error| ErrorData::internal_error(error.to_string(), None))?;
 
-        let summaries = members
+        let summaries: Vec<_> = members
             .members
             .into_iter()
-            .map(|member| OrganizationMemberSummary {
-                user_id: member.user_id.to_string(),
-                role: format!("{:?}", member.role).to_uppercase(),
-                joined_at: member.joined_at.to_rfc3339(),
-                first_name: member.first_name,
-                last_name: member.last_name,
-                username: member.username,
-                email: member.email,
-                avatar_url: member.avatar_url,
-            })
-            .collect::<Vec<_>>();
+            .map(McpOrganizationMemberSummary::from_member_with_profile)
+            .collect();
 
         Self::success(&McpListOrgMembersResponse {
             organization_id: organization_id.to_string(),
@@ -364,19 +262,11 @@ impl RemoteMcpServer {
                 .map(|projects| ListProjectsResponse { projects })
                 .map_err(|error| ErrorData::internal_error(error.to_string(), None))?;
 
-        let projects = response
+        let projects: Vec<_> = response
             .projects
             .into_iter()
-            .map(|project| ProjectSummary {
-                id: project.id.to_string(),
-                organization_id: project.organization_id.to_string(),
-                name: project.name,
-                color: project.color,
-                sort_order: project.sort_order,
-                created_at: project.created_at.to_rfc3339(),
-                updated_at: project.updated_at.to_rfc3339(),
-            })
-            .collect::<Vec<_>>();
+            .map(McpProjectSummary::from_project)
+            .collect();
 
         Self::success(&McpListProjectsResponse {
             organization_id: organization_id.to_string(),
@@ -410,9 +300,15 @@ impl RemoteMcpServer {
         };
 
         let priority = match params.priority.as_deref() {
-            Some(value) => Some(parse_issue_priority(value)?),
+            Some(value) => Some(api_types::mcp::parse_priority(value)
+                .map_err(|msg| ErrorData::invalid_params(msg, None))?),
             None => None,
         };
+
+        let sort_field = api_types::mcp::parse_sort_field(params.sort_field.as_deref())
+            .map_err(|msg| ErrorData::invalid_params(msg, None))?;
+        let sort_direction = api_types::mcp::parse_sort_direction(params.sort_direction.as_deref())
+            .map_err(|msg| ErrorData::invalid_params(msg, None))?;
 
         let query = SearchIssuesRequest {
             project_id: params.project_id,
@@ -425,8 +321,8 @@ impl RemoteMcpServer {
             assignee_user_id: params.assignee_user_id,
             tag_id: params.tag_id,
             tag_ids: None,
-            sort_field: parse_issue_sort_field(params.sort_field.as_deref())?,
-            sort_direction: parse_sort_direction(params.sort_direction.as_deref())?,
+            sort_field,
+            sort_direction,
             limit: params.limit,
             offset: params.offset,
         };
@@ -436,11 +332,14 @@ impl RemoteMcpServer {
             .map_err(|error| ErrorData::internal_error(error.to_string(), None))?;
         let statuses = Self::project_status_map(self.pool(), params.project_id).await?;
 
-        let issues = response
+        let issues: Vec<_> = response
             .issues
             .into_iter()
-            .map(|issue| issue_summary(issue, &statuses))
-            .collect::<Vec<_>>();
+            .map(|issue| {
+                let status_name = api_types::mcp::resolve_status_name(issue.status_id, &statuses);
+                McpIssueSummary::from_issue(issue, &status_name)
+            })
+            .collect();
 
         Self::success(&McpListIssuesResponse {
             project_id: params.project_id.to_string(),
@@ -469,98 +368,10 @@ impl RemoteMcpServer {
             .map_err(|_| ErrorData::invalid_params("issue not accessible", None))?;
 
         let statuses = Self::project_status_map(self.pool(), issue.project_id).await?;
+        let status_name = api_types::mcp::resolve_status_name(issue.status_id, &statuses);
         Self::success(&McpGetIssueResponse {
-            issue: issue_details(issue, &statuses),
+            issue: McpIssueDetails::from_issue(issue, &status_name),
         })
     }
 }
 
-fn issue_summary(issue: Issue, statuses: &HashMap<Uuid, String>) -> IssueSummary {
-    IssueSummary {
-        id: issue.id.to_string(),
-        project_id: issue.project_id.to_string(),
-        simple_id: issue.simple_id,
-        title: issue.title,
-        status: statuses
-            .get(&issue.status_id)
-            .cloned()
-            .unwrap_or_else(|| issue.status_id.to_string()),
-        priority: issue
-            .priority
-            .map(|priority| format!("{priority:?}").to_lowercase()),
-        parent_issue_id: issue.parent_issue_id.map(|id| id.to_string()),
-        created_at: issue.created_at.to_rfc3339(),
-        updated_at: issue.updated_at.to_rfc3339(),
-    }
-}
-
-fn issue_details(issue: Issue, statuses: &HashMap<Uuid, String>) -> IssueDetails {
-    IssueDetails {
-        id: issue.id.to_string(),
-        project_id: issue.project_id.to_string(),
-        simple_id: issue.simple_id,
-        title: issue.title,
-        description: issue.description,
-        status: statuses
-            .get(&issue.status_id)
-            .cloned()
-            .unwrap_or_else(|| issue.status_id.to_string()),
-        status_id: issue.status_id.to_string(),
-        priority: issue
-            .priority
-            .map(|priority| format!("{priority:?}").to_lowercase()),
-        parent_issue_id: issue.parent_issue_id.map(|id| id.to_string()),
-        created_at: issue.created_at.to_rfc3339(),
-        updated_at: issue.updated_at.to_rfc3339(),
-    }
-}
-
-fn parse_issue_priority(value: &str) -> Result<IssuePriority, ErrorData> {
-    match value.to_ascii_lowercase().as_str() {
-        "urgent" => Ok(IssuePriority::Urgent),
-        "high" => Ok(IssuePriority::High),
-        "medium" => Ok(IssuePriority::Medium),
-        "low" => Ok(IssuePriority::Low),
-        _ => Err(ErrorData::invalid_params(
-            format!("invalid issue priority `{value}`"),
-            None,
-        )),
-    }
-}
-
-fn parse_issue_sort_field(
-    value: Option<&str>,
-) -> Result<Option<api_types::IssueSortField>, ErrorData> {
-    let Some(value) = value else {
-        return Ok(None);
-    };
-
-    match value.to_ascii_lowercase().as_str() {
-        "sort_order" => Ok(Some(api_types::IssueSortField::SortOrder)),
-        "priority" => Ok(Some(api_types::IssueSortField::Priority)),
-        "created_at" => Ok(Some(api_types::IssueSortField::CreatedAt)),
-        "updated_at" => Ok(Some(api_types::IssueSortField::UpdatedAt)),
-        "title" => Ok(Some(api_types::IssueSortField::Title)),
-        _ => Err(ErrorData::invalid_params(
-            format!("invalid issue sort field `{value}`"),
-            None,
-        )),
-    }
-}
-
-fn parse_sort_direction(
-    value: Option<&str>,
-) -> Result<Option<api_types::SortDirection>, ErrorData> {
-    let Some(value) = value else {
-        return Ok(None);
-    };
-
-    match value.to_ascii_lowercase().as_str() {
-        "asc" => Ok(Some(api_types::SortDirection::Asc)),
-        "desc" => Ok(Some(api_types::SortDirection::Desc)),
-        _ => Err(ErrorData::invalid_params(
-            format!("invalid sort direction `{value}`"),
-            None,
-        )),
-    }
-}

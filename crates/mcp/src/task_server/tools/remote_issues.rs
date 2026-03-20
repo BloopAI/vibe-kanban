@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use api_types::{
-    CreateIssueRequest, Issue, IssuePriority, IssueRelationshipType, IssueSortField,
+    CreateIssueRequest, Issue, IssuePriority, IssueRelationshipType,
     ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse,
     ListPullRequestsResponse, ListTagsResponse, MutationResponse, PullRequestStatus,
-    SearchIssuesRequest, SortDirection, UpdateIssueRequest,
+    SearchIssuesRequest, UpdateIssueRequest,
 };
 use rmcp::{
     ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
@@ -582,44 +582,22 @@ impl McpServer {
 }
 
 impl McpServer {
-    fn parse_issue_sort_field(sort_field: Option<&str>) -> Result<IssueSortField, ToolCallError> {
-        match sort_field.unwrap_or("sort_order").trim().to_ascii_lowercase().as_str() {
-            "sort_order" => Ok(IssueSortField::SortOrder),
-            "priority" => Ok(IssueSortField::Priority),
-            "created_at" => Ok(IssueSortField::CreatedAt),
-            "updated_at" => Ok(IssueSortField::UpdatedAt),
-            "title" => Ok(IssueSortField::Title),
-            other => Err(Self::err(
-                format!(
-                    "Unknown sort_field '{}'. Allowed values: ['sort_order', 'priority', 'created_at', 'updated_at', 'title']",
-                    other
-                ),
-                None::<String>,
-            )
-            .unwrap()
-            .into()),
-        }
+    fn parse_issue_sort_field(
+        sort_field: Option<&str>,
+    ) -> Result<api_types::IssueSortField, ToolCallError> {
+        let value = sort_field.unwrap_or("sort_order");
+        api_types::mcp::parse_sort_field(Some(value))
+            .map(|opt| opt.unwrap_or(api_types::IssueSortField::SortOrder))
+            .map_err(|msg| Self::err(msg, None::<String>).unwrap().into())
     }
 
-    fn parse_sort_direction(sort_direction: Option<&str>) -> Result<SortDirection, ToolCallError> {
-        match sort_direction
-            .unwrap_or("asc")
-            .trim()
-            .to_ascii_lowercase()
-            .as_str()
-        {
-            "asc" => Ok(SortDirection::Asc),
-            "desc" => Ok(SortDirection::Desc),
-            other => Err(Self::err(
-                format!(
-                    "Unknown sort_direction '{}'. Allowed values: ['asc', 'desc']",
-                    other
-                ),
-                None::<String>,
-            )
-            .unwrap()
-            .into()),
-        }
+    fn parse_sort_direction(
+        sort_direction: Option<&str>,
+    ) -> Result<api_types::SortDirection, ToolCallError> {
+        let value = sort_direction.unwrap_or("asc");
+        api_types::mcp::parse_sort_direction(Some(value))
+            .map(|opt| opt.unwrap_or(api_types::SortDirection::Asc))
+            .map_err(|msg| Self::err(msg, None::<String>).unwrap().into())
     }
 
     fn issue_to_summary(
@@ -637,10 +615,7 @@ impl McpServer {
             title: issue.title.clone(),
             simple_id: issue.simple_id.clone(),
             status,
-            priority: issue
-                .priority
-                .map(Self::issue_priority_label)
-                .map(str::to_string),
+            priority: issue.priority.map(api_types::mcp::priority_label),
             parent_issue_id: issue.parent_issue_id.map(|id| id.to_string()),
             created_at: issue.created_at.to_rfc3339(),
             updated_at: issue.updated_at.to_rfc3339(),
@@ -676,10 +651,7 @@ impl McpServer {
             description: issue.description.clone(),
             status,
             status_id: issue.status_id.to_string(),
-            priority: issue
-                .priority
-                .map(Self::issue_priority_label)
-                .map(str::to_string),
+            priority: issue.priority.map(api_types::mcp::priority_label),
             parent_issue_id: issue.parent_issue_id.map(|id| id.to_string()),
             start_date: issue.start_date.map(|date| date.to_rfc3339()),
             target_date: issue.target_date.map(|date| date.to_rfc3339()),
@@ -852,30 +824,8 @@ impl McpServer {
     }
 
     fn parse_issue_priority(priority: &str) -> Result<IssuePriority, ToolCallError> {
-        match priority.trim().to_ascii_lowercase().as_str() {
-            "urgent" => Ok(IssuePriority::Urgent),
-            "high" => Ok(IssuePriority::High),
-            "medium" => Ok(IssuePriority::Medium),
-            "low" => Ok(IssuePriority::Low),
-            _ => Err(Self::err(
-                format!(
-                    "Unknown priority '{}'. Allowed values: ['urgent', 'high', 'medium', 'low']",
-                    priority
-                ),
-                None::<String>,
-            )
-            .unwrap()
-            .into()),
-        }
-    }
-
-    fn issue_priority_label(priority: IssuePriority) -> &'static str {
-        match priority {
-            IssuePriority::Urgent => "urgent",
-            IssuePriority::High => "high",
-            IssuePriority::Medium => "medium",
-            IssuePriority::Low => "low",
-        }
+        api_types::mcp::parse_priority(priority)
+            .map_err(|msg| Self::err(msg, None::<String>).unwrap().into())
     }
 
     async fn find_tag_ids_by_name(
