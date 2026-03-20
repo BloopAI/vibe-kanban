@@ -8,7 +8,9 @@ use services::services::{
     config::load_config_from_file,
     notification::{NotificationService, PushNotifier, set_global_push_notifier},
 };
-use tauri::{Emitter, Listener, Manager};
+#[cfg(target_os = "macos")]
+use tauri::Manager;
+use tauri::{Emitter, Listener};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;

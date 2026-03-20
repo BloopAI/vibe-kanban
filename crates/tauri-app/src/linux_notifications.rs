@@ -38,18 +38,18 @@ pub fn show_notification(title: &str, body: &str, deeplink_path: Option<&str>) {
         match handle {
             Ok(handle) => {
                 handle.wait_for_action(|action| {
-                    if action == "default" {
-                        if let Some(app) = APP_HANDLE.get() {
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
-                            if let Some(ref p) = path {
-                                let _ = app.emit(
-                                    "notification-clicked",
-                                    serde_json::json!({ "deeplinkPath": p }),
-                                );
-                            }
+                    if action == "default"
+                        && let Some(app) = APP_HANDLE.get()
+                    {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                        if let Some(ref p) = path {
+                            let _ = app.emit(
+                                "notification-clicked",
+                                serde_json::json!({ "deeplinkPath": p }),
+                            );
                         }
                     }
                 });

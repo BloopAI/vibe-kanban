@@ -79,22 +79,23 @@ define_class!(
             response: &UNNotificationResponse,
             completion_handler: &block2::Block<dyn Fn()>,
         ) {
-            let user_info = response.notification().request().content().userInfo();
-            let deeplink = user_info.valueForKey(ns_string!("deeplinkPath"));
+            // Always show/focus the window when a notification is clicked.
+            if let Some(handle) = APP_HANDLE.get() {
+                if let Some(window) = handle.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
 
-            if let Some(value) = deeplink
-                && let Ok(path) = value.downcast::<NSString>()
-            {
-                let path_str = path.to_string();
-                tracing::info!("Notification clicked, navigating to {path_str}");
+                // If the notification carries a deeplink path, emit an event
+                // so the frontend can navigate to the relevant page.
+                let user_info = response.notification().request().content().userInfo();
+                let deeplink = user_info.valueForKey(ns_string!("deeplinkPath"));
 
-                if let Some(handle) = APP_HANDLE.get() {
-                    // Show / focus the window (it may be hidden).
-                    if let Some(window) = handle.get_webview_window("main") {
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
-
+                if let Some(value) = deeplink
+                    && let Ok(path) = value.downcast::<NSString>()
+                {
+                    let path_str = path.to_string();
+                    tracing::info!("Notification clicked, navigating to {path_str}");
                     let _ = handle.emit(
                         "notification-clicked",
                         serde_json::json!({ "deeplinkPath": path_str }),
