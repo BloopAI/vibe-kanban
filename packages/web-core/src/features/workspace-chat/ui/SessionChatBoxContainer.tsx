@@ -346,8 +346,13 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     const fromLastSession = getLatestConfigFromProcesses(lastSessionProcesses);
     if (fromLastSession) return fromLastSession;
 
-    // Fallback: just executor from session metadata
-    const lastSessionExecutor = sessions?.[0]?.executor;
+    // Fallback: executor from session metadata.
+    // In new-session mode, default to the most-recently-used session's executor.
+    // In existing-session mode, use the selected session's own executor to avoid
+    // showing a different session's executor during the WebSocket loading window.
+    const lastSessionExecutor = isNewSessionMode
+      ? sessions?.[0]?.executor
+      : session?.executor;
     if (lastSessionExecutor) {
       return {
         executor: lastSessionExecutor as BaseCodingAgent,
@@ -355,7 +360,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     }
 
     return null;
-  }, [processes, lastSessionProcesses, sessions]);
+  }, [processes, lastSessionProcesses, sessions, isNewSessionMode, session]);
 
   const needsExecutorSelection =
     isNewSessionMode || (!session?.executor && !latestConfig?.executor);

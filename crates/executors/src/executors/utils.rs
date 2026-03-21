@@ -112,7 +112,7 @@ where
 }
 
 pub const EXECUTOR_OPTIONS_CACHE_CAPACITY: usize = 64;
-pub const DEFAULT_CACHE_TTL: Duration = Duration::from_mins(5);
+pub const DEFAULT_CACHE_TTL: Duration = Duration::from_secs(5 * 60);
 
 pub fn executor_options_cache()
 -> &'static TtlCache<ExecutorConfigCacheKey, ExecutorDiscoveredOptions> {
