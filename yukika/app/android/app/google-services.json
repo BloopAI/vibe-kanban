@@ -1,0 +1,28 @@
+{
+  "project_info": {
+    "project_number": "1234567890",
+    "project_id": "yukika-dummy",
+    "storage_bucket": "yukika-dummy.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "dummy-app-id",
+        "android_client_info": {
+          "package_name": "com.hejitech.yukika"
+        }
+      },
+      "api_key": [
+        {
+          "current_key": "dummy-api-key"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
