@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-low": "#eef1f3",
+              "secondary-dim": "#39489b",
+              "inverse-surface": "#0b0f10",
+              "tertiary-container": "#def5f8",
+              "surface-container-high": "#dfe3e6",
+              "on-tertiary": "#e0f7fa",
+              "on-primary": "#eef3ff",
+              "on-secondary-container": "#304092",
+              "surface-container": "#e5e9eb",
+              "on-tertiary-fixed": "#374b4e",
+              "surface-container-highest": "#d9dde0",
+              "outline-variant": "#abadaf",
+              "secondary-container": "#c9cfff",
+              "surface-container-lowest": "#ffffff",
+              "surface-tint": "#005da6",
+              "primary-fixed": "#54a3ff",
+              "inverse-on-surface": "#9a9d9f",
+              "on-error": "#ffefee",
+              "on-primary-container": "#002345",
+              "surface-bright": "#f5f7f9",
+              "primary-dim": "#005192",
+              "secondary-fixed-dim": "#b7c0ff",
+              "on-surface-variant": "#595c5e",
+              "on-primary-fixed": "#000000",
+              "tertiary": "#4a5f62",
+              "on-secondary-fixed-variant": "#3a499c",
+              "primary-fixed-dim": "#2695ff",
+              "background": "#f5f7f9",
+              "inverse-primary": "#1393ff",
+              "error-container": "#fb5151",
+              "on-secondary": "#f2f1ff",
+              "primary-container": "#54a3ff",
+              "on-primary-fixed-variant": "#002d55",
+              "tertiary-dim": "#3e5356",
+              "tertiary-fixed": "#def5f8",
+              "surface": "#f5f7f9",
+              "on-secondary-fixed": "#1a2b7e",
+              "on-tertiary-fixed-variant": "#53686b",
+              "secondary": "#4555a8",
+              "primary": "#005da6",
+              "on-tertiary-container": "#495e60",
+              "outline": "#747779",
+              "tertiary-fixed-dim": "#d0e7ea",
+              "error": "#b31b25",
+              "error-dim": "#9f0519",
+              "secondary-fixed": "#c9cfff",
+              "on-background": "#2c2f31",
+              "on-error-container": "#570008",
+              "on-surface": "#2c2f31",
+              "surface-dim": "#d0d5d8",
+              "surface-variant": "#d9dde0"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Be Vietnam Pro"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body min-h-screen">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full sticky top-0 z-50 bg-[#f5f7f9]/70 backdrop-blur-xl rounded-b-[3rem] px-6 py-4">
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 flex items-center justify-center hover:bg-[#eef1f3] transition-colors duration-300 rounded-full scale-95-on-active transition-transform text-slate-500">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<div class="text-[#0091FF] font-black text-2xl flex items-center gap-2 font-headline tracking-tight">
+<span>Yukika</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<h1 class="text-slate-500 font-medium text-sm px-4 py-2 bg-surface-container-low rounded-full">Settings</h1>
+</div>
+</header>
+<main class="max-w-xl mx-auto px-6 py-8 space-y-8">
+<!-- Compact User Profile Section -->
+<section class="bg-surface-container-lowest p-6 rounded-xl flex items-center gap-5 shadow-2xl shadow-slate-200/50">
+<div class="relative">
+<img alt="User avatar" class="w-20 h-20 rounded-full object-cover border-4 border-surface-container-low" data-alt="Professional female portrait with friendly expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgSYsLqgAfzFYknRoJHeSTMa_Go9SGycn1Ow1M5b-KyDI6RDt_okHjzFC-N--LtWKZAcappOyH77Cc1Jzgm6cQvwcxK4P-NE9s01EenvhTobkkDk_q-9YL9WUwKPP5nhwqBlaeFyTIeRiprQl5rtqut7C8sdYZdxjK12SGbozUS0gfYA5UA7zyCU14TTMIrddHvP0c6CsHz3k9qenGQDfRyzhEYhiwUZSDuLJUAxLPZktbGPI26a73pqFt7s97soFJ7aSgcfNi7bJh"/>
+<div class="absolute bottom-0 right-0 w-6 h-6 bg-primary-container rounded-full border-2 border-surface-container-lowest flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-on-primary-container" style="font-variation-settings: 'FILL' 1;">edit</span>
+</div>
+</div>
+<div class="flex-1">
+<h2 class="font-headline font-bold text-xl text-on-surface">Creative Snowball</h2>
+<div class="flex flex-wrap gap-2 mt-1">
+<span class="bg-tertiary-container text-on-tertiary-container text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">Pro Plan</span>
+<p class="text-on-surface-variant text-sm">snowball@yukika.app</p>
+</div>
+</div>
+</section>
+<!-- Security & Access Section -->
+<section class="space-y-4">
+<h3 class="font-headline font-bold text-lg px-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">security</span>
+            Security
+        </h3>
+<div class="bg-surface-container-low rounded-xl overflow-hidden">
+<!-- Change Password -->
+<button class="w-full flex items-center justify-between p-5 hover:bg-surface-container-high transition-colors text-left">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-surface-container-lowest rounded-full flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">lock_reset</span>
+</div>
+<div>
+<p class="font-semibold text-on-surface">Change Password</p>
+<p class="text-xs text-on-surface-variant">Update your account credentials</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</button>
+<!-- Biometric Toggle -->
+<div class="flex items-center justify-between p-5 border-t border-surface-container-high/50">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-surface-container-lowest rounded-full flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">fingerprint</span>
+</div>
+<div>
+<p class="font-semibold text-on-surface">Biometric Login</p>
+<p class="text-xs text-on-surface-variant">Use FaceID or Fingerprint</p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</section>
+<!-- Account Actions Section -->
+<section class="space-y-4">
+<h3 class="font-headline font-bold text-lg px-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">manage_accounts</span>
+            Account
+        </h3>
+<div class="space-y-3">
+<!-- Log Out -->
+<button class="w-full flex items-center gap-4 p-5 bg-surface-container-low hover:bg-surface-container-high transition-all rounded-xl text-left group">
+<div class="w-10 h-10 bg-surface-container-lowest rounded-full flex items-center justify-center text-on-surface-variant group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined">logout</span>
+</div>
+<span class="font-semibold text-on-surface">Log Out</span>
+</button>
+<!-- Danger Zone -->
+<div class="bg-error-container/5 rounded-xl border border-error-container/20 overflow-hidden">
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-error-container/10 rounded-full flex items-center justify-center text-error">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div>
+<p class="font-semibold text-error text-sm">Delete Account</p>
+<p class="text-[11px] text-on-surface-variant max-w-[200px]">Permanently remove all your boards and team data.</p>
+</div>
+</div>
+<button class="px-4 py-2 bg-error-container text-on-error text-xs font-bold rounded-full hover:bg-error-dim transition-colors shadow-sm">
+                        Delete
+                    </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer Info -->
+<footer class="pt-8 text-center space-y-2">
+<p class="text-xs text-outline font-medium">Yukika v2.4.0-alpine</p>
+<div class="flex justify-center gap-4 text-[11px] font-bold text-primary uppercase tracking-tighter">
+<a class="hover:underline" href="#">Privacy Policy</a>
+<span class="text-surface-container-highest">•</span>
+<a class="hover:underline" href="#">Terms of Service</a>
+</div>
+</footer>
+</main>
+<!-- Navigation Shell Suppressed as per Task Requirements (Transactional/Focused Page) -->
+</body></html>

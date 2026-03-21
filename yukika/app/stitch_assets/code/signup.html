@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sign Up - Yukika AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-error-container": "#570008",
+                        "on-background": "#2c2f31",
+                        "on-primary-fixed": "#000000",
+                        "inverse-on-surface": "#9a9d9f",
+                        "outline": "#747779",
+                        "background": "#f5f7f9",
+                        "error-container": "#fb5151",
+                        "on-secondary-fixed-variant": "#3a499c",
+                        "on-secondary-fixed": "#1a2b7e",
+                        "on-tertiary": "#e0f7fa",
+                        "error": "#b31b25",
+                        "primary-container": "#54a3ff",
+                        "surface-container-low": "#eef1f3",
+                        "secondary-fixed-dim": "#b7c0ff",
+                        "on-tertiary-fixed": "#374b4e",
+                        "on-primary-fixed-variant": "#002d55",
+                        "tertiary-fixed-dim": "#d0e7ea",
+                        "surface-container-highest": "#d9dde0",
+                        "surface-dim": "#d0d5d8",
+                        "secondary-fixed": "#c9cfff",
+                        "primary-fixed-dim": "#2695ff",
+                        "on-primary-container": "#002345",
+                        "surface-tint": "#005da6",
+                        "surface-variant": "#d9dde0",
+                        "tertiary-dim": "#3e5356",
+                        "primary-dim": "#005192",
+                        "on-surface-variant": "#595c5e",
+                        "on-tertiary-fixed-variant": "#53686b",
+                        "on-primary": "#eef3ff",
+                        "outline-variant": "#abadaf",
+                        "secondary-dim": "#39489b",
+                        "on-secondary-container": "#304092",
+                        "secondary": "#4555a8",
+                        "surface": "#f5f7f9",
+                        "inverse-primary": "#1393ff",
+                        "secondary-container": "#c9cfff",
+                        "on-error": "#ffefee",
+                        "primary": "#005da6",
+                        "on-surface": "#2c2f31",
+                        "on-secondary": "#f2f1ff",
+                        "surface-bright": "#f5f7f9",
+                        "surface-container-high": "#dfe3e6",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-container": "#def5f8",
+                        "inverse-surface": "#0b0f10",
+                        "on-tertiary-container": "#495e60",
+                        "error-dim": "#9f0519",
+                        "tertiary-fixed": "#def5f8",
+                        "tertiary": "#4a5f62",
+                        "primary-fixed": "#54a3ff",
+                        "surface-container": "#e5e9eb"
+                    },
+                    fontFamily: {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Be Vietnam Pro"],
+                        "label": ["Be Vietnam Pro"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .snow-gradient {
+            background: linear-gradient(135deg, #005da6 0%, #54a3ff 100%);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background font-body text-on-surface min-h-screen flex flex-col">
+<!-- Top Navigation (Shell suppressed for transactional focus, using minimalist brand anchor) -->
+<header class="w-full h-20 px-8 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="font-headline font-extrabold text-2xl tracking-tight text-primary">Yukika</span>
+</div>
+<div class="hidden md:flex items-center gap-2">
+<span class="text-on-surface-variant font-medium">Already have an account?</span>
+<a class="text-primary font-bold hover:underline" href="#">Sign In</a>
+</div>
+</header>
+<main class="flex-grow flex items-center justify-center px-6 py-12">
+<div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+<!-- Branding/Value Prop Section (Asymmetric Layout) -->
+<div class="hidden lg:flex flex-col space-y-8 pr-12">
+<div class="space-y-4">
+<span class="inline-block px-4 py-1 rounded-full bg-tertiary-container text-on-tertiary-container font-label text-xs font-bold tracking-widest uppercase">The Digital Snowscape</span>
+<h1 class="font-headline text-5xl xl:text-6xl font-extrabold text-on-surface leading-tight">
+                        Start your <span class="text-primary">creative</span> journey.
+                    </h1>
+<p class="text-lg text-on-surface-variant max-w-md font-body leading-relaxed">
+                        Join the community where task management feels like an organized play session. Experience the soft minimalism of Yukon AI.
+                    </p>
+</div>
+<!-- Decorative Bento Elements -->
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-low p-6 rounded-xl space-y-3">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined">auto_awesome</span>
+</div>
+<p class="font-headline font-bold text-on-surface">AI Insights</p>
+</div>
+<div class="bg-secondary-container p-6 rounded-xl space-y-3 mt-8">
+<div class="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-on-secondary">
+<span class="material-symbols-outlined">ac_unit</span>
+</div>
+<p class="font-headline font-bold text-on-surface">Alpine Flow</p>
+</div>
+</div>
+</div>
+<!-- Sign Up Form Card -->
+<div class="bg-surface-container-lowest p-8 md:p-12 rounded-xl shadow-[0px_20px_40px_rgba(44,47,49,0.06)]">
+<div class="mb-10 text-center lg:text-left">
+<h2 class="font-headline text-3xl font-bold mb-2">Create Account</h2>
+<p class="text-on-surface-variant">Welcome to the playground. Let's get started.</p>
+</div>
+<form class="space-y-6">
+<div class="grid grid-cols-1 gap-6">
+<!-- Name Field -->
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-on-surface ml-1" for="full-name">Full Name</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline-variant">person</span>
+<input class="w-full pl-12 pr-4 py-4 bg-surface-container-highest border-none rounded-full focus:ring-2 focus:ring-primary/20 transition-all font-body text-on-surface placeholder:text-outline-variant" id="full-name" placeholder="E.g. Yuki Tanaka" type="text"/>
+</div>
+</div>
+<!-- Email Field -->
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-on-surface ml-1" for="email">Email Address</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline-variant">mail</span>
+<input class="w-full pl-12 pr-4 py-4 bg-surface-container-highest border-none rounded-full focus:ring-2 focus:ring-primary/20 transition-all font-body text-on-surface placeholder:text-outline-variant" id="email" placeholder="hello@yukika.ai" type="email"/>
+</div>
+</div>
+<!-- Password Field -->
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-on-surface ml-1" for="password">Password</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline-variant">lock</span>
+<input class="w-full pl-12 pr-12 py-4 bg-surface-container-highest border-none rounded-full focus:ring-2 focus:ring-primary/20 transition-all font-body text-on-surface placeholder:text-outline-variant" id="password" placeholder="••••••••" type="password"/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</div>
+</div>
+</div>
+<div class="pt-4">
+<button class="w-full snow-gradient text-on-primary font-headline font-bold py-4 rounded-full shadow-lg hover:shadow-xl transition-all transform active:scale-[0.98] flex items-center justify-center gap-2" type="submit">
+                            Sign Up
+                            <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+<p class="text-center md:hidden mt-8">
+<span class="text-on-surface-variant">Already have an account?</span>
+<a class="text-primary font-bold ml-1" href="#">Sign In</a>
+</p>
+</form>
+</div>
+</div>
+</main>
+<!-- Footer (Using BottomNavBar content for legal links) -->
+<footer class="w-full py-8 px-8 flex flex-col md:flex-row items-center justify-between gap-4 mt-auto">
+<p class="text-on-surface-variant text-sm">© 2024 Yukika AI. All rights reserved.</p>
+<div class="flex items-center gap-8">
+<a class="text-outline text-xs font-label font-semibold uppercase tracking-widest hover:text-primary transition-colors" href="#">Help</a>
+<a class="text-outline text-xs font-label font-semibold uppercase tracking-widest hover:text-primary transition-colors" href="#">Privacy</a>
+<a class="text-outline text-xs font-label font-semibold uppercase tracking-widest hover:text-primary transition-colors" href="#">Terms</a>
+</div>
+</footer>
+</body></html>

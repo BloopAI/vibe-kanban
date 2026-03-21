@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Yukika - Task Detail</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-secondary-fixed-variant": "#3a499c",
+              "on-tertiary-container": "#495e60",
+              "outline": "#747779",
+              "surface-container-high": "#dfe3e6",
+              "tertiary": "#4a5f62",
+              "on-tertiary-fixed-variant": "#53686b",
+              "secondary-fixed-dim": "#b7c0ff",
+              "surface-container": "#e5e9eb",
+              "error-dim": "#9f0519",
+              "secondary-dim": "#39489b",
+              "on-background": "#2c2f31",
+              "background": "#f5f7f9",
+              "on-primary": "#eef3ff",
+              "primary": "#005da6",
+              "surface-bright": "#f5f7f9",
+              "primary-container": "#54a3ff",
+              "on-secondary-container": "#304092",
+              "surface-container-lowest": "#ffffff",
+              "on-error": "#ffefee",
+              "on-primary-fixed-variant": "#002d55",
+              "secondary-container": "#c9cfff",
+              "primary-fixed": "#54a3ff",
+              "inverse-on-surface": "#9a9d9f",
+              "on-error-container": "#570008",
+              "surface-container-highest": "#d9dde0",
+              "error": "#b31b25",
+              "on-tertiary": "#e0f7fa",
+              "on-surface-variant": "#595c5e",
+              "on-surface": "#2c2f31",
+              "on-secondary": "#f2f1ff",
+              "primary-dim": "#005192",
+              "surface-container-low": "#eef1f3",
+              "tertiary-dim": "#3e5356",
+              "on-secondary-fixed": "#1a2b7e",
+              "on-primary-container": "#002345",
+              "tertiary-fixed-dim": "#d0e7ea",
+              "surface-tint": "#005da6",
+              "on-primary-fixed": "#000000",
+              "on-tertiary-fixed": "#374b4e",
+              "tertiary-fixed": "#def5f8",
+              "primary-fixed-dim": "#2695ff",
+              "inverse-primary": "#1393ff",
+              "surface-variant": "#d9dde0",
+              "secondary-fixed": "#c9cfff",
+              "surface": "#f5f7f9",
+              "inverse-surface": "#0b0f10",
+              "outline-variant": "#abadaf",
+              "secondary": "#4555a8",
+              "tertiary-container": "#def5f8"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Be Vietnam Pro"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .glass-morphism {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+      }
+      .glacier-gradient {
+        background: linear-gradient(135deg, #005da6 0%, #54a3ff 100%);
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar (From Shared Components JSON) -->
+<nav class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-4 bg-[#f5f7f9] dark:bg-slate-900 tonal-shift">
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center p-2 rounded-full hover:bg-white/50 dark:hover:bg-slate-700/50 transition-all active:opacity-80 scale-95">
+<span class="material-symbols-outlined text-[#0091FF] dark:text-blue-400" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="flex items-center gap-2">
+<span class="font-['Plus_Jakarta_Sans'] font-black text-xl text-[#0091FF]">Yukika</span>
+</div>
+</div>
+<button class="flex items-center justify-center p-2 rounded-full hover:bg-white/50 dark:hover:bg-slate-700/50 transition-all active:opacity-80 scale-95">
+<span class="material-symbols-outlined text-[#0091FF] dark:text-blue-400" data-icon="edit">edit</span>
+</button>
+</nav>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-32 px-6 max-w-2xl mx-auto space-y-10">
+<!-- Header Section -->
+<header class="space-y-4">
+<div class="flex flex-wrap items-center gap-3">
+<span class="bg-secondary-container text-on-secondary-container px-4 py-1 rounded-full text-xs font-semibold tracking-wider font-label uppercase">Core App</span>
+<span class="bg-tertiary-container text-on-tertiary-container px-4 py-1 rounded-full text-xs font-semibold tracking-wider font-label flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="pending">pending</span>
+                    WIP
+                </span>
+</div>
+<h1 class="font-headline font-extrabold text-on-surface leading-tight tracking-tight text-3xl md:text-4xl">
+                Refactor Iceberg Components
+            </h1>
+</header>
+<!-- Bento Grid Layout for Details -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Description Card (Spans 2 columns) -->
+<section class="md:col-span-2 bg-surface-container-lowest p-8 rounded-xl space-y-4 shadow-[0px_20px_40px_rgba(44,47,49,0.04)]">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined" data-icon="subject">subject</span>
+<h3 class="font-headline font-bold text-lg">Description</h3>
+</div>
+<p class="text-on-surface-variant leading-relaxed text-lg font-light">
+                    Clean up the legacy frost-engine code to improve rendering speed and ensure compatibility with the new snowflake animation engine. This is a high-priority task for the Q4 release.
+                </p>
+</section>
+<!-- Repository Card -->
+<section class="bg-surface-container-low p-6 rounded-xl space-y-3">
+<div class="flex items-center gap-2 text-secondary">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+<h3 class="font-headline font-bold">Repository</h3>
+</div>
+<a class="block font-medium text-primary hover:underline truncate" href="#">
+                    github.com/yukika/iceberg-refactor
+                </a>
+</section>
+<!-- Team Members Card -->
+<section class="bg-surface-container-low p-6 rounded-xl space-y-3">
+<div class="flex items-center gap-2 text-secondary">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<h3 class="font-headline font-bold">Team</h3>
+</div>
+<div class="flex -space-x-3">
+<img alt="Alex" class="h-10 w-10 rounded-full border-4 border-surface-container-low object-cover" data-alt="Portrait of a male developer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2DNzCS-GOV3GZnefRd9icP3OsHFwsQPWx_oVnBEkxOrnW6wObqmUHKcHK_lg3qBDMQGAK6TP5f0IljxPVqujwx7gyGcprSL0cvnjZDxkqNakeKA-7G11ccZTunvxBwjm_TnhH7Hr5fLGD5az6kf2E5m0xKiGPt4mseqLm2Bl1ybuQHNC9kJhomZK_fmpKAVC7fiPcfu1AOVDugB3ptn2KO9rsGV6djYat5FkwaSRjIzwkdcPfpI0OnjZvTi26G__nQtRSNLG2Yqr_"/>
+<img alt="Sarah" class="h-10 w-10 rounded-full border-4 border-surface-container-low object-cover" data-alt="Portrait of a female designer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeqsgBvSt9mH2sz8VKJiH--9ke4bHKcQC6fTDG556Z4Fk_qy5tqB2ySdcgLWm-G_ZaL0ylsHGwsmWRLmPOiNQMa661Dh5XiTqEIQ8m3P4z05ctUKMcTdG2pSjJaCosfq_O1EuOLDpfdpIMqk4xa3PSe660PgToTcQ8WpGTOkz3IihF-BLnEYZhm0GBl6Ax6OlIFmZ7gU2RFC4yyCPi1ZSTe_jYGcqHAE9mHTFxsLeOru0LUnAmq5_sm0sE3c5o-vTdrQjv1XESKlfL"/>
+<img alt="Jordan" class="h-10 w-10 rounded-full border-4 border-surface-container-low object-cover" data-alt="Portrait of a male engineer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXCoOzNgpRyPBmsCzDFxqWSLUQi0NQALDH4k1Khnii22LPotzVhZzAZ_GUAdIoN463D8xiFoeKGZsBe66VkVucc6_tmhqmkXetSrHXx6xqw_CUcZAnU5UvZ0FIYwdlYwF5DZ4rlo6YaMGjQpgdzHzjTEKNKdGo4YfT899Ixi5XfMc0BJ7e57_ni_tafDDMQQccEtaUCsnQgpul3zr_EON-V3KYvRiD_9Od1MqlOjyN8RRVZbF3ZY1HGExXJGZiKxdcUOMKEiYQPEoF"/>
+<div class="h-10 w-10 rounded-full border-4 border-surface-container-low bg-surface-container-highest flex items-center justify-center text-xs font-bold text-on-surface-variant">
+                        Mi
+                    </div>
+</div>
+</section>
+<!-- Dependencies Card (Spans 2 columns) -->
+<section class="md:col-span-2 bg-surface-container-low p-6 rounded-xl space-y-4">
+<div class="flex items-center gap-2 text-secondary">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+<h3 class="font-headline font-bold">Dependencies</h3>
+</div>
+<div class="flex flex-wrap gap-3">
+<div class="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full border border-outline-variant/10">
+<span class="material-symbols-outlined text-sm text-secondary" data-icon="link">link</span>
+<span class="text-sm font-medium">Glacier Asset Audit</span>
+</div>
+</div>
+</section>
+</div>
+<!-- Sticky Bottom CTA -->
+</main>
+<!-- BottomNavBar (From Shared Components JSON) -->
+</body></html>

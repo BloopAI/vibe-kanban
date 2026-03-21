@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sign In - Yukika AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-error-container": "#570008",
+              "on-background": "#2c2f31",
+              "on-primary-fixed": "#000000",
+              "inverse-on-surface": "#9a9d9f",
+              "outline": "#747779",
+              "background": "#f5f7f9",
+              "error-container": "#fb5151",
+              "on-secondary-fixed-variant": "#3a499c",
+              "on-secondary-fixed": "#1a2b7e",
+              "on-tertiary": "#e0f7fa",
+              "error": "#b31b25",
+              "primary-container": "#54a3ff",
+              "surface-container-low": "#eef1f3",
+              "secondary-fixed-dim": "#b7c0ff",
+              "on-tertiary-fixed": "#374b4e",
+              "on-primary-fixed-variant": "#002d55",
+              "tertiary-fixed-dim": "#d0e7ea",
+              "surface-container-highest": "#d9dde0",
+              "surface-dim": "#d0d5d8",
+              "secondary-fixed": "#c9cfff",
+              "primary-fixed-dim": "#2695ff",
+              "on-primary-container": "#002345",
+              "surface-tint": "#005da6",
+              "surface-container-lowest": "#ffffff",
+              "tertiary-container": "#def5f8",
+              "inverse-surface": "#0b0f10",
+              "on-tertiary-container": "#495e60",
+              "error-dim": "#9f0519",
+              "tertiary-fixed": "#def5f8",
+              "tertiary": "#4a5f62",
+              "primary-fixed": "#54a3ff",
+              "surface-container": "#e5e9eb",
+              "primary": "#005da6",
+              "on-surface": "#2c2f31",
+              "secondary": "#4555a8",
+              "surface": "#f5f7f9",
+              "on-primary": "#eef3ff"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Be Vietnam Pro"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .snowball-shadow {
+            box-shadow: 0px 20px 40px rgba(44, 47, 49, 0.06);
+        }
+        .alpine-gradient {
+            background: linear-gradient(135deg, #005da6 0%, #54a3ff 100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background font-body text-on-surface min-h-screen flex flex-col">
+<!-- Top Navigation Anchor (Manual for Branding) -->
+<header class="flex items-center w-full h-20 px-6 absolute top-0 z-10 justify-start">
+<div class="flex items-center gap-2">
+<span class="font-headline font-bold text-2xl tracking-tight text-primary">Yukika</span></div>
+</header>
+<!-- Main Content: The Digital Snowscape -->
+<main class="flex-grow flex items-center justify-center px-6 py-20">
+<div class="max-w-md w-full">
+<!-- Welcome Header -->
+<div class="text-center mb-10">
+<p class="font-headline text-2xl font-bold tracking-tight text-on-surface mb-2">Welcome Back!</p>
+<p class="text-on-surface-variant font-medium">
+                    Slide back into your productivity flow.
+                </p>
+</div>
+<!-- Sign In Card -->
+<div class="bg-surface-container-lowest rounded-xl p-8 snowball-shadow">
+<form class="space-y-6">
+<!-- Email Field -->
+<div class="space-y-2">
+<label class="block text-sm font-semibold text-on-surface ml-1" for="email">
+                            Email Address
+                        </label>
+<div class="relative">
+<input class="w-full h-14 px-5 bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-outline-variant font-medium" id="email" placeholder="hello@yukika.ai" type="email"/>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant">
+                                mail
+                            </span>
+</div>
+</div>
+<!-- Password Field -->
+<div class="space-y-2">
+<div class="flex justify-between items-center ml-1">
+<label class="block text-sm font-semibold text-on-surface" for="password">
+                                Password
+                            </label>
+<a class="text-xs font-bold text-primary hover:underline" href="#">
+                                Forgot Password?
+                            </a>
+</div>
+<div class="relative">
+<input class="w-full h-14 px-5 bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-outline-variant font-medium" id="password" placeholder="••••••••" type="password"/>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant">
+                                lock
+                            </span>
+</div>
+</div>
+<!-- Primary Action -->
+<div class="pt-2">
+<button class="alpine-gradient w-full h-14 rounded-full text-on-primary font-bold text-lg shadow-lg shadow-primary/20 active:scale-95 transition-transform" type="submit">
+                            Sign In
+                        </button>
+</div>
+<!-- Social Login Divider -->
+<!-- Social Options -->
+</form>
+</div>
+<!-- Bottom Navigation / Call to Action -->
+<div class="mt-8 text-center">
+<p class="text-on-surface-variant font-medium">
+                    Don't have an account yet?
+                    <a class="text-primary font-bold hover:underline ml-1" href="#">
+                        Create an Account
+                    </a>
+</p>
+</div>
+</div>
+</main>
+<!-- Footer Decoration (Abstract Snowdrifts) -->
+<footer class="h-24 w-full relative overflow-hidden pointer-events-none opacity-40">
+<div class="absolute -bottom-10 -left-20 w-80 h-40 bg-primary-container/20 rounded-full blur-3xl"></div>
+<div class="absolute -bottom-10 -right-20 w-80 h-40 bg-secondary-container/20 rounded-full blur-3xl"></div>
+</footer>
+<!-- Bottom Nav Shell Suppression Check: Suppressed for Transactional Flow -->
+</body></html>

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be_Vietnam_Pro:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container-low": "#eef1f3",
+              "secondary-dim": "#39489b",
+              "inverse-surface": "#0b0f10",
+              "tertiary-container": "#def5f8",
+              "surface-container-high": "#dfe3e6",
+              "on-tertiary": "#e0f7fa",
+              "on-primary": "#eef3ff",
+              "on-secondary-container": "#304092",
+              "surface-container": "#e5e9eb",
+              "on-tertiary-fixed": "#374b4e",
+              "surface-container-highest": "#d9dde0",
+              "outline-variant": "#abadaf",
+              "secondary-container": "#c9cfff",
+              "surface-container-lowest": "#ffffff",
+              "surface-tint": "#005da6",
+              "primary-fixed": "#54a3ff",
+              "inverse-on-surface": "#9a9d9f",
+              "on-error": "#ffefee",
+              "on-primary-container": "#002345",
+              "surface-bright": "#f5f7f9",
+              "primary-dim": "#005192",
+              "secondary-fixed-dim": "#b7c0ff",
+              "on-surface-variant": "#595c5e",
+              "on-primary-fixed": "#000000",
+              "tertiary": "#4a5f62",
+              "on-secondary-fixed-variant": "#3a499c",
+              "primary-fixed-dim": "#2695ff",
+              "background": "#f5f7f9",
+              "inverse-primary": "#1393ff",
+              "error-container": "#fb5151",
+              "on-secondary": "#f2f1ff",
+              "primary-container": "#54a3ff",
+              "on-primary-fixed-variant": "#002d55",
+              "tertiary-dim": "#3e5356",
+              "tertiary-fixed": "#def5f8",
+              "surface": "#f5f7f9",
+              "on-secondary-fixed": "#1a2b7e",
+              "on-tertiary-fixed-variant": "#53686b",
+              "secondary": "#4555a8",
+              "primary": "#005da6",
+              "on-tertiary-container": "#495e60",
+              "outline": "#747779",
+              "tertiary-fixed-dim": "#d0e7ea",
+              "error": "#b31b25",
+              "error-dim": "#9f0519",
+              "secondary-fixed": "#c9cfff",
+              "on-background": "#2c2f31",
+              "on-error-container": "#570008",
+              "on-surface": "#2c2f31",
+              "surface-dim": "#d0d5d8",
+              "surface-variant": "#d9dde0"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Be Vietnam Pro"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; background-color: #f5f7f9; color: #2c2f31; margin: 0; }
+        h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .kanban-scroll::-webkit-scrollbar { width: 0px; background: transparent; }
+        .glass-fab { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar from Shared Components -->
+<header class="flex justify-between items-center w-full sticky top-0 z-50 bg-[#f5f7f9]/70 backdrop-blur-xl rounded-b-[3rem] px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="text-[#0091FF] font-black text-2xl flex items-center gap-2">
+<span class="font-['Plus_Jakarta_Sans'] font-bold text-2xl tracking-tight text-[#0091FF]">Yukika</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-slate-500 hover:bg-[#eef1f3] transition-colors duration-300 rounded-full p-2 flex items-center justify-center scale-95-on-active transition-transform">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="text-[#0091FF] font-bold hover:bg-[#eef1f3] transition-colors duration-300 rounded-full p-2 flex items-center justify-center scale-95-on-active transition-transform">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- NavigationDrawer (Static version for desktop layout) -->
+<aside class="hidden md:flex flex-col bg-[#eef1f3] w-72 h-full rounded-r-[3rem] p-6 space-y-8">
+<div class="flex items-center gap-4 px-2">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-white">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="Friendly male creative profile portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8Cbz57K8NjK6DfXcPkP2g86Z4gnfzTvuuZRx5iYeIv_pkAM0cTp6OkX50n-MEzQPXp23pTnLB5wtRplSXRwuMz-GvVReAwqkjn9-ynVJg50w0m2gGxWmiH7a02LCuY8MG2cC_EoFQz_Duw6es1D6oH-f-I9TpBFvaWX9HQHULOH8KoV3_vZ4a24k2CdUARbwWg8uibVZYNJUa1vT7Pii-LlqJLWU5twPreYoFGMQlXqsishQIeSGvN644hhM9jhOVt6Lqi9tffQia"/>
+</div>
+<div>
+<h3 class="font-['Be_Vietnam_Pro'] text-sm font-bold text-on-surface">Creative Snowball</h3>
+<p class="text-xs text-slate-500">Pro Plan</p>
+</div>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="bg-gradient-to-br from-[#0091FF] to-[#54a3ff] text-white rounded-full px-4 py-3 flex items-center gap-3 font-medium text-sm transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                    My Boards
+                </a>
+<a class="text-slate-600 hover:bg-white/50 rounded-full px-4 py-3 flex items-center gap-3 font-medium text-sm transition-all duration-200" href="#">
+<span class="material-symbols-outlined">group</span>
+                    Team Space
+                </a>
+<a class="text-slate-600 hover:bg-white/50 rounded-full px-4 py-3 flex items-center gap-3 font-medium text-sm transition-all duration-200" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+                    Archive
+                </a>
+<a class="text-slate-600 hover:bg-white/50 rounded-full px-4 py-3 flex items-center gap-3 font-medium text-sm transition-all duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+                    Settings
+                </a>
+</nav>
+<div class="mt-auto p-4 bg-white/40 rounded-xl">
+<div class="flex items-center justify-between mb-2">
+<span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Storage</span>
+<span class="text-xs font-bold text-[#0091FF]">85%</span>
+</div>
+<div class="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+<div class="h-full bg-[#0091FF] w-[85%]"></div>
+</div>
+</div>
+</aside>
+<!-- Kanban Board Area -->
+<main class="flex-1 flex flex-col min-w-0">
+<!-- Board Header -->
+<!-- Kanban Columns -->
+<div class="flex-1 overflow-x-auto kanban-scroll px-8 pb-8 flex gap-6">
+<!-- To Do Column -->
+<div class="flex-none w-80 flex flex-col h-full bg-surface-container-low rounded-xl p-4">
+<div class="flex items-center justify-between mb-4 px-2">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-slate-400"></span>
+<h3 class="font-bold text-lg text-on-surface">To Do</h3>
+<span class="text-xs font-bold px-2 py-0.5 bg-surface-container-highest rounded-full text-on-surface-variant">3</span>
+</div>
+<button class="text-on-surface-variant"><span class="material-symbols-outlined">more_horiz</span></button>
+</div>
+<div class="flex-1 space-y-4 overflow-y-auto kanban-scroll">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest p-5 rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-black uppercase tracking-widest text-[#0091FF] bg-blue-50 px-2 py-1 rounded-full">Core App</span>
+<span class="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">code</span>
+</div>
+<h4 class="font-bold text-on-surface text-lg leading-tight mb-2">Refactor Iceberg Components</h4>
+<p class="text-on-surface-variant text-sm line-clamp-2 mb-4">Clean up the legacy frost-engine code to improve rendering speed.</p>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-1">
+<img class="w-7 h-7 rounded-full border-2 border-white object-cover" data-alt="Developer profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOS-48Oy1B03nis_ywnn62MNjQitbfVWXw2SHV_7LjBbVJ6xJUJPUENWTPAFzL_k0bBj5-U1jWGmAieV8hNok6iwKBxoJ4KHWzFcboukgK7oPQrWjtT3ESpHqyvKjr3dV0UX5wUhOtjo9_cdnI4gLaNvePQXFPL11iE0JIfC8qJvHvZLi3A-teK68qQT3sQdW3zo3FHU0Jp93IV-KtFcfcM-eS3g814p4LhOiGygY3haYaMPDOAnMKRPbVzTdNMg_iR21X8iXb7Blv"/>
+</div>
+<div class="flex items-center gap-2 text-slate-400 text-xs font-medium">
+<span class="material-symbols-outlined text-xs">folder</span>
+                                    yukika-main
+                                </div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest p-5 rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-black uppercase tracking-widest text-secondary bg-indigo-50 px-2 py-1 rounded-full">UX Design</span>
+<span class="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">brush</span>
+</div>
+<h4 class="font-bold text-on-surface text-lg leading-tight mb-2">Snowflake Animation Path</h4>
+<p class="text-on-surface-variant text-sm line-clamp-2 mb-4">Design the delightful physics for the falling snow background effect.</p>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-1">
+<img class="w-7 h-7 rounded-full border-2 border-white object-cover" data-alt="Designer profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAX0Wl2Ux0d52f9CJR3bvMALnU6OGOGqtbRNQYNpZy4MNdRVNfjjIk-oR5rbywLbceN9JUdyoZdYx7XdXXElkuCj8yH8YWECxb4pSRgXmEWH2hBpXWH5DA7UQY4DUPvXHWrlBxQSn3r6-ZZFRPmxHOQhqfKp6nSIAfzbaEQKYk5-94-XhcrnpnGaKhpGjRLiPHwNnVreQaINiO5BuCXkk0KzW5Sy457l9YngsUtqPPX_OQs3y1Qju42XyHOhstWUMeLIZXWGyjHWJw2"/>
+<img class="w-7 h-7 rounded-full border-2 border-white object-cover" data-alt="Designer profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMTdq4r3Dsc097W4cv7yYMYBnBYiq41tzfBrQnZs1YwncJzFHUyD4ly81jiuvXT7J5-M3XMzfiaZFmNctpZ6ng0p1Amj1tH1krGK-WArgRko9j0M7EcquKFVDA1_qIp7SGu9yw97Fj6a1oe2SrN7WMdx9r818LNxr7MAxPvUo7H3Koqh0Aw3pcQOk-RbUMSAW5yojvp1KJjJjn3jp5ACm6_k7z9C2OvZWV_sDIFKi4WVbxcUpXfhJ2uILGANVJ70pq4sAeV99CyL4W"/>
+</div>
+<div class="flex items-center gap-2 text-slate-400 text-xs font-medium">
+<span class="material-symbols-outlined text-xs">folder</span>
+                                    ui-assets
+                                </div>
+</div>
+</div>
+</div>
+</div>
+<!-- Ready Column -->
+<div class="flex-none w-80 flex flex-col h-full bg-surface-container-low rounded-xl p-4">
+<div class="flex items-center justify-between mb-4 px-2">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-primary-container"></span>
+<h3 class="font-bold text-lg text-on-surface">Ready</h3>
+<span class="text-xs font-bold px-2 py-0.5 bg-surface-container-highest rounded-full text-on-surface-variant">1</span>
+</div>
+<button class="text-on-surface-variant"><span class="material-symbols-outlined">more_horiz</span></button>
+</div>
+<div class="flex-1 space-y-4 overflow-y-auto kanban-scroll">
+<div class="bg-surface-container-lowest p-5 rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-black uppercase tracking-widest text-[#0091FF] bg-blue-50 px-2 py-1 rounded-full">Marketing</span>
+<span class="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">campaign</span>
+</div>
+<h4 class="font-bold text-on-surface text-lg leading-tight mb-2">Winter Launch Campaign</h4>
+<p class="text-on-surface-variant text-sm line-clamp-2 mb-4">Finalize the assets for the December 1st announcement.</p>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-1">
+<img class="w-7 h-7 rounded-full border-2 border-white object-cover" data-alt="Marketing specialist" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEl4XETdh0UoIovsPslbo8kxGab1t5AaBbrwr4XVaoqtypeJa8xvWJR4pkTchjQEQQS2YRVxparVEOBDwYgmUOkn7Uv9u2OgIyULT3l0WBJ7AzsC_Iwg8Wdn7o1nI7wt_E_3ACihbD1kJo1Y920Cywec5sRi0Nf-xWaLIg8JE8L5rFMMSfBps-i9_LhIkjNt3aFm0258bJ21bHp9iVUwEfQeZntpWWRq1g8A8NIKJXE0sOKv--9HAAuLf3tuJ6Fwv2Tafu8YQlstqU"/>
+</div>
+<div class="flex items-center gap-2 text-slate-400 text-xs font-medium">
+<span class="material-symbols-outlined text-xs">folder</span>
+                                    outreach
+                                </div>
+</div>
+</div>
+</div>
+</div>
+<!-- WIP Column -->
+<div class="flex-none w-80 flex flex-col h-full bg-surface-container-low rounded-xl p-4">
+<div class="flex items-center justify-between mb-4 px-2">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-[#0091FF]"></span>
+<h3 class="font-bold text-lg text-on-surface">WIP</h3>
+<span class="text-xs font-bold px-2 py-0.5 bg-surface-container-highest rounded-full text-on-surface-variant">2</span>
+</div>
+<button class="text-on-surface-variant"><span class="material-symbols-outlined">more_horiz</span></button>
+</div>
+<div class="flex-1 space-y-4 overflow-y-auto kanban-scroll">
+<div class="bg-surface-container-lowest p-5 rounded-lg border-2 border-[#0091FF]/20 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#0091FF] to-[#54a3ff]"></div>
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-black uppercase tracking-widest text-[#0091FF] bg-blue-50 px-2 py-1 rounded-full">Dev Ops</span>
+<span class="material-symbols-outlined text-[#0091FF]" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<h4 class="font-bold text-on-surface text-lg leading-tight mb-2">Cold-Storage Migration</h4>
+<p class="text-on-surface-variant text-sm line-clamp-2 mb-4">Moving non-active board data to the glacier-tier server for cost optimization.</p>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-1">
+<img class="w-7 h-7 rounded-full border-2 border-white object-cover" data-alt="DevOps engineer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCd75YbJVzOLSN-gcN4mGi-orJcKODZZf4m2Dg4lQ1IPnZU7tEdroepGNAGO8stgNuwSyiF5VracWEVCPclT7-X6WoHvyDIpseM0raHp7JXf52lXORIvHs-7eLmsA0QIawCTiAUv_omQ_InXtH79-fEPEO1zn1GZVTsqTsSUoozvKQBv6afWpzEyEuzvUiU6l4-7haVpGjIFcsCy4n1quts6z7w60ltzcRBvmo0SowpGXK8fyDEIfGf1LLSY946CWT_N8ROIfXeM5rl"/>
+</div>
+<div class="flex items-center gap-2 text-slate-400 text-xs font-medium">
+<span class="material-symbols-outlined text-xs">folder</span>
+                                    infra-prod
+                                </div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-lg border-2 border-[#0091FF]/20 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#0091FF] to-[#54a3ff]"></div>
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-black uppercase tracking-widest text-tertiary-dim bg-teal-50 px-2 py-1 rounded-full">AI Logic</span>
+<span class="material-symbols-outlined text-[#0091FF]" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<h4 class="font-bold text-on-surface text-lg leading-tight mb-2">Predictive Card Sorting</h4>
+<p class="text-on-surface-variant text-sm line-clamp-2 mb-4">Training the model to suggest column movements based on user patterns.</p>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-1">
+<img class="w-7 h-7 rounded-full border-2 border-white object-cover" data-alt="AI Researcher" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnDc7se9mSJDByw3o04dM4vmhTPUhZHEE7RhRofjOBg1i4lZ6FPVH1ggqyRzEfySmAjt7ou9elcWVDid2r_UD3Ek30-VGEiI8JLCwdc5GblBJO6o2j_XUC7xs8BHMXrsr5ny4Tya0DgVA8j683k5OM5LQyvWoBV346N9xjvWKVm5b7dTJib8hV2ufZZRIV7MwGy5sp9t31I0dMT9vADyYqqHABGcKRtfMXhNnEVodBKK0FTmorjiZo2ZvLva97Rv_4LT3f6y5CXe7Y"/>
+</div>
+<div class="flex items-center gap-2 text-slate-400 text-xs font-medium">
+<span class="material-symbols-outlined text-xs">folder</span>
+                                    brain-repo
+                                </div>
+</div>
+</div>
+</div>
+</div>
+<!-- Review Column -->
+<div class="flex-none w-80 flex flex-col h-full bg-surface-container-low rounded-xl p-4">
+<div class="flex items-center justify-between mb-4 px-2">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-secondary"></span>
+<h3 class="font-bold text-lg text-on-surface">Review</h3>
+<span class="text-xs font-bold px-2 py-0.5 bg-surface-container-highest rounded-full text-on-surface-variant">1</span>
+</div>
+<button class="text-on-surface-variant"><span class="material-symbols-outlined">more_horiz</span></button>
+</div>
+<div class="flex-1 space-y-4 overflow-y-auto kanban-scroll">
+<div class="bg-surface-container-lowest p-5 rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-black uppercase tracking-widest text-error bg-red-50 px-2 py-1 rounded-full">Critical Bug</span>
+<span class="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">bug_report</span>
+</div>
+<h4 class="font-bold text-on-surface text-lg leading-tight mb-2">Login Frostbite Glitch</h4>
+<p class="text-on-surface-variant text-sm line-clamp-2 mb-4">Users reporting they are unable to sign in from Safari browsers.</p>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-1">
+<img class="w-7 h-7 rounded-full border-2 border-white object-cover" data-alt="QA lead" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPwrWpQhk2Z_RDbhwkkqHudsc7KyRT_c-7KSCzPMqKZGe32RwEFDtZffPaHNq5j5_3LLX0txPUI-LOsuzZAZ3jCkGKZ34i7WuEdBmLmfLoLiB7XTIAigYF6TpQBT1Nl7pYIlowVsel6CEbbhRM9N4GK-MFvfuvJmrKx_kbQMANcxqc9lO_PiFlglbYqdPXrsSdwEfpgeqO3aXBttsx0HUdaGH6JLPEeDwW18ItDFnpqyx3P3G6LGy_SzN1q4JPyc5pgQkRMIfm-wJF"/>
+</div>
+<div class="flex items-center gap-2 text-slate-400 text-xs font-medium">
+<span class="material-symbols-outlined text-xs">folder</span>
+                                    auth-module
+                                </div>
+</div>
+</div>
+</div>
+</div>
+<!-- Done Column -->
+<div class="flex-none w-80 flex flex-col h-full bg-surface-container-low rounded-xl p-4">
+<div class="flex items-center justify-between mb-4 px-2">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+<h3 class="font-bold text-lg text-on-surface">Done</h3>
+<span class="text-xs font-bold px-2 py-0.5 bg-surface-container-highest rounded-full text-on-surface-variant">2</span>
+</div>
+<button class="text-on-surface-variant"><span class="material-symbols-outlined">more_horiz</span></button>
+</div>
+<div class="flex-1 space-y-4 overflow-y-auto kanban-scroll opacity-70">
+<div class="bg-surface-container-lowest p-5 rounded-lg shadow-sm">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-1 rounded-full">Legal</span>
+<span class="material-symbols-outlined text-emerald-500" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<h4 class="font-bold text-on-surface text-lg leading-tight mb-2 line-through">Privacy Snow-Policy</h4>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-1">
+<img class="w-7 h-7 rounded-full border-2 border-white object-cover" data-alt="Legal head" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaq46jyPOIMfhJZZMjADypmBh0LQbss8sxDrmbHQL5pOi3wmbLgAvd2gHhqqb-S-3UN4x7Y91xlv5MIC0XRKP28np9G5MGZQ_TIb31B5LkHBS2dy_YS4dD-GLsRFODqfhVZ74_Rk1ediYxZruvQwV4M-eImbXewNNWKLWwBBofsQ8eAM6IR7UOL9ERdj1JlnMXcw5hxwR_50BEm9niXDSjJ5CYSK4qkWtNobnGxJ8qf0P-WpOebj1Ylh1DPvsh-cPVeQLWfSSziViB"/>
+</div>
+<div class="text-slate-400 text-xs font-medium">yukika-docs</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-lg shadow-sm">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-1 rounded-full">Dev</span>
+<span class="material-symbols-outlined text-emerald-500" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<h4 class="font-bold text-on-surface text-lg leading-tight mb-2 line-through">Setup CI/CD Pipeline</h4>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-1">
+<img class="w-7 h-7 rounded-full border-2 border-white object-cover" data-alt="Lead dev" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBi9wjgx8fNs4xNRBO0MV43Eo1Qw-TIq5SwjGJk0pksBAJ78RExqko1Nswjtc2Ta5XYk5sgHKdqYYhlwG9XPbbVr5KuY-FiNg8FHHMYJcxgSZC8PLuH6UBBPUXlDT5Ft0PEEvhTkWSlZYXL_PfRwXKkvpfLHKGz7AnSJD_u23dT6dXRp6UxfmJu97unOh6bNyWzFmEg18JngX_mnOjPqesie_zMmZOhl6OcsutyHfkvW9pDmaKe6kxUjN2UL7HN_sZ6Q0TnTnCSrjIT"/>
+</div>
+<div class="text-slate-400 text-xs font-medium">infra-prod</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Floating Action for Mobile / Bottom Navigation Placeholder -->
+<div class="md:hidden fixed bottom-6 right-6 z-50">
+<button class="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary-container text-white shadow-2xl flex items-center justify-center transition-transform active:scale-90">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+</div>
+</body></html>

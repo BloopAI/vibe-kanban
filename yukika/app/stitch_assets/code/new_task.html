@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>New Task - Yukika</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Be+Vietnam+Pro:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "secondary-fixed": "#c9cfff",
+                "surface-bright": "#f5f7f9",
+                "on-primary": "#eef3ff",
+                "on-tertiary-fixed": "#374b4e",
+                "surface-container-high": "#dfe3e6",
+                "secondary-dim": "#39489b",
+                "error": "#b31b25",
+                "tertiary-dim": "#3e5356",
+                "surface-tint": "#005da6",
+                "surface-variant": "#d9dde0",
+                "background": "#f5f7f9",
+                "on-surface-variant": "#595c5e",
+                "error-container": "#fb5151",
+                "error-dim": "#9f0519",
+                "primary-container": "#54a3ff",
+                "secondary-container": "#c9cfff",
+                "surface-container": "#e5e9eb",
+                "surface-container-low": "#eef1f3",
+                "on-secondary": "#f2f1ff",
+                "surface": "#f5f7f9",
+                "primary-dim": "#005192",
+                "on-secondary-fixed-variant": "#3a499c",
+                "on-error-container": "#570008",
+                "inverse-primary": "#1393ff",
+                "on-secondary-fixed": "#1a2b7e",
+                "inverse-on-surface": "#9a9d9f",
+                "primary": "#005da6",
+                "outline-variant": "#abadaf",
+                "outline": "#747779",
+                "tertiary-fixed": "#def5f8",
+                "surface-dim": "#d0d5d8",
+                "on-tertiary-fixed-variant": "#53686b",
+                "on-primary-fixed": "#000000",
+                "on-primary-fixed-variant": "#002d55",
+                "on-background": "#2c2f31",
+                "on-tertiary": "#e0f7fa",
+                "tertiary-fixed-dim": "#d0e7ea",
+                "tertiary-container": "#def5f8",
+                "surface-container-highest": "#d9dde0",
+                "tertiary": "#4a5f62",
+                "on-surface": "#2c2f31",
+                "on-secondary-container": "#304092",
+                "surface-container-lowest": "#ffffff",
+                "on-primary-container": "#002345",
+                "primary-fixed-dim": "#2695ff",
+                "on-tertiary-container": "#495e60",
+                "on-error": "#ffefee",
+                "primary-fixed": "#54a3ff",
+                "secondary-fixed-dim": "#b7c0ff",
+                "secondary": "#4555a8",
+                "inverse-surface": "#0b0f10"
+              },
+              fontFamily: {
+                "headline": ["Plus Jakarta Sans"],
+                "body": ["Be Vietnam Pro"],
+                "label": ["Be Vietnam Pro"]
+              },
+              borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+<style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+        h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .snow-glow {
+            box-shadow: 0px 20px 40px rgba(44, 47, 49, 0.06);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+        }
+        input:focus, textarea:focus {
+            outline: none !important;
+            box-shadow: 0 0 0 4px rgba(0, 93, 166, 0.1);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col pb-32">
+<!-- TopAppBar Shell -->
+<header class="fixed top-0 left-0 w-full z-50 bg-[#f5f7f9] dark:bg-slate-950 flex items-center justify-between px-6 h-20 transition-all duration-300">
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center w-12 h-12 rounded-full hover:bg-[#eef1f3] transition-all duration-300 active:scale-95">
+<span class="material-symbols-outlined text-[#0091FF] dark:text-blue-400" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="text-2xl font-bold text-[#2c2f31] dark:text-slate-100 tracking-tight">New Task</h1>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-xs font-semibold uppercase tracking-widest text-on-surface-variant opacity-50">Drafting</span>
+</div>
+</header>
+<main class="mt-24 px-6 max-w-2xl mx-auto w-full space-y-8">
+<!-- Hero Introduction / Visual Drift -->
+<!-- Form Section -->
+<form class="space-y-6">
+<!-- Task Title -->
+<div class="space-y-2">
+<label class="text-sm font-semibold text-on-surface ml-2">Task Title</label>
+<input class="w-full bg-surface-container-lowest border-none rounded-xl px-6 py-5 text-lg font-medium snow-glow placeholder:opacity-40" placeholder="What's the goal?" type="text"/>
+</div>
+<!-- Description -->
+<div class="space-y-2">
+<label class="text-sm font-semibold text-on-surface ml-2">Description</label>
+<textarea class="w-full bg-surface-container-lowest border-none rounded-xl px-6 py-5 text-base snow-glow placeholder:opacity-40 resize-none" placeholder="Add some context for your team..." rows="4"></textarea>
+</div>
+<!-- Bento Grid style inputs for URL and Project -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="text-sm font-semibold text-on-surface ml-2">Project</label>
+<div class="relative">
+<select class="w-full bg-surface-container-low border-none rounded-xl px-6 py-4 appearance-none text-on-surface-variant font-medium">
+<option>Design System Revamp</option>
+<option>Cloud Migration</option>
+<option>Winter Launch</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-semibold text-on-surface ml-2">Repository URL</label>
+<div class="flex items-center bg-surface-container-low rounded-xl px-4 py-4">
+<span class="material-symbols-outlined text-on-surface-variant mr-2" data-icon="link">link</span>
+<input class="bg-transparent border-none p-0 w-full text-on-surface-variant focus:ring-0 placeholder:opacity-40" placeholder="github.com/..." type="url"/>
+</div>
+</div>
+</div><div class="space-y-2">
+<label class="text-sm font-semibold text-on-surface ml-2">Dependencies</label>
+<div class="flex items-center bg-surface-container-low rounded-xl px-4 py-4">
+<span class="material-symbols-outlined text-on-surface-variant mr-2" data-icon="account_tree">account_tree</span>
+<input class="bg-transparent border-none p-0 w-full text-on-surface-variant focus:ring-0 placeholder:opacity-40" placeholder="Search for dependent tasks..." type="text"/>
+</div>
+</div>
+<!-- Team Members Section (Horizontal Scroller) -->
+<div class="space-y-4 pt-4">
+<div class="flex justify-between items-center px-2">
+<h3 class="text-sm font-bold uppercase tracking-widest text-secondary">Add Team Members</h3>
+<button class="text-primary text-sm font-bold flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+                        View All
+                    </button>
+</div>
+<div class="flex overflow-x-auto gap-4 pb-4 no-scrollbar -mx-2 px-2">
+<!-- Add Button Slot -->
+<button class="flex-shrink-0 w-16 h-16 rounded-full border-2 border-dashed border-outline-variant flex items-center justify-center hover:bg-surface-container transition-colors" type="button">
+<span class="material-symbols-outlined text-outline" data-icon="person_add">person_add</span>
+</button>
+<!-- Avatar Slots -->
+<div class="flex-shrink-0 group">
+<div class="w-16 h-16 rounded-full overflow-hidden snow-glow border-2 border-surface-container-lowest transition-transform group-hover:scale-105">
+<img class="w-full h-full object-cover" data-alt="Profile avatar of team member Alex" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVTNhyV2AQY6WDdtS9WaANVJJHrsqj7A1l0z93VUB1mTBBoeNSBPnzzCUZ-VKToPvMG2l3Fb-uDy3dBIdAeu6cw4ZCIgbdxQu6wmM7P9DJcPCxU1ErGpUShOtOW_048wo2Z1g-OpRclAncq8swqb5sU5gR8C12J3X7LKBvOjLqg-3v9cEJvooXAYZYyWlUwewhXDRLL5z_PqgAKJHB-JE-nkz6W64vjSbtgMFnoTspTTYw6lpbu5TIKakvil-hzgmeMOl7IEZIannJ"/>
+</div>
+<p class="text-[10px] font-bold text-center mt-2 text-on-surface-variant">Alex</p>
+</div>
+<div class="flex-shrink-0 group">
+<div class="w-16 h-16 rounded-full overflow-hidden snow-glow border-2 border-surface-container-lowest transition-transform group-hover:scale-105">
+<img class="w-full h-full object-cover" data-alt="Profile avatar of team member Sarah" src="https://lh3.googleusercontent.com/aida-public/AB6AXuApz6X4hNUlBjNlSxAY9Gm1Hn05AIhLvbnMZegqUOiZ_xjziX7RLrnC9OC7haTkDqMzhl2-TfHO6e8nwrFH3M4BCvHOQxxJaB5qhLzaj8he9y9ETAkHTXuFg_OExi-boSRf-1aGTjryDEuFmITXAn5S7b71iJVrl8jUIR0q6jq8dyOatcsUiiTKxFnBJm77UasfyYmFh2vG9sQsgO42UZoIa1O1En8sImH-9-7XXLmBK1ggs16jcK5Uu6cPLndA-wj6MWptONdWeY7X"/>
+</div>
+<p class="text-[10px] font-bold text-center mt-2 text-on-surface-variant">Sarah</p>
+</div>
+<div class="flex-shrink-0 group">
+<div class="w-16 h-16 rounded-full overflow-hidden snow-glow border-2 border-surface-container-lowest transition-transform group-hover:scale-105">
+<img class="w-full h-full object-cover" data-alt="Profile avatar of team member Jordan" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnn8VcVIxewKpio6dPzCj1iaYK1YCbKA9bKGEw4DHwI3wfq0UeFI3eIVxVB0erpW1iaLeF3r_7GFIn0X6r94q5EW5-oM-FxFmAoAHuLqhIwDd65pTFRXd_4arkegb0SRqZHw8oHZZI0T7fdvjbibUuzPNlnB3-apam_KamAXNdqLohMz9Sc-3OBrs3mhJx5xOj57xth_j1INNDhx3hyLRfK8t_HWl6RTN6L-Ml5hMVhYnpDEUL0ChsOXAwTGvp_BYKcBjrWJM72oyp"/>
+</div>
+<p class="text-[10px] font-bold text-center mt-2 text-on-surface-variant">Jordan</p>
+</div>
+<div class="flex-shrink-0 group">
+<div class="w-16 h-16 rounded-full overflow-hidden snow-glow border-2 border-surface-container-lowest transition-transform group-hover:scale-105">
+<img class="w-full h-full object-cover" data-alt="Profile avatar of team member Mika" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7bAFezQy-4nbzy9pOsPKe56bPmWWSyxHZjUdbd6s0sjACGe2eryp--BHCrMcaAX_hPlCp676sOnKyNzq83Duc3RHdxjFPiVrbdU4yKyW8ZE2d3cppu_VWzlQyVyMp77NhC8BUjI5EsbKEyhDpBZQ61pKxuniKg8VW4QNKX5CciIODSxTn5OeQl_KhrGeTL_P7rGEfL6oHMOCSlMeQ0HBOiFsb-MQ_o6G2KqgFKyGlvreazSsp6RuLXqPonYvHfLX0OxXWw299vkeX"/>
+</div>
+<p class="text-[10px] font-bold text-center mt-2 text-on-surface-variant">Mika</p>
+</div>
+</div>
+</div>
+</form>
+<!-- Dynamic Visual Detail (Drifting Element) -->
+</main>
+<!-- Bottom Action Area -->
+<div class="fixed bottom-0 left-0 w-full z-40 px-6 pb-10 pt-6 glass-panel flex flex-col items-center">
+<button class="w-full py-5 rounded-full bg-gradient-to-r from-primary to-primary-container text-white text-lg font-bold snow-glow flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all">
+<span>Create Task</span>
+<span class="material-symbols-outlined" data-icon="bolt" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</button>
+<p class="text-on-surface-variant text-sm mt-4 text-center px-4">
+    Let's turn your ideas into a fresh <span class="text-primary font-semibold">glacier-sized</span> achievement.
+</p></div>
+<!-- Hidden BottomNavBar (Suppressed for focused Transactional screen) -->
+<!-- As per instructions: exclude the navigation shell if the page intent is Task-Focused or "New Task" -->
+</body></html>
