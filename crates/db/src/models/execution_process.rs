@@ -680,6 +680,24 @@ impl ExecutionProcess {
         Ok(rows.into_iter().collect())
     }
 
+    /// Check if any non-devserver execution process has ever existed for a workspace.
+    pub async fn has_any_execution_for_workspace(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+    ) -> Result<bool, sqlx::Error> {
+        let count: i64 = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) as "count!: i64"
+               FROM execution_processes ep
+               JOIN sessions s ON ep.session_id = s.id
+               WHERE s.workspace_id = $1
+                 AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')"#,
+            workspace_id
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(count > 0)
+    }
+
     /// Returns the completed_at timestamp of the most recent non-devserver execution process
     /// for a workspace, if any has completed.
     pub async fn latest_completed_at_for_workspace(

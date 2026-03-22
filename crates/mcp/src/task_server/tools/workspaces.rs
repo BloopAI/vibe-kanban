@@ -304,12 +304,7 @@ impl McpServer {
         let http_timeout = Duration::from_secs(timeout_secs + 30);
 
         let response: McpWaitForWorkspaceResponse = match self
-            .send_json(
-                self.client
-                    .post(&url)
-                    .json(&payload)
-                    .timeout(http_timeout),
-            )
+            .send_json(self.client.post(&url).json(&payload).timeout(http_timeout))
             .await
         {
             Ok(r) => r,

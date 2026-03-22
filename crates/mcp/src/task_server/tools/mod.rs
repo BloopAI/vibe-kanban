@@ -422,6 +422,7 @@ mod tests {
             "run_session_prompt".to_string(),
             "update_session".to_string(),
             "update_workspace".to_string(),
+            "wait_for_workspace".to_string(),
         ]);
 
         assert_eq!(actual, expected);

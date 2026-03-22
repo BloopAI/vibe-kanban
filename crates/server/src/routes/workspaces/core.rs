@@ -222,6 +222,12 @@ pub async fn wait_for_workspace(
 ) -> Result<ResponseJson<ApiResponse<WaitForWorkspaceResponse>>, ApiError> {
     use std::time::Duration;
 
+    if request.workspace_ids.is_empty() {
+        return Err(ApiError::BadRequest(
+            "workspace_ids must not be empty".to_string(),
+        ));
+    }
+
     let pool = &deployment.db().pool;
     let deadline =
         tokio::time::Instant::now() + Duration::from_secs(request.timeout_seconds.min(3600));
@@ -231,23 +237,32 @@ pub async fn wait_for_workspace(
         for id in &request.workspace_ids {
             if let Some(ws) = Workspace::find_by_id_with_status(pool, *id).await? {
                 if !ws.is_running {
-                    let completed_at = ExecutionProcess::latest_completed_at_for_workspace(
-                        pool,
-                        ws.workspace.id,
-                    )
-                    .await?;
+                    // Only treat as completed if at least one execution process has
+                    // been created. Otherwise the workspace hasn't started yet and we
+                    // should keep polling.
+                    let has_executions =
+                        ExecutionProcess::has_any_execution_for_workspace(pool, ws.workspace.id)
+                            .await?;
 
-                    let status = if ws.is_errored { "failed" } else { "completed" };
+                    if has_executions {
+                        let completed_at = ExecutionProcess::latest_completed_at_for_workspace(
+                            pool,
+                            ws.workspace.id,
+                        )
+                        .await?;
 
-                    return Ok(ResponseJson(ApiResponse::success(
-                        WaitForWorkspaceResponse {
-                            completed_workspace_id: ws.workspace.id,
-                            status: status.to_string(),
-                            branch: ws.workspace.branch.clone(),
-                            name: ws.workspace.name.clone(),
-                            completed_at,
-                        },
-                    )));
+                        let status = if ws.is_errored { "failed" } else { "completed" };
+
+                        return Ok(ResponseJson(ApiResponse::success(
+                            WaitForWorkspaceResponse {
+                                completed_workspace_id: ws.workspace.id,
+                                status: status.to_string(),
+                                branch: ws.workspace.branch.clone(),
+                                name: ws.workspace.name.clone(),
+                                completed_at,
+                            },
+                        )));
+                    }
                 }
             }
         }
