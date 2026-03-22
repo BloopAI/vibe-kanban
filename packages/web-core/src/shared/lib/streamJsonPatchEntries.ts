@@ -107,20 +107,32 @@ export function streamJsonPatchEntries<E = unknown>(
 
   const handleMessage = (event: MessageEvent) => {
     msgChain = msgChain
-      .then(() => {
+      .then(async () => {
         // Binary frames are gzip-compressed JSON; decompress first
         if (event.data instanceof Blob) {
           const blob = event.data;
-          const ds = new DecompressionStream('gzip');
-          const decompressed = blob.stream().pipeThrough(ds);
-          return new Response(decompressed)
-            .json()
-            .then((msg: Record<string, unknown>) => processMsg(msg));
+          let decompressed: ReadableStream;
+          try {
+            const ds = new DecompressionStream('gzip');
+            decompressed = blob.stream().pipeThrough(ds);
+          } catch (err) {
+            console.error('Failed to initialize gzip decompression', err);
+            opts.onError?.(err);
+            return;
+          }
+
+          const msg = (await new Response(decompressed).json()) as Record<
+            string,
+            unknown
+          >;
+          processMsg(msg);
+          return;
         }
 
         processMsg(JSON.parse(event.data));
       })
       .catch((err: unknown) => {
+        console.error('Failed to process stream message', err);
         opts.onError?.(err);
       });
   };

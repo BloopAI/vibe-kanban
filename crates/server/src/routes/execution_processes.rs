@@ -264,7 +264,8 @@ async fn handle_normalized_logs_ws(
     Ok(())
 }
 
-/// Gzip-compress accumulated ops and send as a single binary frame, then clear the buffer.
+/// Gzip-compress accumulated ops and send as a single binary frame.
+/// Clears the buffer only after a successful send.
 async fn flush_batch(
     socket: &mut MaybeSignedWebSocket,
     ops: &mut Vec<serde_json::Value>,
