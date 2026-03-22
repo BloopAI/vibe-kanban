@@ -373,7 +373,7 @@ pub struct AuthConfig {
     local: Option<LocalAuthConfig>,
     jwt_secret: SecretString,
     public_base_url: String,
-    access_token_ttl_seconds: i64,
+    access_token_ttl_seconds: u64,
 }
 
 impl AuthConfig {
@@ -383,10 +383,27 @@ impl AuthConfig {
         validate_jwt_secret(&jwt_secret)?;
         let jwt_secret = SecretString::new(jwt_secret.into());
 
-        let access_token_ttl_seconds = env::var("ACCESS_TOKEN_TTL_SECONDS")
-            .ok()
-            .and_then(|v| v.parse::<i64>().ok())
-            .unwrap_or(crate::auth::jwt::DEFAULT_ACCESS_TOKEN_TTL_SECONDS);
+        let access_token_ttl_seconds = match env::var("ACCESS_TOKEN_TTL_SECONDS") {
+            Ok(v) => match v.parse::<u64>() {
+                Ok(0) => {
+                    tracing::warn!(
+                        "ACCESS_TOKEN_TTL_SECONDS=0 is invalid, using default ({}s)",
+                        crate::auth::jwt::DEFAULT_ACCESS_TOKEN_TTL_SECONDS
+                    );
+                    crate::auth::jwt::DEFAULT_ACCESS_TOKEN_TTL_SECONDS
+                }
+                Ok(val) => val,
+                Err(_) => {
+                    tracing::warn!(
+                        "ACCESS_TOKEN_TTL_SECONDS={:?} is not a valid u64, using default ({}s)",
+                        v,
+                        crate::auth::jwt::DEFAULT_ACCESS_TOKEN_TTL_SECONDS
+                    );
+                    crate::auth::jwt::DEFAULT_ACCESS_TOKEN_TTL_SECONDS
+                }
+            },
+            Err(_) => crate::auth::jwt::DEFAULT_ACCESS_TOKEN_TTL_SECONDS,
+        };
 
         let github = match env::var("GITHUB_OAUTH_CLIENT_ID") {
             Ok(client_id) if !client_id.is_empty() => {
@@ -451,7 +468,7 @@ impl AuthConfig {
         &self.public_base_url
     }
 
-    pub fn access_token_ttl_seconds(&self) -> i64 {
+    pub fn access_token_ttl_seconds(&self) -> u64 {
         self.access_token_ttl_seconds
     }
 }

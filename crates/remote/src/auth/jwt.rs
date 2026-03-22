@@ -19,7 +19,7 @@ use uuid::Uuid;
 
 use crate::{auth::provider::ProviderTokenDetails, db::auth::AuthSession};
 
-pub const DEFAULT_ACCESS_TOKEN_TTL_SECONDS: i64 = 120;
+pub const DEFAULT_ACCESS_TOKEN_TTL_SECONDS: u64 = 120;
 pub const REFRESH_TOKEN_TTL_DAYS: i64 = 365;
 const DEFAULT_JWT_LEEWAY_SECONDS: u64 = 60;
 
@@ -86,7 +86,7 @@ pub struct RefreshTokenDetails {
 #[derive(Clone)]
 pub struct JwtService {
     pub secret: Arc<SecretString>,
-    access_token_ttl_seconds: i64,
+    access_token_ttl_seconds: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -97,7 +97,7 @@ pub struct Tokens {
 }
 
 impl JwtService {
-    pub fn new(secret: SecretString, access_token_ttl_seconds: i64) -> Self {
+    pub fn new(secret: SecretString, access_token_ttl_seconds: u64) -> Self {
         Self {
             secret: Arc::new(secret),
             access_token_ttl_seconds,
@@ -127,7 +127,7 @@ impl JwtService {
         let now = Utc::now();
 
         // Access token, short-lived
-        let access_exp = now + ChronoDuration::seconds(self.access_token_ttl_seconds);
+        let access_exp = now + ChronoDuration::seconds(self.access_token_ttl_seconds as i64);
         let access_claims = AccessTokenClaims {
             sub: user_id,
             session_id: session.id,
@@ -176,7 +176,7 @@ impl JwtService {
         session_id: Uuid,
     ) -> Result<String, JwtError> {
         let now = Utc::now();
-        let access_exp = now + ChronoDuration::seconds(self.access_token_ttl_seconds);
+        let access_exp = now + ChronoDuration::seconds(self.access_token_ttl_seconds as i64);
         let claims = AccessTokenClaims {
             sub: user_id,
             session_id,
