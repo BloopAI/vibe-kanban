@@ -106,24 +106,23 @@ export function streamJsonPatchEntries<E = unknown>(
   let msgChain: Promise<void> = Promise.resolve();
 
   const handleMessage = (event: MessageEvent) => {
-    msgChain = msgChain.then(() => {
-      // Binary frames are gzip-compressed JSON; decompress first
-      if (event.data instanceof Blob) {
-        const blob = event.data;
-        const ds = new DecompressionStream('gzip');
-        const decompressed = blob.stream().pipeThrough(ds);
-        return new Response(decompressed)
-          .json()
-          .then((msg: Record<string, unknown>) => processMsg(msg))
-          .catch((err: unknown) => opts.onError?.(err));
-      }
+    msgChain = msgChain
+      .then(() => {
+        // Binary frames are gzip-compressed JSON; decompress first
+        if (event.data instanceof Blob) {
+          const blob = event.data;
+          const ds = new DecompressionStream('gzip');
+          const decompressed = blob.stream().pipeThrough(ds);
+          return new Response(decompressed)
+            .json()
+            .then((msg: Record<string, unknown>) => processMsg(msg));
+        }
 
-      try {
         processMsg(JSON.parse(event.data));
-      } catch (err) {
+      })
+      .catch((err: unknown) => {
         opts.onError?.(err);
-      }
-    });
+      });
   };
 
   void (async () => {

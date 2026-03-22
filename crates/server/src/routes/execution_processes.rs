@@ -281,7 +281,10 @@ async fn flush_batch(
     let mut encoder = GzEncoder::new(Vec::new(), Compression::fast());
     encoder.write_all(json.as_bytes())?;
     let compressed = encoder.finish()?;
-    let _ = socket.send(Message::Binary(compressed.into())).await;
+    socket
+        .send(Message::Binary(compressed.into()))
+        .await
+        .map_err(|e| anyhow::anyhow!("WebSocket send failed: {}", e))?;
     ops.clear();
     Ok(())
 }
