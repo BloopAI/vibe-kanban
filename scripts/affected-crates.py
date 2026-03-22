@@ -40,7 +40,7 @@ def _build_maps(meta: dict) -> tuple[str, dict[str, str], dict[str, set[str]]]:
         if pkg["id"] not in ws_member_ids:
             continue
         manifest = pkg["manifest_path"]
-        rel = manifest.replace(ws_root + "/", "").removesuffix("/Cargo.toml")
+        rel = manifest.removeprefix(ws_root + "/").removesuffix("/Cargo.toml")
         dir_to_pkg[rel] = pkg["name"]
 
     # Build reverse-dependency adjacency list (workspace packages only).

@@ -7,8 +7,8 @@ set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
-# Staged files (added, copied, modified).
-STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+# Staged files (added, copied, modified, renamed).
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
 
 has_staged() {
   echo "$STAGED" | grep -qE "$1"
