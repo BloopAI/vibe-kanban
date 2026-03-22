@@ -301,14 +301,14 @@ impl McpServer {
 
         // Use a per-request timeout slightly longer than the server-side timeout
         // to allow the server to return its own timeout response cleanly.
-        let http_timeout = Duration::from_secs(timeout_secs + 30);
+        let http_timeout = Duration::from_secs(timeout_secs.saturating_add(30));
 
         let response: McpWaitForWorkspaceResponse = match self
             .send_json(self.client.post(&url).json(&payload).timeout(http_timeout))
             .await
         {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         McpServer::success(&response)
