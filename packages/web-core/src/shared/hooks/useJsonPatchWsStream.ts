@@ -170,20 +170,21 @@ export const useJsonPatchWsStream = <T extends object>(
             // that was already received.
           };
 
-          ws.onclose = (evt) => {
+          ws.onclose = () => {
             setIsConnected(false);
             wsRef.current = null;
 
-            // Do not reconnect if we received a finished message or clean close
-            if (
-              cancelled ||
-              finishedRef.current ||
-              (evt?.code === 1000 && evt?.wasClean)
-            ) {
+            // Do not reconnect if we explicitly cancelled or the server sent a
+            // finished message.  Note: we intentionally do NOT skip reconnect
+            // for clean code-1000 closes here — mobile browsers close WebSocket
+            // connections with code 1000 / wasClean=true when a tab is
+            // backgrounded/suspended, which is NOT a permanent end of stream.
+            // finishedRef already covers the legitimate "stream ended" case.
+            if (cancelled || finishedRef.current) {
               return;
             }
 
-            // Otherwise, reconnect on unexpected/error closures
+            // Reconnect on any unexpected closure (including mobile tab suspension).
             retryAttemptsRef.current += 1;
             // Only show error if we haven't received any data yet
             if (!dataRef.current && retryAttemptsRef.current > 6) {
@@ -237,6 +238,34 @@ export const useJsonPatchWsStream = <T extends object>(
     deduplicatePatches,
     retryNonce,
   ]);
+
+  // Reconnect when the page becomes visible again.  Mobile browsers kill
+  // WebSocket connections when a tab is suspended; the onclose retry timer
+  // is also throttled/frozen in the background, so we need an explicit
+  // visibilitychange trigger to recover promptly when the user returns.
+  useEffect(() => {
+    if (!enabled || !endpoint) return;
+
+    const handleVisibilityChange = () => {
+      if (
+        document.visibilityState === 'visible' &&
+        !finishedRef.current &&
+        !wsRef.current
+      ) {
+        // Cancel any pending backoff timer and reconnect immediately.
+        if (retryTimerRef.current) {
+          window.clearTimeout(retryTimerRef.current);
+          retryTimerRef.current = null;
+        }
+        retryAttemptsRef.current = 0;
+        setRetryNonce((n) => n + 1);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () =>
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [enabled, endpoint]);
 
   const isInitializedForCurrentEndpoint =
     isInitialized && initializedForEndpointRef.current === endpoint;
