@@ -38,6 +38,7 @@ function ChatBoxWithDiffStats({
   onStartNewSession,
   onScrollToPreviousMessage,
   onScrollToBottom,
+  onScrollToUserMessage,
 }: {
   session: Session | undefined;
   workspaceId: string | undefined;
@@ -47,6 +48,7 @@ function ChatBoxWithDiffStats({
   onStartNewSession: () => void;
   onScrollToPreviousMessage: () => void;
   onScrollToBottom: (behavior?: 'auto' | 'smooth') => void;
+  onScrollToUserMessage: (patchKey: string) => void;
 }) {
   const { diffStats } = useWorkspaceDiffContext();
 
@@ -76,6 +78,7 @@ function ChatBoxWithDiffStats({
       showOpenWorkspaceButton={false}
       onScrollToPreviousMessage={onScrollToPreviousMessage}
       onScrollToBottom={onScrollToBottom}
+      onScrollToUserMessage={onScrollToUserMessage}
     />
   );
 }
@@ -125,6 +128,10 @@ export const WorkspacesMainContainer = forwardRef<
 
   const handleScrollToPreviousMessage = useCallback(() => {
     conversationListRef.current?.scrollToPreviousUserMessage();
+  }, []);
+
+  const handleScrollToUserMessage = useCallback((patchKey: string) => {
+    conversationListRef.current?.scrollToEntryByPatchKey(patchKey);
   }, []);
 
   const [isAtBottom, setIsAtBottom] = useState(true);
@@ -216,6 +223,7 @@ export const WorkspacesMainContainer = forwardRef<
       onStartNewSession={onStartNewSession}
       onScrollToPreviousMessage={handleScrollToPreviousMessage}
       onScrollToBottom={handleScrollToBottom}
+      onScrollToUserMessage={handleScrollToUserMessage}
     />
   );
 

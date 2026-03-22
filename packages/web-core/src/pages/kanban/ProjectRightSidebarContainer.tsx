@@ -211,6 +211,10 @@ function WorkspaceSessionPanel({
     conversationListRef.current?.scrollToPreviousUserMessage();
   }, []);
 
+  const handleScrollToUserMessage = useCallback((patchKey: string) => {
+    conversationListRef.current?.scrollToEntryByPatchKey(patchKey);
+  }, []);
+
   const handleScrollToBottom = useCallback(
     (behavior: 'auto' | 'smooth' = 'smooth') => {
       conversationListRef.current?.scrollToBottom(behavior);
@@ -336,6 +340,7 @@ function WorkspaceSessionPanel({
                   showOpenWorkspaceButton
                   onScrollToPreviousMessage={handleScrollToPreviousMessage}
                   onScrollToBottom={handleScrollToBottom}
+                  onScrollToUserMessage={handleScrollToUserMessage}
                 />
               </div>
             </div>

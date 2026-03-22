@@ -62,6 +62,7 @@ import type { NormalizedComment } from '@vibe/ui/components/pr-comment-node';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { sessionsApi } from '@/shared/lib/api';
 import { RenameSessionDialog } from '@vibe/ui/components/RenameSessionDialog';
+import type { TurnNavigationItem } from '@vibe/ui/components/TurnNavigationPopup';
 
 /** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {
@@ -97,6 +98,8 @@ interface SharedProps {
   onScrollToPreviousMessage: () => void;
   /** Callback to scroll to bottom of conversation */
   onScrollToBottom: (behavior?: 'auto' | 'smooth') => void;
+  /** Callback to scroll to a specific user message by patchKey */
+  onScrollToUserMessage: (patchKey: string) => void;
   /** Disable the "view code" click handler (for VS Code extension) */
   disableViewCode: boolean;
   /** Replace diff stats with an "Open Workspace" button in header */
@@ -142,6 +145,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     linesRemoved,
     onScrollToPreviousMessage,
     onScrollToBottom,
+    onScrollToUserMessage,
     disableViewCode = false,
     showOpenWorkspaceButton,
   } = props;
@@ -200,6 +204,26 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   // Get entries early to extract pending approval for scratch key
   const { entries } = useEntries();
   const tokenUsageInfo = useTokenUsage();
+
+  // Extract user messages for turn navigation
+  const userMessageTurns: TurnNavigationItem[] = useMemo(() => {
+    let turnNumber = 0;
+    return entries
+      .filter(
+        (entry) =>
+          entry.type === 'NORMALIZED_ENTRY' &&
+          entry.content.entry_type.type === 'user_message'
+      )
+      .map((entry) => {
+        turnNumber++;
+        return {
+          patchKey: entry.patchKey,
+          content:
+            entry.type === 'NORMALIZED_ENTRY' ? entry.content.content : '',
+          turnNumber,
+        };
+      });
+  }, [entries]);
 
   // Execution state
   const { isAttemptRunning, stopExecution, isStopping, processes } =
@@ -976,6 +1000,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         showOpenWorkspaceButton && workspaceId ? handleOpenWorkspace : undefined
       }
       onScrollToPreviousMessage={onScrollToPreviousMessage}
+      userMessageTurns={userMessageTurns}
+      onScrollToUserMessage={onScrollToUserMessage}
       renderEditor={renderEditor}
       repoIds={repoIds}
       tokenUsageInfo={tokenUsageInfo}

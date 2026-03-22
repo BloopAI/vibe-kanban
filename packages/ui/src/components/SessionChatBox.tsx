@@ -33,6 +33,10 @@ import {
   AskUserQuestionBanner,
   type AskUserQuestionBannerHandle,
 } from './AskUserQuestionBanner';
+import {
+  TurnNavigationPopup,
+  type TurnNavigationItem,
+} from './TurnNavigationPopup';
 
 // Status enum - single source of truth for execution state
 export type ExecutionStatus =
@@ -183,6 +187,8 @@ interface SessionChatBoxProps<TExecutor extends string = string> {
   onViewCode?: () => void;
   onOpenWorkspace?: () => void;
   onScrollToPreviousMessage?: () => void;
+  userMessageTurns?: TurnNavigationItem[];
+  onScrollToUserMessage?: (patchKey: string) => void;
   tokenUsageInfo?: ContextUsageInfo | null;
   supportsContextUsage?: boolean;
   dropzone?: DropzoneProps;
@@ -242,6 +248,8 @@ export function SessionChatBox<TExecutor extends string = string>({
   onViewCode,
   onOpenWorkspace,
   onScrollToPreviousMessage,
+  userMessageTurns,
+  onScrollToUserMessage,
   tokenUsageInfo,
   supportsContextUsage,
   dropzone,
@@ -776,16 +784,27 @@ export function SessionChatBox<TExecutor extends string = string>({
       }
       headerRight={
         <>
-          {/* Scroll to previous user message button + Agent icon for existing session mode */}
+          {/* Turn navigation + Agent icon for existing session mode */}
           {!isNewSessionMode && (
             <>
-              {onScrollToPreviousMessage && (
-                <ToolbarIconButton
-                  icon={ArrowUpIcon}
-                  title={t('conversation.actions.scrollToPreviousMessage')}
-                  aria-label={t('conversation.actions.scrollToPreviousMessage')}
-                  onClick={onScrollToPreviousMessage}
+              {onScrollToUserMessage ? (
+                <TurnNavigationPopup
+                  turns={userMessageTurns ?? []}
+                  onNavigateToTurn={onScrollToUserMessage}
                 />
+              ) : (
+                onScrollToPreviousMessage && (
+                  <ToolbarIconButton
+                    icon={ArrowUpIcon}
+                    title={t(
+                      'conversation.actions.scrollToPreviousMessage'
+                    )}
+                    aria-label={t(
+                      'conversation.actions.scrollToPreviousMessage'
+                    )}
+                    onClick={onScrollToPreviousMessage}
+                  />
+                )
               )}
               {renderAgentIcon?.(agent, 'size-icon-xl')}
             </>

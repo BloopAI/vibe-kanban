@@ -57,6 +57,7 @@ export interface ConversationListHandle {
   scrollToBottom: (behavior?: 'auto' | 'smooth') => void;
   adjustScrollBy: (delta: number) => void;
   getScrollElement: () => HTMLDivElement | null;
+  scrollToEntryByPatchKey: (patchKey: string) => void;
 }
 
 const ALWAYS_UNVIRTUALIZED_TAIL_ROWS = 8;
@@ -651,9 +652,20 @@ export const ConversationList = forwardRef<
         scrollElement.scrollTop += delta;
       },
       getScrollElement: () => tanstackScrollRef.current,
+      scrollToEntryByPatchKey: (patchKey: string) => {
+        const targetIndex = conversationRows.findIndex(
+          (row) => row.entry.patchKey === patchKey
+        );
+        if (targetIndex >= 0) {
+          programmaticScrollDeadlineRef.current = performance.now() + 1000;
+          scrollToAbsoluteIndex(targetIndex, 'start', 'smooth');
+        }
+      },
     }),
     [
+      conversationRows,
       conversationVirtualizer,
+      scrollToAbsoluteIndex,
       scrollToBottomAndClearSpacer,
       scrollToPreviousUserMessage,
     ]
