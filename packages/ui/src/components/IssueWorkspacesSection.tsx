@@ -73,7 +73,9 @@ export function IssueWorkspacesSection({
                     : undefined
                 }
                 onArchive={
-                  onArchiveWorkspace && localWorkspaceId
+                  onArchiveWorkspace &&
+                  localWorkspaceId &&
+                  workspace.isOwnedByCurrentUser
                     ? () => onArchiveWorkspace(localWorkspaceId)
                     : undefined
                 }
