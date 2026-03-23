@@ -427,7 +427,8 @@ fn build_opencode_client(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-const OPENCODE_PROMPT_TIMEOUT: Duration = Duration::from_hours(24 * 7);
+const OPENCODE_PROMPT_TIMEOUT: Duration = Duration::from_secs(60 * 30);
+const OPENCODE_SLASH_COMMAND_TIMEOUT: Duration = Duration::from_hours(24 * 7);
 
 fn append_session_error(session_error: &mut Option<String>, message: String) {
     match session_error {
@@ -713,7 +714,7 @@ pub async fn session_command(
     let resp = client
         .post(format!("{base_url}/session/{session_id}/command"))
         .query(&[("directory", directory)])
-        .timeout(OPENCODE_PROMPT_TIMEOUT)
+        .timeout(OPENCODE_SLASH_COMMAND_TIMEOUT)
         .json(&req)
         .send()
         .await
@@ -785,7 +786,7 @@ pub async fn session_summarize(
     let resp = client
         .post(format!("{base_url}/session/{session_id}/summarize"))
         .query(&[("directory", directory)])
-        .timeout(OPENCODE_PROMPT_TIMEOUT)
+        .timeout(OPENCODE_SLASH_COMMAND_TIMEOUT)
         .json(&req)
         .send()
         .await
