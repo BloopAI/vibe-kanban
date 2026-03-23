@@ -63,18 +63,17 @@ async fn teams_preview(
 ) -> Response {
     match client::list_teams(&state.http_client, &req.api_key).await {
         Ok(teams) => Json(teams).into_response(),
-        Err(e) => {
-            (StatusCode::UNPROCESSABLE_ENTITY, format!("Invalid API key: {e}")).into_response()
-        }
+        Err(e) => (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            format!("Invalid API key: {e}"),
+        )
+            .into_response(),
     }
 }
 
 // ── get_connection_stats ──────────────────────────────────────────────────────
 
-async fn get_connection_stats(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Response {
+async fn get_connection_stats(State(state): State<AppState>, Path(id): Path<Uuid>) -> Response {
     let conn = match db::get_connection_by_id(state.pool(), id).await {
         Ok(Some(c)) => c,
         _ => return StatusCode::NOT_FOUND.into_response(),
@@ -215,14 +214,9 @@ async fn create_connection(
         if let Ok(vk_statuses) = fetch_project_statuses(state.pool(), req.project_id).await {
             let auto_mappings = sync::auto_map_statuses(&vk_statuses, &states);
             for (vk_id, linear_id, linear_name) in auto_mappings {
-                let _ = db::upsert_status_mapping(
-                    state.pool(),
-                    conn.id,
-                    vk_id,
-                    linear_id,
-                    linear_name,
-                )
-                .await;
+                let _ =
+                    db::upsert_status_mapping(state.pool(), conn.id, vk_id, linear_id, linear_name)
+                        .await;
             }
         }
     }
@@ -373,11 +367,10 @@ async fn list_teams_for_connection(
         Some(k) => k,
         None => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
     };
-    let api_key =
-        match crypto::decrypt(enc_key.expose_secret().as_str(), &conn.encrypted_api_key) {
-            Ok(k) => k,
-            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-        };
+    let api_key = match crypto::decrypt(enc_key.expose_secret().as_str(), &conn.encrypted_api_key) {
+        Ok(k) => k,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
     match client::list_teams(&state.http_client, &api_key).await {
         Ok(teams) => Json(teams).into_response(),
         Err(e) => {
@@ -400,11 +393,10 @@ async fn trigger_sync(
         Some(k) => k,
         None => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
     };
-    let api_key =
-        match crypto::decrypt(enc_key.expose_secret().as_str(), &conn.encrypted_api_key) {
-            Ok(k) => k,
-            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-        };
+    let api_key = match crypto::decrypt(enc_key.expose_secret().as_str(), &conn.encrypted_api_key) {
+        Ok(k) => k,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
     if let Some(fallback_status_id) = fetch_fallback_status_id(state.pool(), conn.project_id)
         .await
         .ok()
@@ -439,11 +431,10 @@ async fn get_workflow_states(State(state): State<AppState>, Path(id): Path<Uuid>
         Some(k) => k,
         None => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
     };
-    let api_key =
-        match crypto::decrypt(enc_key.expose_secret().as_str(), &conn.encrypted_api_key) {
-            Ok(k) => k,
-            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-        };
+    let api_key = match crypto::decrypt(enc_key.expose_secret().as_str(), &conn.encrypted_api_key) {
+        Ok(k) => k,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
     match client::list_workflow_states(&state.http_client, &api_key, &conn.linear_team_id).await {
         Ok(states) => Json(states).into_response(),
         Err(e) => {
@@ -482,7 +473,10 @@ async fn handle_webhook(
         .unwrap_or("");
     let secret = conn.linear_webhook_secret.as_deref().unwrap_or("");
     if !crate::linear::webhook::verify_signature(secret.as_bytes(), sig, &body) {
-        tracing::warn!("Invalid Linear webhook signature for connection {}", conn.id);
+        tracing::warn!(
+            "Invalid Linear webhook signature for connection {}",
+            conn.id
+        );
         return StatusCode::UNAUTHORIZED.into_response();
     }
 
@@ -577,9 +571,7 @@ async fn handle_linear_issue_event(
                 data["description"].as_str().map(String::from),
                 priority,
                 None,
-                data["dueDate"]
-                    .as_str()
-                    .and_then(|d| d.parse().ok()),
+                data["dueDate"].as_str().and_then(|d| d.parse().ok()),
                 None,
                 0.0,
                 None,
@@ -597,8 +589,7 @@ async fn handle_linear_issue_event(
             .await?;
         }
         "update" => {
-            if let Some(link) =
-                db::get_link_for_linear_issue(state.pool(), linear_issue_id).await?
+            if let Some(link) = db::get_link_for_linear_issue(state.pool(), linear_issue_id).await?
             {
                 if is_ignored {
                     db::delete_issue_link_by_vk_id(state.pool(), link.vk_issue_id).await?;
@@ -650,8 +641,7 @@ async fn handle_linear_issue_event(
             }
         }
         "remove" => {
-            if let Some(link) =
-                db::get_link_for_linear_issue(state.pool(), linear_issue_id).await?
+            if let Some(link) = db::get_link_for_linear_issue(state.pool(), linear_issue_id).await?
             {
                 db::delete_issue_link_by_vk_id(state.pool(), link.vk_issue_id).await?;
                 crate::db::issues::IssueRepository::delete(state.pool(), link.vk_issue_id)
@@ -684,11 +674,11 @@ async fn handle_linear_comment_event(
         Some(k) => k,
         None => return Ok(()),
     };
-    let _api_key =
-        match crypto::decrypt(enc_key.expose_secret().as_str(), &conn.encrypted_api_key) {
-            Ok(k) => k,
-            Err(_) => return Ok(()),
-        };
+    let _api_key = match crypto::decrypt(enc_key.expose_secret().as_str(), &conn.encrypted_api_key)
+    {
+        Ok(k) => k,
+        Err(_) => return Ok(()),
+    };
 
     match action {
         "create" => {
@@ -748,11 +738,7 @@ async fn get_vk_comment_by_linear_id(
     Ok(row.map(|r| r.vk_comment_id))
 }
 
-async fn create_vk_comment(
-    state: &AppState,
-    issue_id: Uuid,
-    body: &str,
-) -> anyhow::Result<Uuid> {
+async fn create_vk_comment(state: &AppState, issue_id: Uuid, body: &str) -> anyhow::Result<Uuid> {
     let resp = IssueCommentRepository::create(
         state.pool(),
         None,
@@ -765,11 +751,7 @@ async fn create_vk_comment(
     Ok(resp.data.id)
 }
 
-async fn update_vk_comment(
-    state: &AppState,
-    comment_id: Uuid,
-    body: &str,
-) -> anyhow::Result<()> {
+async fn update_vk_comment(state: &AppState, comment_id: Uuid, body: &str) -> anyhow::Result<()> {
     IssueCommentRepository::update(state.pool(), comment_id, Some(body.to_string())).await?;
     Ok(())
 }
@@ -808,8 +790,7 @@ impl From<db::LinearProjectConnection> for ConnectionResponse {
 }
 
 fn generate_webhook_secret() -> String {
-    use aes_gcm::aead::OsRng;
-    use aes_gcm::aead::rand_core::RngCore;
+    use aes_gcm::aead::{OsRng, rand_core::RngCore};
     use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
     let mut bytes = [0u8; 32];
     OsRng.fill_bytes(&mut bytes);

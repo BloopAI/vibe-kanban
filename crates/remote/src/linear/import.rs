@@ -63,18 +63,18 @@ pub async fn run_initial_import(ctx: ImportContext) -> anyhow::Result<()> {
 
             let result = crate::db::issues::IssueRepository::create(
                 &ctx.pool,
-                None,             // id: auto-generate
+                None, // id: auto-generate
                 ctx.project_id,
                 status_id,
                 linear_issue.title.clone(),
                 linear_issue.description.clone(),
                 priority,
-                None,             // start_date
-                target_date,      // target_date (Linear due_date)
-                None,             // completed_at
+                None,        // start_date
+                target_date, // target_date (Linear due_date)
+                None,        // completed_at
                 sort_order,
-                None,             // parent_issue_id
-                None,             // parent_issue_sort_order
+                None, // parent_issue_id
+                None, // parent_issue_sort_order
                 serde_json::Value::Object(Default::default()),
                 ctx.creator_user_id,
             )

@@ -21,9 +21,10 @@ pub fn verify_signature(secret: &[u8], signature_hex: &str, payload: &[u8]) -> b
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use hmac::{Hmac, Mac};
     use sha2::Sha256;
+
+    use super::*;
 
     fn sign(secret: &[u8], payload: &[u8]) -> String {
         let mut mac = Hmac::<Sha256>::new_from_slice(secret).unwrap();

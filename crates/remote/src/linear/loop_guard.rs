@@ -22,11 +22,9 @@ pub async fn try_acquire(
     issue_id: Uuid,
     direction: SyncDirection,
 ) -> sqlx::Result<bool> {
-    sqlx::query!(
-        "DELETE FROM linear_sync_in_flight WHERE expires_at < NOW()"
-    )
-    .execute(pool)
-    .await?;
+    sqlx::query!("DELETE FROM linear_sync_in_flight WHERE expires_at < NOW()")
+        .execute(pool)
+        .await?;
 
     let result = sqlx::query!(
         r#"

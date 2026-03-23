@@ -178,12 +178,9 @@ pub async fn set_webhook(
 }
 
 pub async fn delete_connection(pool: &PgPool, id: Uuid) -> sqlx::Result<()> {
-    sqlx::query!(
-        "DELETE FROM linear_project_connections WHERE id = $1",
-        id
-    )
-    .execute(pool)
-    .await?;
+    sqlx::query!("DELETE FROM linear_project_connections WHERE id = $1", id)
+        .execute(pool)
+        .await?;
     Ok(())
 }
 
@@ -334,10 +331,7 @@ pub async fn upsert_status_mapping(
 
 // ── Comment links ─────────────────────────────────────────────────────────────
 
-pub async fn get_comment_link(
-    pool: &PgPool,
-    vk_comment_id: Uuid,
-) -> sqlx::Result<Option<String>> {
+pub async fn get_comment_link(pool: &PgPool, vk_comment_id: Uuid) -> sqlx::Result<Option<String>> {
     let row = sqlx::query!(
         r#"
         SELECT linear_comment_id
