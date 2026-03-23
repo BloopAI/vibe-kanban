@@ -31,6 +31,14 @@
         "relayDesc": "Túnel de relay e inscrição"
       }
     },
+    "hostPicker": {
+      "thisMachine": "Esta máquina",
+      "localHost": "Host local",
+      "remoteHost": "Host remoto",
+      "noHostAvailable": "Nenhum host disponível para configurações específicas de host ainda.",
+      "pairMachineHint": "Vincule uma máquina para abrir as configurações da máquina.",
+      "selectMachineHint": "Selecione uma máquina para abrir as configurações da máquina."
+    },
     "general": {
       "loading": "Carregando configurações...",
       "loadError": "Falha ao carregar configuração.",
