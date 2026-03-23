@@ -14,6 +14,15 @@ pub const SKIP_REQUEST_HEADERS: &[&str] = &[
     "sec-websocket-extensions",
     "accept-encoding",
     "origin",
+    // Relay signing headers must not leak into preview dev servers. When a VK
+    // instance is the preview target, forwarding these causes it to treat the
+    // request as a relay request and reject it (the preview's signing service
+    // has no knowledge of the session).
+    "x-vk-relayed",
+    "x-vk-sig-session",
+    "x-vk-sig-ts",
+    "x-vk-sig-nonce",
+    "x-vk-sig-signature",
 ];
 
 pub fn normalized_proxy_path(path: &str) -> &str {
