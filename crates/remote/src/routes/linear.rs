@@ -553,6 +553,21 @@ async fn handle_linear_issue_event(
             let status_id = resolve_status_id(state, conn, data).await?;
             let priority =
                 sync::linear_priority_to_vk(data["priority"].as_i64().unwrap_or(0) as i32);
+            // Webhooks have no RequestContext — resolve a real user id from the project's org.
+            let creator_user_id = sqlx::query!(
+                r#"SELECT om.user_id AS "user_id!: Uuid"
+                FROM projects p
+                JOIN organization_member_metadata om ON om.organization_id = p.organization_id
+                WHERE p.id = $1
+                LIMIT 1"#,
+                conn.project_id
+            )
+            .fetch_optional(state.pool())
+            .await
+            .ok()
+            .flatten()
+            .map(|r| r.user_id)
+            .unwrap_or(Uuid::nil());
             let result = crate::db::issues::IssueRepository::create(
                 state.pool(),
                 None,
@@ -570,7 +585,7 @@ async fn handle_linear_issue_event(
                 None,
                 None,
                 serde_json::Value::Object(Default::default()),
-                conn.project_id,
+                creator_user_id,
             )
             .await?;
             db::create_issue_link(
