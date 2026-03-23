@@ -54,13 +54,6 @@ pub enum GitServiceError {
     RebaseInProgress,
 }
 
-/// Whether a branch is local or remote (abstraction over git2::BranchType).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GitBranchType {
-    Local,
-    Remote,
-}
-
 /// Service for managing Git operations in task execution workflows
 #[derive(Clone)]
 pub struct GitService {}
@@ -1242,22 +1235,19 @@ impl GitService {
         Ok(final_commit.id().to_string())
     }
 
-    pub fn find_branch_type(
+    /// Returns true if the branch is a remote-tracking branch (not local).
+    pub fn is_remote_branch(
         &self,
         repo_path: &Path,
         branch_name: &str,
-    ) -> Result<GitBranchType, GitServiceError> {
+    ) -> Result<bool, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
-        // Try to find the branch as a local branch first
         match repo.find_branch(branch_name, BranchType::Local) {
-            Ok(_) => Ok(GitBranchType::Local),
-            Err(_) => {
-                // If not found, try to find it as a remote branch
-                match repo.find_branch(branch_name, BranchType::Remote) {
-                    Ok(_) => Ok(GitBranchType::Remote),
-                    Err(_) => Err(GitServiceError::BranchNotFound(branch_name.to_string())),
-                }
-            }
+            Ok(_) => Ok(false),
+            Err(_) => match repo.find_branch(branch_name, BranchType::Remote) {
+                Ok(_) => Ok(true),
+                Err(_) => Err(GitServiceError::BranchNotFound(branch_name.to_string())),
+            },
         }
     }
 
