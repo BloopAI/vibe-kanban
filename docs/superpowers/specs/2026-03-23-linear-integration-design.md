@@ -12,6 +12,8 @@ Add a 2-way sync between Vibe Kanban (cloud) issues and Linear issues. Changes i
 
 **Synced fields:** title, description, status, priority, assignee, labels, due/target dates, comments.
 
+**Ignore label:** Linear issues tagged with a label named `vibe-kanban-ignore` (case-insensitive) are excluded from sync entirely — they are not imported during initial import, not created in VK when received via webhook, and if a VK issue already linked to a Linear issue gains this label, the link is silently dropped and no further sync occurs for that issue.
+
 **Auth:** Linear personal API key (stored encrypted server-side).
 
 **Granularity:** Per Vibe Kanban project — each project can be independently linked to one Linear team (optionally filtered to a specific Linear project).
@@ -235,6 +237,13 @@ Same pattern for comment mutations and `issue_assignees` mutations.
 **Label mapping:** Tags are synced via `linear_label_links`.
 - **VK → Linear**: for each VK tag on the issue, look up the `linear_label_id` from `linear_label_links`; if no link exists, create the label in Linear then store the link
 - **Linear → VK**: for each Linear label ID, look up the VK tag from `linear_label_links`; if no link, create the tag in VK then store the link
+- The `vibe-kanban-ignore` label is never synced as a VK tag; it is only used as a skip signal (see Ignore Label section below)
+
+**Ignore label:** Any Linear issue that has a label matching `vibe-kanban-ignore` (case-insensitive name match) is excluded from all sync operations:
+- **Initial import**: issues with this label are skipped
+- **Inbound webhook (IssueCreate / IssueUpdate)**: if the issue carries this label, the event is discarded; if the issue was previously linked (label added after initial sync), delete the `linear_issue_links` row and the corresponding VK issue (same hard-delete path as `IssueRemove`)
+- **Outbound (VK → Linear)**: not applicable — by definition a VK issue is only linked if the Linear issue didn't have the ignore label when the link was created. If the label is added to Linear post-link, the next inbound webhook handles cleanup as described above
+- The ignore label name `vibe-kanban-ignore` is a constant in `sync.rs`; no configuration needed
 
 ---
 
@@ -247,6 +256,7 @@ Same pattern for comment mutations and `issue_assignees` mutations.
 | Webhook signature mismatch | Return 401, log warning |
 | Missing status mapping | Fall back to first VK status with `type = "todo"` (or lowest sort_order) |
 | Assignee email mismatch | Leave assignee null, log at INFO level |
+| Linear issue has `vibe-kanban-ignore` label | Skip sync; if previously linked, delete link + VK issue |
 | Linear webhook delivery failure | Linear retries with exponential backoff; VK handler is idempotent |
 | VK→Linear push failure | Log error, mark `last_synced_at` as null; surfaced in connection status UI |
 | Sync loop | Loop guard via `linear_sync_in_flight` Postgres table (TTL 30s, INSERT ON CONFLICT DO NOTHING; skip if 0 rows inserted) prevents re-pushing Linear-originated changes across all server instances |
