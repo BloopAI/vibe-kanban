@@ -34,7 +34,9 @@ export type SettingsSectionInitialState = {
   'remote-projects':
     | { organizationId?: string; projectId?: string }
     | undefined;
-  agents: { executor?: string; variant?: string } | undefined;
+  agents:
+    | { executor?: string; variant?: string; openInstall?: boolean }
+    | undefined;
   mcp: undefined;
   relay: { hostId?: string } | undefined;
 };
@@ -89,7 +91,11 @@ export function renderSettingsSection(
         />
       );
     case 'agents':
-      return <AgentsSettingsSection />;
+      return (
+        <AgentsSettingsSection
+          initialState={initialState as SettingsSectionInitialState['agents']}
+        />
+      );
     case 'mcp':
       return <McpSettingsSection />;
     case 'relay':

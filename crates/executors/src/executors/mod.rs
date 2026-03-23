@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc};
+use std::{fmt, path::Path, str::FromStr, sync::Arc};
 
 use async_trait::async_trait;
 use command_group::AsyncGroupChild;
@@ -6,9 +6,7 @@ use enum_dispatch::enum_dispatch;
 use futures::stream::BoxStream;
 use futures_io::Error as FuturesIoError;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use sqlx::Type;
-use strum_macros::{Display, EnumDiscriminants, EnumString, VariantNames};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 use tokio::task::JoinHandle;
 use ts_rs::TS;
@@ -22,8 +20,8 @@ use crate::{
     command::CommandBuildError,
     env::ExecutionEnv,
     executors::{
-        amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
-        droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
+        acp_server::AcpServerExecutor, amp::Amp, claude::ClaudeCode, codex::Codex,
+        cursor::CursorAgent, opencode::Opencode,
     },
     logs::utils::patch,
     mcp_config::McpConfig,
@@ -31,17 +29,14 @@ use crate::{
 };
 
 pub mod acp;
+pub mod acp_server;
 pub mod amp;
 pub mod claude;
 pub mod codex;
-pub mod copilot;
 pub mod cursor;
-pub mod droid;
-pub mod gemini;
 pub mod opencode;
 #[cfg(feature = "qa-mode")]
 pub mod qa_mock;
-pub mod qwen;
 pub mod utils;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
@@ -91,36 +86,183 @@ pub enum ExecutorError {
     AuthRequired(String),
 }
 
+// ---------------------------------------------------------------------------
+// BaseCodingAgent  –  string newtype
+// ---------------------------------------------------------------------------
+
+/// Executor identity. Non-ACP built-ins use SCREAMING_SNAKE_CASE.
+/// ACP servers use registry ID directly (e.g. "gemini", "cline").
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub struct BaseCodingAgent(String);
+
+/// Normalize any agent name to SCREAMING_SNAKE_CASE.
+/// Handles legacy aliases and kebab-case registry IDs.
+fn normalize_base_agent(raw: &str) -> String {
+    // Handle specific legacy aliases first
+    match raw {
+        "COPILOT" => return "GITHUB_COPILOT_CLI".to_string(),
+        "DROID" => return "FACTORY_DROID".to_string(),
+        _ => {}
+    }
+    // Convert kebab-case / lowercase to SCREAMING_SNAKE_CASE
+    raw.replace('-', "_").to_ascii_uppercase()
+}
+
+impl BaseCodingAgent {
+    pub fn claude_code() -> Self {
+        Self("CLAUDE_CODE".into())
+    }
+    pub fn amp() -> Self {
+        Self("AMP".into())
+    }
+    pub fn codex() -> Self {
+        Self("CODEX".into())
+    }
+    pub fn opencode() -> Self {
+        Self("OPENCODE".into())
+    }
+    pub fn cursor() -> Self {
+        Self("CURSOR_AGENT".into())
+    }
+    pub fn qa_mock() -> Self {
+        Self("QA_MOCK".into())
+    }
+    pub fn from_registry_id(id: impl Into<String>) -> Self {
+        Self(normalize_base_agent(&id.into()))
+    }
+    /// Create from a raw string without normalization.
+    /// Used when the name is already in SCREAMING_SNAKE_CASE.
+    pub fn from_str_raw(name: &str) -> Self {
+        if name.is_empty() {
+            Self("ACP_SERVER".into())
+        } else {
+            Self(name.to_string())
+        }
+    }
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+    /// Returns `true` for executors that are NOT ACP-protocol based
+    /// (i.e. they have their own dedicated executor struct).
+    pub fn is_builtin_non_acp(&self) -> bool {
+        matches!(
+            self.0.as_str(),
+            "CLAUDE_CODE" | "AMP" | "CODEX" | "OPENCODE" | "CURSOR_AGENT" | "QA_MOCK"
+        )
+    }
+}
+
+impl fmt::Display for BaseCodingAgent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl FromStr for BaseCodingAgent {
+    type Err = std::convert::Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(normalize_base_agent(s)))
+    }
+}
+
+impl Serialize for BaseCodingAgent {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for BaseCodingAgent {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let raw = String::deserialize(deserializer)?;
+        Ok(Self(normalize_base_agent(&raw)))
+    }
+}
+
+// --- ts_rs manual impl ---
+
+impl TS for BaseCodingAgent {
+    type WithoutGenerics = Self;
+    type OptionInnerType = Self;
+
+    fn name() -> String {
+        "BaseCodingAgent".to_string()
+    }
+
+    fn decl() -> String {
+        "type BaseCodingAgent = string;".to_string()
+    }
+
+    fn decl_concrete() -> String {
+        Self::decl()
+    }
+
+    fn inline() -> String {
+        "string".to_string()
+    }
+
+    fn inline_flattened() -> String {
+        Self::inline()
+    }
+
+    fn output_path() -> Option<std::path::PathBuf> {
+        Some(std::path::PathBuf::from("BaseCodingAgent.ts"))
+    }
+}
+
+// --- From impls ---
+
+impl From<&CodingAgent> for BaseCodingAgent {
+    fn from(agent: &CodingAgent) -> Self {
+        match agent {
+            CodingAgent::ClaudeCode(_) => Self::claude_code(),
+            CodingAgent::Amp(_) => Self::amp(),
+            CodingAgent::Codex(_) => Self::codex(),
+            CodingAgent::Opencode(_) => Self::opencode(),
+            CodingAgent::CursorAgent(_) => Self::cursor(),
+            CodingAgent::AcpServer(a) => Self::from_str_raw(&a.name),
+            #[cfg(feature = "qa-mode")]
+            CodingAgent::QaMock(_) => Self::qa_mock(),
+        }
+    }
+}
+
+impl From<CodingAgent> for BaseCodingAgent {
+    fn from(agent: CodingAgent) -> Self {
+        Self::from(&agent)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// CodingAgent  enum
+// ---------------------------------------------------------------------------
+
 #[enum_dispatch]
-#[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, TS, Display, EnumDiscriminants, VariantNames,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
-#[strum_discriminants(
-    name(BaseCodingAgent),
-    // Only add Hash; Eq/PartialEq are already provided by EnumDiscriminants.
-    derive(EnumString, Hash, strum_macros::Display, Serialize, Deserialize, TS, Type),
-    strum(serialize_all = "SCREAMING_SNAKE_CASE"),
-    ts(use_ts_enum),
-    serde(rename_all = "SCREAMING_SNAKE_CASE"),
-    sqlx(type_name = "TEXT", rename_all = "SCREAMING_SNAKE_CASE")
-)]
 pub enum CodingAgent {
     ClaudeCode,
     Amp,
-    Gemini,
     Codex,
     Opencode,
-    #[serde(alias = "CURSOR")]
-    #[strum_discriminants(serde(alias = "CURSOR"))]
-    #[strum_discriminants(strum(serialize = "CURSOR", serialize = "CURSOR_AGENT"))]
     CursorAgent,
-    QwenCode,
-    Copilot,
-    Droid,
+    #[serde(
+        alias = "GEMINI",
+        alias = "QWEN_CODE",
+        alias = "COPILOT",
+        alias = "DROID",
+        alias = "FACTORY_DROID"
+    )]
+    AcpServer(AcpServerExecutor),
     #[cfg(feature = "qa-mode")]
     QaMock(QaMockExecutor),
+}
+
+impl fmt::Display for CodingAgent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let base = BaseCodingAgent::from(self);
+        write!(f, "{}", base)
+    }
 }
 
 impl CodingAgent {
@@ -151,14 +293,6 @@ impl CodingAgent {
                 self.preconfigured_mcp(),
                 false,
             ),
-            Self::Droid(_) => McpConfig::new(
-                vec!["mcpServers".to_string()],
-                serde_json::json!({
-                    "mcpServers": {}
-                }),
-                self.preconfigured_mcp(),
-                false,
-            ),
             _ => McpConfig::new(
                 vec!["mcpServers".to_string()],
                 serde_json::json!({
@@ -171,9 +305,12 @@ impl CodingAgent {
     }
 
     pub fn supports_mcp(&self) -> bool {
-        self.default_mcp_config_path().is_some()
+        // ACP servers always support MCP (passed via ACP protocol, not file-based)
+        matches!(self, Self::AcpServer(_)) || self.default_mcp_config_path().is_some()
     }
 
+    /// Returns capabilities from static config or disk cache (sync, never probes).
+    /// For on-demand probing, use `GET /api/agents/capabilities`.
     pub fn capabilities(&self) -> Vec<BaseAgentCapability> {
         match self {
             Self::ClaudeCode(_) => vec![
@@ -189,13 +326,36 @@ impl CodingAgent {
                 BaseAgentCapability::SetupHelper,
                 BaseAgentCapability::ContextUsage,
             ],
-            Self::Gemini(_) | Self::QwenCode(_) => {
-                vec![BaseAgentCapability::SessionFork]
-            }
+            Self::Amp(_) => vec![],
             Self::CursorAgent(_) => vec![BaseAgentCapability::SetupHelper],
-            Self::Amp(_) | Self::Copilot(_) | Self::Droid(_) => vec![],
+            Self::AcpServer(exec) => {
+                let mut caps = vec![];
+                if let Some(cached) = crate::capability_cache::get_for_server(&exec.name)
+                    && cached.supports_fork
+                {
+                    caps.push(BaseAgentCapability::SessionFork);
+                }
+                caps
+            }
             #[cfg(feature = "qa-mode")]
-            Self::QaMock(_) => vec![], // QA mock doesn't need special capabilities
+            Self::QaMock(_) => vec![],
+        }
+    }
+
+    /// Async version that probes ACP servers on demand (for dedicated endpoint).
+    pub async fn capabilities_with_probe(&self) -> Vec<BaseAgentCapability> {
+        match self {
+            Self::AcpServer(exec) => {
+                let mut caps = vec![];
+                if let Some(rid) = exec.registry_id()
+                    && let Some(cached) = crate::capability_cache::get_or_probe(&rid).await
+                    && cached.supports_fork
+                {
+                    caps.push(BaseAgentCapability::SessionFork);
+                }
+                caps
+            }
+            _ => self.capabilities(),
         }
     }
 }
@@ -322,9 +482,9 @@ pub type CancellationToken = tokio_util::sync::CancellationToken;
 #[derive(Debug)]
 pub struct SpawnedChild {
     pub child: AsyncGroupChild,
-    /// Executor → Container: signals when executor wants to exit
+    /// Executor -> Container: signals when executor wants to exit
     pub exit_signal: Option<ExecutorExitSignal>,
-    /// Container → Executor: signals when container wants to cancel the execution
+    /// Container -> Executor: signals when container wants to cancel the execution
     pub cancel: Option<CancellationToken>,
 }
 
@@ -396,28 +556,44 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_cursor_agent_deserialization() {
-        // Test that CURSOR_AGENT is accepted
-        let result = BaseCodingAgent::from_str("CURSOR_AGENT");
-        assert!(result.is_ok(), "CURSOR_AGENT should be valid");
-        assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
+    fn test_legacy_agent_normalization() {
+        // CURSOR_AGENT stays CURSOR_AGENT (canonical name)
+        let result = BaseCodingAgent::from_str("CURSOR_AGENT").unwrap();
+        assert_eq!(result.as_str(), "CURSOR_AGENT");
 
-        // Test that legacy CURSOR is still accepted for backwards compatibility
-        let result = BaseCodingAgent::from_str("CURSOR");
-        assert!(
-            result.is_ok(),
-            "CURSOR should be valid for backwards compatibility"
-        );
-        assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
+        // Legacy COPILOT → GITHUB_COPILOT_CLI
+        let result = BaseCodingAgent::from_str("COPILOT").unwrap();
+        assert_eq!(result.as_str(), "GITHUB_COPILOT_CLI");
 
-        // Test serde deserialization for CURSOR_AGENT
-        let result: Result<BaseCodingAgent, _> = serde_json::from_str(r#""CURSOR_AGENT""#);
-        assert!(result.is_ok(), "CURSOR_AGENT should deserialize via serde");
-        assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
+        // Legacy DROID → FACTORY_DROID
+        let result = BaseCodingAgent::from_str("DROID").unwrap();
+        assert_eq!(result.as_str(), "FACTORY_DROID");
 
-        // Test serde deserialization for legacy CURSOR
-        let result: Result<BaseCodingAgent, _> = serde_json::from_str(r#""CURSOR""#);
-        assert!(result.is_ok(), "CURSOR should deserialize via serde");
-        assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
+        // SCREAMING_SNAKE stays as-is
+        let result = BaseCodingAgent::from_str("GEMINI").unwrap();
+        assert_eq!(result.as_str(), "GEMINI");
+
+        let result = BaseCodingAgent::from_str("QWEN_CODE").unwrap();
+        assert_eq!(result.as_str(), "QWEN_CODE");
+
+        // kebab-case registry IDs convert to SCREAMING_SNAKE
+        let result = BaseCodingAgent::from_str("qwen-code").unwrap();
+        assert_eq!(result.as_str(), "QWEN_CODE");
+
+        let result = BaseCodingAgent::from_str("github-copilot-cli").unwrap();
+        assert_eq!(result.as_str(), "GITHUB_COPILOT_CLI");
+
+        // Builtins stay as-is
+        let result = BaseCodingAgent::from_str("CLAUDE_CODE").unwrap();
+        assert_eq!(result, BaseCodingAgent::claude_code());
+    }
+
+    #[test]
+    fn test_base_coding_agent_serde_roundtrip() {
+        let agent = BaseCodingAgent::claude_code();
+        let json = serde_json::to_string(&agent).unwrap();
+        assert_eq!(json, r#""CLAUDE_CODE""#);
+        let back: BaseCodingAgent = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, agent);
     }
 }

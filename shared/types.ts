@@ -579,9 +579,9 @@ working_dir: string | null, };
 
 export type ScriptRequestLanguage = "Bash";
 
-export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI", CODEX = "CODEX", OPENCODE = "OPENCODE", CURSOR_AGENT = "CURSOR_AGENT", QWEN_CODE = "QWEN_CODE", COPILOT = "COPILOT", DROID = "DROID" }
+export type BaseCodingAgent = string;
 
-export type CodingAgent = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid };
+export type CodingAgent = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "ACP_SERVER": AcpServerExecutor };
 
 export type SlashCommandDescription = { 
 /**
@@ -621,7 +621,7 @@ models?: Array<string>,
  */
 reasoning_by_model?: { [key in string]?: string }, };
 
-export type ExecutorProfile = { recently_used_models?: ExecutorRecentModels | null, } & ({ [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } });
+export type ExecutorProfile = { recently_used_models?: ExecutorRecentModels | null, } & ({ [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "ACP_SERVER": AcpServerExecutor } });
 
 export type ExecutorConfigs = { executors: { [key in BaseCodingAgent]?: ExecutorProfile }, };
 
@@ -630,8 +630,6 @@ export enum BaseAgentCapability { SESSION_FORK = "SESSION_FORK", SETUP_HELPER = 
 export type ClaudeEffort = "low" | "medium" | "high" | "max";
 
 export type ClaudeCode = { append_prompt: AppendPrompt, claude_code_router?: boolean | null, plan?: boolean | null, approvals?: boolean | null, model?: string | null, effort?: ClaudeEffort | null, agent?: string | null, dangerously_skip_permissions?: boolean | null, disable_api_key?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
-
-export type Gemini = { append_prompt: AppendPrompt, model?: string | null, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
 export type Amp = { append_prompt: AppendPrompt, dangerously_allow_all?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
@@ -647,10 +645,6 @@ export type ReasoningSummary = "auto" | "concise" | "detailed" | "none";
 
 export type ReasoningSummaryFormat = "none" | "experimental";
 
-export type CursorAgent = { append_prompt: AppendPrompt, force?: boolean | null, model?: string | null, reasoning?: string | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
-
-export type Copilot = { append_prompt: AppendPrompt, model?: string | null, allow_all_tools?: boolean | null, allow_tool?: string | null, deny_tool?: string | null, add_dir?: Array<string> | null, disable_mcp_server?: Array<string> | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
-
 export type Opencode = { append_prompt: AppendPrompt, model?: string | null, variant?: string | null, agent?: string | null, 
 /**
  * Auto-approve agent actions
@@ -661,13 +655,43 @@ auto_approve: boolean,
  */
 auto_compact: boolean, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
-export type QwenCode = { append_prompt: AppendPrompt, model?: string | null, agent?: string | null, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
+export type AcpServerExecutor = { 
+/**
+ * The SCREAMING_SNAKE name of the installed server.
+ * Set from profile context (not user-editable, not shown in schema).
+ */
+name: string, append_prompt: AppendPrompt, 
+/**
+ * Override the model name. Use this to pass an unadvertised model
+ * or set a persistent default that the model selector can override.
+ */
+model_id?: string | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
-export type Droid = { append_prompt: AppendPrompt, autonomy: Autonomy, model?: string | null, reasoning_effort?: DroidReasoningEffort | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
+export type InstalledAcpServer = { 
+/**
+ * Display name in SCREAMING_SNAKE_CASE (= BaseCodingAgent key)
+ */
+name: string, 
+/**
+ * How this server was installed.
+ */
+source: ServerSource, is_builtin: boolean, enabled: boolean, 
+/**
+ * Icon URL from registry (populated at query time, not persisted).
+ */
+icon?: string | null, };
 
-export type Autonomy = "normal" | "low" | "medium" | "high" | "skip-permissions-unsafe";
+export type ServerSource = { "type": "registry", registry_id: string, } | { "type": "custom" };
 
-export type DroidReasoningEffort = "none" | "dynamic" | "off" | "low" | "medium" | "high";
+export type RegistryEntry = { id: string, name: string, version: string, description: string, icon?: string | null, repository?: string | null, authors: Array<string>, license: string, distribution: RegistryDistribution, };
+
+export type RegistryDistribution = { npx?: NpxDistribution | null, binary?: { [key in string]?: BinaryPlatformEntry } | null, uvx?: UvxDistribution | null, };
+
+export type NpxDistribution = { package: string, args: Array<string>, env: { [key in string]?: string }, };
+
+export type BinaryPlatformEntry = { archive: string, cmd: string, args: Array<string>, };
+
+export type UvxDistribution = { package: string, args: Array<string>, };
 
 export type AppendPrompt = string | null;
 

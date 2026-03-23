@@ -10,11 +10,9 @@ import { useCreateAttachments } from '@/shared/hooks/useCreateAttachments';
 import { useExecutorConfig } from '@/shared/hooks/useExecutorConfig';
 import { saveProjectRepoDefaults } from '@/shared/hooks/useProjectRepoDefaults';
 import { getSortedExecutorVariantKeys } from '@/shared/lib/executor';
-import {
-  toPrettyCase,
-  splitMessageToTitleDescription,
-} from '@/shared/lib/string';
+import { splitMessageToTitleDescription } from '@/shared/lib/string';
 import type { BaseCodingAgent, Repo } from 'shared/types';
+import { getAgentName } from '@/shared/components/AgentIcon';
 import { CreateChatBox } from '@vibe/ui/components/CreateChatBox';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CreateModeRepoPickerBar } from './CreateModeRepoPickerBar';
@@ -365,8 +363,13 @@ export function CreateChatBoxContainer({
                     selected: effectiveExecutor,
                     options: executorOptions,
                     onChange: handleExecutorChange,
+                    onInstall: () =>
+                      SettingsDialog.show({
+                        initialSection: 'agents',
+                        initialState: { openInstall: true },
+                      }),
                   }}
-                  formatExecutorLabel={toPrettyCase}
+                  formatExecutorLabel={getAgentName}
                   error={displayError}
                   repoIds={repos.map((r) => r.id)}
                   repoId={repoId}

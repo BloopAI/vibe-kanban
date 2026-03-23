@@ -535,12 +535,12 @@ impl StandardCodingAgentExecutor for Opencode {
 
         let cache = executor_options_cache();
         let cmd_key = self.compute_models_cache_key();
-        let base_executor = BaseCodingAgent::Opencode;
+        let base_executor = BaseCodingAgent::opencode();
 
         let (target_path, initial_options) = if let Some(wd) = workdir {
             let wd_buf = wd.to_path_buf();
             let target_key =
-                ExecutorConfigCacheKey::new(Some(&wd_buf), cmd_key.clone(), base_executor);
+                ExecutorConfigCacheKey::new(Some(&wd_buf), cmd_key.clone(), base_executor.clone());
             if let Some(cached) = cache.get(&target_key) {
                 return Ok(Box::pin(futures::stream::once(async move {
                     patch::executor_discovered_options(cached.as_ref().clone().with_loading(false))
@@ -549,13 +549,16 @@ impl StandardCodingAgentExecutor for Opencode {
             let provisional = repo_path
                 .and_then(|rp| {
                     let rp_buf = rp.to_path_buf();
-                    let repo_key =
-                        ExecutorConfigCacheKey::new(Some(&rp_buf), cmd_key.clone(), base_executor);
+                    let repo_key = ExecutorConfigCacheKey::new(
+                        Some(&rp_buf),
+                        cmd_key.clone(),
+                        base_executor.clone(),
+                    );
                     cache.get(&repo_key)
                 })
                 .or_else(|| {
                     let global_key =
-                        ExecutorConfigCacheKey::new(None, cmd_key.clone(), base_executor);
+                        ExecutorConfigCacheKey::new(None, cmd_key.clone(), base_executor.clone());
                     cache.get(&global_key)
                 });
             (
@@ -567,13 +570,14 @@ impl StandardCodingAgentExecutor for Opencode {
         } else if let Some(rp) = repo_path {
             let rp_buf = rp.to_path_buf();
             let target_key =
-                ExecutorConfigCacheKey::new(Some(&rp_buf), cmd_key.clone(), base_executor);
+                ExecutorConfigCacheKey::new(Some(&rp_buf), cmd_key.clone(), base_executor.clone());
             if let Some(cached) = cache.get(&target_key) {
                 return Ok(Box::pin(futures::stream::once(async move {
                     patch::executor_discovered_options(cached.as_ref().clone().with_loading(false))
                 })));
             }
-            let global_key = ExecutorConfigCacheKey::new(None, cmd_key.clone(), base_executor);
+            let global_key =
+                ExecutorConfigCacheKey::new(None, cmd_key.clone(), base_executor.clone());
             let provisional = cache.get(&global_key);
             (
                 Some(rp.to_path_buf()),
@@ -736,14 +740,14 @@ impl StandardCodingAgentExecutor for Opencode {
                 let target_cache_key = ExecutorConfigCacheKey::new(
                     Some(path),
                     cmd_key_for_discovery.clone(),
-                    BaseCodingAgent::Opencode,
+                    BaseCodingAgent::opencode(),
                 );
                 cache.put(target_cache_key, final_options.clone());
             }
             let global_cache_key = ExecutorConfigCacheKey::new(
                 None,
                 cmd_key_for_discovery,
-                BaseCodingAgent::Opencode,
+                BaseCodingAgent::opencode(),
             );
             cache.put(global_cache_key, final_options);
         };
@@ -755,7 +759,7 @@ impl StandardCodingAgentExecutor for Opencode {
 
     fn get_preset_options(&self) -> ExecutorConfig {
         ExecutorConfig {
-            executor: BaseCodingAgent::Opencode,
+            executor: BaseCodingAgent::opencode(),
             variant: None,
             model_id: self.model.clone(),
             agent_id: self.agent.clone(),

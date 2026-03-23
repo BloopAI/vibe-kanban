@@ -87,9 +87,19 @@ async fn main() -> Result<(), VibeKanbanError> {
     deployment
         .track_if_analytics_allowed("session_start", serde_json::json!({}))
         .await;
-    // Preload global executor options cache for all executors with DEFAULT presets
+    server::startup::migrate_legacy_acp_executors(&deployment).await;
+    // Warm cache for recently-used executors only (past 7 days)
+    let warmup_pool = deployment.db().pool.clone();
     tokio::spawn(async move {
-        executors::executors::utils::preload_global_executor_options_cache().await;
+        if let Ok(executors) =
+            db::models::session::Session::find_recent_executors(&warmup_pool, 7).await
+        {
+            let agents = executors
+                .into_iter()
+                .map(|e| executors::executors::BaseCodingAgent::from_str_raw(&e))
+                .collect();
+            executors::executors::utils::preload_for_agents(agents).await;
+        }
     });
     let port = std::env::var("BACKEND_PORT")
         .or_else(|_| std::env::var("PORT"))

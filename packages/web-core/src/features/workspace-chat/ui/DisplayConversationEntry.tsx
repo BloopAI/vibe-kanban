@@ -18,7 +18,7 @@ import {
 } from '@/shared/stores/useUiPreferencesStore';
 import { getActualTheme } from '@/shared/lib/theme';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
-import { useUserSystem } from '@/shared/hooks/useUserSystem';
+import { useCapabilities } from '@/shared/hooks/useCapabilities';
 import { useTheme } from '@/shared/hooks/useTheme';
 import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';
@@ -298,7 +298,6 @@ function renderToolUseEntry(
 
 function DisplayConversationEntry(props: Props) {
   const { t } = useTranslation('common');
-  const { capabilities } = useUserSystem();
   const {
     entry,
     aggregatedGroup,
@@ -309,12 +308,11 @@ function DisplayConversationEntry(props: Props) {
     workspaceWithSession,
     resetAction,
   } = props;
+  const executor = workspaceWithSession?.session?.executor ?? null;
+  const { data: capabilities } = useCapabilities(executor);
   const sessionId = workspaceWithSession?.session?.id;
-  const executorCanFork = !!(
-    workspaceWithSession?.session?.executor &&
-    capabilities?.[workspaceWithSession.session.executor]?.includes(
-      BaseAgentCapability.SESSION_FORK
-    )
+  const executorCanFork = !!capabilities?.includes(
+    BaseAgentCapability.SESSION_FORK
   );
 
   // Handle aggregated groups (consecutive file_read or search entries)

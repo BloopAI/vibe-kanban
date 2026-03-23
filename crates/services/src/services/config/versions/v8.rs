@@ -134,7 +134,7 @@ impl Default for Config {
         Self {
             config_version: "v8".to_string(),
             theme: ThemeMode::System,
-            executor_profile: ExecutorProfileId::new(BaseCodingAgent::ClaudeCode),
+            executor_profile: ExecutorProfileId::new(BaseCodingAgent::claude_code()),
             disclaimer_acknowledged: false,
             onboarding_acknowledged: false,
             remote_onboarding_acknowledged: false,

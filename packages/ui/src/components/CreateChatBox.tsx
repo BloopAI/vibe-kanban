@@ -1,5 +1,5 @@
-import { type ReactNode, useRef } from 'react';
-import { CheckIcon, PaperclipIcon, XIcon } from '@phosphor-icons/react';
+import { type ReactNode, useRef, useState } from 'react';
+import { CheckIcon, PaperclipIcon, PlusIcon, XIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { Checkbox } from './Checkbox';
 import { ChatBoxBase, VisualVariant, type DropzoneProps } from './ChatBoxBase';
@@ -27,6 +27,7 @@ export interface ExecutorProps<TExecutor extends string = string> {
   selected: TExecutor | null;
   options: TExecutor[];
   onChange: (executor: TExecutor) => void;
+  onInstall?: () => void;
 }
 
 export interface SaveAsDefaultProps {
@@ -115,6 +116,7 @@ export function CreateChatBox<TExecutor extends string = string>({
 }: CreateChatBoxProps<TExecutor>) {
   const { t } = useTranslation(['common', 'tasks']);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [execDropdownOpen, setExecDropdownOpen] = useState(false);
   const isDisabled = disabled || isSending;
   const canSend = editor.value.trim().length > 0 && !isDisabled;
 
@@ -160,9 +162,25 @@ export function CreateChatBox<TExecutor extends string = string>({
       headerLeft={
         <>
           {agentIcon}
-          <ToolbarDropdown label={executorLabel} disabled={isDisabled}>
-            <DropdownMenuLabel>
+          <ToolbarDropdown
+            label={executorLabel}
+            disabled={isDisabled}
+            open={execDropdownOpen}
+            onOpenChange={setExecDropdownOpen}
+          >
+            <DropdownMenuLabel className="flex items-center justify-between">
               {t('tasks:conversation.executors')}
+              {executor.onInstall && (
+                <button
+                  onClick={() => {
+                    setExecDropdownOpen(false);
+                    executor.onInstall?.();
+                  }}
+                  className="text-low hover:text-normal"
+                >
+                  <PlusIcon className="size-icon-2xs" weight="bold" />
+                </button>
+              )}
             </DropdownMenuLabel>
             {executor.options.map((exec) => (
               <DropdownMenuItem

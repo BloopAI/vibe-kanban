@@ -19,6 +19,11 @@ pub struct AcpClient {
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     feedback_queue: Arc<Mutex<Vec<String>>>,
     cancel: CancellationToken,
+    /// When true, most tools are auto-approved without user confirmation.
+    /// SwitchMode tools always require approval regardless of this flag.
+    auto_approve: bool,
+    /// When true, session_notification events are suppressed (used during session/load replay)
+    suppress_events: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl AcpClient {
@@ -27,13 +32,22 @@ impl AcpClient {
         event_tx: mpsc::UnboundedSender<AcpEvent>,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
         cancel: CancellationToken,
+        auto_approve: bool,
     ) -> Self {
         Self {
             event_tx,
             approvals,
             feedback_queue: Arc::new(Mutex::new(Vec::new())),
             cancel,
+            auto_approve,
+            suppress_events: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
+    }
+
+    /// Suppress session_notification events (used during session/load history replay)
+    pub fn set_suppress_events(&self, suppress: bool) {
+        self.suppress_events
+            .store(suppress, std::sync::atomic::Ordering::Relaxed);
     }
 
     pub fn record_user_prompt_event(&self, prompt: &str) {
@@ -71,8 +85,14 @@ impl acp::Client for AcpClient {
     ) -> Result<acp::RequestPermissionResponse, acp::Error> {
         self.send_event(AcpEvent::RequestPermission(args.clone()));
 
-        if self.approvals.is_none() {
-            // Auto-approve with best available option when no approval service is configured
+        let is_switch_mode = matches!(args.tool_call.fields.kind, Some(acp::ToolKind::SwitchMode));
+        let should_auto_approve = self.auto_approve && !is_switch_mode;
+
+        if should_auto_approve || self.approvals.is_none() {
+            if is_switch_mode && self.approvals.is_none() {
+                warn!("SwitchMode requires approval but no approval service available");
+            }
+            // Auto-approve with best available option
             let chosen_option = args
                 .options
                 .iter()
@@ -177,6 +197,14 @@ impl acp::Client for AcpClient {
     }
 
     async fn session_notification(&self, args: acp::SessionNotification) -> Result<(), acp::Error> {
+        // Suppress events during session/load replay (e.g. Qwen replays full history)
+        if self
+            .suppress_events
+            .load(std::sync::atomic::Ordering::Relaxed)
+        {
+            return Ok(());
+        }
+
         // Convert to typed events
         let event = match args.update {
             acp::SessionUpdate::AgentMessageChunk(chunk) => Some(AcpEvent::Message(chunk.content)),
@@ -184,6 +212,12 @@ impl acp::Client for AcpClient {
             acp::SessionUpdate::ToolCall(tc) => Some(AcpEvent::ToolCall(tc)),
             acp::SessionUpdate::ToolCallUpdate(update) => Some(AcpEvent::ToolUpdate(update)),
             acp::SessionUpdate::Plan(plan) => Some(AcpEvent::Plan(plan)),
+            acp::SessionUpdate::AvailableCommandsUpdate(update) => {
+                Some(AcpEvent::AvailableCommands(update.available_commands))
+            }
+            acp::SessionUpdate::CurrentModeUpdate(update) => {
+                Some(AcpEvent::CurrentMode(update.current_mode_id))
+            }
             _ => Some(AcpEvent::Other(args)),
         };
 
@@ -238,10 +272,10 @@ impl acp::Client for AcpClient {
         Err(acp::Error::method_not_found())
     }
 
-    async fn kill_terminal_command(
+    async fn kill_terminal(
         &self,
-        _args: acp::KillTerminalCommandRequest,
-    ) -> Result<acp::KillTerminalCommandResponse, acp::Error> {
+        _args: acp::KillTerminalRequest,
+    ) -> Result<acp::KillTerminalResponse, acp::Error> {
         Err(acp::Error::method_not_found())
     }
 

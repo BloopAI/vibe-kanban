@@ -9,8 +9,7 @@
 //! ## Use cases
 //! - **stderr_processor**: Cluster stderr lines by time gap and format as `ErrorMessage` log entries.
 //!   See [`stderr_processor::normalize_stderr_logs`].
-//! - **Gemini executor**: Post-process Gemini CLI output to make it prettier, then format it as assistant messages clustered by size.
-//!   See [`crate::executors::gemini::Gemini::format_stdout_chunk`].
+//! - **ACP servers**: Post-process ACP server output and format it as assistant messages clustered by size.
 //! - **Tool call support**: detect lines starting with a distinct marker via `message_boundary_predicate` to separate tool invocations.
 use std::{
     time::{Duration, Instant},

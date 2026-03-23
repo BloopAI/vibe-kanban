@@ -1,8 +1,13 @@
-import { BaseCodingAgent } from 'shared/types';
+import { type BaseCodingAgent } from 'shared/types';
+import { Agents } from 'shared/agent-constants';
 import { useTheme, getResolvedTheme } from '@/shared/hooks/useTheme';
+import { toPrettyCase } from '@/shared/lib/string';
+import { cn } from '@/shared/lib/utils';
+import { useInstalledAcpServers } from '@/shared/hooks/useAcpServers';
 
 type AgentIconProps = {
   agent: BaseCodingAgent | null | undefined;
+  iconUrl?: string;
   className?: string;
 };
 
@@ -11,32 +16,45 @@ export function getAgentName(
 ): string {
   if (!agent) return 'Agent';
   switch (agent) {
-    case BaseCodingAgent.CLAUDE_CODE:
+    case Agents.CLAUDE_CODE:
       return 'Claude Code';
-    case BaseCodingAgent.AMP:
+    case Agents.AMP:
       return 'AMP';
-    case BaseCodingAgent.GEMINI:
+    case Agents.GEMINI:
       return 'Gemini';
-    case BaseCodingAgent.CODEX:
+    case Agents.CODEX:
       return 'Codex';
-    case BaseCodingAgent.OPENCODE:
+    case Agents.OPENCODE:
       return 'OpenCode';
-    case BaseCodingAgent.CURSOR_AGENT:
+    case Agents.CURSOR:
       return 'Cursor';
-    case BaseCodingAgent.QWEN_CODE:
-      return 'Qwen';
-    case BaseCodingAgent.COPILOT:
-      return 'Copilot';
-    case BaseCodingAgent.DROID:
-      return 'Droid';
+    case Agents.QWEN_CODE:
+      return 'Qwen Code';
+    case Agents.GITHUB_COPILOT_CLI:
+      return 'GitHub Copilot';
+    case Agents.FACTORY_DROID:
+      return 'Factory Droid';
+    default:
+      // SCREAMING_SNAKE_CASE → "Pretty Case"
+      return toPrettyCase(agent);
   }
 }
 
-export function AgentIcon({ agent, className = 'h-4 w-4' }: AgentIconProps) {
+export function AgentIcon({
+  agent,
+  iconUrl,
+  className = 'h-4 w-4',
+}: AgentIconProps) {
   const { theme } = useTheme();
   const resolvedTheme = getResolvedTheme(theme);
   const isDark = resolvedTheme === 'dark';
   const suffix = isDark ? '-dark' : '-light';
+
+  const { data: installedServers } = useInstalledAcpServers();
+  const resolvedIconUrl =
+    iconUrl ??
+    installedServers?.find((s) => s.name === agent)?.icon ??
+    undefined;
 
   if (!agent) {
     return null;
@@ -46,35 +64,45 @@ export function AgentIcon({ agent, className = 'h-4 w-4' }: AgentIconProps) {
   let iconPath = '';
 
   switch (agent) {
-    case BaseCodingAgent.CLAUDE_CODE:
+    case Agents.CLAUDE_CODE:
       iconPath = `/agents/claude${suffix}.svg`;
       break;
-    case BaseCodingAgent.AMP:
+    case Agents.AMP:
       iconPath = `/agents/amp${suffix}.svg`;
       break;
-    case BaseCodingAgent.GEMINI:
+    case Agents.GEMINI:
       iconPath = `/agents/gemini${suffix}.svg`;
       break;
-    case BaseCodingAgent.CODEX:
+    case Agents.CODEX:
       iconPath = `/agents/codex${suffix}.svg`;
       break;
-    case BaseCodingAgent.OPENCODE:
+    case Agents.OPENCODE:
       iconPath = `/agents/opencode${suffix}.svg`;
       break;
-    case BaseCodingAgent.CURSOR_AGENT:
+    case Agents.CURSOR:
       iconPath = `/agents/cursor${suffix}.svg`;
       break;
-    case BaseCodingAgent.QWEN_CODE:
+    case Agents.QWEN_CODE:
       iconPath = `/agents/qwen${suffix}.svg`;
       break;
-    case BaseCodingAgent.COPILOT:
+    case Agents.GITHUB_COPILOT_CLI:
       iconPath = `/agents/copilot${suffix}.svg`;
       break;
-    case BaseCodingAgent.DROID:
+    case Agents.FACTORY_DROID:
       iconPath = `/agents/droid${suffix}.svg`;
       break;
     default:
-      return null;
+      if (resolvedIconUrl) {
+        return (
+          <img
+            src={resolvedIconUrl}
+            alt={agentName}
+            className={cn(className, 'brightness-0', isDark && 'invert')}
+          />
+        );
+      }
+      iconPath = `/agents/acp${suffix}.svg`;
+      break;
   }
 
   return <img src={iconPath} alt={agentName} className={className} />;

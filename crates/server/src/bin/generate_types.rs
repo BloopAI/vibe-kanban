@@ -1,6 +1,5 @@
-use std::{collections::HashMap, env, fs, path::Path};
+use std::{env, fs, path::Path};
 
-use schemars::{JsonSchema, Schema, SchemaGenerator, generate::SchemaSettings};
 use services::services::config::{DEFAULT_COMMIT_REMINDER_PROMPT, DEFAULT_PR_DESCRIPTION_PROMPT};
 use ts_rs::TS;
 
@@ -217,7 +216,6 @@ fn generate_types_content() -> String {
         executors::executors::BaseAgentCapability::decl(),
         executors::executors::claude::ClaudeEffort::decl(),
         executors::executors::claude::ClaudeCode::decl(),
-        executors::executors::gemini::Gemini::decl(),
         executors::executors::amp::Amp::decl(),
         executors::executors::codex::Codex::decl(),
         executors::executors::codex::SandboxMode::decl(),
@@ -225,13 +223,15 @@ fn generate_types_content() -> String {
         executors::executors::codex::ReasoningEffort::decl(),
         executors::executors::codex::ReasoningSummary::decl(),
         executors::executors::codex::ReasoningSummaryFormat::decl(),
-        executors::executors::cursor::CursorAgent::decl(),
-        executors::executors::copilot::Copilot::decl(),
         executors::executors::opencode::Opencode::decl(),
-        executors::executors::qwen::QwenCode::decl(),
-        executors::executors::droid::Droid::decl(),
-        executors::executors::droid::Autonomy::decl(),
-        executors::executors::droid::ReasoningEffortLevel::decl(),
+        executors::executors::acp_server::AcpServerExecutor::decl(),
+        executors::installed_servers::InstalledAcpServer::decl(),
+        executors::installed_servers::ServerSource::decl(),
+        executors::registry::RegistryEntry::decl(),
+        executors::registry::RegistryDistribution::decl(),
+        executors::registry::NpxDistribution::decl(),
+        executors::registry::BinaryPlatformEntry::decl(),
+        executors::registry::UvxDistribution::decl(),
         executors::executors::AppendPrompt::decl(),
         executors::actions::coding_agent_initial::CodingAgentInitialRequest::decl(),
         executors::actions::coding_agent_follow_up::CodingAgentFollowUpRequest::decl(),
@@ -287,99 +287,6 @@ fn generate_types_content() -> String {
     format!("{HEADER}\n\n{body}\n\n{constants}")
 }
 
-fn generate_json_schema<T: JsonSchema>() -> Result<String, serde_json::Error> {
-    // Draft-07, inline everything (no $defs)
-    let mut settings = SchemaSettings::draft07();
-    settings.inline_subschemas = true;
-
-    let generator: SchemaGenerator = settings.into_generator();
-    let schema: Schema = generator.into_root_schema_for::<T>();
-
-    // Convert to JSON value to manipulate it
-    let mut schema_value: serde_json::Value = serde_json::to_value(&schema)?;
-    // Remove the title from root schema to prevent RJSF from creating an outer field container
-    if let Some(obj) = schema_value.as_object_mut() {
-        obj.remove("title");
-    }
-    let formatted = serde_json::to_string_pretty(&schema_value)?;
-    Ok(formatted)
-}
-
-fn generate_schemas() -> Result<HashMap<&'static str, String>, serde_json::Error> {
-    // // Generate schemas for all executor types
-    println!("Generating JSON schemas…");
-    let schemas: HashMap<&str, String> = HashMap::from([
-        (
-            "amp",
-            generate_json_schema::<executors::executors::amp::Amp>()?,
-        ),
-        (
-            "claude_code",
-            generate_json_schema::<executors::executors::claude::ClaudeCode>()?,
-        ),
-        (
-            "gemini",
-            generate_json_schema::<executors::executors::gemini::Gemini>()?,
-        ),
-        (
-            "codex",
-            generate_json_schema::<executors::executors::codex::Codex>()?,
-        ),
-        (
-            "cursor_agent",
-            generate_json_schema::<executors::executors::cursor::CursorAgent>()?,
-        ),
-        (
-            "opencode",
-            generate_json_schema::<executors::executors::opencode::Opencode>()?,
-        ),
-        (
-            "qwen_code",
-            generate_json_schema::<executors::executors::qwen::QwenCode>()?,
-        ),
-        (
-            "copilot",
-            generate_json_schema::<executors::executors::copilot::Copilot>()?,
-        ),
-        (
-            "droid",
-            generate_json_schema::<executors::executors::droid::Droid>()?,
-        ),
-    ]);
-    println!(
-        "✅ JSON schemas generated. {} schemas created.",
-        schemas.len()
-    );
-    Ok(schemas)
-}
-
-fn write_schemas(
-    schemas_path: &Path,
-    schemas: HashMap<&str, String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    fs::create_dir_all(schemas_path)?;
-
-    for (name, content) in schemas {
-        let schema_file = schemas_path.join(format!("{}.json", name));
-        fs::write(&schema_file, content)?;
-        println!("✅ Generated schema: {}", schema_file.display());
-    }
-
-    Ok(())
-}
-
-fn schemas_up_to_date(schemas_path: &Path, schemas: &HashMap<&str, String>) -> bool {
-    for (name, expected_content) in schemas {
-        let schema_file = schemas_path.join(format!("{}.json", name));
-        let current_content = fs::read_to_string(&schema_file).unwrap_or_default();
-        if &current_content != expected_content {
-            eprintln!("❌ Schema shared/schemas/{}.json is not up to date.", name);
-            return false;
-        }
-    }
-    true
-}
-
 fn main() {
     let args: Vec<String> = env::args().collect();
     let check_mode = args.iter().any(|arg| arg == "--check");
@@ -389,35 +296,17 @@ fn main() {
     println!("Generating TypeScript types…");
 
     let generated_types = generate_types_content();
-    let schema_content = match generate_schemas() {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("❌ Failed to generate JSON schemas: {}", e);
-            std::process::exit(1);
-        }
-    };
 
     let types_path = shared_path.join("types.ts");
-    let schemas_path = shared_path.join("schemas");
 
     if check_mode {
         // Check TypeScript types
         let current = fs::read_to_string(&types_path).unwrap_or_default();
-        let types_up_to_date = if current == generated_types {
-            println!("✅ shared/types.ts is up to date.");
-            true
-        } else {
-            eprintln!("❌ shared/types.ts is not up to date.");
-            false
-        };
-
-        // Check JSON schemas
-        let schemas_up_to_date = schemas_up_to_date(&schemas_path, &schema_content);
-
-        // Exit with appropriate code
-        if types_up_to_date && schemas_up_to_date {
+        if current == generated_types {
+            println!("shared/types.ts is up to date.");
             std::process::exit(0);
         } else {
+            eprintln!("shared/types.ts is not up to date.");
             eprintln!("Please run 'npm run generate-types' and commit the changes.");
             std::process::exit(1);
         }
@@ -425,13 +314,8 @@ fn main() {
         fs::create_dir_all(shared_path).expect("cannot create shared");
 
         fs::remove_file(&types_path).ok();
-        fs::remove_dir_all(&schemas_path).ok();
 
         fs::write(&types_path, generated_types).expect("unable to write types.ts");
-        println!("✅ TypeScript types generated in shared/types.ts");
-
-        write_schemas(&schemas_path, schema_content).expect("unable to write schemas");
-
-        println!("✅ JSON schemas generated in shared/schemas/");
+        println!("TypeScript types generated in shared/types.ts");
     }
 }

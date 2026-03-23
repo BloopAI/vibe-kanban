@@ -142,13 +142,11 @@ fn spawn_global_cache_refresh_for_agent_with_configs(
     }
 }
 
-/// Preload the global cache for all executors with DEFAULT presets.
-/// This should be called on startup to warm the cache.
-pub async fn preload_global_executor_options_cache() {
+/// Preload the global cache for specific executors.
+/// Used at startup to warm only recently-used agents.
+pub async fn preload_for_agents(agents: Vec<BaseCodingAgent>) {
     let configs = ExecutorConfigs::get_cached();
-    let executors: Vec<BaseCodingAgent> = configs.executors.keys().copied().collect();
-
-    for base_agent in executors {
+    for base_agent in agents {
         spawn_global_cache_refresh_for_agent_with_configs(base_agent, configs.clone());
     }
 }

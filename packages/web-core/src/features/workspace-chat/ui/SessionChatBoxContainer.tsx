@@ -12,6 +12,7 @@ import { AgentIcon } from '@/shared/components/AgentIcon';
 import { useWorkspaceExecution } from '@/shared/hooks/useWorkspaceExecution';
 import { useWorkspaceRepo } from '@/shared/hooks/useWorkspaceRepo';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
+import { useCapabilities } from '@/shared/hooks/useCapabilities';
 import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import { useApprovalFeedbackOptional } from '../model/contexts/ApprovalFeedbackContext';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';
@@ -356,7 +357,9 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   }, [workspaceId, repoWithConflicts, attemptBranch]);
 
   // User profiles, config preference, and latest executor from processes
-  const { profiles, config, capabilities } = useUserSystem();
+  const { profiles, config } = useUserSystem();
+
+  // capabilities fetched per-executor below (after effectiveExecutor is resolved)
 
   // Fetch processes from last session to get full profile (only in new session mode)
   const lastSessionId = isNewSessionMode ? sessions?.[0]?.id : undefined;
@@ -459,11 +462,10 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     onPersist: (cfg) => void saveToScratch(localMessageRef.current, cfg),
   });
 
-  const supportsContextUsage =
-    !!effectiveExecutor &&
-    capabilities?.[effectiveExecutor]?.includes(
-      BaseAgentCapability.CONTEXT_USAGE
-    );
+  const { data: capabilities } = useCapabilities(effectiveExecutor ?? null);
+  const supportsContextUsage = !!capabilities?.includes(
+    BaseAgentCapability.CONTEXT_USAGE
+  );
 
   // Navigate to agent settings to customise variants
   const handleCustomise = () => {
@@ -1065,6 +1067,11 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
               selected: effectiveExecutor,
               options: executorOptions,
               onChange: handleExecutorChange,
+              onInstall: () =>
+                SettingsDialog.show({
+                  initialSection: 'agents',
+                  initialState: { openInstall: true },
+                }),
             }
           : undefined
       }

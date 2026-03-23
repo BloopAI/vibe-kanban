@@ -60,6 +60,7 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
         let mut stored_session_id = false;
         let mut streaming: StreamingState = StreamingState::default();
         let mut tool_states: ToolStates = HashMap::new();
+        let mut has_meaningful_output = false;
 
         let mut stdout_lines = msg_store.stdout_lines_stream();
         while let Some(Ok(line)) = stdout_lines.next().await {
@@ -73,6 +74,7 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
                         }
                     }
                     AcpEvent::Error(msg) => {
+                        has_meaningful_output = true;
                         let idx = entry_index.next();
                         let entry = NormalizedEntry {
                             timestamp: None,
@@ -85,8 +87,22 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
                         msg_store.push_patch(ConversationPatch::add_normalized_entry(idx, entry));
                     }
                     AcpEvent::Done(_) => {
+                        if !has_meaningful_output {
+                            let idx = entry_index.next();
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::ErrorMessage {
+                                    error_type: NormalizedEntryError::Other,
+                                },
+                                content: "No output was produced. The server may have encountered an issue.".to_string(),
+                                metadata: None,
+                            };
+                            msg_store
+                                .push_patch(ConversationPatch::add_normalized_entry(idx, entry));
+                        }
                         streaming.assistant_text = None;
                         streaming.thinking_text = None;
+                        has_meaningful_output = false;
                     }
                     AcpEvent::Message(content) => {
                         streaming.thinking_text = None;
@@ -104,6 +120,9 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
                             }
                             if let Some(ref mut s) = streaming.assistant_text {
                                 s.content.push_str(&text.text);
+                                if !s.content.trim().is_empty() {
+                                    has_meaningful_output = true;
+                                }
                                 let entry = NormalizedEntry {
                                     timestamp: None,
                                     entry_type: NormalizedEntryType::AssistantMessage,
@@ -120,6 +139,7 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
                         }
                     }
                     AcpEvent::Thought(content) => {
+                        has_meaningful_output = true;
                         streaming.assistant_text = None;
                         if let agent_client_protocol::ContentBlock::Text(text) = content {
                             let is_new = streaming.thinking_text.is_none();
@@ -148,6 +168,7 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
                         }
                     }
                     AcpEvent::Plan(plan) => {
+                        has_meaningful_output = true;
                         streaming.assistant_text = None;
                         streaming.thinking_text = None;
                         let todos: Vec<TodoItem> = plan
@@ -181,19 +202,8 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
                         };
                         msg_store.push_patch(ConversationPatch::add_normalized_entry(idx, entry));
                     }
-                    AcpEvent::AvailableCommands(cmds) => {
-                        let mut body = String::from("Available commands:\n");
-                        for c in &cmds {
-                            body.push_str(&format!("- {}\n", c.name));
-                        }
-                        let idx = entry_index.next();
-                        let entry = NormalizedEntry {
-                            timestamp: None,
-                            entry_type: NormalizedEntryType::SystemMessage,
-                            content: body,
-                            metadata: None,
-                        };
-                        msg_store.push_patch(ConversationPatch::add_normalized_entry(idx, entry));
+                    AcpEvent::AvailableCommands(_) => {
+                        // Commands are handled by the discovery layer, not the normalizer
                     }
                     AcpEvent::CurrentMode(mode_id) => {
                         let idx = entry_index.next();
@@ -206,6 +216,7 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
                         msg_store.push_patch(ConversationPatch::add_normalized_entry(idx, entry));
                     }
                     AcpEvent::RequestPermission(perm) => {
+                        has_meaningful_output = true;
                         if let Ok(tc) = agent_client_protocol::ToolCall::try_from(perm.tool_call) {
                             handle_tool_call(
                                 &tc,
@@ -217,15 +228,19 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
                             );
                         }
                     }
-                    AcpEvent::ToolCall(tc) => handle_tool_call(
-                        &tc,
-                        &worktree_path,
-                        &mut streaming,
-                        &mut tool_states,
-                        &entry_index,
-                        &msg_store,
-                    ),
+                    AcpEvent::ToolCall(tc) => {
+                        has_meaningful_output = true;
+                        handle_tool_call(
+                            &tc,
+                            &worktree_path,
+                            &mut streaming,
+                            &mut tool_states,
+                            &entry_index,
+                            &msg_store,
+                        );
+                    }
                     AcpEvent::ToolUpdate(update) => {
+                        has_meaningful_output = true;
                         let mut update = update;
                         if update.fields.title.is_none() {
                             update.fields.title = tool_states
@@ -319,7 +334,90 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
                                 .push_patch(ConversationPatch::add_normalized_entry(idx, entry));
                         }
                     }
-                    AcpEvent::User(_) | AcpEvent::Other(_) => (),
+                    AcpEvent::SessionMetadata {
+                        modes,
+                        models,
+                        config_options,
+                    } => {
+                        let model_selector = super::discovery::translate_to_model_selector(
+                            modes.as_ref(),
+                            models.as_ref(),
+                            config_options.as_deref(),
+                        );
+                        let options = crate::executor_discovery::ExecutorDiscoveredOptions {
+                            model_selector,
+                            ..Default::default()
+                        };
+                        msg_store.push_patch(
+                            crate::logs::utils::patch::executor_discovered_options(options),
+                        );
+                    }
+                    AcpEvent::ModelInfo {
+                        session_default,
+                        model_set_result,
+                        reasoning_set_result,
+                    } => {
+                        use super::ModelSetResult;
+
+                        // Resolve effective model name
+                        let effective_model = match &model_set_result {
+                            ModelSetResult::Success { model } => Some(model.as_str()),
+                            ModelSetResult::Failed { .. } => session_default.as_deref(),
+                            ModelSetResult::NotAttempted => session_default.as_deref(),
+                        };
+
+                        // Emit error for failed model set
+                        if let ModelSetResult::Failed { model, error } = &model_set_result {
+                            let idx = entry_index.next();
+                            let err_entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::ErrorMessage {
+                                    error_type: NormalizedEntryError::Other,
+                                },
+                                content: format!("Failed to set model '{model}': {error}"),
+                                metadata: None,
+                            };
+                            msg_store.push_patch(ConversationPatch::add_normalized_entry(
+                                idx, err_entry,
+                            ));
+                        }
+
+                        // Emit error for failed reasoning set
+                        if let ModelSetResult::Failed { model, error } = &reasoning_set_result {
+                            let idx = entry_index.next();
+                            let err_entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::ErrorMessage {
+                                    error_type: NormalizedEntryError::Other,
+                                },
+                                content: format!("Failed to set reasoning '{model}': {error}"),
+                                metadata: None,
+                            };
+                            msg_store.push_patch(ConversationPatch::add_normalized_entry(
+                                idx, err_entry,
+                            ));
+                        }
+
+                        // Build "Model: name (reasoning: level)" system message
+                        if let Some(model_name) = effective_model {
+                            let reasoning_suffix = match &reasoning_set_result {
+                                ModelSetResult::Success { model } => {
+                                    format!(" (reasoning: {model})")
+                                }
+                                _ => String::new(),
+                            };
+                            let idx = entry_index.next();
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::SystemMessage,
+                                content: format!("Model: {model_name}{reasoning_suffix}"),
+                                metadata: None,
+                            };
+                            msg_store
+                                .push_patch(ConversationPatch::add_normalized_entry(idx, entry));
+                        }
+                    }
+                    AcpEvent::User(_) | AcpEvent::Other(_) | AcpEvent::Capabilities(_) => (),
                 }
             }
         }
@@ -495,9 +593,18 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
                         result,
                     }
                 }
-                agent_client_protocol::ToolKind::SwitchMode => ActionType::Other {
-                    description: "switch_mode".to_string(),
-                },
+                agent_client_protocol::ToolKind::SwitchMode => {
+                    let plan = collect_text_content(&tc.content)
+                        .or_else(|| {
+                            tc.raw_input
+                                .as_ref()
+                                .and_then(|v| v.get("plan"))
+                                .and_then(|v| v.as_str())
+                                .map(String::from)
+                        })
+                        .unwrap_or_default();
+                    ActionType::PlanPresentation { plan }
+                }
                 agent_client_protocol::ToolKind::Other
                 | agent_client_protocol::ToolKind::Move
                 | _ => {

@@ -1,4 +1,4 @@
-import { type ChangeEvent, type ReactNode, useRef } from 'react';
+import { type ChangeEvent, type ReactNode, useRef, useState } from 'react';
 import {
   type Icon,
   PaperclipIcon,
@@ -259,6 +259,7 @@ export function SessionChatBox<TExecutor extends string = string>({
   const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const askQuestionBannerRef = useRef<AskUserQuestionBannerHandle>(null);
+  const [execDropdownOpen, setExecDropdownOpen] = useState(false);
 
   // Determine if in feedback mode, edit mode, or approval mode
   const isInFeedbackMode = feedbackMode?.isActive ?? false;
@@ -684,9 +685,25 @@ export function SessionChatBox<TExecutor extends string = string>({
                     ? formatExecutorLabel(executor.selected)
                     : emptyExecutorLabel
                 }
+                open={execDropdownOpen}
+                onOpenChange={setExecDropdownOpen}
               >
-                <DropdownMenuLabel>
+                <DropdownMenuLabel className="flex items-center justify-between">
                   {t('conversation.executors')}
+                  {executor.onInstall && (
+                    <button
+                      onClick={() => {
+                        setExecDropdownOpen(false);
+                        executor.onInstall?.();
+                      }}
+                      className="text-low hover:text-normal"
+                    >
+                      <PlusIcon
+                        className="size-icon-2xs"
+                        weight="bold"
+                      />
+                    </button>
+                  )}
                 </DropdownMenuLabel>
                 {executor.options.map((exec) => (
                   <DropdownMenuItem

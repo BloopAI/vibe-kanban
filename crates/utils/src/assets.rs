@@ -52,6 +52,14 @@ pub fn relay_host_credentials_path() -> std::path::PathBuf {
     asset_dir().join("relay_host_credentials.json")
 }
 
+pub fn acp_servers_path() -> std::path::PathBuf {
+    asset_dir().join("acp_servers.json")
+}
+
+pub fn acp_mcp_config_path(server_name: &str) -> std::path::PathBuf {
+    asset_dir().join(format!("acp_mcp_{server_name}.json"))
+}
+
 #[derive(RustEmbed)]
 #[folder = "../../assets/sounds"]
 pub struct SoundAssets;

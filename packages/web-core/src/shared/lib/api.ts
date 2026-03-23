@@ -103,6 +103,8 @@ import {
   OpenRemoteWorkspaceInEditorRequest,
   OpenRemoteEditorResponse,
   ProfileResponse,
+  InstalledAcpServer,
+  RegistryEntry,
 } from 'shared/types';
 import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
@@ -996,6 +998,13 @@ export const configApi = {
     });
     return handleApiResponse<UserSystemInfo>(response);
   },
+  getCapabilities: async (executor: string): Promise<string[]> => {
+    const params = new URLSearchParams({ executor });
+    const response = await makeRequest(
+      `/api/agents/capabilities?${params.toString()}`
+    );
+    return handleApiResponse<string[]>(response);
+  },
   saveConfig: async (
     config: Config,
     hostId?: string | null
@@ -1574,6 +1583,55 @@ export const agentsApi = {
       `/api/agents/preset-options?${params.toString()}`
     );
     return handleApiResponse<ExecutorConfig>(response);
+  },
+
+  getSchema: async (executor: string): Promise<Record<string, unknown>> => {
+    const params = new URLSearchParams();
+    params.set('executor', executor);
+    const response = await makeRequest(
+      `/api/agents/schema?${params.toString()}`
+    );
+    return handleApiResponse<Record<string, unknown>>(response);
+  },
+};
+
+export type RegistryEntryWithStatus = RegistryEntry & {
+  is_installed: boolean;
+  is_builtin: boolean;
+  supports_followup: boolean | null;
+};
+
+export const acpServersApi = {
+  getRegistry: async (): Promise<RegistryEntryWithStatus[]> => {
+    const response = await makeRequest('/api/acp-registry');
+    return handleApiResponse<RegistryEntryWithStatus[]>(response);
+  },
+  list: async (): Promise<InstalledAcpServer[]> => {
+    const response = await makeRequest('/api/acp-servers');
+    return handleApiResponse<InstalledAcpServer[]>(response);
+  },
+  installFromRegistry: async (
+    registryId: string
+  ): Promise<{ name: string }> => {
+    const response = await makeRequest('/api/acp-servers/install-registry', {
+      method: 'POST',
+      body: JSON.stringify({ registry_id: registryId }),
+    });
+    return handleApiResponse<{ name: string }>(response);
+  },
+  installCustom: async (name: string): Promise<string> => {
+    const response = await makeRequest('/api/acp-servers/install-custom', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+    return handleApiResponse<string>(response);
+  },
+  uninstall: async (name: string): Promise<string> => {
+    const response = await makeRequest(
+      `/api/acp-servers/${encodeURIComponent(name)}/uninstall`,
+      { method: 'POST' }
+    );
+    return handleApiResponse<string>(response);
   },
 };
 

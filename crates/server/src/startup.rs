@@ -168,12 +168,107 @@ pub async fn initialize_deployment() -> Result<DeploymentImpl, DeploymentError> 
         .track_if_analytics_allowed("session_start", serde_json::json!({}))
         .await;
 
-    // Preload global executor options cache for all executors with DEFAULT presets
+    migrate_legacy_acp_executors(&deployment).await;
+
+    // Warm cache for recently-used executors only (past 7 days)
+    let warmup_pool = deployment.db().pool.clone();
     tokio::spawn(async move {
-        executors::executors::utils::preload_global_executor_options_cache().await;
+        if let Ok(executors) =
+            db::models::session::Session::find_recent_executors(&warmup_pool, 7).await
+        {
+            let agents = executors
+                .into_iter()
+                .map(|e| executors::executors::BaseCodingAgent::from_str_raw(&e))
+                .collect();
+            executors::executors::utils::preload_for_agents(agents).await;
+        }
     });
 
     Ok(deployment)
+}
+
+/// Auto-install legacy ACP executors (Qwen Code, Factory Droid) for users who
+/// were actively using them before the ACP migration removed them from defaults.
+pub async fn migrate_legacy_acp_executors(deployment: &DeploymentImpl) {
+    use db::models::session::Session;
+    use executors::installed_servers::InstalledServers;
+
+    const MIGRATE: &[(&str, &str, &[&str])] = &[
+        ("QWEN_CODE", "qwen-code", &["QWEN_CODE"]),
+        (
+            "FACTORY_DROID",
+            "factory-droid",
+            &["FACTORY_DROID", "DROID"],
+        ),
+    ];
+
+    let mut servers = match InstalledServers::load() {
+        Ok(s) => s,
+        Err(_) => return,
+    };
+
+    let recent = Session::find_recent_executors(&deployment.db().pool, 30)
+        .await
+        .unwrap_or_default();
+
+    let profiles_path = utils::assets::profiles_path();
+    let user_profiles: Option<serde_json::Value> = fs::read_to_string(&profiles_path)
+        .ok()
+        .and_then(|c| serde_json::from_str(&c).ok());
+    let executors_map = user_profiles
+        .as_ref()
+        .and_then(|v| v.get("executors"))
+        .and_then(|v| v.as_object());
+
+    let old_defaults: &[(&[&str], serde_json::Value)] = &[
+        (&["QWEN_CODE"], serde_json::json!({"yolo": true})),
+        (
+            &["FACTORY_DROID", "DROID"],
+            serde_json::json!({"autonomy": "skip-permissions-unsafe"}),
+        ),
+    ];
+
+    let mut changed = false;
+    for &(name, registry_id, aliases) in MIGRATE {
+        if servers.get(name).is_some() {
+            continue;
+        }
+
+        let used_recently = aliases.iter().any(|a| recent.contains(&a.to_string()));
+
+        let has_active_profile = executors_map.is_some_and(|m| {
+            aliases.iter().any(|alias| {
+                let Some(profile) = m.get(*alias).and_then(|v| v.as_object()) else {
+                    return false;
+                };
+                if profile.keys().any(|k| k != "DEFAULT") {
+                    return true;
+                }
+                if let Some(default_config) = profile.get("DEFAULT") {
+                    let old = old_defaults.iter().find(|(a, _)| a.contains(alias));
+                    if let Some((_, old_val)) = old {
+                        let inner = default_config
+                            .as_object()
+                            .and_then(|d| aliases.iter().find_map(|a| d.get(*a)));
+                        return inner.is_some_and(|v| v != old_val);
+                    }
+                }
+                false
+            })
+        });
+
+        if used_recently || has_active_profile {
+            tracing::info!(
+                "Migrating legacy executor {name} (used={used_recently}, profile={has_active_profile})"
+            );
+            let _ = servers.install_from_registry(registry_id);
+            changed = true;
+        }
+    }
+
+    if changed {
+        executors::profile::ExecutorConfigs::reload();
+    }
 }
 
 /// Gracefully shut down running execution processes.

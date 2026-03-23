@@ -35,7 +35,7 @@ function useEffectiveExecutor(
   configExecutorProfile: ExecutorProfileId | null | undefined
 ) {
   const options = useMemo(
-    () => Object.keys(profiles ?? {}) as BaseCodingAgent[],
+    () => Object.keys(profiles ?? {}).sort() as BaseCodingAgent[],
     [profiles]
   );
 

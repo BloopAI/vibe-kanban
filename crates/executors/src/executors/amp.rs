@@ -152,7 +152,7 @@ impl StandardCodingAgentExecutor for Amp {
 
     fn get_preset_options(&self) -> ExecutorConfig {
         ExecutorConfig {
-            executor: BaseCodingAgent::Amp,
+            executor: BaseCodingAgent::amp(),
             variant: None,
             model_id: None,
             agent_id: None,

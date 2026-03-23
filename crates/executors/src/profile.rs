@@ -6,7 +6,7 @@ use std::{
 };
 
 use convert_case::{Case, Casing};
-use serde::{Deserialize, Deserializer, Serialize, de::Error as DeError};
+use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
 
@@ -16,8 +16,8 @@ use crate::{
 };
 
 /// Return the canonical form for variant keys.
-/// – "DEFAULT" is kept as-is  
-/// – everything else is converted to SCREAMING_SNAKE_CASE
+/// - "DEFAULT" is kept as-is
+/// - everything else is converted to SCREAMING_SNAKE_CASE
 pub fn canonical_variant_key<S: AsRef<str>>(raw: S) -> String {
     let key = raw.as_ref();
     if key.eq_ignore_ascii_case("DEFAULT") {
@@ -70,16 +70,18 @@ pub struct ExecutorProfileId {
     pub variant: Option<String>,
 }
 
-// Convert legacy profile/executor names from kebab-case to SCREAMING_SNAKE_CASE, can be deleted 14 days from 3/9/25
+/// Convert legacy profile/executor names from kebab-case to SCREAMING_SNAKE_CASE,
+/// then run through BaseCodingAgent normalization (which handles the 5 migrated
+/// ACP servers). Can be deleted 14 days from 3/9/25.
 fn de_base_coding_agent_kebab<'de, D>(de: D) -> Result<BaseCodingAgent, D::Error>
 where
     D: Deserializer<'de>,
 {
     let raw = String::deserialize(de)?;
-    // kebab-case -> SCREAMING_SNAKE_CASE
+    // kebab-case -> SCREAMING_SNAKE_CASE, then normalize
     let norm = raw.replace('-', "_").to_ascii_uppercase();
-    BaseCodingAgent::from_str(&norm)
-        .map_err(|_| D::Error::custom(format!("unknown executor '{raw}' (normalized to '{norm}')")))
+    // from_str is infallible; normalization handles legacy names
+    Ok(BaseCodingAgent::from_str(&norm).unwrap())
 }
 
 impl ExecutorProfileId {
@@ -103,7 +105,7 @@ impl ExecutorProfileId {
     pub fn cache_key(&self) -> String {
         match &self.variant {
             Some(variant) => format!("{}:{}", self.executor, variant),
-            None => self.executor.clone().to_string(),
+            None => self.executor.to_string(),
         }
     }
 }
@@ -159,7 +161,7 @@ impl ExecutorConfig {
     /// Extract the profile identity portion for profile lookup
     pub fn profile_id(&self) -> ExecutorProfileId {
         ExecutorProfileId {
-            executor: self.executor,
+            executor: self.executor.clone(),
             variant: self.variant.clone(),
         }
     }
@@ -226,6 +228,21 @@ impl ExecutorProfile {
     pub fn set_default(&mut self, config: CodingAgent) {
         self.configurations.insert("DEFAULT".to_string(), config);
     }
+
+    /// Get the default configuration
+    pub fn get_default(&self) -> Option<&CodingAgent> {
+        self.configurations.get("DEFAULT")
+    }
+
+    /// Create a profile with a single DEFAULT configuration
+    pub fn new_with_default(config: CodingAgent) -> Self {
+        let mut configurations = HashMap::new();
+        configurations.insert("DEFAULT".to_string(), config);
+        Self {
+            recently_used_models: None,
+            configurations,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Default)]
@@ -287,6 +304,8 @@ impl ExecutorConfigs {
             Ok(content) => content,
             Err(_) => {
                 tracing::info!("No user profiles.json found, using defaults only");
+                Self::sync_acp_profiles(&mut defaults);
+                Self::backfill_names(&mut defaults);
                 return defaults;
             }
         };
@@ -296,13 +315,18 @@ impl ExecutorConfigs {
             Ok(mut user_overrides) => {
                 tracing::info!("Loaded user profile overrides from profiles.json");
                 user_overrides.canonicalise();
-                Self::merge_with_defaults(defaults, user_overrides)
+                let mut merged = Self::merge_with_defaults(defaults, user_overrides);
+                Self::sync_acp_profiles(&mut merged);
+                Self::backfill_names(&mut merged);
+                merged
             }
             Err(e) => {
                 tracing::error!(
                     "Failed to parse user profiles.json: {}, using defaults only",
                     e
                 );
+                Self::sync_acp_profiles(&mut defaults);
+                Self::backfill_names(&mut defaults);
                 defaults
             }
         }
@@ -314,19 +338,39 @@ impl ExecutorConfigs {
         let mut defaults = Self::from_defaults();
         defaults.canonicalise();
 
-        // Canonicalise current config before computing overrides
+        // Canonicalise current config and backfill registry IDs before computing overrides
         let mut self_clone = self.clone();
         self_clone.canonicalise();
+        Self::backfill_names(&mut self_clone);
+        Self::backfill_names(&mut defaults);
 
         // Compute differences from defaults
         let overrides = Self::compute_overrides(&defaults, &self_clone)?;
 
+        tracing::debug!(
+            "Computed profile overrides: {} executor(s) with changes",
+            overrides.executors.len()
+        );
+        for (key, profile) in &overrides.executors {
+            tracing::debug!(
+                "  Override for {}: {} config(s)",
+                key,
+                profile.configurations.len()
+            );
+        }
+
         // Validate the merged result would be valid
-        let merged = Self::merge_with_defaults(defaults, overrides.clone());
+        let mut merged = Self::merge_with_defaults(defaults, overrides.clone());
+        Self::backfill_names(&mut merged);
         Self::validate_merged(&merged)?;
 
         // Write overrides directly to file
         let content = serde_json::to_string_pretty(&overrides)?;
+        tracing::debug!(
+            "Writing overrides to {:?}: {}",
+            profiles_path,
+            &content[..content.len().min(500)]
+        );
         fs::write(&profiles_path, content)?;
 
         tracing::info!("Saved profile overrides to {:?}", profiles_path);
@@ -368,7 +412,7 @@ impl ExecutorConfigs {
             // Check if executor was removed entirely
             if !current.executors.contains_key(executor_key) {
                 return Err(ProfileError::CannotDeleteExecutor {
-                    executor: *executor_key,
+                    executor: executor_key.clone(),
                 });
             }
 
@@ -378,7 +422,7 @@ impl ExecutorConfigs {
             for config_name in default_profile.configurations.keys() {
                 if !current_profile.configurations.contains_key(config_name) {
                     return Err(ProfileError::CannotDeleteBuiltInConfig {
-                        executor: *executor_key,
+                        executor: executor_key.clone(),
                         variant: config_name.clone(),
                     });
                 }
@@ -418,17 +462,67 @@ impl ExecutorConfigs {
                 if !override_profile.configurations.is_empty()
                     || override_profile.recently_used_models.is_some()
                 {
-                    overrides.executors.insert(*executor_key, override_profile);
+                    overrides
+                        .executors
+                        .insert(executor_key.clone(), override_profile);
                 }
             } else {
                 // New executor, include completely
                 overrides
                     .executors
-                    .insert(*executor_key, current_profile.clone());
+                    .insert(executor_key.clone(), current_profile.clone());
             }
         }
 
         Ok(overrides)
+    }
+
+    /// Sync profiles with installed ACP servers:
+    /// - Add profiles for installed servers that don't have one
+    /// - Remove profiles for ACP servers that are no longer installed
+    fn sync_acp_profiles(merged: &mut Self) {
+        let servers = match crate::installed_servers::InstalledServers::load() {
+            Ok(s) => s,
+            Err(_) => return,
+        };
+        let installed_names: std::collections::HashSet<String> =
+            servers.list().iter().map(|s| s.name.clone()).collect();
+
+        // Remove ACP profiles that are no longer installed
+        merged.executors.retain(|key, profile| {
+            if key.is_builtin_non_acp() {
+                return true;
+            }
+            // Keep if it has any non-ACP variant (user may have mixed configs)
+            let is_acp = profile
+                .get_default()
+                .is_some_and(|c| matches!(c, CodingAgent::AcpServer(_)));
+            !is_acp || installed_names.contains(key.as_str())
+        });
+
+        // Add profiles for installed servers that don't have one yet
+        for server in servers.list() {
+            let key = BaseCodingAgent::from_str(&server.name).unwrap();
+            merged.executors.entry(key).or_insert_with(|| {
+                ExecutorProfile::new_with_default(CodingAgent::AcpServer(
+                    crate::executors::acp_server::AcpServerExecutor::with_name(&server.name),
+                ))
+            });
+        }
+    }
+
+    fn backfill_names(merged: &mut Self) {
+        for (executor_key, profile) in &mut merged.executors {
+            if executor_key.is_builtin_non_acp() {
+                continue;
+            }
+            let name = executor_key.as_str().to_string();
+            for config in profile.configurations.values_mut() {
+                if let CodingAgent::AcpServer(acp) = config {
+                    acp.name = name.clone();
+                }
+            }
+        }
     }
 
     /// Validate that merged profiles are consistent and valid
@@ -499,12 +593,12 @@ impl ExecutorConfigs {
     ) -> Result<ExecutorProfileId, ProfileError> {
         let mut agents_with_info: Vec<(BaseCodingAgent, AvailabilityInfo)> = Vec::new();
 
-        for &base_agent in self.executors.keys() {
-            let profile_id = ExecutorProfileId::new(base_agent);
+        for base_agent in self.executors.keys() {
+            let profile_id = ExecutorProfileId::new(base_agent.clone());
             if let Some(coding_agent) = self.get_coding_agent(&profile_id) {
                 let info = coding_agent.get_availability_info();
                 if info.is_available() {
-                    agents_with_info.push((base_agent, info));
+                    agents_with_info.push((base_agent.clone(), info));
                 }
             }
         }
@@ -546,12 +640,20 @@ impl ExecutorConfigs {
                 (AvailabilityInfo::NotFound, AvailabilityInfo::InstallationFound) => {
                     std::cmp::Ordering::Greater
                 }
-                // Same state - equal
-                _ => std::cmp::Ordering::Equal,
+                // ACP has no protocol-level availability probe; prefer verified native executors
+                _ => {
+                    let a_native = a.0.is_builtin_non_acp();
+                    let b_native = b.0.is_builtin_non_acp();
+                    match (a_native, b_native) {
+                        (true, false) => std::cmp::Ordering::Less,
+                        (false, true) => std::cmp::Ordering::Greater,
+                        _ => std::cmp::Ordering::Equal,
+                    }
+                }
             }
         });
 
-        let selected = agents_with_info[0].0;
+        let selected = agents_with_info[0].0.clone();
         tracing::info!("Recommended executor: {}", selected);
         Ok(ExecutorProfileId::new(selected))
     }

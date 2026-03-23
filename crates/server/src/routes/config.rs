@@ -14,7 +14,9 @@ use executors::{
     executors::{
         AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, StandardCodingAgentExecutor,
     },
-    mcp_config::{McpConfig, read_agent_config, write_agent_config},
+    mcp_config::{
+        McpConfig, get_mcp_servers_from_config_path, read_agent_config, write_agent_config,
+    },
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use serde::{Deserialize, Serialize};
@@ -53,6 +55,8 @@ pub fn router() -> Router<DeploymentImpl> {
         )
         .route("/agents/check-availability", get(check_agent_availability))
         .route("/agents/preset-options", get(get_agent_preset_options))
+        .route("/agents/schema", get(get_agent_schema))
+        .route("/agents/capabilities", get(get_agent_capabilities))
         .route(
             "/agents/discovered-options/ws",
             get(stream_executor_discovered_options_ws),
@@ -164,7 +168,7 @@ async fn get_user_system_info(
             let mut caps: HashMap<String, Vec<BaseAgentCapability>> = HashMap::new();
             let profs = ExecutorConfigs::get_cached();
             for key in profs.executors.keys() {
-                if let Some(agent) = profs.get_coding_agent(&ExecutorProfileId::new(*key)) {
+                if let Some(agent) = profs.get_coding_agent(&ExecutorProfileId::new(key.clone())) {
                     caps.insert(key.to_string(), agent.capabilities());
                 }
             }
@@ -397,25 +401,6 @@ async fn update_mcp_servers_in_config(
     Ok(message)
 }
 
-/// Helper function to get MCP servers from config using a path
-fn get_mcp_servers_from_config_path(raw_config: &Value, path: &[String]) -> HashMap<String, Value> {
-    let mut current = raw_config;
-    for part in path {
-        current = match current.get(part) {
-            Some(val) => val,
-            None => return HashMap::new(),
-        };
-    }
-    // Extract the servers object
-    match current.as_object() {
-        Some(servers) => servers
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect(),
-        None => HashMap::new(),
-    }
-}
-
 /// Helper function to set MCP servers in config using a path
 fn set_mcp_servers_in_config_path(
     raw_config: &mut Value,
@@ -570,21 +555,54 @@ async fn get_agent_preset_options(
     Query(query): Query<AgentPresetOptionsQuery>,
 ) -> ResponseJson<ApiResponse<executors::profile::ExecutorConfig>> {
     let profiles = ExecutorConfigs::get_cached();
+    let executor = query.executor;
     let profile_id = if let Some(variant) = query.variant {
-        ExecutorProfileId::with_variant(query.executor, variant)
+        ExecutorProfileId::with_variant(executor.clone(), variant)
     } else {
-        ExecutorProfileId::new(query.executor)
+        ExecutorProfileId::new(executor.clone())
     };
 
     let options = match profiles.get_coding_agent(&profile_id) {
         Some(agent) => agent.get_preset_options(),
         None => {
             // Return a default config if not found
-            executors::profile::ExecutorConfig::new(query.executor)
+            executors::profile::ExecutorConfig::new(executor)
         }
     };
 
     ResponseJson(ApiResponse::success(options))
+}
+
+#[derive(Debug, Deserialize)]
+struct AgentSchemaQuery {
+    executor: BaseCodingAgent,
+}
+
+async fn get_agent_schema(
+    Query(query): Query<AgentSchemaQuery>,
+) -> ResponseJson<ApiResponse<Value>> {
+    ResponseJson(ApiResponse::success(
+        executors::schema::generate_executor_schema(&query.executor),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+struct AgentCapabilitiesQuery {
+    executor: BaseCodingAgent,
+}
+
+/// Per-agent capabilities endpoint — probes ACP servers on demand (cached after first call).
+async fn get_agent_capabilities(
+    Query(query): Query<AgentCapabilitiesQuery>,
+) -> ResponseJson<ApiResponse<Vec<BaseAgentCapability>>> {
+    let profs = ExecutorConfigs::get_cached();
+    let caps = if let Some(agent) = profs.get_coding_agent(&ExecutorProfileId::new(query.executor))
+    {
+        agent.capabilities_with_probe().await
+    } else {
+        vec![]
+    };
+    ResponseJson(ApiResponse::success(caps))
 }
 
 #[derive(Debug, Deserialize)]

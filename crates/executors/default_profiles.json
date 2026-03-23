@@ -14,13 +14,6 @@
         }
       }
     },
-    "GEMINI": {
-      "DEFAULT": {
-        "GEMINI": {
-          "yolo": true
-        }
-      }
-    },
     "CODEX": {
       "DEFAULT": {
         "CODEX": {
@@ -35,32 +28,11 @@
         }
       }
     },
-    "QWEN_CODE": {
-      "DEFAULT": {
-        "QWEN_CODE": {
-          "yolo": true
-        }
-      }
-    },
     "CURSOR_AGENT": {
       "DEFAULT": {
         "CURSOR_AGENT": {
           "force": true,
           "model": "auto"
-        }
-      }
-    },
-    "COPILOT": {
-      "DEFAULT": {
-        "COPILOT": {
-          "allow_all_tools": true
-        }
-      }
-    },
-    "DROID": {
-      "DEFAULT": {
-        "DROID": {
-          "autonomy": "skip-permissions-unsafe"
         }
       }
     }

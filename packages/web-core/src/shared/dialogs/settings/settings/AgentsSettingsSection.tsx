@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   SpinnerIcon,
@@ -16,8 +16,10 @@ import {
 import { ExecutorConfigForm } from './ExecutorConfigForm';
 import { useMachineProfiles } from '@/shared/hooks/useProfiles';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
+import { useExecutorSchema } from '@/shared/hooks/useExecutorSchema';
 import { CreateConfigurationDialog } from '../CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '../DeleteConfigurationDialog';
+import { InstallAgentDialog } from '../InstallAgentDialog';
 import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
 import { cn } from '@/shared/lib/utils';
 import { toPrettyCase } from '@/shared/lib/string';
@@ -31,12 +33,35 @@ import {
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 import { useSettingsMachineClient } from './SettingsHostContext';
-import { AgentIcon } from '@/shared/components/AgentIcon';
+import { AgentIcon, getAgentName } from '@/shared/components/AgentIcon';
 import { getExecutorVariantKeys } from '@/shared/lib/executor';
+import { useMachineUninstallAcpServer } from '@/shared/hooks/useAcpServers';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 
-export function AgentsSettingsSection() {
+// Native executors use their own name as the inner profile key.
+// All other executors are ACP servers and use "ACP_SERVER".
+const NATIVE_EXECUTORS: Record<string, string> = {
+  CLAUDE_CODE: 'CLAUDE_CODE',
+  AMP: 'AMP',
+  CODEX: 'CODEX',
+  OPENCODE: 'OPENCODE',
+  CURSOR_AGENT: 'CURSOR_AGENT',
+};
+
+function profileInnerKey(executor: string): string {
+  return NATIVE_EXECUTORS[executor] ?? 'ACP_SERVER';
+}
+
+export function AgentsSettingsSection({
+  initialState,
+}: {
+  initialState?: {
+    executor?: string;
+    variant?: string;
+    openInstall?: boolean;
+  };
+}) {
   const { t } = useTranslation(['settings', 'common']);
   const { setDirty: setContextDirty } = useSettingsDirty();
   const machineClient = useSettingsMachineClient();
@@ -52,6 +77,8 @@ export function AgentsSettingsSection() {
 
   const { config, updateAndSaveConfig, reloadSystem } = useUserSystem();
 
+  const uninstallMutation = useMachineUninstallAcpServer(machineClient);
+
   // Local editor state
   const [profilesSuccess, setProfilesSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -65,6 +92,18 @@ export function AgentsSettingsSection() {
   const [localParsedProfiles, setLocalParsedProfiles] =
     useState<ExecutorConfigs | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+
+  // Fetch executor config schema dynamically
+  const { data: executorSchema, isLoading: schemaLoading } = useExecutorSchema(
+    selectedExecutorType,
+    machineClient
+  );
+
+  // Agent list from profiles (backend injects installed ACP servers into profiles)
+  const agentList = useMemo(
+    () => Object.keys(localParsedProfiles?.executors ?? {}).sort(),
+    [localParsedProfiles?.executors]
+  );
 
   // Initialize selection with default executor when config loads
   useEffect(() => {
@@ -98,6 +137,111 @@ export function AgentsSettingsSection() {
     setIsDirty(true);
   };
 
+  // --- Install agent from registry/custom dialog ---
+  const handleInstallAgent = async () => {
+    try {
+      const result = await InstallAgentDialog.show({ machineClient });
+      if (result.action === 'installed' && result.name) {
+        const name = result.name;
+        // Create a default profile entry if one doesn't exist
+        if (
+          localParsedProfiles &&
+          !localParsedProfiles.executors?.[name as BaseCodingAgent]
+        ) {
+          const innerKey = profileInnerKey(name);
+          const acpConfig: Record<string, unknown> = { name };
+          if (result.command) {
+            acpConfig.base_command_override = result.command;
+          }
+          const updatedProfiles = {
+            ...localParsedProfiles,
+            executors: {
+              ...localParsedProfiles.executors,
+              [name]: {
+                DEFAULT: { [innerKey]: acpConfig },
+              },
+            },
+          };
+          try {
+            await saveProfiles(JSON.stringify(updatedProfiles, null, 2));
+            setLocalParsedProfiles(updatedProfiles as ExecutorConfigs);
+            reloadSystem();
+          } catch {
+            // Profile save failed, but agent is installed
+          }
+        }
+        setSelectedExecutorType(name as BaseCodingAgent);
+        setSelectedConfiguration('DEFAULT');
+      }
+    } catch {
+      // User cancelled
+    }
+  };
+
+  // Auto-open install dialog when requested via initialState
+  useEffect(() => {
+    if (initialState?.openInstall) {
+      handleInstallAgent();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // --- Uninstall ACP agent ---
+  const handleUninstallAgent = async (name: string) => {
+    try {
+      await uninstallMutation.mutateAsync(name);
+
+      // Remove profiles for this agent
+      if (localParsedProfiles?.executors?.[name as BaseCodingAgent]) {
+        const { [name as BaseCodingAgent]: _, ...remainingExecutors } =
+          localParsedProfiles.executors;
+        const updatedProfiles = {
+          ...localParsedProfiles,
+          executors: remainingExecutors,
+        };
+        try {
+          await saveProfiles(JSON.stringify(updatedProfiles, null, 2));
+          setLocalParsedProfiles(updatedProfiles as ExecutorConfigs);
+        } catch {
+          // Best effort
+        }
+      }
+
+      // Reset selection if we uninstalled the selected agent
+      if (selectedExecutorType === name) {
+        const remaining = agentList.filter((a) => a !== name);
+        if (remaining.length > 0) {
+          setSelectedExecutorType(remaining[0] as BaseCodingAgent);
+          const configs = getExecutorVariantKeys(
+            localParsedProfiles?.executors?.[remaining[0] as BaseCodingAgent]
+          );
+          setSelectedConfiguration(configs[0] || 'DEFAULT');
+        } else {
+          setSelectedExecutorType(null);
+          setSelectedConfiguration(null);
+        }
+      }
+
+      // Reset default if we uninstalled the default agent
+      if (config?.executor_profile?.executor === name) {
+        const remaining = agentList.filter((a) => a !== name);
+        if (remaining.length > 0) {
+          await updateAndSaveConfig({
+            executor_profile: {
+              executor: remaining[0] as BaseCodingAgent,
+              variant: 'DEFAULT',
+            },
+          });
+        }
+      }
+
+      reloadSystem();
+    } catch (err) {
+      console.error('Failed to uninstall agent:', err);
+      setSaveError('Failed to uninstall agent.');
+    }
+  };
+
   const handleCreateConfig = async (executor: string) => {
     try {
       const result = await CreateConfigurationDialog.show({
@@ -122,11 +266,12 @@ export function AgentsSettingsSection() {
   ) => {
     if (!localParsedProfiles || !localParsedProfiles.executors) return;
 
+    const innerKey = profileInnerKey(executorType);
     const executorsMap =
       localParsedProfiles.executors as unknown as ExecutorsMap;
     const base =
-      baseConfig && executorsMap[executorType]?.[baseConfig]?.[executorType]
-        ? executorsMap[executorType][baseConfig][executorType]
+      baseConfig && executorsMap[executorType]?.[baseConfig]?.[innerKey]
+        ? executorsMap[executorType][baseConfig][innerKey]
         : {};
 
     const updatedProfiles = {
@@ -136,7 +281,7 @@ export function AgentsSettingsSection() {
         [executorType]: {
           ...executorsMap[executorType],
           [configName]: {
-            [executorType]: base,
+            [innerKey]: base,
           },
         },
       },
@@ -168,6 +313,7 @@ export function AgentsSettingsSection() {
   ) => {
     if (!localParsedProfiles) return;
 
+    const innerKey = profileInnerKey(executorType);
     setSaveError(null);
 
     try {
@@ -196,7 +342,7 @@ export function AgentsSettingsSection() {
       const executorsMap = updatedProfiles.executors as unknown as ExecutorsMap;
       if (getExecutorVariantKeys(remainingConfigs).length === 0) {
         executorsMap[executorType] = {
-          DEFAULT: { [executorType]: {} },
+          DEFAULT: { [innerKey]: {} },
         };
       }
 
@@ -249,6 +395,7 @@ export function AgentsSettingsSection() {
   ) => {
     if (!localParsedProfiles || !localParsedProfiles.executors) return;
 
+    const innerKey = profileInnerKey(executorType);
     const executorsMap =
       localParsedProfiles.executors as unknown as ExecutorsMap;
     const updatedProfiles = {
@@ -258,7 +405,7 @@ export function AgentsSettingsSection() {
         [executorType]: {
           ...executorsMap[executorType],
           [configuration]: {
-            [executorType]: formData,
+            [innerKey]: formData,
           },
         },
       },
@@ -276,6 +423,7 @@ export function AgentsSettingsSection() {
     )
       return;
 
+    const innerKey = profileInnerKey(selectedExecutorType);
     setSaveError(null);
 
     const updatedProfiles = {
@@ -285,11 +433,11 @@ export function AgentsSettingsSection() {
         [selectedExecutorType]: {
           ...localParsedProfiles.executors[selectedExecutorType],
           [selectedConfiguration]: {
-            [selectedExecutorType]: formData,
+            [innerKey]: formData,
           },
         },
       },
-    };
+    } as ExecutorConfigs;
 
     setLocalParsedProfiles(updatedProfiles);
 
@@ -313,12 +461,11 @@ export function AgentsSettingsSection() {
       selectedExecutorType &&
       selectedConfiguration
     ) {
+      const innerKey = profileInnerKey(selectedExecutorType);
       const executorsMap =
         localParsedProfiles.executors as unknown as ExecutorsMap;
       const formData =
-        executorsMap[selectedExecutorType]?.[selectedConfiguration]?.[
-          selectedExecutorType
-        ];
+        executorsMap[selectedExecutorType]?.[selectedConfiguration]?.[innerKey];
       if (formData) {
         await handleExecutorConfigSave(formData);
       }
@@ -385,10 +532,20 @@ export function AgentsSettingsSection() {
             <TwoColumnPickerColumn
               label={t('settings.agents.editor.agentLabel')}
               isFirst
+              headerAction={
+                <button
+                  className="p-half rounded-sm hover:bg-secondary text-low hover:text-normal"
+                  onClick={handleInstallAgent}
+                  title="Install agent"
+                >
+                  <PlusIcon className="size-icon-2xs" weight="bold" />
+                </button>
+              }
             >
-              {Object.keys(localParsedProfiles.executors).map((executor) => {
+              {agentList.map((executor) => {
                 const isDefault =
                   config?.executor_profile?.executor === executor;
+                const isAcp = !(executor in NATIVE_EXECUTORS);
                 return (
                   <TwoColumnPickerItem
                     key={executor}
@@ -402,6 +559,8 @@ export function AgentsSettingsSection() {
                       );
                       if (configs.length > 0) {
                         setSelectedConfiguration(configs[0]);
+                      } else {
+                        setSelectedConfiguration('DEFAULT');
                       }
                     }}
                     leading={
@@ -411,14 +570,22 @@ export function AgentsSettingsSection() {
                       />
                     }
                     trailing={
-                      isDefault && (
-                        <TwoColumnPickerBadge variant="brand">
-                          {t('settings.agents.editor.isDefault')}
-                        </TwoColumnPickerBadge>
-                      )
+                      <>
+                        {isDefault && (
+                          <TwoColumnPickerBadge variant="brand">
+                            {t('settings.agents.editor.isDefault')}
+                          </TwoColumnPickerBadge>
+                        )}
+                        {isAcp && (
+                          <AgentActionsDropdown
+                            agentName={executor}
+                            onUninstall={handleUninstallAgent}
+                          />
+                        )}
+                      </>
                     }
                   >
-                    {toPrettyCase(executor)}
+                    {getAgentName(executor as BaseCodingAgent)}
                   </TwoColumnPickerItem>
                 );
               })}
@@ -493,10 +660,15 @@ export function AgentsSettingsSection() {
               <ExecutorConfigForm
                 key={`${selectedExecutorType}-${selectedConfiguration}`}
                 executor={selectedExecutorType}
+                schema={executorSchema}
+                schemaLoading={schemaLoading}
                 value={
                   (executorsMap?.[selectedExecutorType]?.[
                     selectedConfiguration
-                  ]?.[selectedExecutorType] as Record<string, unknown>) || {}
+                  ]?.[profileInnerKey(selectedExecutorType)] as Record<
+                    string,
+                    unknown
+                  >) || {}
                 }
                 onChange={(formData) =>
                   handleExecutorConfigChange(
@@ -505,7 +677,7 @@ export function AgentsSettingsSection() {
                     formData
                   )
                 }
-                disabled={profilesSaving}
+                disabled={profilesSaving || schemaLoading}
               />
             </div>
           )}
@@ -521,6 +693,45 @@ export function AgentsSettingsSection() {
         onDiscard={handleDiscard}
       />
     </>
+  );
+}
+
+// Helper component for agent actions dropdown (uninstall)
+function AgentActionsDropdown({
+  agentName,
+  onUninstall,
+}: {
+  agentName: string;
+  onUninstall: (name: string) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className={cn(
+            'p-half rounded-sm hover:bg-panel text-low hover:text-normal',
+            'opacity-0 group-hover:opacity-100 transition-opacity'
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <DotsThreeIcon className="size-icon-xs" weight="bold" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            onUninstall(agentName);
+          }}
+          className="text-error focus:text-error"
+        >
+          <div className="flex items-center gap-half w-full">
+            <TrashIcon className="size-icon-xs mr-base" />
+            Uninstall
+          </div>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

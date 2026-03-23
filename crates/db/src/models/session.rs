@@ -142,6 +142,22 @@ impl Session {
         .await
     }
 
+    /// Return distinct executor names used in the last N days.
+    pub async fn find_recent_executors(
+        pool: &SqlitePool,
+        days: i64,
+    ) -> Result<Vec<String>, sqlx::Error> {
+        sqlx::query_scalar!(
+            r#"SELECT DISTINCT executor AS "executor!"
+               FROM sessions
+               WHERE executor IS NOT NULL
+                 AND updated_at >= datetime('now', '-' || ? || ' days')"#,
+            days
+        )
+        .fetch_all(pool)
+        .await
+    }
+
     pub async fn create(
         pool: &SqlitePool,
         data: &CreateSession,

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT DISTINCT executor AS \"executor!\"\n               FROM sessions\n               WHERE executor IS NOT NULL\n                 AND updated_at >= datetime('now', '-' || ? || ' days')",
+  "describe": {
+    "columns": [
+      {
+        "name": "executor!",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "6dd8f1b67b0c811518e08f3c39d87f4c6e4c718f09d93221fd82b149b110fb85"
+}

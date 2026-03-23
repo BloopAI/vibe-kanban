@@ -2,12 +2,14 @@ import type {
   Config,
   GetMcpServerResponse,
   GitBranch,
+  InstalledAcpServer,
   McpServerQuery,
   Repo,
   UpdateMcpServersBody,
   UpdateRepo,
   UserSystemInfo,
 } from 'shared/types';
+import type { RegistryEntryWithStatus } from './api';
 import type { AppRuntime } from '@/shared/hooks/useAppRuntime';
 import { handleApiResponse } from './api';
 import {
@@ -49,6 +51,12 @@ export interface MachineClient {
     query: McpServerQuery,
     data: UpdateMcpServersBody
   ) => Promise<void>;
+  listAcpServers: () => Promise<InstalledAcpServer[]>;
+  getAcpRegistry: () => Promise<RegistryEntryWithStatus[]>;
+  installAcpFromRegistry: (registryId: string) => Promise<{ name: string }>;
+  installAcpCustom: (name: string) => Promise<string>;
+  uninstallAcpServer: (name: string) => Promise<string>;
+  getExecutorSchema: (executor: string) => Promise<Record<string, unknown>>;
 }
 
 function getMachineRequestOptions(
@@ -184,5 +192,54 @@ export function createMachineClient(
         )
       );
     },
+    listAcpServers: async () =>
+      handleApiResponse<InstalledAcpServer[]>(
+        await makeMachineRequest(runtime, target, '/api/acp-servers')
+      ),
+    getAcpRegistry: async () =>
+      handleApiResponse<RegistryEntryWithStatus[]>(
+        await makeMachineRequest(runtime, target, '/api/acp-registry')
+      ),
+    installAcpFromRegistry: async (registryId) =>
+      handleApiResponse<{ name: string }>(
+        await makeMachineRequest(
+          runtime,
+          target,
+          '/api/acp-servers/install-registry',
+          {
+            method: 'POST',
+            body: JSON.stringify({ registry_id: registryId }),
+          }
+        )
+      ),
+    installAcpCustom: async (name) =>
+      handleApiResponse<string>(
+        await makeMachineRequest(
+          runtime,
+          target,
+          '/api/acp-servers/install-custom',
+          {
+            method: 'POST',
+            body: JSON.stringify({ name }),
+          }
+        )
+      ),
+    uninstallAcpServer: async (name) =>
+      handleApiResponse<string>(
+        await makeMachineRequest(
+          runtime,
+          target,
+          `/api/acp-servers/${encodeURIComponent(name)}/uninstall`,
+          { method: 'POST' }
+        )
+      ),
+    getExecutorSchema: async (executor) =>
+      handleApiResponse<Record<string, unknown>>(
+        await makeMachineRequest(
+          runtime,
+          target,
+          `/api/agents/schema?executor=${encodeURIComponent(executor)}`
+        )
+      ),
   };
 }

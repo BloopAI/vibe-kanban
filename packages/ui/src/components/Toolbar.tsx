@@ -62,6 +62,9 @@ interface ToolbarDropdownProps {
   children?: ReactNode;
   className?: string;
   disabled?: boolean;
+  modal?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 function ToolbarDropdown({
@@ -70,11 +73,14 @@ function ToolbarDropdown({
   children,
   className,
   disabled,
+  modal = false,
+  open,
+  onOpenChange,
 }: ToolbarDropdownProps) {
   const { t } = useTranslation('common');
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={modal} open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTriggerButton
         icon={icon}
         label={label}

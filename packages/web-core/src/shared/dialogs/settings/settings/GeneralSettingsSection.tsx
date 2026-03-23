@@ -21,6 +21,7 @@ import {
 import { getModifierKey } from '@/shared/lib/platform';
 import { getLanguageOptions } from '@/i18n/languages';
 import { toPrettyCase } from '@/shared/lib/string';
+import { getAgentName } from '@/shared/components/AgentIcon';
 import {
   getExecutorVariantKeys,
   getSortedExecutorVariantKeys,
@@ -82,7 +83,7 @@ export function GeneralSettingsSection() {
   const executorOptions = profiles
     ? Object.keys(profiles)
         .sort()
-        .map((key) => ({ value: key, label: toPrettyCase(key) }))
+        .map((key) => ({ value: key, label: getAgentName(key) }))
     : [];
 
   const selectedAgentProfile =
@@ -443,7 +444,7 @@ export function GeneralSettingsSection() {
                 <DropdownMenuTriggerButton
                   label={
                     draft?.executor_profile?.executor
-                      ? toPrettyCase(draft.executor_profile.executor)
+                      ? getAgentName(draft.executor_profile.executor)
                       : t('settings.agents.selectAgent')
                   }
                   className="w-full justify-between"

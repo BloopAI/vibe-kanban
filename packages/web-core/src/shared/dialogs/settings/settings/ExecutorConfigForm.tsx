@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useState, useCallback } from 'react';
 import Form from '@rjsf/core';
 import type { IChangeEvent } from '@rjsf/core';
+import type { RJSFSchema } from '@rjsf/utils';
 import { RJSFValidationError } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +11,8 @@ import { SettingsSaveBar } from './SettingsComponents';
 
 interface ExecutorConfigFormProps {
   executor: BaseCodingAgent;
+  schema: RJSFSchema | null | undefined;
+  schemaLoading?: boolean;
   value: unknown;
   onChange?: (formData: unknown) => void;
   onSave?: (formData: unknown) => Promise<void>;
@@ -19,10 +22,10 @@ interface ExecutorConfigFormProps {
   isDirty?: boolean;
 }
 
-import schemas from 'virtual:executor-schemas';
-
 export function ExecutorConfigForm({
   executor,
+  schema,
+  schemaLoading = false,
   value,
   onChange,
   onSave,
@@ -36,10 +39,6 @@ export function ExecutorConfigForm({
   const [validationErrors, setValidationErrors] = useState<
     RJSFValidationError[]
   >([]);
-
-  const schema = useMemo(() => {
-    return schemas[executor];
-  }, [executor]);
 
   // Custom handler for env field updates
   const handleEnvChange = useCallback(
@@ -95,6 +94,14 @@ export function ExecutorConfigForm({
   const handleError = (errors: RJSFValidationError[]) => {
     setValidationErrors(errors);
   };
+
+  if (schemaLoading) {
+    return (
+      <div className="flex items-center justify-center py-4 text-low">
+        {t('settings.agents.loading')}
+      </div>
+    );
+  }
 
   if (!schema) {
     return (

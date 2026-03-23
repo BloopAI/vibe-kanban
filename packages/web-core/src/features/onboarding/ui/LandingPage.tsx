@@ -25,12 +25,13 @@ import type { IconProps } from '@phosphor-icons/react';
 import { usePostHog } from 'posthog-js/react';
 import { siDiscord } from 'simple-icons';
 import {
-  BaseCodingAgent,
+  type BaseCodingAgent,
   EditorType,
   SoundFile,
   ThemeMode,
   type EditorConfig,
 } from 'shared/types';
+import { Agents } from 'shared/agent-constants';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useTheme } from '@/shared/hooks/useTheme';
 import { AgentIcon, getAgentName } from '@/shared/components/AgentIcon';
@@ -86,10 +87,10 @@ const SOUND_OPTIONS: SoundOption[] = [
 ];
 
 const AGENT_PRIORITY: BaseCodingAgent[] = [
-  BaseCodingAgent.CLAUDE_CODE,
-  BaseCodingAgent.CODEX,
-  BaseCodingAgent.OPENCODE,
-  BaseCodingAgent.GEMINI,
+  Agents.CLAUDE_CODE,
+  Agents.CODEX,
+  Agents.OPENCODE,
+  Agents.GEMINI,
 ];
 
 const DiscordIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
@@ -155,7 +156,7 @@ export function LandingPage() {
   const [initialized, setInitialized] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<BaseCodingAgent>(
-    BaseCodingAgent.CLAUDE_CODE
+    Agents.CLAUDE_CODE
   );
   const [editorType, setEditorType] = useState<EditorType>(EditorType.VS_CODE);
   const [customCommand, setCustomCommand] = useState('');
@@ -229,7 +230,7 @@ export function LandingPage() {
     if (profiles) {
       return (Object.keys(profiles) as BaseCodingAgent[]).sort(compareAgents);
     }
-    return [...Object.values(BaseCodingAgent)].sort(compareAgents);
+    return [...Object.values(Agents)].sort(compareAgents);
   }, [profiles]);
 
   const editorOptions = useMemo(() => Object.values(EditorType), []);
