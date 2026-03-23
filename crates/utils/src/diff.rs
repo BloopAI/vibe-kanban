@@ -7,13 +7,6 @@ use uuid::Uuid;
 
 // Structs compatible with props: https://github.com/MrWangJustToDo/git-diff-view
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-pub struct FileDiffDetails {
-    pub file_name: Option<String>,
-    pub content: Option<String>,
-}
-
 // Worktree diffs for the diffs tab: minimal, no hunks, optional full contents
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
