@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, type ReactNode } from 'react';
-import { Popover, PopoverTrigger, PopoverContent } from './Popover';
+import { Popover, PopoverAnchor, PopoverContent } from './Popover';
 
 export interface TurnNavigationItem {
   /** Unique key for this entry (patchKey from DisplayEntry) */
@@ -73,7 +73,7 @@ export function TurnNavigationPopup({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+      <PopoverAnchor asChild>
         <span
           className="inline-flex"
           onMouseEnter={handleTriggerEnter}
@@ -81,7 +81,7 @@ export function TurnNavigationPopup({
         >
           {children}
         </span>
-      </PopoverTrigger>
+      </PopoverAnchor>
       <PopoverContent
         align="end"
         className="w-80 max-h-[min(60vh,var(--radix-popover-content-available-height))] flex flex-col"
