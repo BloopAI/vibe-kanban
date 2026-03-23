@@ -4,6 +4,9 @@ use subtle::ConstantTimeEq;
 
 type HmacSha256 = Hmac<Sha256>;
 
+/// Verify a Linear webhook signature.
+/// Linear sends HMAC-SHA256(secret, body) as a plain hex string in the `linear-signature` header
+/// (no `sha256=` prefix unlike GitHub's format).
 pub fn verify_signature(secret: &[u8], signature_hex: &str, payload: &[u8]) -> bool {
     let Ok(expected) = hex::decode(signature_hex) else {
         return false;
