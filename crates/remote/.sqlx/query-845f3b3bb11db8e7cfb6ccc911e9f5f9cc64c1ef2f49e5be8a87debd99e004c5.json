@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO linear_comment_links\n            (connection_id, vk_comment_id, linear_comment_id)\n        VALUES ($1, $2, $3)\n        ON CONFLICT DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "845f3b3bb11db8e7cfb6ccc911e9f5f9cc64c1ef2f49e5be8a87debd99e004c5"
+}

@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, vk_issue_id, linear_issue_id, linear_issue_identifier,\n               last_synced_at, created_at\n        FROM linear_issue_links\n        WHERE linear_issue_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "vk_issue_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "linear_issue_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "linear_issue_identifier",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_synced_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "bbfdf05ea6fa8240c104399d21951b85196c220dbca7b76316cc6419ab57f054"
+}

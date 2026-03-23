@@ -10,12 +10,9 @@ path = "src/bin/generate_types.rs"
 
 [features]
 default = []
-vk-billing = ["dep:billing"]
+vk-billing = []
 
 [dependencies]
-# private crate for billing functionality
-billing = { git = "ssh://git@github.com/BloopAI/vibe-kanban-private", branch = "main", package = "billing", optional = true }
-
 anyhow = "1.0"
 axum = { version = "0.8.4", features = ["macros", "multipart", "ws"] }
 axum-extra = { version = "0.10.3", features = ["typed-header"] }

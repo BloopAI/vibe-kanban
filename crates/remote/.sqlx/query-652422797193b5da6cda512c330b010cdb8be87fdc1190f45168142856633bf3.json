@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO linear_label_links\n            (connection_id, vk_tag_id, linear_label_id, linear_label_name)\n        VALUES ($1, $2, $3, $4)\n        ON CONFLICT (connection_id, vk_tag_id) DO UPDATE\n            SET linear_label_id   = EXCLUDED.linear_label_id,\n                linear_label_name = EXCLUDED.linear_label_name\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "652422797193b5da6cda512c330b010cdb8be87fdc1190f45168142856633bf3"
+}

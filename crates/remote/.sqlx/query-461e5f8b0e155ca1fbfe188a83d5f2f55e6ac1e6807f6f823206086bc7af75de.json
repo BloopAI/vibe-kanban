@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT lpc.id, lpc.project_id, lpc.linear_team_id, lpc.linear_project_id,\n               lpc.encrypted_api_key, lpc.linear_webhook_id, lpc.linear_webhook_secret,\n               lpc.sync_enabled, lpc.created_at, lpc.updated_at\n        FROM linear_project_connections lpc\n        JOIN projects p ON p.id = lpc.project_id\n        JOIN organization_member_metadata om ON om.organization_id = p.organization_id\n        WHERE om.user_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "linear_team_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "linear_project_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "encrypted_api_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "linear_webhook_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "linear_webhook_secret",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "sync_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "461e5f8b0e155ca1fbfe188a83d5f2f55e6ac1e6807f6f823206086bc7af75de"
+}

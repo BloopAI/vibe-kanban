@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO linear_sync_in_flight (connection_id, issue_id, direction, expires_at)\n        VALUES ($1, $2, $3, NOW() + INTERVAL '30 seconds')\n        ON CONFLICT (connection_id, issue_id, direction) DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "de8a73196adab4d7f9d6d32d251e746a5fb3b24041c54c15ba0f67ce07275c78"
+}

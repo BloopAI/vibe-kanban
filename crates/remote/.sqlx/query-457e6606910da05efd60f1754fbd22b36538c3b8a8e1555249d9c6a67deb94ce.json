@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT lcl.linear_comment_id, lpc.encrypted_api_key\n               FROM linear_comment_links lcl\n               JOIN linear_project_connections lpc ON lpc.id = lcl.connection_id\n               WHERE lcl.vk_comment_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "linear_comment_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "encrypted_api_key",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "457e6606910da05efd60f1754fbd22b36538c3b8a8e1555249d9c6a67deb94ce"
+}

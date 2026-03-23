@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT linear_comment_id, connection_id FROM linear_comment_links WHERE vk_comment_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "linear_comment_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "connection_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "ade0a0d7d33823907cfd803ccf84f4c4bbd136664c8d38f18f7ee60960eb8e32"
+}

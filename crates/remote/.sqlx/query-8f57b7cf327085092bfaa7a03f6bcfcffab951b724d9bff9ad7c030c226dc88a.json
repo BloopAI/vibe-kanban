@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO linear_status_mappings\n            (connection_id, vk_status_id, linear_state_id, linear_state_name)\n        VALUES ($1, $2, $3, $4)\n        ON CONFLICT (connection_id, vk_status_id) DO UPDATE\n            SET linear_state_id   = EXCLUDED.linear_state_id,\n                linear_state_name = EXCLUDED.linear_state_name\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8f57b7cf327085092bfaa7a03f6bcfcffab951b724d9bff9ad7c030c226dc88a"
+}

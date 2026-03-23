@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM linear_sync_in_flight WHERE expires_at < NOW()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "cc17295a36026de994b4c92b64a19807bc3b5bcd4e914c9b8f6e1b7b6bc6a369"
+}

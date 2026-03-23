@@ -28,7 +28,7 @@ pub struct LinearIssueLink {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize)]
 pub struct LinearStatusMapping {
     pub id: Uuid,
     pub connection_id: Uuid,

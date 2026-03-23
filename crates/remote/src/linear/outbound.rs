@@ -285,7 +285,7 @@ async fn resolve_linear_labels(
         if let Some(link) = label_links.iter().find(|l| l.vk_tag_id == tag.id) {
             linear_label_ids.push(link.linear_label_id.clone());
         } else {
-            let color = tag.color.as_deref().unwrap_or("#808080");
+            let color = tag.color.as_str();
             if let Ok(linear_label_id) =
                 client::create_label(http, api_key, &conn.linear_team_id, &tag.name, color).await
             {

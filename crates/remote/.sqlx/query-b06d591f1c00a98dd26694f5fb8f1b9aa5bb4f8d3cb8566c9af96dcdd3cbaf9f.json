@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM linear_project_connections WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b06d591f1c00a98dd26694f5fb8f1b9aa5bb4f8d3cb8566c9af96dcdd3cbaf9f"
+}

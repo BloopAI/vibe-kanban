@@ -110,7 +110,7 @@ pub async fn get_viewer(client: &Client, api_key: &str) -> Result<LinearViewer, 
 
 // ── Teams ─────────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct LinearTeam {
     pub id: String,
     pub name: String,
@@ -135,7 +135,7 @@ pub async fn list_teams(
 
 // ── Workflow states ───────────────────────────────────────────────────────────
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct LinearWorkflowState {
     pub id: String,
     pub name: String,

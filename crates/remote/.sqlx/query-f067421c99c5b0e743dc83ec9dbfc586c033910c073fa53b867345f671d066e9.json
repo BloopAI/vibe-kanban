@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM linear_sync_in_flight WHERE connection_id = $1 AND issue_id = $2 AND direction = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f067421c99c5b0e743dc83ec9dbfc586c033910c073fa53b867345f671d066e9"
+}

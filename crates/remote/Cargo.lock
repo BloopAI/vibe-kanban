@@ -690,27 +690,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
-name = "billing"
-version = "0.1.0"
-source = "git+ssh://git@github.com/BloopAI/vibe-kanban-private?branch=main#020091913ce5608d6c8bdb667d124fd22ab10561"
-dependencies = [
- "async-trait",
- "chrono",
- "hex",
- "hmac",
- "reqwest 0.12.28",
- "secrecy",
- "serde",
- "serde_json",
- "sha2",
- "sqlx",
- "thiserror 2.0.18",
- "tracing",
- "ts-rs",
- "uuid",
-]
-
-[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3198,7 +3177,6 @@ dependencies = [
  "azure_identity",
  "azure_storage_blob",
  "base64",
- "billing",
  "chrono",
  "flate2",
  "futures",

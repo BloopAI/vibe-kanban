@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM linear_comment_links WHERE vk_comment_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e0c4e7d49f2a8a742ad465849ba4966626e5382d58f05a75d1977600071410c9"
+}

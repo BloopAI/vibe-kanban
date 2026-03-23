@@ -4,7 +4,7 @@ use axum::{
     extract::{Extension, Path, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Json, Response},
-    routing::{delete, get, patch, post, put},
+    routing::{get, post},
 };
 use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
@@ -160,7 +160,7 @@ async fn create_connection(
         )
             .into_response();
     };
-    let encrypted = match crypto::encrypt(enc_key.expose_secret().as_str(), &req.api_key) {
+    let encrypted = match crypto::encrypt(enc_key.expose_secret(), &req.api_key) {
         Ok(v) => v,
         Err(e) => {
             tracing::error!(?e, "Failed to encrypt API key");
@@ -295,7 +295,7 @@ async fn delete_connection(State(state): State<AppState>, Path(id): Path<Uuid>) 
         state.config().linear_encryption_key.as_ref(),
     ) {
         if let Ok(api_key) =
-            crypto::decrypt(enc_key.expose_secret().as_str(), &conn.encrypted_api_key)
+            crypto::decrypt(enc_key.expose_secret(), &conn.encrypted_api_key)
         {
             let _ = client::delete_webhook(&state.http_client, &api_key, webhook_id).await;
         }
@@ -367,7 +367,7 @@ async fn list_teams_for_connection(
         Some(k) => k,
         None => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
     };
-    let api_key = match crypto::decrypt(enc_key.expose_secret().as_str(), &conn.encrypted_api_key) {
+    let api_key = match crypto::decrypt(enc_key.expose_secret(), &conn.encrypted_api_key) {
         Ok(k) => k,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
@@ -393,7 +393,7 @@ async fn trigger_sync(
         Some(k) => k,
         None => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
     };
-    let api_key = match crypto::decrypt(enc_key.expose_secret().as_str(), &conn.encrypted_api_key) {
+    let api_key = match crypto::decrypt(enc_key.expose_secret(), &conn.encrypted_api_key) {
         Ok(k) => k,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
@@ -431,7 +431,7 @@ async fn get_workflow_states(State(state): State<AppState>, Path(id): Path<Uuid>
         Some(k) => k,
         None => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
     };
-    let api_key = match crypto::decrypt(enc_key.expose_secret().as_str(), &conn.encrypted_api_key) {
+    let api_key = match crypto::decrypt(enc_key.expose_secret(), &conn.encrypted_api_key) {
         Ok(k) => k,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
@@ -674,7 +674,7 @@ async fn handle_linear_comment_event(
         Some(k) => k,
         None => return Ok(()),
     };
-    let _api_key = match crypto::decrypt(enc_key.expose_secret().as_str(), &conn.encrypted_api_key)
+    let _api_key = match crypto::decrypt(enc_key.expose_secret(), &conn.encrypted_api_key)
     {
         Ok(k) => k,
         Err(_) => return Ok(()),

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT 1 AS \"exists: i32\"\n        FROM linear_sync_in_flight\n        WHERE connection_id = $1 AND issue_id = $2 AND direction = 'outbound'\n          AND expires_at > NOW()\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists: i32",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "6ab6692f3e2f6fc5793d8e550bbc3f58c18e3026a8ac3c0ca92c4e08b5bd0ccf"
+}

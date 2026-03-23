@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM linear_issue_links WHERE vk_issue_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6221659c55a4eeba8131a5e036a41378b988cb88c061b48f358c101f8b89e6a3"
+}

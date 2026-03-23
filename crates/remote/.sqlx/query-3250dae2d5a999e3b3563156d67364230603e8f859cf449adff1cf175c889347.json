@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, connection_id, vk_status_id, linear_state_id, linear_state_name\n        FROM linear_status_mappings\n        WHERE connection_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "connection_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "vk_status_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "linear_state_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "linear_state_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3250dae2d5a999e3b3563156d67364230603e8f859cf449adff1cf175c889347"
+}

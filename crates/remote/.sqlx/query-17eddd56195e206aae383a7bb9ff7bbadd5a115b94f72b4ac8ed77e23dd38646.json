@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE linear_issue_links\n        SET last_synced_at = NOW()\n        WHERE vk_issue_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "17eddd56195e206aae383a7bb9ff7bbadd5a115b94f72b4ac8ed77e23dd38646"
+}

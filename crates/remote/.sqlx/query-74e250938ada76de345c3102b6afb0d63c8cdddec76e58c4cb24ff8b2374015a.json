@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE linear_project_connections\n        SET linear_webhook_id = $2, linear_webhook_secret = $3, updated_at = NOW()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "74e250938ada76de345c3102b6afb0d63c8cdddec76e58c4cb24ff8b2374015a"
+}
