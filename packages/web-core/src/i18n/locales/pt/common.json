@@ -535,7 +535,7 @@
   },
   "appBar": {
     "kanban": {
-      "tooltip": "Kanban",
+      "tooltip": "Faça login para visualizar os projetos",
       "title": "Quadros Kanban",
       "description": "Entre para organizar seus agentes de codificação com quadros kanban.",
       "migrateOldProjects": "Migrar projetos antigos"
