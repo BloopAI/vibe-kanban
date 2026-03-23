@@ -128,6 +128,7 @@ export default defineConfig({
     ],
   },
   server: {
+    host: process.env.VITE_HOST || false,
     port: parseInt(process.env.FRONTEND_PORT || '3000'),
     proxy: {
       '/api': {
