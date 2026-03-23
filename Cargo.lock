@@ -235,7 +235,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "api-types"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "chrono",
  "schemars 1.2.1",
@@ -1094,7 +1094,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
 name = "client-info"
-version = "0.1.35"
+version = "0.1.36"
 
 [[package]]
 name = "clipboard-win"
@@ -1749,7 +1749,7 @@ checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
 name = "db"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1802,7 +1802,7 @@ dependencies = [
 
 [[package]]
 name = "deployment"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1940,7 +1940,7 @@ dependencies = [
 
 [[package]]
 name = "desktop-bridge"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -2311,7 +2311,7 @@ checksum = "4ef6b89e5b37196644d8796de5268852ff179b44e96276cf4290264843743bb7"
 
 [[package]]
 name = "embedded-ssh"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2481,7 +2481,7 @@ dependencies = [
 
 [[package]]
 name = "executors"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "agent-client-protocol",
  "async-stream",
@@ -3154,7 +3154,7 @@ dependencies = [
 
 [[package]]
 name = "git"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "chrono",
  "dirs 5.0.1",
@@ -3169,7 +3169,7 @@ dependencies = [
 
 [[package]]
 name = "git-host"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "async-trait",
  "backon",
@@ -4417,7 +4417,7 @@ checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
 
 [[package]]
 name = "local-deployment"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "api-types",
@@ -4615,7 +4615,7 @@ checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
 name = "mcp"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "api-types",
@@ -6023,7 +6023,7 @@ dependencies = [
 
 [[package]]
 name = "preview-proxy"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "axum",
@@ -6449,7 +6449,7 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
 name = "relay-client"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -6472,7 +6472,7 @@ dependencies = [
 
 [[package]]
 name = "relay-control"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -6486,7 +6486,7 @@ dependencies = [
 
 [[package]]
 name = "relay-hosts"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "chrono",
@@ -6513,7 +6513,7 @@ dependencies = [
 
 [[package]]
 name = "relay-tunnel-core"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "axum",
@@ -6533,7 +6533,7 @@ dependencies = [
 
 [[package]]
 name = "relay-types"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "chrono",
  "serde",
@@ -6544,7 +6544,7 @@ dependencies = [
 
 [[package]]
 name = "relay-ws"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "axum",
@@ -6564,7 +6564,7 @@ dependencies = [
 
 [[package]]
 name = "remote-info"
-version = "0.1.35"
+version = "0.1.36"
 
 [[package]]
 name = "reqwest"
@@ -6649,7 +6649,7 @@ dependencies = [
 
 [[package]]
 name = "review"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "clap",
@@ -7679,7 +7679,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "api-types",
@@ -7743,7 +7743,7 @@ dependencies = [
 
 [[package]]
 name = "services"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "api-types",
@@ -9609,7 +9609,7 @@ dependencies = [
 
 [[package]]
 name = "trusted-key-auth"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "base64 0.22.1",
  "ed25519-dalek",
@@ -9931,7 +9931,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "axum",
  "bytes",
@@ -10005,7 +10005,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vibe-kanban-tauri"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "arboard",
  "async-trait",
@@ -11079,7 +11079,7 @@ dependencies = [
 
 [[package]]
 name = "workspace-manager"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "db",
  "git",
@@ -11094,7 +11094,7 @@ dependencies = [
 
 [[package]]
 name = "worktree-manager"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "dunce",
  "git",
