@@ -29,7 +29,6 @@ tokio-stream = { version = "0.1.17", features = ["sync"] }
 shellexpand = "3.1.1"
 which = "8.0.0"
 similar = "2"
-git2 = { workspace = true }
 dirs = "5.0"
 thiserror = { workspace = true }
 command-group = { version = "5.0", features = ["with-tokio"] }

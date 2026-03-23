@@ -15,7 +15,7 @@ use db::{
 };
 use executors::logs::utils::{ConversationPatch, patch::escape_json_pointer_segment};
 use futures::StreamExt;
-use git::{Commit, DiffTarget, GitService, GitServiceError};
+use git::{Commit, DiffTarget, GitService, GitServiceError, compute_line_change_counts};
 use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{
     DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache, new_debouncer,
@@ -24,10 +24,7 @@ use sqlx::SqlitePool;
 use thiserror::Error;
 use tokio::{sync::mpsc, task::JoinHandle};
 use tokio_stream::wrappers::{IntervalStream, ReceiverStream};
-use utils::{
-    diff::{self, Diff},
-    log_msg::LogMsg,
-};
+use utils::{diff::Diff, log_msg::LogMsg};
 use uuid::Uuid;
 
 use crate::services::filesystem_watcher::{self, FilesystemWatcherError};
@@ -125,9 +122,7 @@ impl DiffStreamError {
     fn is_repo_not_found(&self) -> bool {
         matches!(
             self,
-            DiffStreamError::GitService(GitServiceError::Git(git_err))
-                if git_err.code() == git2::ErrorCode::NotFound
-                    && git_err.class() == git2::ErrorClass::Repository
+            DiffStreamError::GitService(git_err) if git_err.is_repo_not_found()
         )
     }
 }
@@ -509,7 +504,7 @@ fn omit_diff_contents(diff: &mut Diff) {
     {
         let old = diff.old_content.as_deref().unwrap_or("");
         let new = diff.new_content.as_deref().unwrap_or("");
-        let (add, del) = diff::compute_line_change_counts(old, new);
+        let (add, del) = compute_line_change_counts(old, new);
         diff.additions = Some(add);
         diff.deletions = Some(del);
     }
@@ -620,7 +615,7 @@ fn setup_git_watcher(
     Debouncer<RecommendedWatcher, RecommendedCache>,
     tokio::sync::watch::Receiver<()>,
 )> {
-    let Ok(repo) = git.open_repo(worktree_path) else {
+    let Ok(gitdir) = git.get_git_dir(worktree_path) else {
         tracing::warn!(
             "Failed to open git repo at {:?}, git events will be ignored",
             worktree_path
@@ -628,8 +623,7 @@ fn setup_git_watcher(
         return None;
     };
 
-    // For worktrees, repo.path() points to the actual gitdir (e.g. .git/worktrees/name or .git/)
-    let gitdir = repo.path();
+    // For worktrees, gitdir points to the actual gitdir (e.g. .git/worktrees/name or .git/)
     let paths_to_watch = vec![gitdir.join("HEAD"), gitdir.join("logs").join("HEAD")];
 
     let (tx, rx) = tokio::sync::watch::channel(());

@@ -9,7 +9,6 @@ utils = { path = "../utils" }
 tokio = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-git2 = { workspace = true }
 dunce = "1.0"
 
 [dev-dependencies]

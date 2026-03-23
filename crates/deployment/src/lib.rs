@@ -9,7 +9,6 @@ use desktop_bridge::tunnel::TunnelManager;
 use executors::executors::ExecutorError;
 use futures::{StreamExt, TryStreamExt};
 use git::{GitService, GitServiceError};
-use git2::Error as Git2Error;
 use preview_proxy::PreviewProxyService;
 use relay_control::{RelayControl, signing::RelaySigningService};
 use relay_hosts::RelayHosts;
@@ -51,8 +50,6 @@ pub enum DeploymentError {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Sqlx(#[from] SqlxError),
-    #[error(transparent)]
-    Git2(#[from] Git2Error),
     #[error(transparent)]
     GitServiceError(#[from] GitServiceError),
     #[error(transparent)]

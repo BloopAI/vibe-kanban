@@ -1,4 +1,7 @@
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use chrono::{DateTime, Utc};
 use git2::{
@@ -8,7 +11,7 @@ use git2::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
-use utils::diff::{Diff, DiffChangeKind, FileDiffDetails, compute_line_change_counts};
+use utils::diff::{Diff, DiffChangeKind, FileDiffDetails};
 
 mod cli;
 mod validation;
@@ -53,6 +56,26 @@ pub enum GitServiceError {
     #[error("Rebase in progress; resolve or abort it before retrying")]
     RebaseInProgress,
 }
+
+impl GitServiceError {
+    /// Returns true if this error is caused by a git repository not being found.
+    pub fn is_repo_not_found(&self) -> bool {
+        matches!(
+            self,
+            GitServiceError::Git(git_err)
+                if git_err.code() == git2::ErrorCode::NotFound
+                    && git_err.class() == git2::ErrorClass::Repository
+        )
+    }
+}
+
+/// Whether a branch is local or remote (abstraction over git2::BranchType).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GitBranchType {
+    Local,
+    Remote,
+}
+
 /// Service for managing Git operations in task execution workflows
 #[derive(Clone)]
 pub struct GitService {}
@@ -177,8 +200,49 @@ impl GitService {
     }
 
     /// Open the repository
-    pub fn open_repo(&self, repo_path: &Path) -> Result<Repository, GitServiceError> {
+    pub(crate) fn open_repo(&self, repo_path: &Path) -> Result<Repository, GitServiceError> {
         Repository::open(repo_path).map_err(GitServiceError::from)
+    }
+
+    /// Returns whether a path can be opened as a git repository.
+    pub fn is_repo_openable(&self, repo_path: &Path) -> bool {
+        Repository::open(repo_path).is_ok()
+    }
+
+    /// Returns the `.git` directory (or worktree gitdir) for the given repo path.
+    pub fn get_git_dir(&self, repo_path: &Path) -> Result<PathBuf, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        Ok(repo.path().to_path_buf())
+    }
+
+    /// Returns the common directory (shared `.git` dir across worktrees).
+    pub fn get_common_dir(&self, repo_path: &Path) -> Result<PathBuf, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        Ok(repo.commondir().to_path_buf())
+    }
+
+    /// Checks if a named worktree is valid/registered in the repository.
+    pub fn validate_worktree(
+        &self,
+        repo_path: &Path,
+        worktree_name: &str,
+    ) -> Result<bool, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        Ok(repo.find_worktree(worktree_name).is_ok())
+    }
+
+    /// Create a new local branch pointing at the tip of `base_branch_name`.
+    pub fn create_branch(
+        &self,
+        repo_path: &Path,
+        new_branch_name: &str,
+        base_branch_name: &str,
+    ) -> Result<(), GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let base_ref = Self::find_branch(&repo, base_branch_name)?.into_reference();
+        let commit = base_ref.peel_to_commit()?;
+        repo.branch(new_branch_name, &commit, false)?;
+        Ok(())
     }
 
     /// Ensure local (repo-scoped) identity exists for CLI commits.
@@ -276,7 +340,7 @@ impl GitService {
         Ok(())
     }
 
-    pub fn create_initial_commit(&self, repo: &Repository) -> Result<(), GitServiceError> {
+    fn create_initial_commit(&self, repo: &Repository) -> Result<(), GitServiceError> {
         let signature = self.signature_with_fallback(repo)?;
 
         let tree_id = {
@@ -1067,13 +1131,8 @@ impl GitService {
         Ok(HeadInfo { branch, oid })
     }
 
-    pub fn get_current_branch(&self, repo_path: &Path) -> Result<String, git2::Error> {
-        // Thin wrapper for backward compatibility
-        match self.get_head_info(repo_path) {
-            Ok(head_info) => Ok(head_info.branch),
-            Err(GitServiceError::Git(git_err)) => Err(git_err),
-            Err(_) => Err(git2::Error::from_str("Failed to get head info")),
-        }
+    pub fn get_current_branch(&self, repo_path: &Path) -> Result<String, GitServiceError> {
+        Ok(self.get_head_info(repo_path)?.branch)
     }
 
     /// Get the commit OID (as hex string) for a given branch without modifying HEAD
@@ -1274,7 +1333,7 @@ impl GitService {
         Ok(())
     }
 
-    pub fn get_all_branches(&self, repo_path: &Path) -> Result<Vec<GitBranch>, git2::Error> {
+    pub fn get_all_branches(&self, repo_path: &Path) -> Result<Vec<GitBranch>, GitServiceError> {
         let repo = Repository::open(repo_path)?;
         let current_branch = self.get_current_branch(repo_path).unwrap_or_default();
         let mut branches = Vec::new();
@@ -1486,15 +1545,15 @@ impl GitService {
         &self,
         repo_path: &Path,
         branch_name: &str,
-    ) -> Result<BranchType, GitServiceError> {
+    ) -> Result<GitBranchType, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
         // Try to find the branch as a local branch first
         match repo.find_branch(branch_name, BranchType::Local) {
-            Ok(_) => Ok(BranchType::Local),
+            Ok(_) => Ok(GitBranchType::Local),
             Err(_) => {
                 // If not found, try to find it as a remote branch
                 match repo.find_branch(branch_name, BranchType::Remote) {
-                    Ok(_) => Ok(BranchType::Remote),
+                    Ok(_) => Ok(GitBranchType::Remote),
                     Err(_) => Err(GitServiceError::BranchNotFound(branch_name.to_string())),
                 }
             }
@@ -1630,7 +1689,7 @@ impl GitService {
         Ok(())
     }
 
-    pub fn find_branch<'a>(
+    pub(crate) fn find_branch<'a>(
         repo: &'a Repository,
         branch_name: &str,
     ) -> Result<git2::Branch<'a>, GitServiceError> {
@@ -1965,5 +2024,34 @@ impl GitService {
         }
 
         Ok(stats)
+    }
+}
+
+/// Compute addition/deletion counts between two text snapshots using libgit2.
+pub fn compute_line_change_counts(old: &str, new: &str) -> (usize, usize) {
+    fn ensure_newline(s: &str) -> std::borrow::Cow<'_, str> {
+        if s.ends_with('\n') {
+            std::borrow::Cow::Borrowed(s)
+        } else {
+            let mut owned = s.to_owned();
+            owned.push('\n');
+            std::borrow::Cow::Owned(owned)
+        }
+    }
+
+    let old = ensure_newline(old);
+    let new = ensure_newline(new);
+
+    let mut opts = DiffOptions::new();
+    opts.context_lines(0);
+
+    match git2::Patch::from_buffers(old.as_bytes(), None, new.as_bytes(), None, Some(&mut opts))
+        .and_then(|patch| patch.line_stats())
+    {
+        Ok((_, adds, dels)) => (adds, dels),
+        Err(e) => {
+            tracing::error!("git2 diff failed: {}", e);
+            (0, 0)
+        }
     }
 }
