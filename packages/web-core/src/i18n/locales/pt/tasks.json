@@ -395,7 +395,7 @@
       "cancelled": "Cancelado"
     },
     "startLabel": "Iniciar",
-    "attachImage": "Anexar imagem",
+    "attachFile": "Anexar Arquivo",
     "dropImagesHere": "Solte imagens aqui",
     "updating": "Atualizando...",
     "updateTask": "Atualizar Tarefa",
