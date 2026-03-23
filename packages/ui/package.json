@@ -45,7 +45,10 @@
     "react-dom": "^18.2.0",
     "react-hotkeys-hook": "^5.1.0",
     "react-i18next": "^15.7.4",
+    "react-markdown": "^10.1.0",
     "react-virtuoso": "^4.14.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {

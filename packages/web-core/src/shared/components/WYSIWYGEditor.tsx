@@ -15,12 +15,7 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import {
-  TRANSFORMERS,
-  TEXT_FORMAT_TRANSFORMERS,
-  CODE,
-  type Transformer,
-} from '@lexical/markdown';
+import { TEXT_FORMAT_TRANSFORMERS, type Transformer } from '@lexical/markdown';
 import { MarkdownInsertPlugin } from '@vibe/ui/components/MarkdownInsertPlugin';
 import { MarkdownListContinuePlugin } from '@vibe/ui/components/MarkdownListContinuePlugin';
 import {
@@ -36,7 +31,6 @@ import {
   COMPONENT_INFO_EXPORT_TRANSFORMER,
   $isComponentInfoNode,
 } from '@vibe/ui/components/component-info-node';
-import { TABLE_TRANSFORMER } from '@vibe/ui/lib/table-transformer';
 import {
   WorkspaceContext as EditorWorkspaceContext,
   SessionContext,
@@ -53,8 +47,6 @@ import { SlashCommandTypeaheadPlugin } from '@vibe/ui/components/SlashCommandTyp
 import { KeyboardCommandsPlugin } from '@vibe/ui/components/KeyboardCommandsPlugin';
 import { ImageKeyboardPlugin } from '@vibe/ui/components/ImageKeyboardPlugin';
 import { ComponentInfoKeyboardPlugin } from '@vibe/ui/components/ComponentInfoKeyboardPlugin';
-import { ReadOnlyLinkPlugin } from '@vibe/ui/components/ReadOnlyLinkPlugin';
-import { ClickableCodePlugin } from '@vibe/ui/components/ClickableCodePlugin';
 import { ToolbarPlugin } from '@vibe/ui/components/ToolbarPlugin';
 import { StaticToolbarPlugin } from '@vibe/ui/components/StaticToolbarPlugin';
 import { PasteMarkdownPlugin } from '@vibe/ui/components/PasteMarkdownPlugin';
@@ -92,6 +84,8 @@ import {
 } from '@/shared/dialogs/command-bar/selections/repoSelection';
 import { fetchAttachmentSasUrl } from '@/shared/lib/remoteApi';
 import { writeClipboardViaBridge } from '@/shared/lib/clipboard';
+import { MarkdownReadOnly } from '@vibe/ui/components/wysiwyg/MarkdownReadOnly';
+import { ReadOnlyStaticToolbar } from '@vibe/ui/components/wysiwyg/ReadOnlyStaticToolbar';
 import type { SendMessageShortcut } from 'shared/types';
 import type { BaseCodingAgent } from 'shared/types';
 
@@ -377,6 +371,12 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         // noop – bridge handles fallback
       }
     }, [value]);
+    const openImagePreview = useCallback(
+      (options: Parameters<typeof ImagePreviewDialog.show>[0]) => {
+        ImagePreviewDialog.show(options);
+      },
+      []
+    );
     const imageNodeDefinition = useMemo(
       () =>
         createImageNode({
@@ -474,27 +474,6 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       [ATTACHMENT_TRANSFORMER, IMAGE_TRANSFORMER]
     );
 
-    // Display mode: full markdown rendering
-    const displayTransformers: Transformer[] = useMemo(
-      () => [
-        TABLE_TRANSFORMER,
-        IMAGE_TRANSFORMER,
-        ATTACHMENT_TRANSFORMER,
-        PR_COMMENT_EXPORT_TRANSFORMER,
-        PR_COMMENT_TRANSFORMER,
-        COMPONENT_INFO_EXPORT_TRANSFORMER,
-        COMPONENT_INFO_TRANSFORMER,
-        CODE,
-        ...TRANSFORMERS,
-      ],
-      [ATTACHMENT_TRANSFORMER, IMAGE_TRANSFORMER]
-    );
-
-    // Use display transformers for read-only, edit transformers for editing
-    const activeTransformers = disabled
-      ? displayTransformers
-      : editTransformers;
-
     // Preview toggle state (only used in edit mode with static toolbar)
     const [isPreviewMode, setIsPreviewMode] = useState(false);
 
@@ -542,21 +521,110 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       [placeholder, className]
     );
 
+    // ── Read-only mode: react-markdown based rendering ──
+    if (disabled) {
+      const readOnlyContent = (
+        <EditorWorkspaceContext.Provider value={workspaceId}>
+          <SessionContext.Provider value={sessionId}>
+            <LocalAttachmentsContext.Provider value={localAttachments ?? []}>
+              <MarkdownReadOnly
+                value={value}
+                className={className}
+                fetchAttachmentUrl={fetchAttachmentSasUrl}
+                openImagePreview={openImagePreview}
+                findMatchingDiffPath={findMatchingDiffPath}
+                onCodeClick={onCodeClick}
+              />
+              {showStaticToolbar && (
+                <ReadOnlyStaticToolbar
+                  saveStatus={saveStatus}
+                  extraActions={staticToolbarActions}
+                  onRequestEdit={onRequestEdit}
+                />
+              )}
+            </LocalAttachmentsContext.Provider>
+          </SessionContext.Provider>
+        </EditorWorkspaceContext.Provider>
+      );
+
+      if (!hideActions) {
+        return (
+          <div className="relative group">
+            <div className="sticky top-0 right-2 z-10 pointer-events-none h-0">
+              <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                {/* Copy button */}
+                <Button
+                  type="button"
+                  aria-label={copied ? 'Copied!' : 'Copy as Markdown'}
+                  title={copied ? 'Copied!' : 'Copy as Markdown'}
+                  variant="icon"
+                  size="icon"
+                  onClick={handleCopy}
+                  className="pointer-events-auto p-2 bg-muted h-8 w-8"
+                >
+                  {copied ? (
+                    <Check className="w-4 h-4 text-success" />
+                  ) : (
+                    <Clipboard className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </Button>
+                {/* Edit button - only if onEdit provided */}
+                {onEdit && (
+                  <Button
+                    type="button"
+                    aria-label="Edit"
+                    title="Edit"
+                    variant="icon"
+                    size="icon"
+                    onClick={onEdit}
+                    className="pointer-events-auto p-2 bg-muted h-8 w-8"
+                  >
+                    <Pencil className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                )}
+                {/* Delete button - only if onDelete provided */}
+                {onDelete && (
+                  <Button
+                    type="button"
+                    aria-label="Delete"
+                    title="Delete"
+                    variant="icon"
+                    size="icon"
+                    onClick={onDelete}
+                    className="pointer-events-auto p-2 bg-muted h-8 w-8"
+                  >
+                    <Trash2 className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            {readOnlyContent}
+          </div>
+        );
+      }
+
+      return readOnlyContent;
+    }
+
+    // ── Edit mode: Lexical-based editing (unchanged) ──
     const editorContent = (
       <div className="wysiwyg text-base relative">
-        {/* Preview: render a read-only editor with full markdown rendering */}
-        {!disabled && isPreviewMode && (
-          <div className={cn(className)}>
-            <WYSIWYGEditor
-              value={value}
-              disabled
-              hideActions
-              className={className}
-              workspaceId={workspaceId}
-              sessionId={sessionId}
-              localAttachments={localAttachments}
-            />
-          </div>
+        {/* Preview: render react-markdown based read-only view */}
+        {isPreviewMode && (
+          <EditorWorkspaceContext.Provider value={workspaceId}>
+            <SessionContext.Provider value={sessionId}>
+              <LocalAttachmentsContext.Provider value={localAttachments ?? []}>
+                <div className={cn(className)}>
+                  <MarkdownReadOnly
+                    value={value}
+                    className={className}
+                    fetchAttachmentUrl={fetchAttachmentSasUrl}
+                    openImagePreview={openImagePreview}
+                  />
+                </div>
+              </LocalAttachmentsContext.Provider>
+            </SessionContext.Provider>
+          </EditorWorkspaceContext.Provider>
         )}
 
         <EditorWorkspaceContext.Provider value={workspaceId}>
@@ -568,18 +636,16 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                   value={value}
                   onChange={onChange}
                   onEditorStateChange={onEditorStateChange}
-                  editable={!disabled}
-                  transformers={activeTransformers}
-                  preserveMarkdownSyntax={!disabled}
+                  editable
+                  transformers={editTransformers}
+                  preserveMarkdownSyntax
                 />
-                {!disabled && !isPreviewMode && !showStaticToolbar && (
-                  <ToolbarPlugin />
-                )}
+                {!isPreviewMode && !showStaticToolbar && <ToolbarPlugin />}
 
                 <div
                   className="relative"
                   style={
-                    !disabled && isPreviewMode
+                    isPreviewMode
                       ? {
                           position: 'absolute',
                           opacity: 0,
@@ -592,9 +658,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                     contentEditable={
                       <ContentEditable
                         className={cn('outline-none', className)}
-                        aria-label={
-                          disabled ? 'Markdown content' : 'Markdown editor'
-                        }
+                        aria-label="Markdown editor"
                         onPasteCapture={handlePaste}
                       />
                     }
@@ -609,11 +673,10 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                     extraActions={staticToolbarActions}
                     isPreviewMode={isPreviewMode}
                     onTogglePreview={
-                      !disabled && !onRequestEdit
+                      !onRequestEdit
                         ? () => setIsPreviewMode((p) => !p)
                         : undefined
                     }
-                    readOnly={disabled}
                     onRequestEdit={onRequestEdit}
                   />
                 )}
@@ -621,120 +684,49 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 <ListPlugin />
                 <TablePlugin />
                 <CodeHighlightPlugin />
-                {/* Only include editing plugins when not in read-only mode */}
-                {!disabled && (
-                  <>
-                    {autoFocus && <AutoFocusPlugin />}
-                    <HistoryPlugin />
-                    <MarkdownInsertPlugin />
-                    <PasteMarkdownPlugin transformers={activeTransformers} />
-                    <TypeaheadOpenProvider>
-                      <MarkdownListContinuePlugin />
-                      <FileTagTypeaheadPlugin
-                        repoIds={repoIds}
-                        diffPaths={diffPaths}
-                        preferredRepoId={preferredRepoId}
-                        setPreferredRepoId={setFileSearchRepo}
-                        listRecentRepos={listRecentRepos}
-                        getRepoById={getRepoById}
-                        chooseRepo={chooseRepo}
-                        onCreateTag={handleCreateTag}
-                        searchTagsAndFiles={searchFileTags}
-                      />
-                      {executor && (
-                        <SlashCommandTypeaheadPlugin
-                          enabled={true}
-                          commands={slashCommandsQuery.commands}
-                          isInitialized={slashCommandsQuery.isInitialized}
-                          isDiscovering={slashCommandsQuery.discovering}
-                        />
-                      )}
-                      <KeyboardCommandsPlugin
-                        onCmdEnter={onCmdEnter}
-                        onShiftCmdEnter={onShiftCmdEnter}
-                        onChange={onChange}
-                        transformers={activeTransformers}
-                        sendShortcut={sendShortcut}
-                      />
-                    </TypeaheadOpenProvider>
-                    <ImageKeyboardPlugin isTargetNode={$isImageNode} />
-                    <ComponentInfoKeyboardPlugin
-                      isTargetNode={$isComponentInfoNode}
-                    />
-                  </>
-                )}
-                {/* Link sanitization for read-only mode */}
-                {disabled && <ReadOnlyLinkPlugin />}
-                {/* Clickable code for file paths in read-only mode */}
-                {disabled && findMatchingDiffPath && onCodeClick && (
-                  <ClickableCodePlugin
-                    findMatchingDiffPath={findMatchingDiffPath}
-                    onCodeClick={onCodeClick}
+                {autoFocus && <AutoFocusPlugin />}
+                <HistoryPlugin />
+                <MarkdownInsertPlugin />
+                <PasteMarkdownPlugin transformers={editTransformers} />
+                <TypeaheadOpenProvider>
+                  <MarkdownListContinuePlugin />
+                  <FileTagTypeaheadPlugin
+                    repoIds={repoIds}
+                    diffPaths={diffPaths}
+                    preferredRepoId={preferredRepoId}
+                    setPreferredRepoId={setFileSearchRepo}
+                    listRecentRepos={listRecentRepos}
+                    getRepoById={getRepoById}
+                    chooseRepo={chooseRepo}
+                    onCreateTag={handleCreateTag}
+                    searchTagsAndFiles={searchFileTags}
                   />
-                )}
+                  {executor && (
+                    <SlashCommandTypeaheadPlugin
+                      enabled={true}
+                      commands={slashCommandsQuery.commands}
+                      isInitialized={slashCommandsQuery.isInitialized}
+                      isDiscovering={slashCommandsQuery.discovering}
+                    />
+                  )}
+                  <KeyboardCommandsPlugin
+                    onCmdEnter={onCmdEnter}
+                    onShiftCmdEnter={onShiftCmdEnter}
+                    onChange={onChange}
+                    transformers={editTransformers}
+                    sendShortcut={sendShortcut}
+                  />
+                </TypeaheadOpenProvider>
+                <ImageKeyboardPlugin isTargetNode={$isImageNode} />
+                <ComponentInfoKeyboardPlugin
+                  isTargetNode={$isComponentInfoNode}
+                />
               </LexicalComposer>
             </LocalAttachmentsContext.Provider>
           </SessionContext.Provider>
         </EditorWorkspaceContext.Provider>
       </div>
     );
-
-    // Wrap with action buttons in read-only mode
-    if (disabled && !hideActions) {
-      return (
-        <div className="relative group">
-          <div className="sticky top-0 right-2 z-10 pointer-events-none h-0">
-            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-              {/* Copy button */}
-              <Button
-                type="button"
-                aria-label={copied ? 'Copied!' : 'Copy as Markdown'}
-                title={copied ? 'Copied!' : 'Copy as Markdown'}
-                variant="icon"
-                size="icon"
-                onClick={handleCopy}
-                className="pointer-events-auto p-2 bg-muted h-8 w-8"
-              >
-                {copied ? (
-                  <Check className="w-4 h-4 text-success" />
-                ) : (
-                  <Clipboard className="w-4 h-4 text-muted-foreground" />
-                )}
-              </Button>
-              {/* Edit button - only if onEdit provided */}
-              {onEdit && (
-                <Button
-                  type="button"
-                  aria-label="Edit"
-                  title="Edit"
-                  variant="icon"
-                  size="icon"
-                  onClick={onEdit}
-                  className="pointer-events-auto p-2 bg-muted h-8 w-8"
-                >
-                  <Pencil className="w-4 h-4 text-muted-foreground" />
-                </Button>
-              )}
-              {/* Delete button - only if onDelete provided */}
-              {onDelete && (
-                <Button
-                  type="button"
-                  aria-label="Delete"
-                  title="Delete"
-                  variant="icon"
-                  size="icon"
-                  onClick={onDelete}
-                  className="pointer-events-auto p-2 bg-muted h-8 w-8"
-                >
-                  <Trash2 className="w-4 h-4 text-muted-foreground" />
-                </Button>
-              )}
-            </div>
-          </div>
-          {editorContent}
-        </div>
-      );
-    }
 
     return editorContent;
   }
