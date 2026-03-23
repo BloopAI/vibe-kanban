@@ -100,7 +100,12 @@ export function TurnNavigationPopup({
   }
 
   return (
-    <Popover open={open}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) setOpen(false);
+      }}
+    >
       <PopoverTrigger asChild>
         <span
           className="inline-flex"
