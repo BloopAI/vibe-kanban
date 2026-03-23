@@ -151,7 +151,7 @@ async fn start_relay(
     start_relay_client(RelayClientConfig {
         ws_url,
         bearer_token: access_token,
-        local_addr: params.server_addr.to_string(),
+        local_addr: params.server_addr,
         shutdown,
     })
     .await

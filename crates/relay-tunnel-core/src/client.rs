@@ -1,4 +1,4 @@
-use std::convert::Infallible;
+use std::{convert::Infallible, net::SocketAddr};
 
 use anyhow::Context as _;
 use axum::body::Body;
@@ -19,7 +19,7 @@ use crate::{tls::ws_connector, ws_io::tungstenite_ws_stream_io};
 pub struct RelayClientConfig {
     pub ws_url: String,
     pub bearer_token: String,
-    pub local_addr: String,
+    pub local_addr: SocketAddr,
     pub shutdown: CancellationToken,
 }
 
@@ -64,7 +64,6 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
                     .ok_or_else(|| anyhow::anyhow!("Relay control channel closed"))?
                     .map_err(|e| anyhow::anyhow!("Relay yamux session error: {e}"))?;
 
-                let local_addr = local_addr.clone();
                 tokio::spawn(async move {
                     if let Err(error) = handle_inbound_stream(stream, local_addr).await {
                         tracing::warn!(?error, "Relay stream handling failed");
@@ -77,16 +76,14 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
 
 async fn handle_inbound_stream(
     stream: tokio_yamux::StreamHandle,
-    local_addr: String,
+    local_addr: SocketAddr,
 ) -> anyhow::Result<()> {
     let io = TokioIo::new(stream);
 
     server_http1::Builder::new()
         .serve_connection(
             io,
-            service_fn(move |request: Request<Incoming>| {
-                proxy_to_local(request, local_addr.clone())
-            }),
+            service_fn(move |request: Request<Incoming>| proxy_to_local(request, local_addr)),
         )
         .with_upgrades()
         .await
@@ -95,14 +92,14 @@ async fn handle_inbound_stream(
 
 async fn proxy_to_local(
     mut request: Request<Incoming>,
-    local_addr: String,
+    local_addr: SocketAddr,
 ) -> Result<Response<Body>, Infallible> {
     request
         .headers_mut()
         .insert("x-vk-relayed", http::HeaderValue::from_static("1"));
 
     // TODO: fix dev servers
-    let local_stream = match TcpStream::connect(local_addr.as_str()).await {
+    let local_stream = match TcpStream::connect(local_addr).await {
         Ok(stream) => stream,
         Err(error) => {
             tracing::warn!(
