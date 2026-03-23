@@ -6,7 +6,6 @@ import { logout } from "@remote/shared/lib/api";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { useAuth } from "@/shared/hooks/auth/useAuth";
 import { useUserSystem } from "@/shared/hooks/useUserSystem";
-import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 
 interface RemoteAppBarUserPopoverContainerProps {
   organizations: OrganizationWithRole[];
@@ -70,7 +69,6 @@ export function RemoteAppBarUserPopoverContainer({
       await SettingsDialog.show({
         initialSection: "organizations",
         initialState: { organizationId: orgId },
-        sections: REMOTE_SETTINGS_SECTIONS,
       });
     },
     [onOrgSelect],
@@ -78,9 +76,7 @@ export function RemoteAppBarUserPopoverContainer({
 
   const handleSettings = useCallback(async () => {
     setOpen(false);
-    await SettingsDialog.show({
-      sections: REMOTE_SETTINGS_SECTIONS,
-    });
+    await SettingsDialog.show();
   }, []);
 
   return (

@@ -10,16 +10,17 @@ use std::{
 use async_trait::async_trait;
 use codex_app_server_protocol::{
     ClientInfo, ClientNotification, ClientRequest, CommandExecutionApprovalDecision,
-    CommandExecutionRequestApprovalResponse, ConfigReadParams, ConfigReadResponse,
-    FileChangeApprovalDecision, FileChangeRequestApprovalResponse, GetAccountParams,
-    GetAccountRateLimitsResponse, GetAccountResponse, InitializeCapabilities, InitializeParams,
-    InitializeResponse, ItemCompletedNotification, JSONRPCError, JSONRPCNotification,
-    JSONRPCRequest, JSONRPCResponse, ListMcpServerStatusParams, ListMcpServerStatusResponse,
-    RequestId, ReviewStartParams, ReviewStartResponse, ReviewTarget, ServerRequest,
-    ThreadCompactStartParams, ThreadCompactStartResponse, ThreadForkParams, ThreadForkResponse,
-    ThreadItem, ThreadReadParams, ThreadReadResponse, ThreadStartParams, ThreadStartResponse,
-    ToolRequestUserInputAnswer, ToolRequestUserInputQuestion, ToolRequestUserInputResponse,
-    TurnCompletedNotification, TurnStartParams, TurnStartResponse, TurnStatus, UserInput,
+    CommandExecutionRequestApprovalResponse, ConfigBatchWriteParams, ConfigEdit, ConfigReadParams,
+    ConfigReadResponse, ConfigWriteResponse, FileChangeApprovalDecision,
+    FileChangeRequestApprovalResponse, GetAccountParams, GetAccountRateLimitsResponse,
+    GetAccountResponse, InitializeCapabilities, InitializeParams, InitializeResponse,
+    ItemCompletedNotification, JSONRPCError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse,
+    ListMcpServerStatusParams, ListMcpServerStatusResponse, RequestId, ReviewStartParams,
+    ReviewStartResponse, ReviewTarget, ServerRequest, ThreadCompactStartParams,
+    ThreadCompactStartResponse, ThreadForkParams, ThreadForkResponse, ThreadItem, ThreadReadParams,
+    ThreadReadResponse, ThreadStartParams, ThreadStartResponse, ToolRequestUserInputAnswer,
+    ToolRequestUserInputQuestion, ToolRequestUserInputResponse, TurnCompletedNotification,
+    TurnStartParams, TurnStartResponse, TurnStatus, UserInput,
 };
 use codex_protocol::config_types::{CollaborationMode, ModeKind, Settings};
 use futures::TryFutureExt;
@@ -192,11 +193,11 @@ impl AppServerClient {
         })
     }
 
-    pub fn initial_collaboration_mode(&self) -> Result<Option<CollaborationMode>, ExecutorError> {
+    pub fn initial_collaboration_mode(&self) -> Result<CollaborationMode, ExecutorError> {
         if self.plan_mode {
-            Ok(Some(self.collaboration_mode(ModeKind::Plan)?))
+            self.collaboration_mode(ModeKind::Plan)
         } else {
-            Ok(None)
+            self.collaboration_mode(ModeKind::Default)
         }
     }
 
@@ -263,6 +264,22 @@ impl AppServerClient {
             },
         };
         self.send_request(request, "thread/read").await
+    }
+
+    pub async fn config_batch_write(
+        &self,
+        edits: Vec<ConfigEdit>,
+    ) -> Result<ConfigWriteResponse, ExecutorError> {
+        let request = ClientRequest::ConfigBatchWrite {
+            request_id: self.next_request_id(),
+            params: ConfigBatchWriteParams {
+                edits,
+                file_path: None,
+                expected_version: None,
+                reload_user_config: false,
+            },
+        };
+        self.send_request(request, "config/batchWrite").await
     }
 
     pub async fn config_read(
@@ -401,7 +418,9 @@ impl AppServerClient {
                 Ok(())
             }
             ServerRequest::DynamicToolCall { .. }
-            | ServerRequest::ChatgptAuthTokensRefresh { .. } => {
+            | ServerRequest::ChatgptAuthTokensRefresh { .. }
+            | ServerRequest::McpServerElicitationRequest { .. }
+            | ServerRequest::PermissionsRequestApproval { .. } => {
                 tracing::warn!("received unhandled v2 server request: {:?}", request);
                 let response = JSONRPCResponse {
                     id: request.id().clone(),
@@ -943,6 +962,7 @@ fn request_id(request: &ClientRequest) -> RequestId {
         | ClientRequest::ThreadCompactStart { request_id, .. }
         | ClientRequest::ThreadRead { request_id, .. }
         | ClientRequest::ConfigRead { request_id, .. }
+        | ClientRequest::ConfigBatchWrite { request_id, .. }
         | ClientRequest::GetAccountRateLimits { request_id, .. } => request_id.clone(),
         _ => unreachable!("request_id called for unsupported request variant"),
     }

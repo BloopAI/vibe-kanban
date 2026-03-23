@@ -1,13 +1,16 @@
 use std::path::{Path, PathBuf};
 
-use codex_app_server_protocol::JSONRPCNotification;
-use codex_protocol::protocol::{AgentMessageEvent, ErrorEvent, EventMsg};
+use codex_app_server_protocol::{ConfigEdit, JSONRPCNotification, MergeStrategy};
+use codex_protocol::{
+    config_types::ServiceTier,
+    protocol::{AgentMessageEvent, ErrorEvent, EventMsg},
+};
 use serde_json::json;
 
 use super::{
     Codex,
     client::{AppServerClient, LogWriter},
-    codex_home, fork_params_from,
+    codex_home, fork_params_from, resolve_model,
 };
 use crate::{
     env::ExecutionEnv,
@@ -27,6 +30,7 @@ pub enum CodexSlashCommand {
     Compact { instructions: Option<String> },
     Status,
     Mcp,
+    Fast { enable: Option<bool> },
 }
 
 impl CodexSlashCommand {
@@ -43,6 +47,13 @@ impl CodexSlashCommand {
             }),
             "status" => Some(Self::Status),
             "mcp" => Some(Self::Mcp),
+            "fast" => Some(Self::Fast {
+                enable: match cmd.arguments.trim() {
+                    "on" | "true" | "1" | "yes" | "enable" => Some(true),
+                    "off" | "false" | "0" | "no" | "disable" => Some(false),
+                    _ => None,
+                },
+            }),
             _ => None,
         }
     }
@@ -96,6 +107,10 @@ impl Codex {
                     self.handle_app_server_slash_command(current_dir, command, None, env)
                         .await
                 }
+                CodexSlashCommand::Fast { .. } => {
+                    self.handle_app_server_slash_command(current_dir, command, session_id, env)
+                        .await
+                }
             };
         }
 
@@ -132,6 +147,7 @@ impl Codex {
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder()?.build_initial()?;
         let session_id = session_id.map(|s| s.to_string());
+        let (_, session_fast) = resolve_model(self.model.as_deref());
         let thread_start_params = self.build_thread_start_params(current_dir);
 
         self.spawn_app_server(
@@ -152,7 +168,9 @@ impl Codex {
                         client.thread_compact_start(thread_id).await?;
                     }
                     CodexSlashCommand::Status => {
-                        let message = fetch_status_message(&client, session_id.as_deref()).await?;
+                        let message =
+                            fetch_status_message(&client, session_id.as_deref(), session_fast)
+                                .await?;
                         log_event_raw(client.log_writer(), message).await?;
                         exit_signal_tx
                             .send_exit_signal(ExecutorExitResult::Success)
@@ -160,6 +178,55 @@ impl Codex {
                     }
                     CodexSlashCommand::Mcp => {
                         let message = fetch_mcp_status_message(&client).await?;
+                        log_event_raw(client.log_writer(), message).await?;
+                        exit_signal_tx
+                            .send_exit_signal(ExecutorExitResult::Success)
+                            .await;
+                    }
+                    CodexSlashCommand::Fast { enable } => {
+                        // Read current config to support toggle
+                        let current_is_fast = client
+                            .config_read(None)
+                            .await
+                            .ok()
+                            .and_then(|r| r.config.service_tier)
+                            .map(|t| matches!(t, ServiceTier::Fast))
+                            .unwrap_or(false);
+                        let want_fast = match enable {
+                            Some(v) => v,
+                            None => !current_is_fast, // toggle
+                        };
+                        // Persist service_tier to codex config via config/batchWrite
+                        let config_value = if want_fast {
+                            json!("fast")
+                        } else {
+                            json!(null)
+                        };
+                        let _ = client
+                            .config_batch_write(vec![ConfigEdit {
+                                key_path: "service_tier".to_string(),
+                                value: config_value,
+                                merge_strategy: MergeStrategy::Replace,
+                            }])
+                            .await;
+                        // Fork current session with new tier if one is active
+                        if let Some(old_thread_id) = session_id {
+                            let service_tier = if want_fast {
+                                Some(Some(ServiceTier::Fast))
+                            } else {
+                                Some(None)
+                            };
+                            let mut fork_params =
+                                fork_params_from(old_thread_id, thread_start_params);
+                            fork_params.service_tier = service_tier;
+                            let _ = client.thread_fork(fork_params).await;
+                        }
+                        let message = if want_fast {
+                            "**Fast mode enabled.** Inference runs at higher speed (2× plan usage)."
+                                .to_string()
+                        } else {
+                            "**Fast mode disabled.**".to_string()
+                        };
                         log_event_raw(client.log_writer(), message).await?;
                         exit_signal_tx
                             .send_exit_signal(ExecutorExitResult::Success)
@@ -260,6 +327,7 @@ pub async fn log_event_raw(log_writer: &LogWriter, message: String) -> Result<()
 async fn fetch_status_message(
     client: &AppServerClient,
     thread_id: Option<&str>,
+    session_fast: bool,
 ) -> Result<String, ExecutorError> {
     let mut lines = vec!["# Session Status\n".to_string()];
 
@@ -267,6 +335,8 @@ async fn fetch_status_message(
         Some(tid) => read_rollout_data(tid).await,
         None => None,
     };
+
+    let config_resp = client.config_read(None).await.ok();
 
     lines.push("## Configuration".to_string());
     if let Some(ctx) = rollout.as_ref().and_then(|r| r.turn_context.as_ref()) {
@@ -288,33 +358,38 @@ async fn fetch_status_message(
         lines.push(format!(
             "- **Reasoning**: effort: `{effort}` summary: `{summary}`"
         ));
-    } else {
-        match client.config_read(None).await {
-            Ok(config_resp) => {
-                let cfg = &config_resp.config;
-                if let Some(model) = &cfg.model {
-                    lines.push(format!("- **Model**: `{model}`"));
-                }
-                if let Some(provider) = &cfg.model_provider {
-                    lines.push(format!("- **Provider**: `{provider}`"));
-                }
-                if let Some(policy) = &cfg.approval_policy {
-                    lines.push(format!("- **Approvals**: `{policy:?}`"));
-                }
-                if let Some(sandbox) = &cfg.sandbox_mode {
-                    lines.push(format!("- **Sandbox**: `{sandbox:?}`"));
-                }
-                if let Some(effort) = &cfg.model_reasoning_effort {
-                    lines.push(format!("- **Reasoning effort**: `{effort}`"));
-                }
-                if let Some(summary) = &cfg.model_reasoning_summary {
-                    lines.push(format!("- **Reasoning summary**: `{summary:?}`"));
-                }
-            }
-            Err(err) => {
-                lines.push(format!("_Config unavailable: {err}_"));
-            }
+    } else if let Some(ref resp) = config_resp {
+        let cfg = &resp.config;
+        if let Some(model) = &cfg.model {
+            lines.push(format!("- **Model**: `{model}`"));
         }
+        if let Some(provider) = &cfg.model_provider {
+            lines.push(format!("- **Provider**: `{provider}`"));
+        }
+        if let Some(policy) = &cfg.approval_policy {
+            lines.push(format!("- **Approvals**: `{policy:?}`"));
+        }
+        if let Some(sandbox) = &cfg.sandbox_mode {
+            lines.push(format!("- **Sandbox**: `{sandbox:?}`"));
+        }
+        if let Some(effort) = &cfg.model_reasoning_effort {
+            lines.push(format!("- **Reasoning effort**: `{effort}`"));
+        }
+        if let Some(summary) = &cfg.model_reasoning_summary {
+            lines.push(format!("- **Reasoning summary**: `{summary:?}`"));
+        }
+    } else {
+        lines.push("_Config unavailable_".to_string());
+    }
+
+    // Show fast mode
+    let global_fast = config_resp
+        .as_ref()
+        .and_then(|r| r.config.service_tier.as_ref())
+        .map(|t| matches!(t, ServiceTier::Fast))
+        .unwrap_or(false);
+    if global_fast || session_fast {
+        lines.push("- **Service Tier**: `fast ⚡`".to_string());
     }
 
     // Thread info

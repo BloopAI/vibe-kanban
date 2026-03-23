@@ -1,4 +1,11 @@
-import { useContext, useState, useCallback, ReactNode } from 'react';
+import {
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  ReactNode,
+} from 'react';
 import { createHmrContext } from '@/shared/lib/hmrContext';
 import { useApprovalMutation } from '../hooks/useApprovalMutation';
 
@@ -48,15 +55,43 @@ export function ApprovalFeedbackProvider({
   const [activeApproval, setActiveApproval] = useState<ActiveApproval | null>(
     null
   );
+  const [nowTs, setNowTs] = useState(() => Date.now());
   const { denyAsync, isDenying, denyError, reset } = useApprovalMutation();
 
+  useEffect(() => {
+    if (!activeApproval) {
+      setNowTs(Date.now());
+      return;
+    }
+
+    const timeoutAtMs = new Date(activeApproval.timeoutAt).getTime();
+    if (!Number.isFinite(timeoutAtMs)) {
+      setNowTs(Date.now());
+      return;
+    }
+
+    const delay = Math.max(timeoutAtMs - Date.now(), 0);
+    const timer = setTimeout(() => {
+      setNowTs(Date.now());
+    }, delay + 10);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [activeApproval]);
+
+  const timeoutAtMs = activeApproval
+    ? new Date(activeApproval.timeoutAt).getTime()
+    : Number.NaN;
+
   const isTimedOut = activeApproval
-    ? new Date() > new Date(activeApproval.timeoutAt)
+    ? Number.isFinite(timeoutAtMs) && nowTs > timeoutAtMs
     : false;
 
   const enterFeedbackMode = useCallback(
     (approval: ActiveApproval) => {
       setActiveApproval(approval);
+      setNowTs(Date.now());
       reset();
     },
     [reset]
@@ -64,6 +99,7 @@ export function ApprovalFeedbackProvider({
 
   const exitFeedbackMode = useCallback(() => {
     setActiveApproval(null);
+    setNowTs(Date.now());
     reset();
   }, [reset]);
 
@@ -86,18 +122,29 @@ export function ApprovalFeedbackProvider({
     [activeApproval, denyAsync]
   );
 
+  const value = useMemo(
+    () => ({
+      activeApproval,
+      enterFeedbackMode,
+      exitFeedbackMode,
+      submitFeedback,
+      isSubmitting: isDenying,
+      error: denyError?.message ?? null,
+      isTimedOut,
+    }),
+    [
+      activeApproval,
+      enterFeedbackMode,
+      exitFeedbackMode,
+      submitFeedback,
+      isDenying,
+      denyError?.message,
+      isTimedOut,
+    ]
+  );
+
   return (
-    <ApprovalFeedbackContext.Provider
-      value={{
-        activeApproval,
-        enterFeedbackMode,
-        exitFeedbackMode,
-        submitFeedback,
-        isSubmitting: isDenying,
-        error: denyError?.message ?? null,
-        isTimedOut,
-      }}
-    >
+    <ApprovalFeedbackContext.Provider value={value}>
       {children}
     </ApprovalFeedbackContext.Provider>
   );

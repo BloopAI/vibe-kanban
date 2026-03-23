@@ -1,6 +1,7 @@
 use axum::{Json, Router, http::header::HeaderName, middleware, routing::get};
 use serde::Serialize;
 use tower_http::{
+    compression::CompressionLayer,
     cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, RequestId, SetRequestIdLayer},
     services::{ServeDir, ServeFile},
@@ -44,6 +45,7 @@ pub(crate) mod organization_members;
 mod organizations;
 pub mod project_statuses;
 pub mod projects;
+pub mod pull_request_issues;
 mod pull_requests;
 mod review;
 pub mod tags;
@@ -63,14 +65,16 @@ pub fn router(state: AppState) -> Router {
                     "http_request",
                     method = %request.method(),
                     uri = %request.uri(),
-                    request_id = field::Empty
+                    request_id = field::Empty,
+                    user_id = field::Empty
                 )
             } else {
                 tracing::debug_span!(
                     "http_request",
                     method = %request.method(),
                     uri = %request.uri(),
-                    request_id = field::Empty
+                    request_id = field::Empty,
+                    user_id = field::Empty
                 )
             };
             if let Some(request_id) = request_id {
@@ -124,6 +128,7 @@ pub fn router(state: AppState) -> Router {
         .merge(issue_followers::router())
         .merge(issue_tags::router())
         .merge(issue_relationships::router())
+        .merge(pull_request_issues::router())
         .merge(pull_requests::router())
         .merge(notifications::router())
         .merge(workspaces::router())
@@ -142,6 +147,7 @@ pub fn router(state: AppState) -> Router {
         .nest("/v1", v1_public)
         .nest("/v1", v1_protected)
         .fallback_service(spa)
+        .layer(CompressionLayer::new())
         .layer(middleware::from_fn(
             crate::middleware::version::add_version_headers,
         ))
@@ -190,5 +196,6 @@ pub fn all_mutation_definitions() -> Vec<crate::mutation_definition::MutationDef
         issue_relationships::mutation().definition(),
         issue_comments::mutation().definition(),
         issue_comment_reactions::mutation().definition(),
+        pull_request_issues::mutation().definition(),
     ]
 }

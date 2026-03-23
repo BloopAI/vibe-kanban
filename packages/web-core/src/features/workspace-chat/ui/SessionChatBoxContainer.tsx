@@ -60,6 +60,8 @@ import { useActionVisibilityContext } from '@/shared/hooks/useActionVisibilityCo
 import { PrCommentsDialog } from '@/shared/dialogs/tasks/PrCommentsDialog';
 import type { NormalizedComment } from '@vibe/ui/components/pr-comment-node';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { sessionsApi } from '@/shared/lib/api';
+import { RenameSessionDialog } from '@vibe/ui/components/RenameSessionDialog';
 
 /** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {
@@ -94,7 +96,7 @@ interface SharedProps {
   /** Callback to scroll to previous user message */
   onScrollToPreviousMessage: () => void;
   /** Callback to scroll to bottom of conversation */
-  onScrollToBottom: () => void;
+  onScrollToBottom: (behavior?: 'auto' | 'smooth') => void;
   /** Disable the "view code" click handler (for VS Code extension) */
   disableViewCode: boolean;
   /** Replace diff stats with an "Open Workspace" button in header */
@@ -160,6 +162,21 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   const sessionId = session?.id;
   const queryClient = useQueryClient();
+
+  const handleRenameSession = useCallback(
+    (targetSessionId: string, currentName: string) => {
+      void RenameSessionDialog.show({
+        currentName,
+        onRename: async (newName: string) => {
+          await sessionsApi.update(targetSessionId, { name: newName });
+          void queryClient.invalidateQueries({
+            queryKey: ['workspaceSessions', workspaceId],
+          });
+        },
+      });
+    },
+    [queryClient, workspaceId]
+  );
   const appNavigation = useAppNavigation();
 
   const { executeAction } = useActions();
@@ -362,7 +379,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     localMessageRef.current = localMessage;
   }, [localMessage]);
 
-  // Attachment handling - insert markdown when images are uploaded
+  // Attachment handling - insert markdown when attachments are uploaded
   const handleInsertMarkdown = useCallback(
     (markdown: string) => {
       const currentMessage = localMessageRef.current;
@@ -393,7 +410,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     clearPendingComponentMarkdown,
   ]);
 
-  const { uploadFiles, localImages, clearUploadedImages } =
+  const { uploadFiles, localAttachments, clearUploadedAttachments } =
     useSessionAttachments(workspaceId, sessionId, handleInsertMarkdown);
 
   // Unified executor + variant + model selector options resolution
@@ -456,23 +473,31 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       reviewMarkdown,
     ]);
 
+    onScrollToBottom('auto');
+
     const success = await send(prompt);
     if (success) {
       cancelDebouncedSave();
       setLocalMessage('');
-      clearUploadedImages();
+      clearUploadedAttachments();
       if (isNewSessionMode) await clearDraft();
       if (!isSlashCommand) {
         reviewContext?.clearComments();
       }
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          onScrollToBottom('auto');
+        });
+      });
     }
   }, [
+    onScrollToBottom,
     send,
     localMessage,
     reviewMarkdown,
     cancelDebouncedSave,
     setLocalMessage,
-    clearUploadedImages,
+    clearUploadedAttachments,
     isNewSessionMode,
     clearDraft,
     reviewContext,
@@ -511,7 +536,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
     // Clear local state after queueing (same as handleSend)
     setLocalMessage('');
-    clearUploadedImages();
+    clearUploadedAttachments();
     reviewContext?.clearComments();
   }, [
     localMessage,
@@ -521,7 +546,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     cancelDebouncedSave,
     saveToScratch,
     setLocalMessage,
-    clearUploadedImages,
+    clearUploadedAttachments,
     reviewContext,
   ]);
 
@@ -609,11 +634,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      const imageFiles = acceptedFiles.filter((f) =>
-        f.type.startsWith('image/')
-      );
-      if (imageFiles.length > 0) {
-        uploadFiles(imageFiles);
+      if (acceptedFiles.length > 0) {
+        uploadFiles(acceptedFiles);
       }
     },
     [uploadFiles]
@@ -621,7 +643,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'image/*': [] },
     disabled: areAttachmentInputsDisabled,
     noClick: true,
     noKeyboard: true,
@@ -861,7 +882,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       repoIds,
       executor,
       onPasteFiles,
-      localImages,
+      localAttachments,
     }: SessionChatBoxEditorRenderProps<BaseCodingAgent>) => (
       <WYSIWYGEditor
         key={focusKey}
@@ -876,7 +897,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         sessionId={sessionId}
         autoFocus
         onPasteFiles={onPasteFiles}
-        localImages={localImages}
+        localAttachments={localAttachments}
         sendShortcut={config?.send_message_shortcut}
       />
     ),
@@ -988,6 +1009,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         onSelectSession: onSelectSession ?? (() => {}),
         isNewSessionMode: needsExecutorSelection,
         onNewSession: onStartNewSession,
+        onRenameSession: handleRenameSession,
       }}
       toolbarActions={{
         items: toolbarActionItems,
@@ -1067,7 +1089,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
             }
           : undefined
       }
-      localImages={localImages}
+      localAttachments={localAttachments}
       dropzone={{ getRootProps, getInputProps, isDragActive }}
       modelSelector={modelSelectorNode}
     />

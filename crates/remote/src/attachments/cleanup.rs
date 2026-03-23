@@ -83,10 +83,10 @@ async fn cleanup_expired_attachments(
                     if let Err(e) = azure.delete_blob(&blob.blob_path).await {
                         warn!(blob_path = %blob.blob_path, error = %e, "Failed to delete Azure blob");
                     }
-                    if let Some(thumb_path) = &blob.thumbnail_blob_path {
-                        if let Err(e) = azure.delete_blob(thumb_path).await {
-                            warn!(blob_path = %thumb_path, error = %e, "Failed to delete Azure thumbnail");
-                        }
+                    if let Some(thumb_path) = &blob.thumbnail_blob_path
+                        && let Err(e) = azure.delete_blob(thumb_path).await
+                    {
+                        warn!(blob_path = %thumb_path, error = %e, "Failed to delete Azure thumbnail");
                     }
                 }
             }

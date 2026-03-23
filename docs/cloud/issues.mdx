@@ -281,14 +281,58 @@ To share an issue with someone:
 
 Share this link with team members - they can click it to go directly to that issue.
 
+## Selecting Multiple Issues
+
+You can select multiple issues to perform bulk operations, similar to how you'd select files in a file manager.
+
+### Selection Methods
+
+| Method | Action |
+|--------|--------|
+| **Checkbox** | Hover over the left edge of a list row to reveal its checkbox, then click |
+| **Cmd/Ctrl + Click** | Toggle an individual issue in or out of the selection |
+| **Shift + Click** | Select a range of issues between the last selected issue and the clicked issue |
+| **X** | Toggle the currently open issue in or out of the selection |
+| **Shift + J / Shift + ↓** | Extend the selection downward by one issue |
+| **Shift + K / Shift + ↑** | Extend the selection upward by one issue |
+| **Cmd/Ctrl + A** | Select all visible issues |
+| **Escape** | Clear the selection |
+
+<Info>
+Selection works in both the [kanban board](/cloud/kanban-board) and [list view](/cloud/list-view). In list view, checkboxes appear on hover for each row. In the kanban board, use modifier keys or keyboard shortcuts to select cards.
+</Info>
+
+### Bulk Action Bar
+
+When two or more issues are selected, a floating action bar appears at the bottom of the screen. From this bar you can:
+
+| Action | Description |
+|--------|-------------|
+| **Status** | Change the status of all selected issues at once |
+| **Priority** | Set the same priority across all selected issues |
+| **Assignee** | Assign or change assignees for all selected issues |
+| **Delete** | Permanently delete all selected issues |
+
+Click the **X** button on the action bar or press **Escape** to clear the selection.
+
+<Warning>
+Bulk delete is permanent and cannot be undone. All selected issues, their comments, and their history will be removed.
+</Warning>
+
+<Tip>
+Use filters to narrow down your view before selecting issues. For example, filter by a specific status, then press **Cmd/Ctrl + A** to select all matching issues for a bulk status change.
+</Tip>
+
 ## Deleting Issues
 
-To delete an issue:
+To delete a single issue:
 
 1. Open the issue panel
 2. Click the **More** button (three dots) to open Issue Actions
 3. Select **Delete Issue**
 4. Confirm the deletion
+
+To delete multiple issues, select them and click **Delete** in the bulk action bar.
 
 <Warning>
 Deleting an issue is permanent. The issue, its comments, and its history are removed. Sub-issues are not deleted - they become standalone issues.

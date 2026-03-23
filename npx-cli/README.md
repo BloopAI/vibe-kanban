@@ -12,6 +12,15 @@ npx vibe-kanban
 
 This will launch the application locally and open it in your browser automatically.
 
+Helpful entrypoints:
+
+```bash
+npx vibe-kanban --help
+npx vibe-kanban --version
+npx vibe-kanban review --help
+npx vibe-kanban mcp --help
+```
+
 ## What is Vibe Kanban?
 
 Vibe Kanban is a modern project management tool designed specifically for developers. It helps you organize your coding projects with kanban-style task management while providing powerful integrations with git repositories and AI coding agents.
@@ -19,18 +28,21 @@ Vibe Kanban is a modern project management tool designed specifically for develo
 ### ✨ Key Features
 
 **🗂️ Project Management**
+
 - Add git repositories as projects (existing or create new ones)
 - Automatic git integration and repository validation
 - Project search functionality across all files
 - Custom setup and development scripts per project
 
 **📋 Task Management**
+
 - Create and manage tasks with kanban-style boards
 - Task status tracking (Todo, In Progress, Done)
 - Rich task descriptions and notes
 - Task execution with multiple AI agents
 
 **🤖 AI Agent Integration**
+
 - **Claude**: Advanced AI coding assistant
 - **Amp**: Powerful development agent
 - **Echo**: Simple testing/debugging agent
@@ -38,6 +50,7 @@ Vibe Kanban is a modern project management tool designed specifically for develo
 - Follow-up task execution for iterative development
 
 **⚡ Development Workflow**
+
 - Create isolated git worktrees for each task attempt
 - View diffs of changes made by agents
 - Merge successful changes back to main branch
@@ -46,6 +59,7 @@ Vibe Kanban is a modern project management tool designed specifically for develo
 - Integrated development server support
 
 **🎛️ Developer Tools**
+
 - Browse and validate git repositories from filesystem
 - Open task worktrees in your preferred editor (VS Code, Cursor, Windsurf, IntelliJ, Zed)
 - Real-time execution monitoring and process control
@@ -65,24 +79,28 @@ Vibe Kanban is a modern project management tool designed specifically for develo
 Vibe Kanban provides a complete project management experience with these key capabilities:
 
 **Project Repository Management**
+
 - Full CRUD operations for managing coding projects
-- Automatic git repository detection and validation  
+- Automatic git repository detection and validation
 - Initialize new repositories or import existing ones
 - Project-wide file search functionality
 
 **Task Lifecycle Management**
+
 - Create, update, and delete tasks with rich descriptions
 - Track task progress through customizable status workflows
 - One-click task creation with immediate AI agent execution
 - Task attempt tracking with detailed execution history
 
 **AI Agent Execution Environment**
+
 - Isolated git worktrees for safe code experimentation
 - Real-time execution monitoring and activity logging
 - Process management with ability to stop individual or all processes
 - Support for follow-up executions to iterate on solutions
 
 **Code Change Management**
+
 - View detailed diffs of all changes made during task execution
 - Branch status monitoring to track divergence from main
 - One-click merging of successful changes back to main branch
@@ -90,6 +108,7 @@ Vibe Kanban provides a complete project management experience with these key cap
 - Manual file deletion and cleanup capabilities
 
 **Development Integration**
+
 - Open task worktrees directly in your preferred code editor
 - Start and manage development servers for testing changes
 - Browse local filesystem to add new projects
@@ -127,23 +146,27 @@ Vibe Kanban supports customization through its configuration system:
 ## Use Cases
 
 **🔧 Bug Fixes**
+
 - Create a task describing the bug
 - Let an AI agent analyze and fix the issue
 - Review the proposed changes
 - Merge if satisfied, or provide follow-up instructions
 
 **✨ Feature Development**
+
 - Break down features into manageable tasks
 - Use agents for initial implementation
 - Iterate with follow-up executions
 - Test using integrated development servers
 
 **🚀 Project Setup**
+
 - Bootstrap new projects with AI assistance
 - Set up development environments
 - Configure build and deployment scripts
 
 **📚 Code Documentation**
+
 - Generate documentation for existing code
 - Create README files and API documentation
 - Maintain up-to-date project information
@@ -156,4 +179,4 @@ Vibe Kanban supports customization through its configuration system:
 npx vibe-kanban
 ```
 
-*Start managing your projects with the power of AI coding agents today!*
+_Start managing your projects with the power of AI coding agents today!_

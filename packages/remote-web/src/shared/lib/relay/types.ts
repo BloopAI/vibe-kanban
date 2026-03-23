@@ -9,7 +9,7 @@ export interface RelaySignature {
 
 export interface RelayHostContext {
   pairedHost: PairedRelayHost;
-  relaySessionBaseUrl: string;
+  sessionId: string;
 }
 
 export type RelayWsMessageType = "text" | "binary" | "ping" | "pong" | "close";

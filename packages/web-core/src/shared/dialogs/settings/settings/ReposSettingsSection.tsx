@@ -5,11 +5,11 @@ import { isEqual } from 'lodash';
 import { GitBranchIcon, PlusIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { Loader2 } from 'lucide-react';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { useRepoBranches } from '@/shared/hooks/useRepoBranches';
+import { useMachineRepoBranches } from '@/shared/hooks/useRepoBranches';
 import { useScriptPlaceholders } from '@/shared/hooks/useScriptPlaceholders';
 import { useAllOrganizationProjects } from '@/shared/hooks/useAllOrganizationProjects';
 import { getProjectRepoDefaults } from '@/shared/hooks/useProjectRepoDefaults';
-import { repoApi, ApiError } from '@/shared/lib/api';
+import { ApiError } from '@/shared/lib/api';
 import { defineModal } from '@/shared/lib/modals';
 import type { Repo, UpdateRepo } from 'shared/types';
 import { SearchableDropdownContainer } from '@/shared/components/ui-new/containers/SearchableDropdownContainer';
@@ -39,6 +39,7 @@ import {
   SettingsCheckbox,
   SettingsSaveBar,
 } from './SettingsComponents';
+import { useSettingsMachineClient } from './SettingsHostContext';
 
 interface RepoScriptsFormState {
   display_name: string;
@@ -131,6 +132,11 @@ export function ReposSettingsSection({
 }: ReposSettingsSectionProps) {
   const { t } = useTranslation('settings');
   const queryClient = useQueryClient();
+  const machineClient = useSettingsMachineClient();
+  const reposQueryKey = [
+    'repos',
+    ...(machineClient?.queryScopeKey ?? ['machine', 'unselected']),
+  ] as const;
 
   // Fetch all repos
   const {
@@ -138,8 +144,15 @@ export function ReposSettingsSection({
     isLoading: reposLoading,
     error: reposError,
   } = useQuery({
-    queryKey: ['repos'],
-    queryFn: () => repoApi.list(),
+    queryKey: reposQueryKey,
+    queryFn: () => {
+      if (!machineClient) {
+        throw new Error('Machine client is required');
+      }
+
+      return machineClient.listRepos();
+    },
+    enabled: machineClient != null,
   });
 
   // Selected repo state - initialize from props if provided
@@ -148,10 +161,10 @@ export function ReposSettingsSection({
   );
 
   // Fetch branches for the selected repo
-  const { data: branches = [], isLoading: branchesLoading } = useRepoBranches(
-    selectedRepoId || null,
-    { enabled: !!selectedRepoId }
-  );
+  const { data: branches = [], isLoading: branchesLoading } =
+    useMachineRepoBranches(machineClient, selectedRepoId || null, {
+      enabled: !!selectedRepoId,
+    });
 
   // Add "Use current branch" option at the top of branches list
   const branchItems = useMemo(() => {
@@ -251,8 +264,12 @@ export function ReposSettingsSection({
       setRemoving(true);
       setError(null);
 
-      await repoApi.delete(selectedRepo.id);
-      await queryClient.invalidateQueries({ queryKey: ['repos'] });
+      if (!machineClient) {
+        return;
+      }
+
+      await machineClient.deleteRepo(selectedRepo.id);
+      await queryClient.invalidateQueries({ queryKey: reposQueryKey });
       setSelectedRepoId('');
       setSelectedRepo(null);
       setDraft(null);
@@ -267,7 +284,7 @@ export function ReposSettingsSection({
     } finally {
       setRemoving(false);
     }
-  }, [selectedRepo, queryClient]);
+  }, [machineClient, queryClient, reposQueryKey, selectedRepo]);
 
   // Handle adding a new repo via folder picker
   const handleAddRepo = useCallback(async () => {
@@ -278,15 +295,19 @@ export function ReposSettingsSection({
       });
       if (!selectedPath) return;
 
-      const repo = await repoApi.register({ path: selectedPath });
-      await queryClient.invalidateQueries({ queryKey: ['repos'] });
+      if (!machineClient) {
+        return;
+      }
+
+      const repo = await machineClient.registerRepo({ path: selectedPath });
+      await queryClient.invalidateQueries({ queryKey: reposQueryKey });
       setSelectedRepoId(repo.id);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : t('settings.repos.addRepo.error')
       );
     }
-  }, [queryClient, t]);
+  }, [machineClient, queryClient, reposQueryKey, t]);
 
   // Populate draft from server data
   useEffect(() => {
@@ -330,10 +351,17 @@ export function ReposSettingsSection({
         dev_server_script: draft.dev_server_script.trim() || null,
       };
 
-      const updatedRepo = await repoApi.update(selectedRepo.id, updateData);
+      if (!machineClient) {
+        return;
+      }
+
+      const updatedRepo = await machineClient.updateRepo(
+        selectedRepo.id,
+        updateData
+      );
       setSelectedRepo(updatedRepo);
       setDraft(repoToFormState(updatedRepo));
-      queryClient.setQueryData(['repos'], (old: Repo[] | undefined) =>
+      queryClient.setQueryData(reposQueryKey, (old: Repo[] | undefined) =>
         old?.map((r) => (r.id === updatedRepo.id ? updatedRepo : r))
       );
       setSuccess(true);

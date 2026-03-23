@@ -11,6 +11,7 @@ use axum::{
 use db::models::{
     coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
+    requests::UpdateSession,
     scratch::{Scratch, ScratchType},
     session::{CreateSession, Session, SessionError},
     workspace::{Workspace, WorkspaceError},
@@ -43,6 +44,7 @@ pub struct SessionQuery {
 pub struct CreateSessionRequest {
     pub workspace_id: Uuid,
     pub executor: Option<String>,
+    pub name: Option<String>,
 }
 
 pub async fn get_sessions(
@@ -77,6 +79,7 @@ pub async fn create_session(
         pool,
         &CreateSession {
             executor: payload.executor,
+            name: payload.name,
         },
         Uuid::new_v4(),
         payload.workspace_id,
@@ -84,6 +87,22 @@ pub async fn create_session(
     .await?;
 
     Ok(ResponseJson(ApiResponse::success(session)))
+}
+
+pub async fn update_session(
+    Extension(session): Extension<Session>,
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<UpdateSession>,
+) -> Result<ResponseJson<ApiResponse<Session>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    Session::update(pool, session.id, request.name.as_deref()).await?;
+
+    let updated = Session::find_by_id(pool, session.id)
+        .await?
+        .ok_or(ApiError::Session(SessionError::NotFound))?;
+
+    Ok(ResponseJson(ApiResponse::success(updated)))
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -294,7 +313,7 @@ pub async fn run_setup_script(
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let session_id_router = Router::new()
-        .route("/", get(get_session))
+        .route("/", get(get_session).put(update_session))
         .route("/follow-up", post(follow_up))
         .route("/reset", post(reset_process))
         .route("/setup", post(run_setup_script))

@@ -27,12 +27,7 @@
     "selectOption": "Sélectionner une option..."
   },
   "states": {
-    "loading": "Chargement...",
-    "loadingHistory": "Chargement de l'historique",
-    "saving": "Enregistrement...",
-    "error": "Erreur",
-    "success": "Succès",
-    "reconnecting": "Reconnexion"
+    "loading": "Chargement..."
   },
   "language": {
     "browserDefault": "Par défaut du navigateur"
@@ -53,7 +48,8 @@
     },
     "subagent": {
       "defaultType": "Sous-agent"
-    }
+    },
+    "loadingEarlierMessages": "Chargement des messages pr\u00e9c\u00e9dents"
   },
   "folderPicker": {
     "legend": "Cliquez sur les noms de dossiers pour naviguer • Utilisez les boutons d'action pour sélectionner",
@@ -513,6 +509,13 @@
     "default": "Par défaut",
     "model": "Modèle"
   },
+  "crashScreen": {
+    "title": "Une erreur est survenue",
+    "description": "L'application a rencontré une erreur inattendue.",
+    "reload": "Recharger",
+    "showDetails": "Afficher les détails",
+    "hideDetails": "Masquer les détails"
+  },
   "syncError": {
     "networkErrors": "Erreurs réseau",
     "streamsAffected": "{{count}} flux affecté",
@@ -536,7 +539,7 @@
   },
   "appBar": {
     "kanban": {
-      "tooltip": "Kanban",
+      "tooltip": "Connectez-vous pour voir les projets",
       "title": "Tableaux Kanban",
       "description": "Connectez-vous pour organiser vos agents de codage avec des tableaux kanban.",
       "migrateOldProjects": "Migrer les anciens projets"

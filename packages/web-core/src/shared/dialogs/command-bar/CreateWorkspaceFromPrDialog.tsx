@@ -25,7 +25,7 @@ import { defineModal } from '@/shared/lib/modals';
 import { workspacesApi, repoApi } from '@/shared/lib/api';
 import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { SearchableDropdownContainer } from '@/shared/components/ui-new/containers/SearchableDropdownContainer';
-import type { OpenPrInfo, GitRemote } from 'shared/types';
+import type { PullRequestDetail, GitRemote } from 'shared/types';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 export interface CreateWorkspaceFromPrDialogProps {}
@@ -93,7 +93,7 @@ const CreateWorkspaceFromPrDialogImpl =
       enabled: modal.visible && !!selectedRepoId && !!selectedRemote,
     });
 
-    const openPrs = useMemo<OpenPrInfo[]>(
+    const openPrs = useMemo<PullRequestDetail[]>(
       () => (prsResult?.success === true ? prsResult.data : []),
       [prsResult]
     );

@@ -238,7 +238,8 @@
     "reviewComments": "審查評論（{{count}}）",
     "includeGitContext": "包含 Git 上下文",
     "includeGitContextDescription": "告訴代理如何查看此分支上的所有變更",
-    "newSession": "新工作階段"
+    "newSession": "新工作階段",
+    "sessionName": "審查"
   },
   "actionsMenu": {
     "startReview": "開始審查",
@@ -253,7 +254,8 @@
       "resolving": "開始中...",
       "filesWithConflicts_one": "{{count}} 個檔案有衝突",
       "filesWithConflicts_other": "{{count}} 個檔案有衝突",
-      "andMore": "...還有 {{count}} 個"
+      "andMore": "...還有 {{count}} 個",
+      "sessionName": "解決衝突"
     }
   },
   "rebaseInProgress": {
@@ -318,7 +320,7 @@
       "cancelled": "已取消"
     },
     "startLabel": "開始",
-    "attachImage": "附加圖片",
+    "attachFile": "附加檔案",
     "dropImagesHere": "將圖片放在這裡",
     "updating": "更新中...",
     "updateTask": "更新任務",
@@ -437,7 +439,12 @@
       "latest": "最新",
       "previous": "上一個",
       "label": "工作階段",
-      "noPreviousSessions": "沒有先前的工作階段"
+      "noPreviousSessions": "沒有先前的工作階段",
+      "rename": "重新命名",
+      "renameTitle": "重新命名工作階段",
+      "renameDescription": "輸入此工作階段的新名稱。",
+      "renamePlaceholder": "輸入工作階段名稱",
+      "renaming": "正在重新命名..."
     },
     "reviewComments": {
       "count_one": "{{count}} 則審查評論將被包含",
@@ -506,6 +513,31 @@
       "title": "Sign in required",
       "description": "Sign in to access this feature.",
       "action": "Sign in"
+    }
+  },
+  "linkPrToIssue": {
+    "title": "連結拉取請求",
+    "description": "將現有的拉取請求連結到此問題。",
+    "urlTab": "從 URL",
+    "browseTab": "瀏覽",
+    "urlLabel": "拉取請求 URL",
+    "urlPlaceholder": "https://github.com/owner/repo/pull/123",
+    "repositoryLabel": "儲存庫",
+    "remoteLabel": "遠端",
+    "pullRequestLabel": "拉取請求",
+    "loadingPrInfo": "正在載入 PR 資訊...",
+    "invalidUrl": "無法從此 URL 載入 PR 資訊",
+    "baseBranch": "基礎分支：",
+    "linkPr": "連結 PR",
+    "linking": "連結中...",
+    "status": {
+      "open": "開啟",
+      "merged": "已合併",
+      "closed": "已關閉",
+      "unknown": "未知"
+    },
+    "errors": {
+      "failed": "連結 PR 失敗，請重試。"
     }
   }
 }

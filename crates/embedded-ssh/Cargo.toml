@@ -1,0 +1,16 @@
+[package]
+name = "embedded-ssh"
+version = "0.1.36"
+edition = "2024"
+
+[dependencies]
+relay-control = { path = "../relay-control" }
+russh = "0.48"
+russh-keys = "0.48"
+russh-sftp = "2.0"
+ssh-key = { version = "0.6", features = ["ed25519"] }
+ed25519-dalek = "2.2.0"
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }

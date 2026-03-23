@@ -193,6 +193,8 @@ function AssigneeSelectionContent({
           }
         }
       }
+
+      setSearch('');
     },
     [
       isCreateMode,

@@ -12,6 +12,7 @@ import {
   $convertFromMarkdownString,
   type Transformer,
 } from '@lexical/markdown';
+import { getTauriInvoke, isTauriRuntime } from '../lib/platform';
 
 type Props = {
   transformers: Transformer[];
@@ -29,14 +30,71 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
   const [editor] = useLexicalComposerContext();
   const shiftHeldRef = useRef(false);
 
-  useEffect(() => {
-    const rootElement = editor.getRootElement();
-    if (!rootElement) return;
+  const readRawClipboardText = async (): Promise<string> => {
+    const tauriInvoke = getTauriInvoke();
 
+    if (tauriInvoke) {
+      try {
+        const text = await tauriInvoke('read_clipboard_text');
+        if (typeof text === 'string') {
+          return text;
+        }
+      } catch {
+        // Fall back to navigator clipboard below.
+      }
+    }
+
+    return navigator.clipboard.readText();
+  };
+
+  useEffect(() => {
     // Track Shift key state during paste shortcut
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
+        const isRawPasteCombo = e.shiftKey;
         shiftHeldRef.current = e.shiftKey;
+
+        // Tauri/WebKit may not dispatch a paste ClipboardEvent for Cmd+Shift+V.
+        // Fallback: handle raw paste directly from clipboard on keydown.
+        if (isRawPasteCombo) {
+          // Browser should use native paste event path (no clipboard-read
+          // permission prompts). Tauri may not emit paste events, so keep
+          // fallback there only.
+          if (!isTauriRuntime()) {
+            return;
+          }
+
+          const rootElement = editor.getRootElement();
+          const activeEl = document.activeElement;
+          const domSelection = window.getSelection();
+          const hasSelectionInsideEditor =
+            !!rootElement &&
+            !!domSelection?.anchorNode &&
+            rootElement.contains(domSelection.anchorNode);
+          const isEditorFocused =
+            !!rootElement && !!activeEl && rootElement.contains(activeEl);
+          const shouldHandleRawPaste =
+            isEditorFocused || hasSelectionInsideEditor;
+
+          if (!shouldHandleRawPaste) {
+            return;
+          }
+
+          e.preventDefault();
+          e.stopPropagation();
+
+          void readRawClipboardText()
+            .then((text) => {
+              if (!text) return;
+
+              editor.update(() => {
+                const selection = $getSelection();
+                if (!$isRangeSelection(selection)) return;
+                selection.insertRawText(text);
+              });
+            })
+            .catch(() => {});
+        }
       }
     };
 
@@ -44,8 +102,10 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
       shiftHeldRef.current = false;
     };
 
-    rootElement.addEventListener('keydown', handleKeyDown);
-    rootElement.addEventListener('keyup', handleKeyUp);
+    // Use window capture listeners so Tauri/WebKit shortcut handling does not
+    // bypass tracking when the event target is outside the editor root.
+    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keyup', handleKeyUp, true);
 
     const unregisterPaste = editor.registerCommand(
       PASTE_COMMAND,
@@ -55,10 +115,27 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
         const clipboardData = event.clipboardData;
         if (!clipboardData) return false;
 
-        // If HTML exists, let default Lexical handling work
-        if (clipboardData.getData('text/html')) return false;
+        const plainText =
+          clipboardData.getData('text/plain') || clipboardData.getData('text');
+        const htmlText = clipboardData.getData('text/html');
 
-        const plainText = clipboardData.getData('text/plain');
+        // CMD+SHIFT+V: Raw paste must win even when HTML data is present.
+        if (shiftHeldRef.current) {
+          if (!plainText) return false;
+          event.preventDefault();
+
+          editor.update(() => {
+            const selection = $getSelection();
+            if (!$isRangeSelection(selection)) return;
+            selection.insertRawText(plainText);
+          });
+          shiftHeldRef.current = false;
+          return true;
+        }
+
+        // If HTML exists, let default Lexical handling work.
+        if (htmlText) return false;
+
         if (!plainText) return false;
 
         event.preventDefault();
@@ -66,12 +143,6 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
         editor.update(() => {
           const selection = $getSelection();
           if (!$isRangeSelection(selection)) return;
-
-          // CMD+SHIFT+V: Raw paste - insert plain text as-is
-          if (shiftHeldRef.current) {
-            selection.insertRawText(plainText);
-            return;
-          }
 
           // CMD+V: Convert markdown and insert at cursor
           // Save selection before any operations that might corrupt it
@@ -100,15 +171,15 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
             savedSelection.insertRawText(plainText);
           }
         });
-
+        shiftHeldRef.current = false;
         return true;
       },
       COMMAND_PRIORITY_LOW
     );
 
     return () => {
-      rootElement.removeEventListener('keydown', handleKeyDown);
-      rootElement.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keyup', handleKeyUp, true);
       unregisterPaste();
     };
   }, [editor, transformers]);

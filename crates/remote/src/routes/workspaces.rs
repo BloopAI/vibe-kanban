@@ -178,7 +178,12 @@ async fn sync_issue_status_from_local_merge(
         return Ok(StatusCode::NO_CONTENT);
     };
 
-    IssueRepository::sync_status_from_local_workspace_merge(state.pool(), issue_id)
+    let mut conn = state.pool().acquire().await.map_err(|error| {
+        tracing::error!(?error, "failed to acquire connection");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    IssueRepository::sync_status_from_local_workspace_merge(&mut conn, issue_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, issue_id = %issue_id, "failed to sync issue status");

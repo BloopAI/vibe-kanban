@@ -416,8 +416,8 @@ fn build_opencode_client(
     directory: &str,
     password: &str,
 ) -> Result<reqwest::Client, ExecutorError> {
-    const OPENCODE_HTTP_TIMEOUT: Duration = Duration::from_secs(30);
-    const OPENCODE_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+    const OPENCODE_HTTP_TIMEOUT: Duration = Duration::from_secs(180);
+    const OPENCODE_CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 
     reqwest::Client::builder()
         .default_headers(build_default_headers(directory, password))
@@ -427,7 +427,7 @@ fn build_opencode_client(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-const OPENCODE_PROMPT_TIMEOUT: Duration = Duration::from_secs(60 * 30);
+const OPENCODE_PROMPT_TIMEOUT: Duration = Duration::from_hours(24 * 7);
 
 fn append_session_error(session_error: &mut Option<String>, message: String) {
     match session_error {
@@ -713,6 +713,7 @@ pub async fn session_command(
     let resp = client
         .post(format!("{base_url}/session/{session_id}/command"))
         .query(&[("directory", directory)])
+        .timeout(OPENCODE_PROMPT_TIMEOUT)
         .json(&req)
         .send()
         .await
@@ -784,6 +785,7 @@ pub async fn session_summarize(
     let resp = client
         .post(format!("{base_url}/session/{session_id}/summarize"))
         .query(&[("directory", directory)])
+        .timeout(OPENCODE_PROMPT_TIMEOUT)
         .json(&req)
         .send()
         .await
@@ -1623,6 +1625,9 @@ fn event_matches_session(event_type: &str, event: &Value, session_id: &str) -> b
             .and_then(Value::as_str),
         "message.part.updated" => event
             .pointer("/properties/part/sessionID")
+            .and_then(Value::as_str),
+        "message.part.delta" => event
+            .pointer("/properties/sessionID")
             .and_then(Value::as_str),
         "permission.asked" | "permission.replied" | "question.asked" | "question.replied"
         | "question.rejected" | "session.idle" | "session.error" => event

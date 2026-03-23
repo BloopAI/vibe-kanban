@@ -61,18 +61,14 @@
     },
     "subagent": {
       "defaultType": "Subagente"
-    }
+    },
+    "loadingEarlierMessages": "Cargando mensajes anteriores"
   },
   "language": {
     "browserDefault": "Predeterminado del navegador"
   },
   "states": {
-    "error": "Error",
-    "loading": "Cargando...",
-    "loadingHistory": "Cargando historial",
-    "reconnecting": "Reconectando",
-    "saving": "Guardando...",
-    "success": "Éxito"
+    "loading": "Cargando..."
   },
   "orgSwitcher": {
     "organizations": "Organizaciones",
@@ -513,6 +509,13 @@
     "default": "Predeterminado",
     "model": "Modelo"
   },
+  "crashScreen": {
+    "title": "Algo salió mal",
+    "description": "La aplicación encontró un error inesperado.",
+    "reload": "Recargar",
+    "showDetails": "Mostrar detalles",
+    "hideDetails": "Ocultar detalles"
+  },
   "syncError": {
     "networkErrors": "Errores de red",
     "streamsAffected": "{{count}} flujo afectado",
@@ -536,7 +539,7 @@
   },
   "appBar": {
     "kanban": {
-      "tooltip": "Kanban",
+      "tooltip": "Inicia sesión para ver proyectos",
       "title": "Tableros Kanban",
       "description": "Inicia sesión para organizar tus agentes de codificación con tableros kanban.",
       "migrateOldProjects": "Migrar proyectos antiguos"

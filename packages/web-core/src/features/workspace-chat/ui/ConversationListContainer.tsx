@@ -1,13 +1,4 @@
 import {
-  DataWithScrollModifier,
-  type ListScrollLocation,
-  ScrollModifier,
-  VirtuosoMessageList,
-  VirtuosoMessageListLicense,
-  VirtuosoMessageListMethods,
-  VirtuosoMessageListProps,
-} from '@virtuoso.dev/message-list';
-import {
   forwardRef,
   useCallback,
   useEffect,
@@ -15,25 +6,30 @@ import {
   useMemo,
   useRef,
   useState,
+  type MouseEvent,
 } from 'react';
 import { SpinnerIcon } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 
-import { cn } from '@/shared/lib/utils';
 import {
-  INITIAL_TOP_ITEM,
-  InitialDataScrollModifier,
-  ScrollToBottomModifier,
-} from '@/shared/lib/virtuoso-modifiers';
+  findPreviousUserMessageIndex,
+  type ConversationRow,
+} from '../model/conversation-row-model';
+import { deriveConversationEntries } from '../model/deriveConversationEntries';
+import { deriveConversationTimeline } from '../model/deriveConversationTimeline';
+import { useConversationVirtualizer } from '../model/useConversationVirtualizer';
+import { useScrollCommandExecutor } from '../model/useScrollCommandExecutor';
+
 import DisplayConversationEntry from './DisplayConversationEntry';
 import { ApprovalFormProvider } from '@/shared/hooks/ApprovalForm';
-import { useEntries } from '../model/contexts/EntriesContext';
+import { useEntriesActions } from '../model/contexts/EntriesContext';
 import {
   useResetProcess,
   type UseResetProcessResult,
 } from '../model/hooks/useResetProcess';
 import type {
   AddEntryType,
-  PatchTypeWithKey,
+  ConversationTimelineSource,
   DisplayEntry,
 } from '@/shared/hooks/useConversationHistory/types';
 import {
@@ -42,169 +38,157 @@ import {
   isAggregatedThinkingGroup,
 } from '@/shared/hooks/useConversationHistory/types';
 import { useConversationHistory } from '../model/hooks/useConversationHistory';
-import { aggregateConsecutiveEntries } from '@/shared/lib/aggregateEntries';
+import { useSetTokenUsageInfo } from '../model/contexts/EntriesContext';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import type { RepoWithTargetBranch } from 'shared/types';
-import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { ChatEmptyState } from '@vibe/ui/components/ChatEmptyState';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
+  repos?: RepoWithTargetBranch[];
   onAtBottomChange?: (atBottom: boolean) => void;
+  sessionScopeId?: string;
 }
 
 export interface ConversationListHandle {
   scrollToPreviousUserMessage: () => void;
-  scrollToBottom: () => void;
+  scrollToBottom: (behavior?: 'auto' | 'smooth') => void;
+  adjustScrollBy: (delta: number) => void;
+  getScrollElement: () => HTMLDivElement | null;
 }
 
-interface MessageListContext {
-  attempt: WorkspaceWithSession;
-  onConfigureSetup: (() => void) | undefined;
-  onConfigureCleanup: (() => void) | undefined;
-  showSetupPlaceholder: boolean;
-  showCleanupPlaceholder: boolean;
-  resetAction: UseResetProcessResult;
-}
+const ALWAYS_UNVIRTUALIZED_TAIL_ROWS = 8;
+const STREAMING_UNVIRTUALIZED_BUFFER_ROWS = 24;
 
-const AutoScrollToBottom: ScrollModifier = {
-  type: 'auto-scroll-to-bottom',
-  autoScroll: 'smooth',
-};
-
-const ScrollToTopOfLastItem: ScrollModifier = {
-  type: 'item-location',
-  location: {
-    index: 'LAST',
-    align: 'start',
-  },
-};
-
-const ItemContent: VirtuosoMessageListProps<
-  DisplayEntry,
-  MessageListContext
->['ItemContent'] = ({ data, context }) => {
-  const attempt = context?.attempt;
-  const resetAction = context?.resetAction;
-
-  // Handle aggregated tool groups (file_read, search, web_fetch)
-  if (isAggregatedGroup(data)) {
+function renderRowContent(
+  entry: DisplayEntry,
+  attempt: WorkspaceWithSession,
+  resetAction: UseResetProcessResult,
+  repos: RepoWithTargetBranch[]
+): React.ReactNode {
+  if (isAggregatedGroup(entry)) {
     return (
       <DisplayConversationEntry
-        expansionKey={data.patchKey}
-        aggregatedGroup={data}
+        expansionKey={entry.patchKey}
+        aggregatedGroup={entry}
         aggregatedDiffGroup={null}
         aggregatedThinkingGroup={null}
         entry={null}
-        executionProcessId={data.executionProcessId}
+        executionProcessId={entry.executionProcessId}
         workspaceWithSession={attempt}
         resetAction={resetAction}
+        repos={repos}
       />
     );
   }
 
-  // Handle aggregated diff groups (file_edit by same path)
-  if (isAggregatedDiffGroup(data)) {
+  if (isAggregatedDiffGroup(entry)) {
     return (
       <DisplayConversationEntry
-        expansionKey={data.patchKey}
+        expansionKey={entry.patchKey}
         aggregatedGroup={null}
-        aggregatedDiffGroup={data}
+        aggregatedDiffGroup={entry}
         aggregatedThinkingGroup={null}
         entry={null}
-        executionProcessId={data.executionProcessId}
+        executionProcessId={entry.executionProcessId}
         workspaceWithSession={attempt}
         resetAction={resetAction}
+        repos={repos}
       />
     );
   }
 
-  // Handle aggregated thinking groups (thinking entries in previous turns)
-  if (isAggregatedThinkingGroup(data)) {
+  if (isAggregatedThinkingGroup(entry)) {
     return (
       <DisplayConversationEntry
-        expansionKey={data.patchKey}
+        expansionKey={entry.patchKey}
         aggregatedGroup={null}
         aggregatedDiffGroup={null}
-        aggregatedThinkingGroup={data}
+        aggregatedThinkingGroup={entry}
         entry={null}
-        executionProcessId={data.executionProcessId}
+        executionProcessId={entry.executionProcessId}
         workspaceWithSession={attempt}
         resetAction={resetAction}
+        repos={repos}
       />
     );
   }
 
-  if (data.type === 'STDOUT') {
-    return <p>{data.content}</p>;
+  if (entry.type === 'STDOUT') {
+    return <p>{entry.content}</p>;
   }
-  if (data.type === 'STDERR') {
-    return <p>{data.content}</p>;
+  if (entry.type === 'STDERR') {
+    return <p>{entry.content}</p>;
   }
-  if (data.type === 'NORMALIZED_ENTRY' && attempt) {
+
+  if (entry.type === 'NORMALIZED_ENTRY') {
     return (
       <DisplayConversationEntry
-        expansionKey={data.patchKey}
-        entry={data.content}
+        expansionKey={entry.patchKey}
+        entry={entry.content}
         aggregatedGroup={null}
         aggregatedDiffGroup={null}
         aggregatedThinkingGroup={null}
-        executionProcessId={data.executionProcessId}
+        executionProcessId={entry.executionProcessId}
         workspaceWithSession={attempt}
         resetAction={resetAction}
+        repos={repos}
       />
     );
   }
 
   return null;
-};
-
-const computeItemKey: VirtuosoMessageListProps<
-  DisplayEntry,
-  MessageListContext
->['computeItemKey'] = ({ data }) => `conv-${data.patchKey}`;
-
-const itemIdentity: VirtuosoMessageListProps<
-  DisplayEntry,
-  MessageListContext
->['itemIdentity'] = (item) => item.patchKey;
+}
 
 export const ConversationList = forwardRef<
   ConversationListHandle,
   ConversationListProps
->(function ConversationList({ attempt, onAtBottomChange }, ref) {
-  const resetAction = useResetProcess();
-  const [channelData, setChannelData] =
-    useState<DataWithScrollModifier<DisplayEntry> | null>(null);
+>(function ConversationList(
+  { attempt, repos: reposProp = [], onAtBottomChange, sessionScopeId },
+  ref
+) {
+  const { t } = useTranslation('common');
+  const repos = reposProp;
+  const resetAction = useResetProcess(attempt.id, attempt.session?.id);
+  const conversationScopeKey = `${attempt.id}:${sessionScopeId ?? attempt.session?.id ?? 'new'}`;
+  const [filteredEntries, setFilteredEntries] = useState<DisplayEntry[]>([]);
+  const [dataVersion, setDataVersion] = useState(0);
   const [loading, setLoading] = useState(true);
-  const { setEntries, reset } = useEntries();
+  const [hasSetupScriptRun, setHasSetupScriptRun] = useState(false);
+  const [hasCleanupScriptRun, setHasCleanupScriptRun] = useState(false);
+  const [hasRunningProcess, setHasRunningProcess] = useState(false);
+  const lastSettledTailStartIndexRef = useRef<number | null>(null);
+  const { setEntries, reset } = useEntriesActions();
+  const setTokenUsageInfo = useSetTokenUsageInfo();
+  const scriptOutputCacheRef = useRef<
+    Map<string, { count: number; output: string }>
+  >(new Map());
+  const scrollOnEntriesChangedRef = useRef<
+    ((addType: AddEntryType, isInitialLoad: boolean) => void) | null
+  >(null);
   const pendingUpdateRef = useRef<{
-    entries: PatchTypeWithKey[];
+    source: ConversationTimelineSource;
     addType: AddEntryType;
     loading: boolean;
+    isInitialLoad: boolean;
   } | null>(null);
-  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const lastAtBottomRef = useRef(true);
-  const handleScroll = useCallback(
-    (location: ListScrollLocation) => {
-      if (location.isAtBottom !== lastAtBottomRef.current) {
-        lastAtBottomRef.current = location.isAtBottom;
-        onAtBottomChange?.(location.isAtBottom);
-      }
-    },
-    [onAtBottomChange]
-  );
-
-  // Get repos from workspace context to check if scripts are configured
-  let repos: RepoWithTargetBranch[] = [];
-  try {
-    const workspaceContext = useWorkspaceContext();
-    repos = workspaceContext.repos;
-  } catch {
-    // Context not available
-  }
+  // rAF throttle: at most one state update per animation frame.
+  // Replaces the previous 100ms trailing debounce which never fired during
+  // continuous streaming (upstream rAF in streamJsonPatchEntries reset the
+  // timer every ~16ms). TanStack Virtual has no internal batching — unlike
+  // Virtuoso — so we need to drive renders explicitly via React state.
+  // rAF naturally limits updates to the display refresh rate (~60fps) while
+  // ensuring every frame reflects the latest data.
+  const rafIdRef = useRef<number | null>(null);
+  const planRevealSpacerRef = useRef<HTMLDivElement | null>(null);
+  const pendingInteractionAnchorRef = useRef<{
+    element: HTMLElement;
+    top: number;
+  } | null>(null);
+  const pendingInteractionAnchorFrameRef = useRef<number | null>(null);
+  const pendingInteractionAnchorDeadlineRef = useRef(0);
 
   // Use ref to access current repos without causing callback recreation
   const reposRef = useRef(repos);
@@ -243,88 +227,328 @@ export const ConversationList = forwardRef<
   const canConfigure = repos.length > 0;
 
   useEffect(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    pendingUpdateRef.current = null;
+    scriptOutputCacheRef.current.clear();
+    if (planRevealSpacerRef.current) {
+      planRevealSpacerRef.current.style.height = '0px';
+    }
     setLoading(true);
-    setChannelData(null);
+    setHasSetupScriptRun(false);
+    setHasCleanupScriptRun(false);
+    setHasRunningProcess(false);
+    setFilteredEntries([]);
+    setDataVersion(0);
+    lastSettledTailStartIndexRef.current = null;
     reset();
-  }, [attempt.id, reset]);
+  }, [conversationScopeKey, reset]);
 
   useEffect(() => {
     return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
       }
     };
   }, []);
 
-  const onEntriesUpdated = (
-    newEntries: PatchTypeWithKey[],
+  // ---- TanStack Virtual plumbing ----
+  const tanstackScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const clearPendingInteractionAnchor = useCallback(() => {
+    if (pendingInteractionAnchorFrameRef.current !== null) {
+      cancelAnimationFrame(pendingInteractionAnchorFrameRef.current);
+      pendingInteractionAnchorFrameRef.current = null;
+    }
+    pendingInteractionAnchorDeadlineRef.current = 0;
+    pendingInteractionAnchorRef.current = null;
+  }, []);
+
+  const programmaticScrollDeadlineRef = useRef(0);
+
+  const shouldSuppressInteractionDrivenSizeAdjustment = useCallback(
+    () =>
+      performance.now() < programmaticScrollDeadlineRef.current ||
+      (pendingInteractionAnchorRef.current !== null &&
+        performance.now() < pendingInteractionAnchorDeadlineRef.current),
+    []
+  );
+
+  const runInteractionAnchorCorrection = useCallback(() => {
+    pendingInteractionAnchorFrameRef.current = null;
+
+    const anchor = pendingInteractionAnchorRef.current;
+    const activeScrollContainer = tanstackScrollRef.current;
+    if (!anchor || !activeScrollContainer || !anchor.element.isConnected) {
+      clearPendingInteractionAnchor();
+      return;
+    }
+
+    const currentTop = anchor.element.getBoundingClientRect().top;
+    const delta = currentTop - anchor.top;
+    if (Math.abs(delta) >= 0.5) {
+      activeScrollContainer.scrollTop += delta;
+    }
+
+    if (performance.now() < pendingInteractionAnchorDeadlineRef.current) {
+      pendingInteractionAnchorFrameRef.current = requestAnimationFrame(
+        runInteractionAnchorCorrection
+      );
+      return;
+    }
+
+    clearPendingInteractionAnchor();
+  }, [clearPendingInteractionAnchor]);
+
+  const handleConversationClickCapture = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const trigger = target.closest<HTMLElement>(
+        'button, summary, [role="button"], [data-scroll-anchor-target]'
+      );
+      if (!trigger || trigger.closest('[data-scroll-anchor-ignore]')) return;
+
+      const scrollContainer = tanstackScrollRef.current;
+      if (!scrollContainer || !scrollContainer.contains(trigger)) return;
+
+      clearPendingInteractionAnchor();
+      pendingInteractionAnchorRef.current = {
+        element: trigger,
+        top: trigger.getBoundingClientRect().top,
+      };
+
+      pendingInteractionAnchorDeadlineRef.current = performance.now() + 250;
+      pendingInteractionAnchorFrameRef.current = requestAnimationFrame(
+        runInteractionAnchorCorrection
+      );
+    },
+    [clearPendingInteractionAnchor, runInteractionAnchorCorrection]
+  );
+
+  const flushPendingUpdate = () => {
+    rafIdRef.current = null;
+    const pending = pendingUpdateRef.current;
+    if (!pending) return;
+
+    const derivedEntries = deriveConversationEntries({
+      source: pending.source,
+      scriptOutputCache: scriptOutputCacheRef.current,
+    });
+
+    setHasSetupScriptRun(derivedEntries.hasSetupScriptRun);
+    setHasCleanupScriptRun(derivedEntries.hasCleanupScriptRun);
+    setHasRunningProcess(derivedEntries.hasRunningProcess);
+    setTokenUsageInfo(derivedEntries.latestTokenUsageInfo);
+
+    const derivedTimeline = deriveConversationTimeline(
+      derivedEntries.entries,
+      prevEntriesRef.current,
+      prevRowsRef.current
+    );
+
+    prevEntriesRef.current = derivedTimeline.displayEntries;
+    prevRowsRef.current = derivedTimeline.rows;
+
+    setFilteredEntries(derivedTimeline.displayEntries);
+    setDataVersion((current) => current + 1);
+    setEntries(derivedEntries.entries);
+
+    scrollOnEntriesChangedRef.current?.(pending.addType, pending.isInitialLoad);
+
+    if (loading) {
+      setLoading(pending.loading);
+    }
+  };
+
+  const onTimelineUpdated = (
+    source: ConversationTimelineSource,
     addType: AddEntryType,
     newLoading: boolean
   ) => {
     pendingUpdateRef.current = {
-      entries: newEntries,
+      source,
       addType,
       loading: newLoading,
+      isInitialLoad: addType === 'initial',
     };
 
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
+    if (rafIdRef.current === null) {
+      rafIdRef.current = requestAnimationFrame(flushPendingUpdate);
     }
-
-    debounceTimeoutRef.current = setTimeout(() => {
-      const pending = pendingUpdateRef.current;
-      if (!pending) return;
-
-      let scrollModifier: ScrollModifier;
-
-      if (loading) {
-        // First data load: purge estimated sizes and jump to bottom
-        scrollModifier = InitialDataScrollModifier;
-      } else if (pending.addType === 'plan') {
-        scrollModifier = ScrollToTopOfLastItem;
-      } else if (pending.addType === 'running') {
-        scrollModifier = AutoScrollToBottom;
-      } else {
-        // Historic/subsequent updates: scroll to bottom but keep measured sizes
-        scrollModifier = ScrollToBottomModifier;
-      }
-
-      const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
-
-      // Filter out entries that render as null in the new design –
-      // leaving them in creates empty Virtuoso items that add spacing.
-      const filteredEntries = aggregatedEntries.filter((entry) => {
-        if (
-          'type' in entry &&
-          entry.type === 'NORMALIZED_ENTRY' &&
-          typeof entry.content !== 'string' &&
-          'entry_type' in entry.content
-        ) {
-          const t = entry.content.entry_type.type;
-          return t !== 'next_action' && t !== 'token_usage_info';
-        }
-        return true;
-      });
-
-      setChannelData({ data: filteredEntries, scrollModifier });
-      setEntries(pending.entries);
-
-      if (loading) {
-        setLoading(pending.loading);
-      }
-    }, 100);
   };
 
-  const {
-    hasSetupScriptRun,
-    hasCleanupScriptRun,
-    hasRunningProcess,
-    isFirstTurn,
-  } = useConversationHistory({ attempt, onEntriesUpdated });
+  const { isFirstTurn, isLoadingHistory } = useConversationHistory({
+    attempt,
+    onTimelineUpdated,
+    scopeKey: conversationScopeKey,
+  });
+
+  const prevEntriesRef = useRef<DisplayEntry[]>([]);
+  const prevRowsRef = useRef<ConversationRow[]>([]);
+  const conversationRows = useMemo(
+    () => prevRowsRef.current,
+    [filteredEntries]
+  );
+
+  const hasActiveStreamingTurn = useMemo(
+    () =>
+      hasRunningProcess ||
+      conversationRows.some((row) => row.rowFamily === 'loading'),
+    [conversationRows, hasRunningProcess]
+  );
+
+  const candidateFirstUnvirtualizedRowIndex = useMemo(() => {
+    const firstTailRowIndex = Math.max(
+      conversationRows.length - ALWAYS_UNVIRTUALIZED_TAIL_ROWS,
+      0
+    );
+
+    if (!hasActiveStreamingTurn) {
+      return firstTailRowIndex;
+    }
+
+    for (let index = conversationRows.length - 1; index >= 0; index -= 1) {
+      if (conversationRows[index]?.isUserMessage) {
+        return Math.min(index, firstTailRowIndex);
+      }
+    }
+
+    return firstTailRowIndex;
+  }, [conversationRows, hasActiveStreamingTurn]);
+
+  const streamingFirstUnvirtualizedRowIndex = useMemo(() => {
+    const lastSettledTailStartIndex = lastSettledTailStartIndexRef.current;
+    if (lastSettledTailStartIndex == null) {
+      return candidateFirstUnvirtualizedRowIndex;
+    }
+
+    return Math.min(
+      lastSettledTailStartIndex,
+      candidateFirstUnvirtualizedRowIndex
+    );
+  }, [candidateFirstUnvirtualizedRowIndex]);
+
+  useEffect(() => {
+    if (!hasActiveStreamingTurn) {
+      lastSettledTailStartIndexRef.current =
+        candidateFirstUnvirtualizedRowIndex;
+    }
+  }, [candidateFirstUnvirtualizedRowIndex, hasActiveStreamingTurn]);
+
+  const firstUnvirtualizedRowIndex = hasActiveStreamingTurn
+    ? Math.max(
+        0,
+        streamingFirstUnvirtualizedRowIndex -
+          STREAMING_UNVIRTUALIZED_BUFFER_ROWS
+      )
+    : candidateFirstUnvirtualizedRowIndex;
+
+  const virtualizedRows = useMemo(
+    () => conversationRows.slice(0, firstUnvirtualizedRowIndex),
+    [conversationRows, firstUnvirtualizedRowIndex]
+  );
+
+  const unvirtualizedTailRows = useMemo(
+    () => conversationRows.slice(firstUnvirtualizedRowIndex),
+    [conversationRows, firstUnvirtualizedRowIndex]
+  );
+
+  const conversationVirtualizer = useConversationVirtualizer({
+    rows: virtualizedRows,
+    totalRowCount: conversationRows.length,
+    scrollContainerRef: tanstackScrollRef,
+    onAtBottomChange,
+    shouldSuppressSizeAdjustment: shouldSuppressInteractionDrivenSizeAdjustment,
+  });
+
+  // NOTE: Do NOT call conversationVirtualizer.virtualizer.measure() when
+  // firstUnvirtualizedRowIndex changes. measure() wipes ALL cached item sizes,
+  // triggering a massive re-measurement storm and multi-second jitter.
+  // TanStack Virtual handles count changes automatically via getItemKey.
+
+  const scrollToAbsoluteIndex = useCallback(
+    (
+      index: number,
+      align: 'start' | 'center' | 'end' = 'start',
+      behavior: 'auto' | 'smooth' = 'smooth'
+    ): boolean => {
+      if (index < 0 || index >= conversationRows.length) return false;
+
+      const scrollEl = tanstackScrollRef.current;
+      if (!scrollEl) return false;
+
+      const targetNode = scrollEl.querySelector<HTMLElement>(
+        `[data-row-index="${index}"]`
+      );
+
+      if (targetNode) {
+        let top = targetNode.offsetTop;
+
+        if (align === 'center') {
+          top =
+            targetNode.offsetTop -
+            scrollEl.clientHeight / 2 +
+            targetNode.offsetHeight / 2;
+        } else if (align === 'end') {
+          top =
+            targetNode.offsetTop -
+            scrollEl.clientHeight +
+            targetNode.offsetHeight;
+        }
+
+        const requestedTop = Math.max(0, top);
+        let maxScrollable = scrollEl.scrollHeight - scrollEl.clientHeight;
+        const deficit = requestedTop - maxScrollable;
+
+        if (deficit > 1 && align === 'start' && planRevealSpacerRef.current) {
+          conversationVirtualizer.releaseBottomLock();
+          planRevealSpacerRef.current.style.height = `${Math.ceil(deficit)}px`;
+          maxScrollable = scrollEl.scrollHeight - scrollEl.clientHeight;
+        }
+
+        scrollEl.scrollTo({
+          top: Math.min(requestedTop, maxScrollable),
+          behavior,
+        });
+        return true;
+      }
+
+      if (index < virtualizedRows.length) {
+        conversationVirtualizer.scrollToIndex(index, { align, behavior });
+        return true;
+      }
+
+      return false;
+    },
+    [conversationRows.length, conversationVirtualizer, virtualizedRows.length]
+  );
+
+  const scrollToBottomAndClearSpacer = useCallback(
+    (behavior?: 'auto' | 'smooth') => {
+      if (planRevealSpacerRef.current) {
+        planRevealSpacerRef.current.style.height = '0px';
+      }
+      conversationVirtualizer.scrollToBottom(behavior);
+    },
+    [conversationVirtualizer]
+  );
+
+  const scrollExecutor = useScrollCommandExecutor({
+    virtualizer: conversationVirtualizer.virtualizer,
+    itemCount: conversationRows.length,
+    dataVersion,
+    checkIsAtBottom: conversationVirtualizer.checkIsAtBottom,
+    scrollToBottom: scrollToBottomAndClearSpacer,
+    scrollToAbsoluteIndex,
+  });
+  scrollOnEntriesChangedRef.current = scrollExecutor.onEntriesChanged;
 
   // Determine if there are entries to show placeholders
-  const entries = channelData?.data ?? [];
-  const hasEntries = entries.length > 0;
+  const hasEntries = conversationRows.length > 0;
 
   // Show placeholders only if script not configured AND not already run AND first turn
   const showSetupPlaceholder =
@@ -336,136 +560,244 @@ export const ConversationList = forwardRef<
     hasEntries &&
     isFirstTurn;
 
-  const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
-  const messageListContext = useMemo(
-    () => ({
-      attempt,
-      onConfigureSetup: canConfigure ? handleConfigureSetup : undefined,
-      onConfigureCleanup: canConfigure ? handleConfigureCleanup : undefined,
-      showSetupPlaceholder,
-      showCleanupPlaceholder,
-      resetAction,
-    }),
-    [
-      attempt,
-      canConfigure,
-      handleConfigureSetup,
-      handleConfigureCleanup,
-      showSetupPlaceholder,
-      showCleanupPlaceholder,
-      resetAction,
-    ]
-  );
+  // Expose scroll functionality via ref — delegates to TanStack Virtual
+  const scrollToPreviousUserMessage = useCallback(() => {
+    conversationVirtualizer.releaseBottomLock();
 
-  // Expose scroll to previous user message functionality via ref
+    const scrollEl = tanstackScrollRef.current;
+    if (!scrollEl || conversationRows.length === 0) return;
+
+    const containerTop = scrollEl.getBoundingClientRect().top;
+    const rowNodes = Array.from(
+      scrollEl.querySelectorAll<HTMLElement>('[data-row-index]')
+    );
+
+    let firstVisibleIndex = conversationRows.length - 1;
+
+    for (const node of rowNodes) {
+      const rect = node.getBoundingClientRect();
+      if (rect.bottom <= containerTop + 1) continue;
+      const indexAttr = node.dataset.rowIndex;
+      if (!indexAttr) continue;
+      const parsedIndex = Number.parseInt(indexAttr, 10);
+      if (!Number.isFinite(parsedIndex)) continue;
+      firstVisibleIndex = parsedIndex;
+      break;
+    }
+
+    const targetIndex = findPreviousUserMessageIndex(
+      conversationRows,
+      firstVisibleIndex
+    );
+
+    if (targetIndex < 0) return;
+
+    programmaticScrollDeadlineRef.current = performance.now() + 1000;
+
+    let attempts = 0;
+    const maxAttempts = 6;
+
+    const correctScroll = () => {
+      if (attempts >= maxAttempts) return;
+      attempts++;
+
+      programmaticScrollDeadlineRef.current = performance.now() + 500;
+
+      const node = scrollEl.querySelector<HTMLElement>(
+        `[data-row-index="${targetIndex}"]`
+      );
+      if (!node) {
+        if (attempts === 1) {
+          conversationVirtualizer.scrollToIndex(targetIndex, {
+            align: 'start',
+            behavior: 'auto',
+          });
+        }
+        requestAnimationFrame(correctScroll);
+        return;
+      }
+
+      const nodeRect = node.getBoundingClientRect();
+      const contRect = scrollEl.getBoundingClientRect();
+      const delta = nodeRect.top - contRect.top;
+
+      if (Math.abs(delta) < 2) return;
+
+      scrollEl.scrollTop += delta;
+      requestAnimationFrame(correctScroll);
+    };
+
+    correctScroll();
+  }, [
+    conversationRows,
+    firstUnvirtualizedRowIndex,
+    conversationVirtualizer,
+    scrollToAbsoluteIndex,
+  ]);
+
   useImperativeHandle(
     ref,
     () => ({
       scrollToPreviousUserMessage: () => {
-        const data = channelData?.data;
-        if (!data || !messageListRef.current) return;
-
-        // Get currently rendered items to find visible range
-        const rendered = messageListRef.current.data.getCurrentlyRendered();
-        if (!rendered.length) return;
-
-        // Find the index of the first visible item in the full data array
-        const firstVisibleKey = rendered[0]?.patchKey;
-        const firstVisibleIndex = data.findIndex(
-          (item) => item.patchKey === firstVisibleKey
-        );
-
-        // Find all user message indices
-        const userMessageIndices: number[] = [];
-        data.forEach((item, index) => {
-          if (
-            item.type === 'NORMALIZED_ENTRY' &&
-            item.content.entry_type.type === 'user_message'
-          ) {
-            userMessageIndices.push(index);
-          }
-        });
-
-        // Find the user message before the first visible item
-        const targetIndex = userMessageIndices
-          .reverse()
-          .find((idx) => idx < firstVisibleIndex);
-
-        if (targetIndex !== undefined) {
-          messageListRef.current.scrollToItem({
-            index: targetIndex,
-            align: 'start',
-            behavior: 'smooth',
-          });
-        }
+        scrollToPreviousUserMessage();
       },
-      scrollToBottom: () => {
-        if (!messageListRef.current) return;
-        messageListRef.current.scrollToItem({
-          index: 'LAST',
-          align: 'end',
-          behavior: 'smooth',
-        });
+      scrollToBottom: (behavior = 'smooth') => {
+        scrollToBottomAndClearSpacer(behavior);
       },
+      adjustScrollBy: (delta) => {
+        if (Math.abs(delta) < 0.5) return;
+        const scrollElement = tanstackScrollRef.current;
+        if (!scrollElement) return;
+        scrollElement.scrollTop += delta;
+      },
+      getScrollElement: () => tanstackScrollRef.current,
     }),
-    [channelData]
+    [
+      conversationVirtualizer,
+      scrollToBottomAndClearSpacer,
+      scrollToPreviousUserMessage,
+    ]
   );
 
-  // Determine if content is ready to show (has data or finished loading)
-  const hasContent = !loading || (channelData?.data?.length ?? 0) > 0;
+  const showLoader = loading && conversationRows.length === 0;
+  const showEmptyState = !loading && conversationRows.length === 0;
+
+  const { virtualItems, totalSize, measureElement } = conversationVirtualizer;
+
+  useEffect(() => {
+    return () => {
+      clearPendingInteractionAnchor();
+    };
+  }, [clearPendingInteractionAnchor]);
 
   return (
     <ApprovalFormProvider>
-      <div
-        className={cn(
-          'virtuoso-license-wrapper relative h-full overflow-hidden transition-opacity duration-300',
-          hasContent ? 'opacity-100' : 'opacity-0'
-        )}
-      >
-        {!hasContent && (
+      <div className="relative h-full overflow-hidden">
+        {showLoader && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <SpinnerIcon className="size-6 animate-spin text-low" />
           </div>
         )}
-        <VirtuosoMessageListLicense
-          licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
+        <div
+          ref={tanstackScrollRef}
+          className="h-full overflow-y-auto scrollbar-none"
+          style={{ overflowAnchor: 'none', contain: 'strict' }}
+          onClickCapture={handleConversationClickCapture}
         >
-          <VirtuosoMessageList<DisplayEntry, MessageListContext>
-            ref={messageListRef}
-            className="h-full scrollbar-none"
-            data={channelData}
-            initialLocation={INITIAL_TOP_ITEM}
-            context={messageListContext}
-            computeItemKey={computeItemKey}
-            itemIdentity={itemIdentity}
-            ItemContent={ItemContent}
-            onScroll={handleScroll}
-            Header={({ context }) => (
-              <div className="pt-2">
-                {context?.showSetupPlaceholder && (
-                  <div className="my-base px-double">
-                    <ChatScriptPlaceholder
-                      type="setup"
-                      onConfigure={context.onConfigureSetup}
-                    />
-                  </div>
-                )}
+          <div className="pt-2">
+            {showSetupPlaceholder && (
+              <div className="my-base px-double">
+                <ChatScriptPlaceholder
+                  type="setup"
+                  onConfigure={canConfigure ? handleConfigureSetup : undefined}
+                />
               </div>
             )}
-            Footer={({ context }) => (
-              <div className="pb-2">
-                {context?.showCleanupPlaceholder && (
-                  <div className="my-base px-double">
-                    <ChatScriptPlaceholder
-                      type="cleanup"
-                      onConfigure={context.onConfigureCleanup}
-                    />
+          </div>
+
+          {isLoadingHistory && !showLoader && (
+            <div className="flex flex-col items-center gap-2 px-double py-3">
+              <div className="flex w-full max-w-md flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-2.5 w-16 animate-pulse rounded-full bg-foreground/10" />
+                  <div className="h-2.5 flex-1 animate-pulse rounded-full bg-foreground/[0.06]" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="h-2.5 w-24 animate-pulse rounded-full bg-foreground/[0.07]"
+                    style={{ animationDelay: '150ms' }}
+                  />
+                  <div
+                    className="h-2.5 w-32 animate-pulse rounded-full bg-foreground/[0.05]"
+                    style={{ animationDelay: '150ms' }}
+                  />
+                </div>
+              </div>
+              <span className="text-xs text-low">
+                {t('conversation.loadingEarlierMessages')}
+              </span>
+            </div>
+          )}
+
+          {showEmptyState && (
+            <div className="flex min-h-full items-center justify-center px-double py-12">
+              <ChatEmptyState
+                title={t('conversation.emptyTitle', {
+                  defaultValue: 'Send a message to start the conversation.',
+                })}
+                description={t('conversation.emptyDescription', {
+                  defaultValue:
+                    'Your workspace conversation will appear here once a new turn starts.',
+                })}
+              />
+            </div>
+          )}
+
+          {virtualizedRows.length > 0 && (
+            <div
+              style={{
+                height: `${totalSize}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {virtualItems.map((virtualItem) => {
+                const row = virtualizedRows[virtualItem.index];
+                if (!row) return null;
+                return (
+                  <div
+                    key={row.semanticKey}
+                    data-index={virtualItem.index}
+                    data-row-index={virtualItem.index}
+                    data-semantic-key={row.semanticKey}
+                    ref={measureElement}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
+                  >
+                    {renderRowContent(row.entry, attempt, resetAction, repos)}
                   </div>
-                )}
+                );
+              })}
+            </div>
+          )}
+
+          {unvirtualizedTailRows.map((row, tailIndex) => {
+            const rowIndex = firstUnvirtualizedRowIndex + tailIndex;
+            return (
+              <div
+                key={row.semanticKey}
+                data-row-index={rowIndex}
+                data-semantic-key={row.semanticKey}
+              >
+                {renderRowContent(row.entry, attempt, resetAction, repos)}
+              </div>
+            );
+          })}
+
+          {/* Plan-reveal spacer: provides extra scroll room so plan-reveal
+              can align the plan entry to the top of the viewport. Height is set
+              imperatively in scrollToAbsoluteIndex and cleared on scrollToBottom. */}
+          <div ref={planRevealSpacerRef} style={{ height: 0 }} />
+
+          {/* Footer placeholder */}
+          <div className="pb-2">
+            {showCleanupPlaceholder && (
+              <div className="my-base px-double">
+                <ChatScriptPlaceholder
+                  type="cleanup"
+                  onConfigure={
+                    canConfigure ? handleConfigureCleanup : undefined
+                  }
+                />
               </div>
             )}
-          />
-        </VirtuosoMessageListLicense>
+          </div>
+        </div>
       </div>
     </ApprovalFormProvider>
   );

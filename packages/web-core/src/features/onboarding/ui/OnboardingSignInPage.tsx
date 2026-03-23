@@ -13,6 +13,7 @@ import { OAuthSignInButton } from '@vibe/ui/components/OAuthButtons';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
+import { isTauriApp } from '@/shared/lib/platform';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 type OnboardingDestination =
@@ -230,6 +231,12 @@ export function OnboardingSignInPage() {
 
   return (
     <div className="h-screen overflow-auto bg-primary">
+      {isTauriApp() && (
+        <div
+          data-tauri-drag-region
+          className="fixed inset-x-0 top-0 h-10 z-10"
+        />
+      )}
       <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center px-base py-double">
         <div className="rounded-sm border border-border bg-secondary p-double space-y-double">
           <header className="space-y-double text-center">

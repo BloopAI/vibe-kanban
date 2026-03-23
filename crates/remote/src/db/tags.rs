@@ -50,7 +50,7 @@ impl TagRepository {
         name: String,
         color: String,
     ) -> Result<MutationResponse<Tag>, TagError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
 
         let id = id.unwrap_or_else(Uuid::new_v4);
         let data = sqlx::query_as!(
@@ -86,7 +86,7 @@ impl TagRepository {
         name: Option<String>,
         color: Option<String>,
     ) -> Result<MutationResponse<Tag>, TagError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
 
         let data = sqlx::query_as!(
             Tag,
@@ -116,7 +116,7 @@ impl TagRepository {
     }
 
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, TagError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
 
         sqlx::query!("DELETE FROM tags WHERE id = $1", id)
             .execute(&mut *tx)

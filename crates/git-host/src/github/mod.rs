@@ -8,14 +8,13 @@ use async_trait::async_trait;
 use backon::{ExponentialBuilder, Retryable};
 pub use cli::GhCli;
 use cli::{GhCliError, GitHubRepoInfo};
-use db::models::merge::PullRequestInfo;
 use tokio::task;
 use tracing::info;
 
 use crate::{
     GitHostProvider,
     types::{
-        CreatePrRequest, GitHostError, OpenPrInfo, PrComment, PrReviewComment, ProviderKind,
+        CreatePrRequest, GitHostError, PrComment, PrReviewComment, ProviderKind, PullRequestDetail,
         UnifiedPrComment,
     },
 };
@@ -161,7 +160,7 @@ impl GitHostProvider for GitHubProvider {
         repo_path: &Path,
         remote_url: &str,
         request: &CreatePrRequest,
-    ) -> Result<PullRequestInfo, GitHostError> {
+    ) -> Result<PullRequestDetail, GitHostError> {
         // Get owner/repo from the remote URL (target repo for the PR).
         let target_repo_info = self.get_repo_info(remote_url, repo_path).await?;
 
@@ -221,7 +220,7 @@ impl GitHostProvider for GitHubProvider {
         .await
     }
 
-    async fn get_pr_status(&self, pr_url: &str) -> Result<PullRequestInfo, GitHostError> {
+    async fn get_pr_status(&self, pr_url: &str) -> Result<PullRequestDetail, GitHostError> {
         let cli = self.gh_cli.clone();
         let url = pr_url.to_string();
 
@@ -260,7 +259,7 @@ impl GitHostProvider for GitHubProvider {
         repo_path: &Path,
         remote_url: &str,
         branch_name: &str,
-    ) -> Result<Vec<PullRequestInfo>, GitHostError> {
+    ) -> Result<Vec<PullRequestDetail>, GitHostError> {
         let repo_info = self.get_repo_info(remote_url, repo_path).await?;
 
         let cli = self.gh_cli.clone();
@@ -357,7 +356,7 @@ impl GitHostProvider for GitHubProvider {
         &self,
         repo_path: &Path,
         remote_url: &str,
-    ) -> Result<Vec<OpenPrInfo>, GitHostError> {
+    ) -> Result<Vec<PullRequestDetail>, GitHostError> {
         let repo_info = self.get_repo_info(remote_url, repo_path).await?;
 
         let cli = self.gh_cli.clone();
@@ -367,11 +366,11 @@ impl GitHostProvider for GitHubProvider {
             let owner = repo_info.owner.clone();
             let repo_name = repo_info.repo_name.clone();
 
-            let prs = task::spawn_blocking(move || cli.list_open_prs(&owner, &repo_name))
+            let prs = task::spawn_blocking(move || cli.list_prs(&owner, &repo_name))
                 .await
                 .map_err(|err| {
                     GitHostError::PullRequest(format!(
-                        "Failed to execute GitHub CLI for listing open PRs: {err}"
+                        "Failed to execute GitHub CLI for listing PRs: {err}"
                     ))
                 })?;
             prs.map_err(GitHostError::from)

@@ -1,56 +1,23 @@
 //! Relay path handlers: auth code exchange and proxy.
 
 use axum::{
-    body::Body,
-    extract::{Path, Query, Request, State},
+    extract::{Path, Request, State},
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use serde::Deserialize;
+use relay_tunnel_core::server::proxy_request_over_control;
 use uuid::Uuid;
 
 use super::super::{
     auth::request_context_from_auth_session_id,
     db::{
         hosts::HostRepository, identity_errors::IdentityError,
-        relay_auth_codes::RelayAuthCodeRepository,
         relay_browser_sessions::RelayBrowserSessionRepository,
     },
     state::RelayAppState,
 };
-use crate::server::proxy_request_over_control;
 
 const RELAY_PROXY_PREFIX: &str = "/relay/h";
-
-#[derive(Debug, Deserialize)]
-pub(super) struct RelayExchangeQuery {
-    code: String,
-}
-
-/// Handle `GET /relay/h/{host_id}/exchange?code=...`.
-pub(super) async fn relay_path_exchange(
-    State(state): State<RelayAppState>,
-    Path(host_id): Path<Uuid>,
-    Query(params): Query<RelayExchangeQuery>,
-) -> Response {
-    let auth_code_repo = RelayAuthCodeRepository::new(&state.pool);
-    match auth_code_repo.redeem_for_host(&params.code, host_id).await {
-        Ok(Some(browser_session_id)) => {
-            let location = format!("{RELAY_PROXY_PREFIX}/{host_id}/s/{browser_session_id}");
-
-            Response::builder()
-                .status(StatusCode::FOUND)
-                .header("location", location)
-                .body(Body::empty())
-                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
-        }
-        Ok(None) => (StatusCode::UNAUTHORIZED, "Invalid or expired code").into_response(),
-        Err(error) => {
-            tracing::warn!(?error, "failed to redeem relay auth code");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }
-    }
-}
 
 /// Handle `ANY /relay/h/{host_id}/s/{browser_session_id}`.
 pub(super) async fn relay_path_proxy(

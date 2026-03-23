@@ -5,11 +5,13 @@ import {
   ArrowLeftIcon,
   ArchiveIcon,
   StackIcon,
+  SpinnerIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/cn';
 import { InputField } from './InputField';
 import { WorkspaceSummary } from './WorkspaceSummary';
+import type { AppBarHostStatus } from './AppBar';
 import {
   CollapsibleSectionHeader,
   type SectionAction,
@@ -49,6 +51,7 @@ export interface WorkspacesSidebarProps {
   workspaces: WorkspacesSidebarWorkspace[];
   totalWorkspacesCount: number;
   archivedWorkspaces?: WorkspacesSidebarWorkspace[];
+  isLoading?: boolean;
   selectedWorkspaceId: string | null;
   onSelectWorkspace: (id: string) => void;
   onAddWorkspace?: () => void;
@@ -78,6 +81,11 @@ export interface WorkspacesSidebarProps {
   onOpenWorkspaceActions?: (workspaceId: string) => void;
   /** Persist keys for collapsible sections */
   persistKeys?: WorkspacesSidebarPersistKeys;
+  activeRemoteHost?: {
+    name: string;
+    status: AppBarHostStatus;
+  } | null;
+  onOpenRemoteHostSettings?: () => void;
 }
 
 export interface WorkspacesSidebarReopenTagProps {
@@ -162,6 +170,7 @@ export function WorkspacesSidebar({
   workspaces,
   totalWorkspacesCount,
   archivedWorkspaces = [],
+  isLoading = false,
   selectedWorkspaceId,
   onSelectWorkspace,
   onAddWorkspace,
@@ -179,6 +188,8 @@ export function WorkspacesSidebar({
   searchControls,
   onOpenWorkspaceActions,
   persistKeys = DEFAULT_PERSIST_KEYS,
+  activeRemoteHost = null,
+  onOpenRemoteHostSettings,
 }: WorkspacesSidebarProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -243,17 +254,60 @@ export function WorkspacesSidebar({
           actions={headerActions}
           className="border-b"
         />
-        <div className="px-base flex items-stretch gap-half">
-          <div className="flex-1 min-w-0">
-            <InputField
-              variant="search"
-              value={searchQuery}
-              onChange={onSearchChange}
-              placeholder={t('common:workspaces.searchPlaceholder')}
-            />
+        {!isLoading && (
+          <div className="px-base flex items-stretch gap-half">
+            <div className="flex-1 min-w-0">
+              <InputField
+                variant="search"
+                value={searchQuery}
+                onChange={onSearchChange}
+                placeholder={t('common:workspaces.searchPlaceholder')}
+              />
+            </div>
+            {searchControls}
           </div>
-          {searchControls}
-        </div>
+        )}
+
+        {activeRemoteHost && (
+          <div className="px-base">
+            <div className="rounded-sm border border-border bg-panel/60 px-base py-half flex items-center justify-between gap-base">
+              <div className="min-w-0">
+                <p className="text-xs text-low uppercase tracking-wide">
+                  {t('common:workspaces.remoteHostLabel', {
+                    defaultValue: 'Remote host',
+                  })}
+                </p>
+                <p className="text-sm text-high truncate">
+                  {activeRemoteHost.name}
+                </p>
+              </div>
+              <div className="flex items-center gap-half shrink-0">
+                <span
+                  className={cn(
+                    'inline-flex h-2.5 w-2.5 rounded-full',
+                    activeRemoteHost.status === 'online'
+                      ? 'bg-success'
+                      : activeRemoteHost.status === 'offline'
+                        ? 'bg-low'
+                        : 'bg-warning'
+                  )}
+                  aria-hidden="true"
+                />
+                {onOpenRemoteHostSettings && (
+                  <button
+                    type="button"
+                    onClick={onOpenRemoteHostSettings}
+                    className="text-xs text-brand hover:underline"
+                  >
+                    {t('common:workspaces.remoteHostManage', {
+                      defaultValue: 'Manage',
+                    })}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Scrollable workspace list */}
@@ -262,7 +316,13 @@ export function WorkspacesSidebar({
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto py-base"
       >
-        {showArchive ? (
+        {isLoading ? (
+          <div className="flex h-full min-h-[220px] items-center justify-center px-base">
+            <div className="flex items-center justify-center text-low">
+              <SpinnerIcon className="size-6 animate-spin" weight="bold" />
+            </div>
+          </div>
+        ) : showArchive ? (
           /* Archived workspaces view */
           <div className="flex flex-col gap-base">
             <span className="text-sm font-medium text-low px-base">

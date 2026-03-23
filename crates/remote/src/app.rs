@@ -15,7 +15,7 @@ use crate::{
     azure_blob::AzureBlobService,
     billing::BillingService,
     config::RemoteServerConfig,
-    db,
+    db, digest,
     github_app::GitHubAppService,
     mail::{LoopsMailer, Mailer, NoopMailer},
     r2::R2Service,
@@ -92,8 +92,12 @@ impl Server {
             jwt.clone(),
         ));
 
-        let mailer: Arc<dyn Mailer> = match std::env::var("LOOPS_EMAIL_API_KEY") {
-            Ok(api_key) if !api_key.is_empty() => {
+        let loops_email_api_key = std::env::var("LOOPS_EMAIL_API_KEY")
+            .ok()
+            .filter(|api_key| !api_key.is_empty());
+
+        let mailer: Arc<dyn Mailer> = match loops_email_api_key.clone() {
+            Some(api_key) => {
                 tracing::info!("Email service (Loops) configured");
                 Arc::new(LoopsMailer::new(api_key))
             }
@@ -179,6 +183,22 @@ impl Server {
 
         if let Some(ref azure_blob_service) = azure_blob {
             spawn_cleanup_task(pool.clone(), azure_blob_service.clone());
+        }
+
+        let digest_enabled = std::env::var("DIGEST_ENABLED")
+            .map(|v| matches!(v.as_str(), "true" | "1"))
+            .unwrap_or(false);
+
+        if loops_email_api_key.is_some() && digest_enabled {
+            digest::task::spawn_digest_task(
+                pool.clone(),
+                mailer.clone(),
+                server_public_base_url.clone(),
+            );
+        } else if !digest_enabled {
+            tracing::info!("Notification digest disabled (feature flag)");
+        } else {
+            tracing::info!("Notification digest disabled (no email provider configured)");
         }
 
         let state = AppState::new(

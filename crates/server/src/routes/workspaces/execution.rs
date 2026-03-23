@@ -91,6 +91,7 @@ pub async fn start_dev_server(
                 pool,
                 &CreateSession {
                     executor: Some("dev-server".to_string()),
+                    name: None,
                 },
                 Uuid::new_v4(),
                 workspace.id,
@@ -188,7 +189,10 @@ pub async fn run_cleanup_script(
         None => {
             Session::create(
                 pool,
-                &CreateSession { executor: None },
+                &CreateSession {
+                    executor: None,
+                    name: None,
+                },
                 Uuid::new_v4(),
                 workspace.id,
             )
@@ -250,7 +254,10 @@ pub async fn run_archive_script(
         None => {
             Session::create(
                 pool,
-                &CreateSession { executor: None },
+                &CreateSession {
+                    executor: None,
+                    name: None,
+                },
                 Uuid::new_v4(),
                 workspace.id,
             )

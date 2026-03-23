@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use db::models::merge::{MergeStatus, PullRequestInfo};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
@@ -139,10 +140,25 @@ impl UnifiedPrComment {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct OpenPrInfo {
+pub struct PullRequestDetail {
     pub number: i64,
     pub url: String,
+    pub status: MergeStatus,
+    pub merged_at: Option<DateTime<Utc>>,
+    pub merge_commit_sha: Option<String>,
     pub title: String,
-    pub head_branch: String,
     pub base_branch: String,
+    pub head_branch: String,
+}
+
+impl From<PullRequestDetail> for PullRequestInfo {
+    fn from(d: PullRequestDetail) -> Self {
+        PullRequestInfo {
+            number: d.number,
+            url: d.url,
+            status: d.status,
+            merged_at: d.merged_at,
+            merge_commit_sha: d.merge_commit_sha,
+        }
+    }
 }

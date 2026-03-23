@@ -8,16 +8,20 @@ use db::models::{
     execution_process::ExecutionProcessError, repo::RepoError, scratch::ScratchError,
     session::SessionError, workspace::WorkspaceError,
 };
-use deployment::{DeploymentError, RemoteClientNotConfigured};
+use deployment::{DeploymentError, RelayHostsNotConfigured, RemoteClientNotConfigured};
 use executors::{command::CommandBuildError, executors::ExecutorError};
 use git::GitServiceError;
 use git_host::GitHostError;
 use git2::Error as Git2Error;
 use local_deployment::pty::PtyError;
+use relay_hosts::{
+    OpenRemoteEditorError, RelayApiError, RelayConnectionError, RelayHostLookupError,
+    RelayPairingClientError,
+};
 use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
-    image::ImageError,
+    file::FileError,
     migration::MigrationError,
     remote_client::RemoteClientError,
     repo::RepoError as RepoServiceError,
@@ -58,7 +62,7 @@ pub enum ApiError {
     #[error(transparent)]
     Config(#[from] ConfigError),
     #[error(transparent)]
-    Image(#[from] ImageError),
+    File(#[from] FileError),
     #[error("Multipart error: {0}")]
     Multipart(#[from] MultipartError),
     #[error("IO error: {0}")]
@@ -77,6 +81,10 @@ pub enum ApiError {
     Forbidden(String),
     #[error("Too many requests: {0}")]
     TooManyRequests(String),
+    #[error("Payload too large")]
+    PayloadTooLarge,
+    #[error("Bad gateway: {0}")]
+    BadGateway(String),
     #[error(transparent)]
     CommandBuilder(#[from] CommandBuildError),
     #[error(transparent)]
@@ -100,6 +108,12 @@ impl From<Git2Error> for ApiError {
 impl From<RemoteClientNotConfigured> for ApiError {
     fn from(_: RemoteClientNotConfigured) -> Self {
         ApiError::BadRequest("Remote client not configured".to_string())
+    }
+}
+
+impl From<RelayHostsNotConfigured> for ApiError {
+    fn from(_: RelayHostsNotConfigured) -> Self {
+        ApiError::BadRequest("Remote relay API is not configured".to_string())
     }
 }
 
@@ -384,26 +398,22 @@ impl IntoResponse for ApiError {
             ),
             ApiError::GitHost(_) => ErrorInfo::internal("GitHostError"),
 
-            ApiError::Image(ImageError::InvalidFormat) => ErrorInfo::bad_request(
-                "InvalidImageFormat",
-                "This file type is not supported. Please upload an image file (PNG, JPG, GIF, WebP, or BMP).",
-            ),
-            ApiError::Image(ImageError::TooLarge(size, max)) => ErrorInfo::with_status(
+            ApiError::File(FileError::TooLarge(size, max)) => ErrorInfo::with_status(
                 StatusCode::PAYLOAD_TOO_LARGE,
-                "ImageTooLarge",
+                "FileTooLarge",
                 format!(
-                    "This image is too large ({:.1} MB). Maximum file size is {:.1} MB.",
+                    "This file is too large ({:.1} MB). Maximum file size is {:.1} MB.",
                     *size as f64 / 1_048_576.0,
                     *max as f64 / 1_048_576.0
                 ),
             ),
-            ApiError::Image(ImageError::NotFound) => {
-                ErrorInfo::not_found("ImageNotFound", "Image not found.")
+            ApiError::File(FileError::NotFound) => {
+                ErrorInfo::not_found("FileNotFound", "File not found.")
             }
-            ApiError::Image(_) => ErrorInfo {
+            ApiError::File(_) => ErrorInfo {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
-                error_type: "ImageError",
-                message: Some("Failed to process image. Please try again.".into()),
+                error_type: "FileError",
+                message: Some("Failed to process file. Please try again.".into()),
             },
 
             ApiError::EditorOpen(EditorOpenError::LaunchFailed { .. }) => {
@@ -438,13 +448,41 @@ impl IntoResponse for ApiError {
                 "TooManyRequests",
                 msg.clone(),
             ),
+            ApiError::PayloadTooLarge => ErrorInfo::with_status(
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "PayloadTooLarge",
+                "Request body too large".to_string(),
+            ),
+            ApiError::BadGateway(msg) => {
+                ErrorInfo::with_status(StatusCode::BAD_GATEWAY, "BadGateway", msg.clone())
+            }
             ApiError::Multipart(_) => ErrorInfo::bad_request(
                 "MultipartError",
                 "Failed to upload file. Please ensure the file is valid and try again.",
             ),
 
             ApiError::Deployment(_) => ErrorInfo::internal("DeploymentError"),
-            ApiError::Container(_) => ErrorInfo::internal("ContainerError"),
+            ApiError::Container(err) => match err {
+                ContainerError::GitServiceError(_) => ErrorInfo::internal("ContainerError"),
+                ContainerError::Workspace(WorkspaceError::WorkspaceNotFound) => {
+                    ErrorInfo::not_found("ContainerError", "Workspace not found.")
+                }
+                ContainerError::Workspace(WorkspaceError::ValidationError(msg)) => {
+                    ErrorInfo::bad_request("ContainerError", msg.clone())
+                }
+                ContainerError::Workspace(WorkspaceError::BranchNotFound(branch)) => {
+                    ErrorInfo::not_found(
+                        "ContainerError",
+                        format!("Branch '{}' not found.", branch),
+                    )
+                }
+                ContainerError::ExecutorError(e) => ErrorInfo::with_status(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "ContainerError",
+                    format!("Executor error: {e}"),
+                ),
+                _ => ErrorInfo::internal("ContainerError"),
+            },
             ApiError::Executor(_) => ErrorInfo::internal("ExecutorError"),
             ApiError::CommandBuilder(_) => ErrorInfo::internal("CommandBuildError"),
             ApiError::Database(_) => ErrorInfo::internal("DatabaseError"),
@@ -494,6 +532,16 @@ impl IntoResponse for ApiError {
             ),
         };
 
+        // Log internal errors so they are visible in server output.
+        if info.status.is_server_error() {
+            tracing::error!(
+                error_type = info.error_type,
+                status = %info.status,
+                error = ?self,
+                "API request failed"
+            );
+        }
+
         let message = info
             .message
             .unwrap_or_else(|| format!("{}: {}", info.error_type, self));
@@ -537,6 +585,72 @@ impl From<RepoServiceError> for ApiError {
             }
             RepoServiceError::InvalidFolderName(name) => {
                 ApiError::BadRequest(format!("Invalid folder name: {}", name))
+            }
+        }
+    }
+}
+
+impl From<RelayHostLookupError> for ApiError {
+    fn from(err: RelayHostLookupError) -> Self {
+        ApiError::BadRequest(err.to_string())
+    }
+}
+
+impl From<RelayConnectionError> for ApiError {
+    fn from(err: RelayConnectionError) -> Self {
+        match err {
+            RelayConnectionError::NotConfigured => ApiError::BadRequest(err.to_string()),
+            RelayConnectionError::RemoteClient(ref inner) => {
+                tracing::warn!(%inner, "Relay connection authentication failed");
+                ApiError::Unauthorized
+            }
+            RelayConnectionError::Relay(err) => err.into(),
+        }
+    }
+}
+
+impl From<RelayApiError> for ApiError {
+    fn from(err: RelayApiError) -> Self {
+        tracing::warn!(%err, "Relay transport failed");
+        ApiError::BadGateway(err.to_string())
+    }
+}
+
+impl From<OpenRemoteEditorError> for ApiError {
+    fn from(err: OpenRemoteEditorError) -> Self {
+        match err {
+            OpenRemoteEditorError::Connection(err) => err.into(),
+            OpenRemoteEditorError::CreateTunnel(ref detail) => {
+                tracing::warn!(%detail, "Failed to create SSH tunnel");
+                ApiError::BadGateway(err.to_string())
+            }
+            OpenRemoteEditorError::SshSetup(ref detail) => {
+                tracing::warn!(%detail, "Failed to open remote editor");
+                ApiError::BadGateway(err.to_string())
+            }
+        }
+    }
+}
+
+impl From<RelayPairingClientError> for ApiError {
+    fn from(err: RelayPairingClientError) -> Self {
+        match err {
+            RelayPairingClientError::NotConfigured => ApiError::BadRequest(err.to_string()),
+            RelayPairingClientError::RemoteClient(ref inner) => {
+                tracing::warn!(%inner, "Relay host pairing authentication failed");
+                ApiError::Unauthorized
+            }
+            RelayPairingClientError::Pairing(ref detail) => {
+                tracing::warn!(%detail, "Relay host pairing failed");
+                ApiError::BadRequest(err.to_string())
+            }
+            RelayPairingClientError::StoreSerialization(ref detail) => {
+                tracing::error!(%detail, "Failed to serialize relay host credentials");
+                ApiError::BadGateway(err.to_string())
+            }
+            RelayPairingClientError::Store(ref detail) => {
+                tracing::error!(%detail, "Failed to persist paired relay host credentials");
+                ApiError::BadGateway(err.to_string())
             }
         }
     }

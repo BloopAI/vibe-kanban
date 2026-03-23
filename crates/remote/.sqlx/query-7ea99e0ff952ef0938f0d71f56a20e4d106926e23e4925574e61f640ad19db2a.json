@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM pull_request_issues WHERE pull_request_id = $1 AND issue_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7ea99e0ff952ef0938f0d71f56a20e4d106926e23e4925574e61f640ad19db2a"
+}

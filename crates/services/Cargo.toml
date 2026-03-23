@@ -1,6 +1,6 @@
 [package]
 name = "services"
-version = "0.1.28"
+version = "0.1.36"
 edition = "2024"
 
 [features]
@@ -11,6 +11,7 @@ qa-mode = ["executors/qa-mode"]
 [dependencies]
 indicatif = "0.17"
 api-types = { path = "../api-types" }
+relay-types = { path = "../relay-types" }
 utils = { path = "../utils" }
 git = { path = "../git" }
 git-host = { path = "../git-host" }
@@ -41,8 +42,8 @@ backon = "1.5.1"
 thiserror = { workspace = true }
 futures = "0.3.31"
 tokio-stream = "0.1.17"
-strum_macros = "0.27.2"
 strum = "0.27.2"
+strum_macros = "0.27.2"
 notify = "8.2.0"
 notify-debouncer-full = "0.5.0"
 dunce = "1.0"
@@ -51,6 +52,7 @@ once_cell = "1.20"
 sha2 = "0.10"
 fst = "0.4"
 moka = { version = "0.12", features = ["future"] }
+mime_guess = "2.0"
 
 [dev-dependencies]
 tempfile = "3"

@@ -29,6 +29,7 @@ import {
   PR_COMMENT_EXPORT_TRANSFORMER,
 } from '@vibe/ui/components/pr-comment-node';
 import { createImageNode } from '@vibe/ui/components/image-node';
+import { createAttachmentNode } from '@vibe/ui/components/attachment-node';
 import {
   ComponentInfoNode,
   COMPONENT_INFO_TRANSFORMER,
@@ -39,8 +40,8 @@ import { TABLE_TRANSFORMER } from '@vibe/ui/lib/table-transformer';
 import {
   WorkspaceContext as EditorWorkspaceContext,
   SessionContext,
-  LocalImagesContext,
-  type LocalImageMetadata,
+  LocalAttachmentsContext,
+  type LocalAttachmentMetadata,
 } from '@vibe/ui/components/WorkspaceContext';
 import { TypeaheadOpenProvider } from '@vibe/ui/components/TypeaheadOpenContext';
 import {
@@ -70,21 +71,14 @@ import { TableNode, TableRowNode, TableCellNode } from '@lexical/table';
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { type EditorState, type LexicalEditor } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { WorkspaceDiffContext } from '@/shared/hooks/useWorkspaceContext';
 import { useSlashCommands } from '@/shared/hooks/useExecutorDiscovery';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { cn } from '@/shared/lib/utils';
 import { repoApi } from '@/shared/lib/api';
 import { searchTagsAndFiles } from '@/shared/lib/searchTagsAndFiles';
 import { Button } from '@vibe/ui/components/Button';
-import {
-  Check,
-  Clipboard,
-  Eye,
-  Pencil,
-  PencilLine,
-  Trash2,
-} from 'lucide-react';
+import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
 import type { RepoItem } from '@/shared/types/selectionItems';
 import { TagEditDialog } from '@/shared/dialogs/shared/TagEditDialog';
 import { ImagePreviewDialog } from '@/shared/dialogs/wysiwyg/ImagePreviewDialog';
@@ -121,14 +115,14 @@ type WysiwygProps = {
   onShiftCmdEnter?: () => void;
   /** Keyboard shortcut mode for sending messages */
   sendShortcut?: SendMessageShortcut;
-  /** Task attempt ID for resolving .vibe-images paths */
+  /** Task attempt ID for resolving .vibe-attachments paths */
   workspaceId?: string;
-  /** Session ID used for workspace-scoped APIs (images, slash command discovery) */
+  /** Session ID used for workspace-scoped APIs (attachments, slash command discovery) */
   sessionId?: string;
   /** Repo ID for slash commands when no workspace yet */
   repoId?: string;
-  /** Local images for immediate rendering (before saved to server) */
-  localImages?: LocalImageMetadata[];
+  /** Local attachments for immediate rendering (before saved to server) */
+  localAttachments?: LocalAttachmentMetadata[];
   /** Optional edit callback - shows edit button in read-only mode when provided */
   onEdit?: () => void;
   /** Optional delete callback - shows delete button in read-only mode when provided */
@@ -147,6 +141,8 @@ type WysiwygProps = {
   saveStatus?: 'idle' | 'saved';
   /** Additional actions to render in static toolbar */
   staticToolbarActions?: ReactNode;
+  /** Called when a toolbar button is clicked in preview mode to request edit */
+  onRequestEdit?: () => void;
 };
 
 /** Ref interface for WYSIWYGEditor, exposing imperative methods */
@@ -274,7 +270,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       workspaceId,
       sessionId,
       repoId,
-      localImages,
+      localAttachments,
       onEdit,
       onDelete,
       autoFocus = false,
@@ -284,6 +280,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       showStaticToolbar = false,
       saveStatus,
       staticToolbarActions,
+      onRequestEdit,
     }: WysiwygProps,
     ref: React.ForwardedRef<WYSIWYGEditorRef>
   ) {
@@ -305,10 +302,10 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
 
     // Copy button state
     const [copied, setCopied] = useState(false);
-    const workspaceContext = useContext(WorkspaceContext);
+    const diffContext = useContext(WorkspaceDiffContext);
     const diffPaths = useMemo(
-      () => workspaceContext?.diffPaths ?? new Set<string>(),
-      [workspaceContext?.diffPaths]
+      () => diffContext?.diffPaths ?? new Set<string>(),
+      [diffContext?.diffPaths]
     );
     const preferredRepoId = useUiPreferencesStore(
       (state) => state.fileSearchRepoId
@@ -390,14 +387,22 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         }),
       []
     );
+    const attachmentNodeDefinition = useMemo(
+      () =>
+        createAttachmentNode({
+          fetchAttachmentUrl: fetchAttachmentSasUrl,
+        }),
+      []
+    );
     const { ImageNode, IMAGE_TRANSFORMER, $isImageNode } = imageNodeDefinition;
+    const { AttachmentNode, ATTACHMENT_TRANSFORMER } = attachmentNodeDefinition;
 
     const initialConfig = useMemo(
       () => ({
         namespace: 'md-wysiwyg',
         onError: console.error,
         theme: {
-          paragraph: 'mb-2 last:mb-0',
+          paragraph: 'mb-1 last:mb-0',
           heading: {
             h1: 'mt-4 mb-2 text-2xl font-semibold',
             h2: 'mt-3 mb-2 text-xl font-semibold',
@@ -442,6 +447,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
           CodeHighlightNode,
           LinkNode,
           ImageNode,
+          AttachmentNode,
           PrCommentNode,
           ComponentInfoNode,
           TableNode,
@@ -449,7 +455,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
           TableCellNode,
         ],
       }),
-      [ImageNode]
+      [AttachmentNode, ImageNode]
     );
 
     // Edit mode: custom elements + text format transformers (so asterisks
@@ -458,13 +464,14 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
     const editTransformers: Transformer[] = useMemo(
       () => [
         IMAGE_TRANSFORMER,
+        ATTACHMENT_TRANSFORMER,
         PR_COMMENT_EXPORT_TRANSFORMER,
         PR_COMMENT_TRANSFORMER,
         COMPONENT_INFO_EXPORT_TRANSFORMER,
         COMPONENT_INFO_TRANSFORMER,
         ...TEXT_FORMAT_TRANSFORMERS,
       ],
-      [IMAGE_TRANSFORMER]
+      [ATTACHMENT_TRANSFORMER, IMAGE_TRANSFORMER]
     );
 
     // Display mode: full markdown rendering
@@ -472,6 +479,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       () => [
         TABLE_TRANSFORMER,
         IMAGE_TRANSFORMER,
+        ATTACHMENT_TRANSFORMER,
         PR_COMMENT_EXPORT_TRANSFORMER,
         PR_COMMENT_TRANSFORMER,
         COMPONENT_INFO_EXPORT_TRANSFORMER,
@@ -479,7 +487,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         CODE,
         ...TRANSFORMERS,
       ],
-      [IMAGE_TRANSFORMER]
+      [ATTACHMENT_TRANSFORMER, IMAGE_TRANSFORMER]
     );
 
     // Use display transformers for read-only, edit transformers for editing
@@ -536,27 +544,6 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
 
     const editorContent = (
       <div className="wysiwyg text-base relative">
-        {/* Preview toggle — top-right corner of every editable editor */}
-        {!disabled && (
-          <div className="absolute top-0 right-0 z-20">
-            <Button
-              type="button"
-              variant="icon"
-              size="icon"
-              aria-label={isPreviewMode ? 'Edit' : 'Preview'}
-              title={isPreviewMode ? 'Edit' : 'Preview'}
-              onClick={() => setIsPreviewMode((p) => !p)}
-              className="h-6 w-6 p-1 text-muted-foreground hover:text-foreground"
-            >
-              {isPreviewMode ? (
-                <PencilLine className="w-3.5 h-3.5" />
-              ) : (
-                <Eye className="w-3.5 h-3.5" />
-              )}
-            </Button>
-          </div>
-        )}
-
         {/* Preview: render a read-only editor with full markdown rendering */}
         {!disabled && isPreviewMode && (
           <div className={cn(className)}>
@@ -567,14 +554,14 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
               className={className}
               workspaceId={workspaceId}
               sessionId={sessionId}
-              localImages={localImages}
+              localAttachments={localAttachments}
             />
           </div>
         )}
 
         <EditorWorkspaceContext.Provider value={workspaceId}>
           <SessionContext.Provider value={sessionId}>
-            <LocalImagesContext.Provider value={localImages ?? []}>
+            <LocalAttachmentsContext.Provider value={localAttachments ?? []}>
               <LexicalComposer initialConfig={initialConfig}>
                 <EditorRefPlugin editorRef={editorInstanceRef} />
                 <MarkdownSyncPlugin
@@ -616,12 +603,18 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                   />
                 </div>
 
-                {!disabled && showStaticToolbar && (
+                {showStaticToolbar && (
                   <StaticToolbarPlugin
                     saveStatus={saveStatus}
                     extraActions={staticToolbarActions}
                     isPreviewMode={isPreviewMode}
-                    onTogglePreview={() => setIsPreviewMode((p) => !p)}
+                    onTogglePreview={
+                      !disabled && !onRequestEdit
+                        ? () => setIsPreviewMode((p) => !p)
+                        : undefined
+                    }
+                    readOnly={disabled}
+                    onRequestEdit={onRequestEdit}
                   />
                 )}
 
@@ -634,9 +627,9 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                     {autoFocus && <AutoFocusPlugin />}
                     <HistoryPlugin />
                     <MarkdownInsertPlugin />
-                    <MarkdownListContinuePlugin />
                     <PasteMarkdownPlugin transformers={activeTransformers} />
                     <TypeaheadOpenProvider>
+                      <MarkdownListContinuePlugin />
                       <FileTagTypeaheadPlugin
                         repoIds={repoIds}
                         diffPaths={diffPaths}
@@ -680,7 +673,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                   />
                 )}
               </LexicalComposer>
-            </LocalImagesContext.Provider>
+            </LocalAttachmentsContext.Provider>
           </SessionContext.Provider>
         </EditorWorkspaceContext.Provider>
       </div>

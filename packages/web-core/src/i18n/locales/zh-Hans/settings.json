@@ -28,7 +28,11 @@
         "remote-projects": "项目",
         "remote-projectsDesc": "管理项目",
         "relay": "Remote Access",
-        "relayDesc": "Relay tunnel and enrollment"
+        "relayDesc": "Relay tunnel and enrollment",
+        "machineSettings": "Machine Settings",
+        "accountSettings": "Account Settings",
+        "pairOtherMachines": "Pair other machines",
+        "selectHost": "Select host"
       }
     },
     "general": {
@@ -531,6 +535,16 @@
         "loginRequired": "Log in to generate a pairing code.",
         "fetchError": "Failed to fetch pairing code.",
         "show": "Show pairing code"
+      },
+      "host": {
+        "label": "主机"
+      },
+      "client": {
+        "label": "客户端"
+      },
+      "overview": {
+        "available": "Available",
+        "unavailable": "Unavailable"
       }
     },
     "remoteProjects": {
@@ -581,6 +595,14 @@
         "description": "Sign in to manage your remote projects.",
         "action": "Sign in"
       }
+    },
+    "hostPicker": {
+      "thisMachine": "This machine",
+      "localHost": "Local host",
+      "remoteHost": "Remote host",
+      "noHostAvailable": "No host is available for host-specific settings yet.",
+      "pairMachineHint": "Pair a machine to open machine settings.",
+      "selectMachineHint": "Select a machine to open machine settings."
     }
   },
   "integrations": {

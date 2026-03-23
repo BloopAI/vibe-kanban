@@ -2,13 +2,13 @@ use core::str;
 use std::{collections::HashMap, path::Path, process::Stdio, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use command_group::AsyncCommandGroup;
 use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
 use workspace_utils::{
+    command_ext::GroupSpawnNoWindowExt,
     diff::{create_unified_diff, normalize_unified_diff},
     msg_store::MsgStore,
     path::make_path_relative,
@@ -47,7 +47,7 @@ pub struct CursorAgent {
     pub force: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(
-        description = "auto, opus-4.6, sonnet-4.6, gpt-5.4, gpt-5.4-fast, gpt-5.3-codex, gpt-5.3-codex-fast, gpt-5.3-codex-spark-preview, gpt-5.2, gpt-5.2-codex, gpt-5.2-codex-fast, gpt-5.1, gpt-5.1-codex-max, gpt-5.1-codex-mini, grok, kimi-k2.5, gemini-3.1-pro, gemini-3-pro, gemini-3-flash, opus-4.5, sonnet-4.5, composer-1.5, composer-1"
+        description = "auto, opus-4.6, sonnet-4.6, gpt-5.4, gpt-5.4-fast, gpt-5.3-codex, gpt-5.3-codex-fast, gpt-5.3-codex-spark-preview, gpt-5.2, gpt-5.2-codex, gpt-5.2-codex-fast, gpt-5.1, gpt-5.1-codex-max, gpt-5.1-codex-mini, grok, kimi-k2.5, gemini-3.1-pro, gemini-3-pro, gemini-3-flash, opus-4.5, sonnet-4.5, composer-1.5, composer-1, composer-2, composer-2-fast"
     )]
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -211,7 +211,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
 
         if let Some(mut stdin) = child.inner().stdin.take() {
             stdin.write_all(combined_prompt.as_bytes()).await?;
@@ -252,7 +252,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
 
         if let Some(mut stdin) = child.inner().stdin.take() {
             stdin.write_all(combined_prompt.as_bytes()).await?;
@@ -648,7 +648,6 @@ impl StandardCodingAgentExecutor for CursorAgent {
     ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
         let models: Vec<ModelInfo> = [
             ("auto", "Auto"),
-            ("composer-1.5", "Composer 1.5"),
             ("gpt-5.4", "GPT-5.4"),
             ("gpt-5.4-fast", "GPT-5.4 Fast"),
             ("gemini-3.1-pro", "Gemini 3.1 Pro"),
@@ -670,6 +669,9 @@ impl StandardCodingAgentExecutor for CursorAgent {
             ("gpt-5.1-codex-mini", "GPT-5.1 Codex Mini"),
             ("grok", "Grok"),
             ("composer-1", "Composer 1"),
+            ("composer-1.5", "Composer 1.5"),
+            ("composer-2", "Composer 2"),
+            ("composer-2-fast", "Composer 2 Fast"),
         ]
         .into_iter()
         .map(|(id, name)| ModelInfo {

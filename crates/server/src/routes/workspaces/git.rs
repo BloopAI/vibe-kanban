@@ -25,7 +25,7 @@ use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use super::streams::{DiffStreamQuery, stream_workspace_diff_ws};
-use crate::{DeploymentImpl, error::ApiError, routes::relay_ws::SignedWsUpgrade};
+use crate::{DeploymentImpl, error::ApiError, middleware::signed_ws::SignedWsUpgrade};
 
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct RebaseWorkspaceRequest {

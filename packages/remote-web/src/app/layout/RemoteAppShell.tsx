@@ -19,6 +19,7 @@ import { useAuth } from "@/shared/hooks/auth/useAuth";
 import { useOrganizationStore } from "@/shared/stores/useOrganizationStore";
 import { useDiscordOnlineCount } from "@/shared/hooks/useDiscordOnlineCount";
 import { useGitHubStars } from "@/shared/hooks/useGitHubStars";
+import { AppBarNotificationBellContainer } from "@/pages/workspaces/AppBarNotificationBellContainer";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { CommandBarDialog } from "@/shared/dialogs/command-bar/CommandBarDialog";
 import { useCommandBarShortcut } from "@/shared/hooks/useCommandBarShortcut";
@@ -30,7 +31,6 @@ import {
   resolveRelayNavigationHostId,
   useRelayAppBarHosts,
 } from "@remote/shared/hooks/useRelayAppBarHosts";
-import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 import {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
@@ -154,7 +154,6 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
     void SettingsDialog.show({
       initialSection: "relay",
       ...(hostId ? { initialState: { hostId } } : {}),
-      sections: REMOTE_SETTINGS_SECTIONS,
     });
   }, []);
 
@@ -272,8 +271,6 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
         <AppBar
           projects={projects}
           hosts={relayHosts}
-          hostsLabel="HOSTS"
-          projectsLabel="BOARDS"
           onPairHostClick={isSignedIn ? handlePairHostClick : undefined}
           activeHostId={activeHostId}
           onCreateProject={handleCreateProject}
@@ -290,6 +287,9 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
           onSignIn={() => {
             navigate({ to: "/account" });
           }}
+          notificationBell={
+            isSignedIn ? <AppBarNotificationBellContainer /> : undefined
+          }
           userPopover={
             <RemoteAppBarUserPopoverContainer
               organizations={organizations}

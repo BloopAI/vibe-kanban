@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT DISTINCT\n                u.id AS \"id!: Uuid\",\n                u.email AS \"email!\",\n                u.first_name,\n                u.last_name,\n                u.username\n            FROM notifications n\n            JOIN users u ON u.id = n.user_id\n            WHERE n.created_at >= $1\n              AND n.created_at < $2\n              AND n.dismissed_at IS NULL\n              AND n.seen = FALSE\n              AND NOT EXISTS (\n                  SELECT 1\n                  FROM notification_digest_deliveries d\n                  WHERE d.notification_id = n.id\n              )\n            ORDER BY u.id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "email!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "first_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "username",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "cbeee2168e74df2896cbb063187cd1acc8a5429bfaec80f32764676dafd2cd1e"
+}

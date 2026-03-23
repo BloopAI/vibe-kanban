@@ -123,9 +123,9 @@ fn canonicalized_resource(account: &str, uri: &Url) -> String {
     }
     can_res.push('\n');
 
-    let query_pairs = uri.query_pairs();
+    let query_pairs: Vec<_> = uri.query_pairs().collect();
     let mut qps = Vec::new();
-    for (q, _) in query_pairs.clone() {
+    for (q, _) in query_pairs {
         if !qps.iter().any(|x: &String| x == &*q) {
             qps.push(q.into_owned());
         }

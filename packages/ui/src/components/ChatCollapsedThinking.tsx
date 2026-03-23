@@ -54,6 +54,7 @@ export function ChatCollapsedThinking({
         onMouseLeave={() => onHoverChange(false)}
         role="button"
         aria-expanded={expanded}
+        data-scroll-anchor-target=""
       >
         <span className="shrink-0 pt-0.5">
           {isHovered ? (

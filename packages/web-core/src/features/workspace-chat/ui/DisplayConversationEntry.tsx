@@ -23,9 +23,8 @@ import { useTheme } from '@/shared/hooks/useTheme';
 import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';
 import type { UseResetProcessResult } from '../model/hooks/useResetProcess';
-import { useChangesView } from '@/shared/hooks/useChangesView';
-import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
-import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { useChangesViewActions } from '@/shared/hooks/useChangesView';
+import { useLogsPanelActions } from '@/shared/hooks/useLogsPanel';
 import { cn } from '@/shared/lib/utils';
 import {
   ScriptFixerDialog,
@@ -73,6 +72,7 @@ type Props = {
   executionProcessId: string;
   workspaceWithSession: WorkspaceWithSession;
   resetAction: UseResetProcessResult;
+  repos: RepoWithTargetBranch[];
   entry: NormalizedEntry | null;
   aggregatedGroup: AggregatedPatchGroup | null;
   aggregatedDiffGroup: AggregatedDiffGroup | null;
@@ -167,7 +167,9 @@ function renderToolUseEntry(
   props: Props,
   t: TFunction<'common'>
 ): React.ReactNode {
-  const { expansionKey, executionProcessId, workspaceWithSession } = props;
+  const { expansionKey, executionProcessId, workspaceWithSession, repos } =
+    props;
+  const sessionId = workspaceWithSession?.session?.id;
   const { action_type, status } = entryType;
 
   // File edit - use ChatFileEntry
@@ -195,6 +197,7 @@ function renderToolUseEntry(
         plan={action_type.plan}
         expansionKey={expansionKey}
         workspaceId={workspaceWithSession?.id}
+        sessionId={sessionId}
         status={status}
       />
     );
@@ -220,6 +223,7 @@ function renderToolUseEntry(
         expansionKey={expansionKey}
         status={status}
         workspaceId={workspaceWithSession?.id}
+        sessionId={sessionId}
       />
     );
   }
@@ -248,7 +252,8 @@ function renderToolUseEntry(
         exitCode={exitCode}
         status={status}
         workspaceId={workspaceWithSession?.id}
-        sessionId={workspaceWithSession?.session?.id}
+        sessionId={sessionId}
+        repos={repos}
       />
     );
   }
@@ -261,6 +266,7 @@ function renderToolUseEntry(
         content={entry.content}
         expansionKey={expansionKey}
         workspaceId={workspaceWithSession?.id}
+        sessionId={sessionId}
         status={status}
       />
     );
@@ -293,6 +299,7 @@ function DisplayConversationEntry(props: Props) {
     workspaceWithSession,
     resetAction,
   } = props;
+  const sessionId = workspaceWithSession?.session?.id;
   const executorCanFork = !!(
     workspaceWithSession?.session?.executor &&
     capabilities?.[workspaceWithSession.session.executor]?.includes(
@@ -316,6 +323,7 @@ function DisplayConversationEntry(props: Props) {
       <AggregatedThinkingGroupEntry
         group={aggregatedThinkingGroup}
         workspaceId={workspaceWithSession?.id}
+        sessionId={sessionId}
       />
     );
   }
@@ -337,6 +345,7 @@ function DisplayConversationEntry(props: Props) {
           content={entry.content}
           expansionKey={expansionKey}
           workspaceId={workspaceWithSession?.id}
+          sessionId={sessionId}
           executionProcessId={executionProcessId}
           executorCanFork={executorCanFork}
           resetAction={resetAction}
@@ -348,6 +357,7 @@ function DisplayConversationEntry(props: Props) {
         <AssistantMessageEntry
           content={entry.content}
           workspaceId={workspaceWithSession?.id}
+          sessionId={sessionId}
         />
       );
 
@@ -368,6 +378,7 @@ function DisplayConversationEntry(props: Props) {
             <AppChatMarkdown
               content={content}
               workspaceId={workspaceId}
+              sessionId={sessionId}
               className={className}
               maxWidth={undefined}
             />
@@ -397,6 +408,7 @@ function DisplayConversationEntry(props: Props) {
           content={entry.content}
           deniedTool={entryType.denied_tool}
           workspaceId={workspaceWithSession?.id}
+          sessionId={sessionId}
         />
       );
 
@@ -451,16 +463,17 @@ function FileEntryDiffBody({
 function AppChatMarkdown({
   content,
   workspaceId,
+  sessionId,
   className,
   maxWidth,
 }: {
   content: string;
   workspaceId: string | undefined;
+  sessionId: string | undefined;
   className: string | undefined;
   maxWidth: string | undefined;
 }) {
-  const { viewFileInChanges, findMatchingDiffPath } = useChangesView();
-  const { selectedSessionId } = useWorkspaceContext();
+  const { viewFileInChanges, findMatchingDiffPath } = useChangesViewActions();
 
   return (
     <ChatMarkdown
@@ -474,7 +487,7 @@ function AppChatMarkdown({
           disabled
           className={className}
           workspaceId={workspaceId}
-          sessionId={selectedSessionId}
+          sessionId={sessionId}
           findMatchingDiffPath={findMatchingDiffPath}
           onCodeClick={viewFileInChanges}
         />
@@ -502,7 +515,7 @@ function FileEditEntry({
   );
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
-  const { viewFileInChanges, diffPaths } = useChangesView();
+  const { viewFileInChanges, hasDiffPath } = useChangesViewActions();
   const FileIcon = useMemo(
     () => getFileIcon(path, actualTheme),
     [path, actualTheme]
@@ -549,13 +562,12 @@ function FileEditEntry({
 
   // Only show "open in changes" button if the file exists in current diffs
   const handleOpenInChanges = useCallback(() => {
+    if (!hasDiffPath(path)) return;
     viewFileInChanges(path);
-  }, [viewFileInChanges, path]);
+  }, [viewFileInChanges, hasDiffPath, path]);
   const handleOpenInVSCode = useCallback((filename: string) => {
     openFileInVSCode(filename, { openAsDiff: false });
   }, []);
-
-  const canOpenInChanges = diffPaths.has(path);
 
   return (
     <ChatFileEntry
@@ -576,7 +588,7 @@ function FileEditEntry({
             )
           : undefined
       }
-      onOpenInChanges={canOpenInChanges ? handleOpenInChanges : undefined}
+      onOpenInChanges={handleOpenInChanges}
     />
   );
 }
@@ -588,11 +600,13 @@ function PlanEntry({
   plan,
   expansionKey,
   workspaceId,
+  sessionId,
   status,
 }: {
   plan: string;
   expansionKey: string;
   workspaceId: string | undefined;
+  sessionId: string | undefined;
   status: ToolStatus;
 }) {
   const { t } = useTranslation('common');
@@ -623,6 +637,7 @@ function PlanEntry({
         <AppChatMarkdown
           content={content}
           workspaceId={workspaceId}
+          sessionId={sessionId}
           className={undefined}
           maxWidth={undefined}
         />
@@ -639,12 +654,14 @@ function GenericToolApprovalEntry({
   content,
   expansionKey,
   workspaceId,
+  sessionId,
   status,
 }: {
   toolName: string;
   content: string;
   expansionKey: string;
   workspaceId: string | undefined;
+  sessionId: string | undefined;
   status: ToolStatus;
 }) {
   const [expanded, toggle] = usePersistedExpanded(
@@ -664,6 +681,7 @@ function GenericToolApprovalEntry({
         <AppChatMarkdown
           content={content}
           workspaceId={workspaceId}
+          sessionId={sessionId}
           className={undefined}
           maxWidth={undefined}
         />
@@ -679,6 +697,7 @@ function UserMessageEntry({
   content,
   expansionKey,
   workspaceId,
+  sessionId,
   executionProcessId,
   executorCanFork,
   resetAction,
@@ -686,6 +705,7 @@ function UserMessageEntry({
   content: string;
   expansionKey: string;
   workspaceId: string | undefined;
+  sessionId: string | undefined;
   executionProcessId: string | undefined;
   executorCanFork: boolean;
   resetAction: UseResetProcessResult;
@@ -729,6 +749,7 @@ function UserMessageEntry({
         <AppChatMarkdown
           content={content}
           workspaceId={workspaceId}
+          sessionId={sessionId}
           className={undefined}
           maxWidth={undefined}
         />
@@ -744,13 +765,14 @@ function UserFeedbackEntry({
   content,
   deniedTool,
   workspaceId,
+  sessionId,
 }: {
   content: string;
   deniedTool: string;
   workspaceId: string | undefined;
+  sessionId: string | undefined;
 }) {
   const { t } = useTranslation('common');
-  const { selectedSessionId } = useWorkspaceContext();
 
   return (
     <div className="py-2">
@@ -766,7 +788,7 @@ function UserFeedbackEntry({
           disabled
           className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light py-3"
           workspaceId={workspaceId}
-          sessionId={selectedSessionId}
+          sessionId={sessionId}
         />
       </div>
     </div>
@@ -843,9 +865,11 @@ function LoadingEntry() {
 function AssistantMessageEntry({
   content,
   workspaceId,
+  sessionId,
 }: {
   content: string;
   workspaceId: string | undefined;
+  sessionId: string | undefined;
 }) {
   return (
     <ChatAssistantMessage
@@ -855,6 +879,7 @@ function AssistantMessageEntry({
         <AppChatMarkdown
           content={content}
           workspaceId={workspaceId}
+          sessionId={sessionId}
           className={undefined}
           maxWidth={undefined}
         />
@@ -887,7 +912,7 @@ function ToolSummaryEntry({
     `tool:${expansionKey}`,
     false
   );
-  const { viewToolContentInPanel } = useLogsPanel();
+  const { viewToolContentInPanel } = useLogsPanelActions();
   const textRef = useRef<HTMLSpanElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
 
@@ -948,6 +973,7 @@ function SubagentEntry({
   expansionKey,
   status,
   workspaceId,
+  sessionId,
 }: {
   description: string;
   subagentType: string | null | undefined;
@@ -955,6 +981,7 @@ function SubagentEntry({
   expansionKey: string;
   status: ToolStatus;
   workspaceId: string | undefined;
+  sessionId: string | undefined;
 }) {
   // Only auto-expand if there's a result to show
   const hasResult = Boolean(result?.value);
@@ -976,6 +1003,7 @@ function SubagentEntry({
         <AppChatMarkdown
           content={content}
           workspaceId={workspaceId}
+          sessionId={sessionId}
           className={undefined}
           maxWidth={undefined}
         />
@@ -1019,6 +1047,7 @@ function ScriptEntryWithFix({
   status,
   workspaceId,
   sessionId,
+  repos,
 }: {
   title: string;
   command?: string;
@@ -1027,18 +1056,10 @@ function ScriptEntryWithFix({
   status: ToolStatus;
   workspaceId: string | undefined;
   sessionId: string | undefined;
+  repos: RepoWithTargetBranch[];
 }) {
-  const { viewProcessInPanel } = useLogsPanel();
-  // Try to get repos from workspace context - may not be available in all contexts
-  let repos: RepoWithTargetBranch[] = [];
-  try {
-    const workspaceContext = useWorkspaceContext();
-    repos = workspaceContext.repos;
-  } catch {
-    // Context not available, fix button won't be shown
-  }
+  const { viewProcessInPanel } = useLogsPanelActions();
 
-  // Use ref to access current repos without causing callback recreation
   const reposRef = useRef(repos);
   reposRef.current = repos;
 
@@ -1105,8 +1126,11 @@ function ErrorMessageEntry({
  * Aggregated group entry for consecutive file_read, search, or web_fetch entries
  */
 function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
-  const { viewToolContentInPanel } = useLogsPanel();
-  const [expanded, setExpanded] = useState(false);
+  const { viewToolContentInPanel } = useLogsPanelActions();
+  const [expanded, toggle] = usePersistedExpanded(
+    `tool:${group.patchKey}`,
+    false
+  );
   const [isHovered, setIsHovered] = useState(false);
 
   // Extract summary and status from each entry in the group
@@ -1171,8 +1195,8 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
   );
 
   const handleToggle = useCallback(() => {
-    setExpanded((prev) => !prev);
-  }, []);
+    toggle();
+  }, [toggle]);
 
   const handleHoverChange = useCallback((hovered: boolean) => {
     setIsHovered(hovered);
@@ -1224,11 +1248,16 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
 function AggregatedThinkingGroupEntry({
   group,
   workspaceId,
+  sessionId,
 }: {
   group: AggregatedThinkingGroup;
   workspaceId: string | undefined;
+  sessionId: string | undefined;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, toggle] = usePersistedExpanded(
+    `entry:${group.patchKey}`,
+    false
+  );
   const [isHovered, setIsHovered] = useState(false);
 
   // Extract thinking entries from the group
@@ -1242,8 +1271,8 @@ function AggregatedThinkingGroupEntry({
   }, [group.entries]);
 
   const handleToggle = useCallback(() => {
-    setExpanded((prev) => !prev);
-  }, []);
+    toggle();
+  }, [toggle]);
 
   const handleHoverChange = useCallback((hovered: boolean) => {
     setIsHovered(hovered);
@@ -1261,6 +1290,7 @@ function AggregatedThinkingGroupEntry({
         <AppChatMarkdown
           content={content}
           workspaceId={workspaceId}
+          sessionId={sessionId}
           className={className}
           maxWidth={undefined}
         />
@@ -1269,14 +1299,14 @@ function AggregatedThinkingGroupEntry({
   );
 }
 
-/**
- * Aggregated diff group entry for consecutive file_edit entries on the same file
- */
 function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
-  const { viewFileInChanges, diffPaths } = useChangesView();
-  const [expanded, setExpanded] = useState(false);
+  const { viewFileInChanges, hasDiffPath } = useChangesViewActions();
+  const [expanded, toggle] = usePersistedExpanded(
+    `diff:${group.patchKey}`,
+    false
+  );
   const [isHovered, setIsHovered] = useState(false);
   const FileIcon = useMemo(
     () => getFileIcon(group.filePath, actualTheme),
@@ -1311,21 +1341,20 @@ function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
   }, [group.entries]);
 
   const handleToggle = useCallback(() => {
-    setExpanded((prev) => !prev);
-  }, []);
+    toggle();
+  }, [toggle]);
 
   const handleHoverChange = useCallback((hovered: boolean) => {
     setIsHovered(hovered);
   }, []);
 
   const handleOpenInChanges = useCallback(() => {
+    if (!hasDiffPath(group.filePath)) return;
     viewFileInChanges(group.filePath);
-  }, [viewFileInChanges, group.filePath]);
+  }, [viewFileInChanges, hasDiffPath, group.filePath]);
   const handleOpenInVSCode = useCallback((filePath: string) => {
     openFileInVSCode(filePath, { openAsDiff: false });
   }, []);
-
-  const canOpenInChanges = diffPaths.has(group.filePath);
 
   return (
     <ChatAggregatedDiffEntries
@@ -1335,7 +1364,7 @@ function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
       isHovered={isHovered}
       onToggle={handleToggle}
       onHoverChange={handleHoverChange}
-      onOpenInChanges={canOpenInChanges ? handleOpenInChanges : null}
+      onOpenInChanges={handleOpenInChanges}
       fileIcon={FileIcon}
       isVSCode={isVSCode}
       onOpenInVSCode={handleOpenInVSCode}

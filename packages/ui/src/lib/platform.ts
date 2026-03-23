@@ -13,3 +13,20 @@ export function isMac(): boolean {
 export function getModifierKey(): string {
   return isMac() ? '\u2318' : 'Ctrl';
 }
+
+type TauriInvoke = (
+  cmd: string,
+  args?: Record<string, unknown>
+) => Promise<unknown>;
+
+export function getTauriInvoke(): TauriInvoke | null {
+  if (typeof window === 'undefined') return null;
+  const maybeInvoke = (
+    window as Window & { __TAURI_INTERNALS__?: { invoke?: TauriInvoke } }
+  ).__TAURI_INTERNALS__?.invoke;
+  return typeof maybeInvoke === 'function' ? maybeInvoke : null;
+}
+
+export function isTauriRuntime(): boolean {
+  return getTauriInvoke() !== null;
+}

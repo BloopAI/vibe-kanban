@@ -85,6 +85,12 @@ VITE_RELAY_API_BASE_URL=http://localhost:8082
 
 # Email invitations (optional — leave empty to disable)
 LOOPS_EMAIL_API_KEY=
+
+# Loops transactional email template IDs (optional — defaults are the upstream templates).
+# Override these with your own Loops account template IDs if using a custom Loops account.
+LOOPS_INVITE_TEMPLATE_ID=cmhvy2wgs3s13z70i1pxakij9
+LOOPS_REVIEW_READY_TEMPLATE_ID=cmj47k5ge16990iylued9by17
+LOOPS_REVIEW_FAILED_TEMPLATE_ID=cmj49ougk1c8s0iznavijdqpo
 ```
 
 For production or self-hosting on a server, add `PUBLIC_BASE_URL` (your public URL, e.g. `https://kanban.example.com`) and `REMOTE_SERVER_PORTS=0.0.0.0:3000:8081` so the server is reachable from other hosts. Defaults keep local dev unchanged.

@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   type ReactNode,
 } from 'react';
 import type { LogsPanelContent } from '@/shared/types/actions';
@@ -11,7 +12,10 @@ import {
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { LogsPanelContext } from '@/shared/hooks/useLogsPanel';
+import {
+  LogsPanelActionsContext,
+  LogsPanelContext,
+} from '@/shared/hooks/useLogsPanel';
 
 interface LogsPanelProviderProps {
   children: ReactNode;
@@ -22,6 +26,8 @@ export function LogsPanelProvider({ children }: LogsPanelProviderProps) {
   const { rightMainPanelMode, setRightMainPanelMode } = useWorkspacePanelState(
     isCreateMode ? undefined : workspaceId
   );
+  const rightMainPanelModeRef = useRef(rightMainPanelMode);
+  rightMainPanelModeRef.current = rightMainPanelMode;
   const [logsPanelContent, setLogsPanelContent] =
     useState<LogsPanelContent | null>(null);
   const [logSearchQuery, setLogSearchQuery] = useState('');
@@ -72,34 +78,49 @@ export function LogsPanelProvider({ children }: LogsPanelProviderProps) {
 
   const viewProcessInPanel = useCallback(
     (processId: string) => {
-      if (rightMainPanelMode !== RIGHT_MAIN_PANEL_MODES.LOGS) {
+      if (rightMainPanelModeRef.current !== RIGHT_MAIN_PANEL_MODES.LOGS) {
         setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
       }
       setLogsPanelContent({ type: 'process', processId });
     },
-    [rightMainPanelMode, setRightMainPanelMode]
+    [setRightMainPanelMode]
   );
 
   const viewToolContentInPanel = useCallback(
     (toolName: string, content: string, command?: string) => {
-      if (rightMainPanelMode !== RIGHT_MAIN_PANEL_MODES.LOGS) {
+      if (rightMainPanelModeRef.current !== RIGHT_MAIN_PANEL_MODES.LOGS) {
         setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
       }
       setLogsPanelContent({ type: 'tool', toolName, content, command });
     },
-    [rightMainPanelMode, setRightMainPanelMode]
+    [setRightMainPanelMode]
   );
 
   const expandTerminal = useCallback(() => {
-    if (rightMainPanelMode !== RIGHT_MAIN_PANEL_MODES.LOGS) {
+    if (rightMainPanelModeRef.current !== RIGHT_MAIN_PANEL_MODES.LOGS) {
       setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
     }
     setLogsPanelContent({ type: 'terminal' });
-  }, [rightMainPanelMode, setRightMainPanelMode]);
+  }, [setRightMainPanelMode]);
 
   const collapseTerminal = useCallback(() => {
     setLogsPanelContent(null);
   }, []);
+
+  const actionsValue = useMemo(
+    () => ({
+      viewProcessInPanel,
+      viewToolContentInPanel,
+      expandTerminal,
+      collapseTerminal,
+    }),
+    [
+      viewProcessInPanel,
+      viewToolContentInPanel,
+      expandTerminal,
+      collapseTerminal,
+    ]
+  );
 
   const value = useMemo(
     () => ({
@@ -133,8 +154,10 @@ export function LogsPanelProvider({ children }: LogsPanelProviderProps) {
   );
 
   return (
-    <LogsPanelContext.Provider value={value}>
-      {children}
-    </LogsPanelContext.Provider>
+    <LogsPanelActionsContext.Provider value={actionsValue}>
+      <LogsPanelContext.Provider value={value}>
+        {children}
+      </LogsPanelContext.Provider>
+    </LogsPanelActionsContext.Provider>
   );
 }

@@ -27,12 +27,7 @@
     "selectOption": "Select an option..."
   },
   "states": {
-    "loading": "Loading...",
-    "loadingHistory": "Loading History",
-    "saving": "Saving...",
-    "error": "Error",
-    "success": "Success",
-    "reconnecting": "Reconnecting"
+    "loading": "Loading..."
   },
   "ok": "OK",
   "error": "Error",
@@ -58,7 +53,8 @@
     },
     "subagent": {
       "defaultType": "Subagent"
-    }
+    },
+    "loadingEarlierMessages": "Loading earlier messages"
   },
   "folderPicker": {
     "legend": "Click folder names to navigate • Use action buttons to select",
@@ -527,6 +523,13 @@
     "default": "Default",
     "model": "Model"
   },
+  "crashScreen": {
+    "title": "Something went wrong",
+    "description": "The application encountered an unexpected error.",
+    "reload": "Reload",
+    "showDetails": "Show details",
+    "hideDetails": "Hide details"
+  },
   "syncError": {
     "networkErrors": "Network Errors",
     "streamsAffected": "{{count}} stream affected",
@@ -540,7 +543,7 @@
   },
   "appBar": {
     "kanban": {
-      "tooltip": "Kanban",
+      "tooltip": "Sign in to view projects",
       "title": "Kanban Boards",
       "description": "Sign in to organise your coding agents with kanban boards.",
       "migrateOldProjects": "Migrate old projects"

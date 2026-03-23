@@ -53,6 +53,7 @@ pub async fn run_cursor_setup(
                     &deployment.db().pool,
                     &CreateSession {
                         executor: Some("cursor".to_string()),
+                        name: None,
                     },
                     Uuid::new_v4(),
                     workspace.id,

@@ -9,36 +9,23 @@ use axum::{
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use deployment::Deployment;
-use sha2::{Digest, Sha256};
+use relay_client::RELAY_HEADER;
+use relay_control::signing::{
+    NONCE_HEADER, REQUEST_SIGNATURE_HEADER, RESPONSE_NONCE_HEADER, RESPONSE_SIGNATURE_HEADER,
+    RESPONSE_TIMESTAMP_HEADER, RequestSignature, SIGNING_SESSION_HEADER, TIMESTAMP_HEADER,
+    build_response_signing_message,
+};
 use url::form_urlencoded;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
-const RELAY_HEADER: &str = "x-vk-relayed";
-const SIGNING_SESSION_HEADER: &str = "x-vk-sig-session";
-const TIMESTAMP_HEADER: &str = "x-vk-sig-ts";
-const NONCE_HEADER: &str = "x-vk-sig-nonce";
-const REQUEST_SIGNATURE_HEADER: &str = "x-vk-sig-signature";
+pub type RelayRequestSignatureContext = RequestSignature;
 
-const RESPONSE_TIMESTAMP_HEADER: &str = "x-vk-resp-ts";
-const RESPONSE_NONCE_HEADER: &str = "x-vk-resp-nonce";
-const RESPONSE_SIGNATURE_HEADER: &str = "x-vk-resp-signature";
-
-#[derive(Clone, Debug)]
-pub struct RelayRequestSignatureContext {
-    pub signing_session_id: Uuid,
-    pub request_nonce: String,
-}
-
-#[derive(Debug)]
-struct RelayRequestSignatureInput {
-    signing_session_id: Uuid,
-    timestamp: i64,
-    nonce: String,
-    request_signature_b64: String,
-    path_and_query: String,
-}
+/// Maximum body size (50 MiB) for relay-signed requests. Both the request body
+/// (for signature verification) and the response body (for signing) are buffered
+/// into memory. This cap prevents a large payload from causing OOM.
+const RELAY_SIGNED_BODY_MAX_BYTES: usize = 50 * 1024 * 1024;
 
 pub async fn require_relay_request_signature(
     State(deployment): State<DeploymentImpl>,
@@ -49,37 +36,26 @@ pub async fn require_relay_request_signature(
         return Ok(next.run(request).await);
     }
 
-    let signature_input = extract_relay_request_signature_input(&request)?;
+    let (request_signature, path_and_query) = extract_request_signature(&request)?;
 
-    let method = request.method().as_str().to_string();
     let (parts, body) = request.into_parts();
-    let body_bytes = to_bytes(body, usize::MAX)
+    let body_bytes = to_bytes(body, RELAY_SIGNED_BODY_MAX_BYTES)
         .await
-        .map_err(|_| ApiError::Unauthorized)?;
-
-    let message = build_request_message(
-        signature_input.timestamp,
-        &method,
-        &signature_input.path_and_query,
-        &signature_input.signing_session_id,
-        &signature_input.nonce,
-        &body_bytes,
-    );
+        .map_err(|_| ApiError::PayloadTooLarge)?;
 
     if let Err(error) = deployment
         .relay_signing()
-        .verify_message(
-            signature_input.signing_session_id,
-            signature_input.timestamp,
-            &signature_input.nonce,
-            message.as_bytes(),
-            &signature_input.request_signature_b64,
+        .verify_request(
+            &request_signature,
+            parts.method.as_str(),
+            &path_and_query,
+            &body_bytes,
         )
         .await
     {
         tracing::warn!(
-            signing_session_id = %signature_input.signing_session_id,
-            path = %signature_input.path_and_query,
+            signing_session_id = %request_signature.signing_session_id,
+            path = %path_and_query,
             reason = %error.as_str(),
             "Rejecting relay request with invalid signature"
         );
@@ -87,12 +63,7 @@ pub async fn require_relay_request_signature(
     }
 
     let mut request = Request::from_parts(parts, Body::from(body_bytes));
-    request
-        .extensions_mut()
-        .insert(RelayRequestSignatureContext {
-            signing_session_id: signature_input.signing_session_id,
-            request_nonce: signature_input.nonce,
-        });
+    request.extensions_mut().insert(request_signature);
 
     Ok(next.run(request).await)
 }
@@ -106,101 +77,52 @@ pub async fn sign_relay_response(
         return Ok(next.run(request).await);
     }
 
-    let signature_input = extract_relay_request_signature_input(&request)?;
+    let (request_signature, path_and_query) = extract_request_signature(&request)?;
 
     let response = next.run(request).await;
     let (mut parts, body) = response.into_parts();
-    let body_bytes = to_bytes(body, usize::MAX)
+    let body_bytes = to_bytes(body, RELAY_SIGNED_BODY_MAX_BYTES)
         .await
-        .map_err(|_| ApiError::Unauthorized)?;
+        .map_err(|_| ApiError::PayloadTooLarge)?;
     let response_timestamp = unix_timestamp_now().map_err(|_| ApiError::Unauthorized)?;
-    let response_nonce = Uuid::new_v4().simple().to_string();
+    let response_nonce = Uuid::new_v4();
     let status = parts.status.as_u16();
 
-    let message = build_response_message(
+    let message = build_response_signing_message(
         response_timestamp,
         status,
-        &signature_input.path_and_query,
-        &signature_input.signing_session_id,
-        &signature_input.nonce,
-        &response_nonce,
+        &path_and_query,
+        request_signature.signing_session_id,
+        request_signature.nonce,
+        response_nonce,
         &body_bytes,
     );
 
-    let response_signature = deployment
-        .relay_signing()
-        .sign_message(signature_input.signing_session_id, message.as_bytes())
-        .await
-        .map_err(|error| {
-            tracing::warn!(
-                signing_session_id = %signature_input.signing_session_id,
-                path = %signature_input.path_and_query,
-                reason = %error.as_str(),
-                "Failed to sign relay response"
-            );
-            ApiError::Unauthorized
-        })?;
+    let signature = deployment.relay_signing().sign_bytes(message.as_bytes());
+    let response_signature = BASE64_STANDARD.encode(signature.to_bytes());
 
     insert_header(
         &mut parts,
         RESPONSE_TIMESTAMP_HEADER,
         &response_timestamp.to_string(),
     );
-    insert_header(&mut parts, RESPONSE_NONCE_HEADER, &response_nonce);
+    insert_header(
+        &mut parts,
+        RESPONSE_NONCE_HEADER,
+        &response_nonce.to_string(),
+    );
     insert_header(&mut parts, RESPONSE_SIGNATURE_HEADER, &response_signature);
 
     Ok(Response::from_parts(parts, Body::from(body_bytes)))
 }
 
-fn build_request_message(
-    timestamp: i64,
-    method: &str,
-    path_and_query: &str,
-    signing_session_id: &Uuid,
-    nonce: &str,
-    body: &[u8],
-) -> String {
-    let body_hash = BASE64_STANDARD.encode(Sha256::digest(body));
-    format!("v1|{timestamp}|{method}|{path_and_query}|{signing_session_id}|{nonce}|{body_hash}")
-}
-
-fn build_response_message(
-    timestamp: i64,
-    status: u16,
-    path_and_query: &str,
-    signing_session_id: &Uuid,
-    request_nonce: &str,
-    response_nonce: &str,
-    body: &[u8],
-) -> String {
-    let body_hash = BASE64_STANDARD.encode(Sha256::digest(body));
-    format!(
-        "v1|{timestamp}|{status}|{path_and_query}|{signing_session_id}|{request_nonce}|{response_nonce}|{body_hash}"
-    )
-}
-
-fn relay_path_and_query(request: &Request) -> Result<String, ApiError> {
-    let Some(original_uri) = request.extensions().get::<OriginalUri>() else {
-        tracing::warn!("Rejecting relay request without OriginalUri extension");
-        return Err(ApiError::Unauthorized);
-    };
-
-    Ok(original_uri
-        .0
-        .path_and_query()
-        .map(|path_and_query| path_and_query.as_str().to_string())
-        .unwrap_or_else(|| original_uri.0.path().to_string()))
-}
-
-fn extract_relay_request_signature_input(
-    request: &Request,
-) -> Result<RelayRequestSignatureInput, ApiError> {
-    if let Some(from_headers) = try_parse_signature_from_headers(request)? {
-        return Ok(from_headers);
+fn extract_request_signature(request: &Request) -> Result<(RequestSignature, String), ApiError> {
+    if let Some(result) = try_parse_signature_from_headers(request)? {
+        return Ok(result);
     }
 
-    if let Some(from_query) = try_parse_signature_from_query(request)? {
-        return Ok(from_query);
+    if let Some(result) = try_parse_signature_from_query(request)? {
+        return Ok(result);
     }
 
     Err(ApiError::Unauthorized)
@@ -208,7 +130,7 @@ fn extract_relay_request_signature_input(
 
 fn try_parse_signature_from_headers(
     request: &Request,
-) -> Result<Option<RelayRequestSignatureInput>, ApiError> {
+) -> Result<Option<(RequestSignature, String)>, ApiError> {
     let signing_session = parse_header_optional::<String>(request, SIGNING_SESSION_HEADER);
     let timestamp = parse_header_optional::<String>(request, TIMESTAMP_HEADER);
     let nonce = parse_header_optional::<String>(request, NONCE_HEADER);
@@ -237,21 +159,25 @@ fn try_parse_signature_from_headers(
     let timestamp = timestamp
         .and_then(|value| value.parse::<i64>().ok())
         .ok_or(ApiError::Unauthorized)?;
-    let nonce = nonce.ok_or(ApiError::Unauthorized)?;
-    let request_signature_b64 = request_signature.ok_or(ApiError::Unauthorized)?;
+    let nonce = nonce
+        .and_then(|value| value.parse::<Uuid>().ok())
+        .ok_or(ApiError::Unauthorized)?;
+    let signature_b64 = request_signature.ok_or(ApiError::Unauthorized)?;
 
-    Ok(Some(RelayRequestSignatureInput {
-        signing_session_id,
-        timestamp,
-        nonce,
-        request_signature_b64,
-        path_and_query: relay_path_and_query(request)?,
-    }))
+    Ok(Some((
+        RequestSignature {
+            signing_session_id,
+            timestamp,
+            nonce,
+            signature_b64,
+        },
+        relay_path_and_query(request)?,
+    )))
 }
 
 fn try_parse_signature_from_query(
     request: &Request,
-) -> Result<Option<RelayRequestSignatureInput>, ApiError> {
+) -> Result<Option<(RequestSignature, String)>, ApiError> {
     let Some(original_uri) = request.extensions().get::<OriginalUri>() else {
         tracing::warn!("Rejecting relay request without OriginalUri extension");
         return Err(ApiError::Unauthorized);
@@ -304,8 +230,10 @@ fn try_parse_signature_from_query(
     let timestamp = timestamp
         .and_then(|value| value.parse::<i64>().ok())
         .ok_or(ApiError::Unauthorized)?;
-    let nonce = nonce.ok_or(ApiError::Unauthorized)?;
-    let request_signature_b64 = request_signature.ok_or(ApiError::Unauthorized)?;
+    let nonce = nonce
+        .and_then(|value| value.parse::<Uuid>().ok())
+        .ok_or(ApiError::Unauthorized)?;
+    let signature_b64 = request_signature.ok_or(ApiError::Unauthorized)?;
 
     let filtered = filtered_query.finish();
     let path_and_query = if filtered.is_empty() {
@@ -314,13 +242,28 @@ fn try_parse_signature_from_query(
         format!("{path}?{filtered}")
     };
 
-    Ok(Some(RelayRequestSignatureInput {
-        signing_session_id,
-        timestamp,
-        nonce,
-        request_signature_b64,
+    Ok(Some((
+        RequestSignature {
+            signing_session_id,
+            timestamp,
+            nonce,
+            signature_b64,
+        },
         path_and_query,
-    }))
+    )))
+}
+
+fn relay_path_and_query(request: &Request) -> Result<String, ApiError> {
+    let Some(original_uri) = request.extensions().get::<OriginalUri>() else {
+        tracing::warn!("Rejecting relay request without OriginalUri extension");
+        return Err(ApiError::Unauthorized);
+    };
+
+    Ok(original_uri
+        .0
+        .path_and_query()
+        .map(|path_and_query| path_and_query.as_str().to_string())
+        .unwrap_or_else(|| original_uri.0.path().to_string()))
 }
 
 fn parse_header_optional<T: std::str::FromStr>(request: &Request, name: &'static str) -> Option<T> {

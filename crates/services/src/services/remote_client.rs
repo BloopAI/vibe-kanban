@@ -13,12 +13,14 @@ use api_types::{
     ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse,
     ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse,
     ListPullRequestsResponse, ListTagsResponse, MutationResponse, Organization, ProfileResponse,
-    RevokeInvitationRequest, Tag, TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest,
-    UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
-    UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
+    PullRequest, RevokeInvitationRequest, SearchIssuesRequest, Tag, TokenRefreshRequest,
+    TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
+    UpdateOrganizationRequest, UpdatePullRequestApiRequest, UpdateWorkspaceRequest,
+    UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
+use relay_types::{ListRelayHostsResponse, RelayHost};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -320,6 +322,27 @@ impl RemoteClient {
     where
         B: Serialize,
     {
+        self.send_internal_with_request(method, path, requires_auth, timeout_options, |req| {
+            if let Some(body) = body {
+                req.json(body)
+            } else {
+                req
+            }
+        })
+        .await
+    }
+
+    async fn send_internal_with_request<F>(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        requires_auth: bool,
+        timeout_options: Option<RequestTimeoutOptions>,
+        customize_request: F,
+    ) -> Result<reqwest::Response, RemoteClientError>
+    where
+        F: Fn(reqwest::RequestBuilder) -> reqwest::RequestBuilder,
+    {
         let url = self
             .base
             .join(path)
@@ -343,9 +366,7 @@ impl RemoteClient {
                 req = req.bearer_auth(token);
             }
 
-            if let Some(b) = body {
-                req = req.json(b);
-            }
+            req = customize_request(req);
 
             let res = req.send().await.map_err(map_reqwest_error)?;
 
@@ -632,6 +653,12 @@ impl RemoteClient {
         .await
     }
 
+    /// Lists relay hosts visible to the current user.
+    pub async fn list_relay_hosts(&self) -> Result<Vec<RelayHost>, RemoteClientError> {
+        let response: ListRelayHostsResponse = self.get_authed("/v1/hosts").await?;
+        Ok(response.hosts)
+    }
+
     /// Deletes a workspace on the remote server by its local workspace ID.
     pub async fn delete_workspace(
         &self,
@@ -739,6 +766,14 @@ impl RemoteClient {
     ) -> Result<ListIssuesResponse, RemoteClientError> {
         self.get_authed(&format!("/v1/issues?project_id={project_id}"))
             .await
+    }
+
+    /// Searches issues for a project using the canonical JSON request shape.
+    pub async fn search_issues(
+        &self,
+        request: &SearchIssuesRequest,
+    ) -> Result<ListIssuesResponse, RemoteClientError> {
+        self.post_authed("/v1/issues/search", Some(request)).await
     }
 
     /// Gets a single issue by ID.
@@ -956,6 +991,16 @@ impl RemoteClient {
         )
         .await?;
         Ok(())
+    }
+
+    /// Updates a pull request status on the remote server.
+    pub async fn update_pull_request(
+        &self,
+        request: UpdatePullRequestApiRequest,
+    ) -> Result<PullRequest, RemoteClientError> {
+        let response: MutationResponse<PullRequest> =
+            self.patch_authed("/v1/pull_requests", &request).await?;
+        Ok(response.data)
     }
 
     /// Lists pull requests linked to an issue.

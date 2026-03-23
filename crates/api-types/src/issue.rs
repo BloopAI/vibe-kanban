@@ -17,7 +17,7 @@ pub enum IssuePriority {
     Low,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, sqlx::FromRow)]
 pub struct Issue {
     pub id: Uuid,
     pub project_id: Uuid,
@@ -37,6 +37,23 @@ pub struct Issue {
     pub creator_user_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+pub enum IssueSortField {
+    SortOrder,
+    Priority,
+    CreatedAt,
+    UpdatedAt,
+    Title,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+pub enum SortDirection {
+    Asc,
+    Desc,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -129,12 +146,59 @@ pub struct UpdateIssueRequest {
     pub extension_metadata: Option<Value>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ListIssuesQuery {
     pub project_id: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct SearchIssuesRequest {
+    pub project_id: Uuid,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_id: Option<Uuid>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_ids: Option<Vec<Uuid>>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<IssuePriority>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_issue_id: Option<Uuid>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub search: Option<String>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub simple_id: Option<String>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub assignee_user_id: Option<Uuid>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tag_id: Option<Uuid>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tag_ids: Option<Vec<Uuid>>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_field: Option<IssueSortField>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_direction: Option<SortDirection>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<i32>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ListIssuesResponse {
     pub issues: Vec<Issue>,
+    pub total_count: usize,
+    pub limit: usize,
+    pub offset: usize,
 }

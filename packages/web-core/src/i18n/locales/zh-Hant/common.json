@@ -27,12 +27,7 @@
     "selectOption": "選擇一個選項..."
   },
   "states": {
-    "loading": "載入中...",
-    "loadingHistory": "載入歷史紀錄",
-    "saving": "儲存中...",
-    "error": "錯誤",
-    "success": "成功",
-    "reconnecting": "重新連線中"
+    "loading": "載入中..."
   },
   "language": {
     "browserDefault": "瀏覽器預設"
@@ -53,7 +48,8 @@
     },
     "subagent": {
       "defaultType": "子代理"
-    }
+    },
+    "loadingEarlierMessages": "正在載入先前的訊息"
   },
   "folderPicker": {
     "legend": "點擊資料夾名稱進行導覽 • 使用操作按鈕進行選擇",
@@ -513,6 +509,13 @@
     "default": "預設",
     "model": "模型"
   },
+  "crashScreen": {
+    "title": "發生了錯誤",
+    "description": "應用程式遇到了意外錯誤。",
+    "reload": "重新載入",
+    "showDetails": "顯示詳情",
+    "hideDetails": "隱藏詳情"
+  },
   "syncError": {
     "networkErrors": "網路錯誤",
     "streamsAffected": "{{count}} 個資料流受影響",
@@ -536,7 +539,7 @@
   },
   "appBar": {
     "kanban": {
-      "tooltip": "看板",
+      "tooltip": "登入以查看專案",
       "title": "看板",
       "description": "登入以使用看板管理您的編碼代理。",
       "migrateOldProjects": "遷移舊專案"

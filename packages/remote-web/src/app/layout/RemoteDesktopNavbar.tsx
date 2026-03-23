@@ -22,7 +22,6 @@ import {
 import { useActionVisibilityContext } from "@/shared/hooks/useActionVisibilityContext";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { CommandBarDialog } from "@/shared/dialogs/command-bar/CommandBarDialog";
-import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 
 /**
  * Check if a NavbarItem is a divider
@@ -156,7 +155,7 @@ export function RemoteDesktopNavbar() {
   );
 
   const handleOpenSettings = useCallback(() => {
-    SettingsDialog.show({ sections: REMOTE_SETTINGS_SECTIONS });
+    SettingsDialog.show();
   }, []);
 
   const handleOpenCommandBar = useCallback(() => {

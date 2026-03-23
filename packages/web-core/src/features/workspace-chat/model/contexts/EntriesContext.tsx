@@ -3,12 +3,19 @@ import { createHmrContext } from '@/shared/lib/hmrContext';
 import type { PatchTypeWithKey } from '@/shared/hooks/useConversationHistory/types';
 import type { TokenUsageInfo } from 'shared/types';
 
+// ---------------------------------------------------------------------------
+// Entries context — changes on every streaming update
+// ---------------------------------------------------------------------------
+
 interface EntriesContextType {
   entries: PatchTypeWithKey[];
   setEntries: (entries: PatchTypeWithKey[]) => void;
-  setTokenUsageInfo: (info: TokenUsageInfo | null) => void;
   reset: () => void;
-  tokenUsageInfo: TokenUsageInfo | null;
+}
+
+interface EntriesActionsContextType {
+  setEntries: (entries: PatchTypeWithKey[]) => void;
+  reset: () => void;
 }
 
 const EntriesContext = createHmrContext<EntriesContextType | null>(
@@ -16,47 +23,81 @@ const EntriesContext = createHmrContext<EntriesContextType | null>(
   null
 );
 
+const EntriesActionsContext =
+  createHmrContext<EntriesActionsContextType | null>(
+    'EntriesActionsContext',
+    null
+  );
+
+// ---------------------------------------------------------------------------
+// Token-usage context — changes only when token stats update (much rarer)
+// ---------------------------------------------------------------------------
+
+interface TokenUsageContextType {
+  tokenUsageInfo: TokenUsageInfo | null;
+  setTokenUsageInfo: (info: TokenUsageInfo | null) => void;
+}
+
+const TokenUsageContext = createHmrContext<TokenUsageContextType | null>(
+  'TokenUsageContext',
+  null
+);
+
+// ---------------------------------------------------------------------------
+// Provider — nested contexts, single component
+// ---------------------------------------------------------------------------
+
 interface EntriesProviderProps {
   children: ReactNode;
 }
 
 export const EntriesProvider = ({ children }: EntriesProviderProps) => {
   const [entries, setEntriesState] = useState<PatchTypeWithKey[]>([]);
-  const [tokenUsageInfo, setTokenUsageInfo] = useState<TokenUsageInfo | null>(
-    null
-  );
+  const [tokenUsageInfo, setTokenUsageInfoState] =
+    useState<TokenUsageInfo | null>(null);
 
   const setEntries = useCallback((newEntries: PatchTypeWithKey[]) => {
     setEntriesState(newEntries);
   }, []);
 
-  const setTokenUsageInfoCallback = useCallback(
-    (info: TokenUsageInfo | null) => {
-      setTokenUsageInfo(info);
-    },
-    []
-  );
+  const setTokenUsageInfo = useCallback((info: TokenUsageInfo | null) => {
+    setTokenUsageInfoState(info);
+  }, []);
 
   const reset = useCallback(() => {
     setEntriesState([]);
-    setTokenUsageInfo(null);
+    setTokenUsageInfoState(null);
   }, []);
 
-  const value = useMemo(
-    () => ({
-      entries,
-      setEntries,
-      setTokenUsageInfo: setTokenUsageInfoCallback,
-      reset,
-      tokenUsageInfo,
-    }),
-    [entries, setEntries, setTokenUsageInfoCallback, reset, tokenUsageInfo]
+  const entriesValue = useMemo(
+    () => ({ entries, setEntries, reset }),
+    [entries, setEntries, reset]
+  );
+
+  const entriesActionsValue = useMemo(
+    () => ({ setEntries, reset }),
+    [setEntries, reset]
+  );
+
+  const tokenUsageValue = useMemo(
+    () => ({ tokenUsageInfo, setTokenUsageInfo }),
+    [tokenUsageInfo, setTokenUsageInfo]
   );
 
   return (
-    <EntriesContext.Provider value={value}>{children}</EntriesContext.Provider>
+    <EntriesActionsContext.Provider value={entriesActionsValue}>
+      <EntriesContext.Provider value={entriesValue}>
+        <TokenUsageContext.Provider value={tokenUsageValue}>
+          {children}
+        </TokenUsageContext.Provider>
+      </EntriesContext.Provider>
+    </EntriesActionsContext.Provider>
   );
 };
+
+// ---------------------------------------------------------------------------
+// Hooks
+// ---------------------------------------------------------------------------
 
 export const useEntries = (): EntriesContextType => {
   const context = useContext(EntriesContext);
@@ -66,10 +107,39 @@ export const useEntries = (): EntriesContextType => {
   return context;
 };
 
-export const useTokenUsage = () => {
-  const context = useContext(EntriesContext);
+export const useEntriesActions = (): EntriesActionsContextType => {
+  const context = useContext(EntriesActionsContext);
+  if (!context) {
+    throw new Error('useEntriesActions must be used within an EntriesProvider');
+  }
+  return context;
+};
+
+/**
+ * Read token-usage info without subscribing to entries changes.
+ * This context only updates when the token stats themselves change,
+ * not on every streaming entry update.
+ */
+export const useTokenUsage = (): TokenUsageInfo | null => {
+  const context = useContext(TokenUsageContext);
   if (!context) {
     throw new Error('useTokenUsage must be used within an EntriesProvider');
   }
   return context.tokenUsageInfo;
+};
+
+/**
+ * Get the setTokenUsageInfo setter without subscribing to entries.
+ * Used by useConversationHistory to push token stats into context.
+ */
+export const useSetTokenUsageInfo = (): ((
+  info: TokenUsageInfo | null
+) => void) => {
+  const context = useContext(TokenUsageContext);
+  if (!context) {
+    throw new Error(
+      'useSetTokenUsageInfo must be used within an EntriesProvider'
+    );
+  }
+  return context.setTokenUsageInfo;
 };

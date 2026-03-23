@@ -8,6 +8,7 @@ static INIT_GUARD: OnceLock<sentry::ClientInitGuard> = OnceLock::new();
 #[derive(Clone, Copy, Debug)]
 pub enum SentrySource {
     Backend,
+    Desktop,
     Mcp,
     Remote,
 }
@@ -16,6 +17,7 @@ impl SentrySource {
     fn tag(self) -> &'static str {
         match self {
             SentrySource::Backend => "backend",
+            SentrySource::Desktop => "desktop",
             SentrySource::Mcp => "mcp",
             SentrySource::Remote => "remote",
         }

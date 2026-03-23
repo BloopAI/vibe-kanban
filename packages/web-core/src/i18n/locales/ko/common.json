@@ -61,18 +61,14 @@
     },
     "subagent": {
       "defaultType": "서브에이전트"
-    }
+    },
+    "loadingEarlierMessages": "이전 메시지 불러오는 중"
   },
   "language": {
     "browserDefault": "브라우저 기본값"
   },
   "states": {
-    "error": "오류",
-    "loading": "로딩 중...",
-    "loadingHistory": "기록 로딩 중",
-    "reconnecting": "재연결 중",
-    "saving": "저장 중...",
-    "success": "성공"
+    "loading": "로딩 중..."
   },
   "orgSwitcher": {
     "organizations": "조직",
@@ -513,6 +509,13 @@
     "default": "기본값",
     "model": "모델"
   },
+  "crashScreen": {
+    "title": "문제가 발생했습니다",
+    "description": "애플리케이션에서 예기치 않은 오류가 발생했습니다.",
+    "reload": "새로고침",
+    "showDetails": "세부정보 표시",
+    "hideDetails": "세부정보 숨기기"
+  },
   "syncError": {
     "networkErrors": "네트워크 오류",
     "streamsAffected": "{{count}}개 스트림이 영향을 받음",
@@ -536,7 +539,7 @@
   },
   "appBar": {
     "kanban": {
-      "tooltip": "칸반",
+      "tooltip": "프로젝트를 보려면 로그인하세요",
       "title": "칸반 보드",
       "description": "로그인하여 칸반 보드로 코딩 에이전트를 정리하세요.",
       "migrateOldProjects": "이전 프로젝트 마이그레이션"

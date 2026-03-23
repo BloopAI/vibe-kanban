@@ -27,12 +27,7 @@
     "selectOption": "选择一个选项..."
   },
   "states": {
-    "loading": "加载中...",
-    "loadingHistory": "加载历史记录",
-    "saving": "保存中...",
-    "error": "错误",
-    "success": "成功",
-    "reconnecting": "重新连接中"
+    "loading": "加载中..."
   },
   "language": {
     "browserDefault": "浏览器默认"
@@ -53,7 +48,8 @@
     },
     "subagent": {
       "defaultType": "子代理"
-    }
+    },
+    "loadingEarlierMessages": "正在加载早期消息"
   },
   "folderPicker": {
     "legend": "点击文件夹名称进行导航 • 使用操作按钮进行选择",
@@ -513,6 +509,13 @@
     "default": "默认",
     "model": "模型"
   },
+  "crashScreen": {
+    "title": "出了点问题",
+    "description": "应用程序遇到了意外错误。",
+    "reload": "重新加载",
+    "showDetails": "显示详情",
+    "hideDetails": "隐藏详情"
+  },
   "syncError": {
     "networkErrors": "网络错误",
     "streamsAffected": "{{count}} 个数据流受影响",
@@ -536,7 +539,7 @@
   },
   "appBar": {
     "kanban": {
-      "tooltip": "看板",
+      "tooltip": "登录以查看项目",
       "title": "看板",
       "description": "登录以使用看板管理您的编码代理。",
       "migrateOldProjects": "迁移旧项目"

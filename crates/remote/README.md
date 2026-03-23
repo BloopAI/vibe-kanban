@@ -28,6 +28,12 @@ VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY=
 
 # Optional — leave empty to disable invitation emails
 LOOPS_EMAIL_API_KEY=
+
+# Loops transactional email template IDs (optional — defaults are the upstream templates).
+# Override these with your own Loops account template IDs if using a custom Loops account.
+LOOPS_INVITE_TEMPLATE_ID=cmhvy2wgs3s13z70i1pxakij9
+LOOPS_REVIEW_READY_TEMPLATE_ID=cmj47k5ge16990iylued9by17
+LOOPS_REVIEW_FAILED_TEMPLATE_ID=cmj49ougk1c8s0iznavijdqpo
 ```
 
 Generate `VIBEKANBAN_REMOTE_JWT_SECRET` once using `openssl rand -base64 48` and copy the value into `.env.remote`.
@@ -49,7 +55,7 @@ docker compose --env-file .env.remote -f docker-compose.yml up --build
 
 This starts PostgreSQL, ElectricSQL, the Remote Server, and the Relay Server.
 
-- Remote web UI/API: `http://localhost:3000`
+- Remote web UI/API: `https://localhost:3001` (via Caddy) or `http://localhost:3000` (direct)
 - Relay API: `http://localhost:8082`
 - Postgres: `postgres://remote:remote@localhost:5433/remote`
 
@@ -58,14 +64,14 @@ This starts PostgreSQL, ElectricSQL, the Remote Server, and the Relay Server.
 To connect the desktop client to your local remote server (without relay/tunnel):
 
 ```bash
-export VK_SHARED_API_BASE=http://localhost:3000
+export VK_SHARED_API_BASE=https://localhost:3001
 
 pnpm run dev
 ```
 
 ## Local HTTPS with Caddy
 
-By default the stack runs on plain HTTP. You can use [Caddy](https://caddyserver.com) as a reverse proxy to serve it over HTTPS. When you use `localhost` as the site address, Caddy automatically provisions a locally-trusted certificate.
+The stack defaults to `https://localhost:3001` as its public URL. Use [Caddy](https://caddyserver.com) as a reverse proxy to terminate TLS — it automatically provisions a locally-trusted certificate for `localhost`.
 
 ### 1. Install Caddy
 
@@ -99,34 +105,20 @@ localhost:3001, relay.localhost:3001, *.relay.localhost:3001 {
 }
 ```
 
-### 3. Override the public URLs
-
-The default `docker-compose.yml` hardcodes the public URLs to `http://localhost:3000`. Create a `docker-compose.override.yml` in `crates/remote/` to switch them to HTTPS:
-
-```yaml
-services:
-  remote-server:
-    environment:
-      SERVER_PUBLIC_BASE_URL: https://localhost:3001
-```
-
-Docker Compose automatically merges this with `docker-compose.yml`.
-
-### 4. Update OAuth callback URLs
+### 3. Update OAuth callback URLs
 
 Update your OAuth application to use `https://localhost:3001`:
 
 - **GitHub**: `https://localhost:3001/v1/oauth/github/callback`
 - **Google**: `https://localhost:3001/v1/oauth/google/callback`
 
-### 5. Start everything
+### 4. Start everything
 
 Start Docker services as usual, then start Caddy in a separate terminal:
 
 ```bash
 # Terminal 1 — start the stack
-cd crates/remote
-docker compose --env-file .env.remote -f docker-compose.yml up --build
+pnpm run remote:dev
 
 # Terminal 2 — start Caddy (from repo root)
 caddy run --config Caddyfile
@@ -135,6 +127,8 @@ caddy run --config Caddyfile
 The first time Caddy runs it installs a local CA certificate — you may be prompted for your password.
 
 Open **https://localhost:3001** in your browser.
+
+> **Tip:** To use plain HTTP instead (no Caddy), set `PUBLIC_BASE_URL=http://localhost:3000` in your `.env.remote`.
 
 ## Run desktop with relay tunnel (optional)
 

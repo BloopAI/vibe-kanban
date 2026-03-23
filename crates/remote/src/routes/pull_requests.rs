@@ -1,6 +1,6 @@
 use api_types::{
-    ListPullRequestsQuery, ListPullRequestsResponse, PullRequest, PullRequestStatus,
-    UpsertPullRequestRequest,
+    ListPullRequestsQuery, ListPullRequestsResponse, MutationResponse, PullRequest,
+    PullRequestStatus, UpsertPullRequestRequest,
 };
 use axum::{
     Json, Router,
@@ -21,11 +21,14 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{
-        issues::IssueRepository, pull_requests::PullRequestRepository,
-        workspaces::WorkspaceRepository,
+        get_txid, issues::IssueRepository, pull_request_issues::PullRequestIssueRepository,
+        pull_requests::PullRequestRepository, workspaces::WorkspaceRepository,
     },
 };
 
+/// Deprecated: use `POST /v1/pull_request_issues` instead for linking PRs to
+/// issues. This endpoint is retained for backward compatibility with older
+/// clients that still send the old request shape.
 #[derive(Debug, Deserialize)]
 pub struct CreatePullRequestRequest {
     pub url: String,
@@ -35,6 +38,7 @@ pub struct CreatePullRequestRequest {
     pub merge_commit_sha: Option<String>,
     pub target_branch_name: String,
     pub issue_id: Uuid,
+    #[allow(dead_code)]
     pub local_workspace_id: Option<Uuid>,
 }
 
@@ -81,64 +85,88 @@ async fn list_pull_requests(
     Ok(Json(ListPullRequestsResponse { pull_requests }))
 }
 
+/// Deprecated: use `POST /v1/pull_request_issues` instead.
+/// Kept for backward compatibility with older clients.
 #[instrument(
     name = "pull_requests.create_pull_request",
     skip(state, ctx, payload),
-    fields(issue_id = %payload.issue_id, local_workspace_id = ?payload.local_workspace_id, user_id = %ctx.user.id)
+    fields(url = %payload.url, user_id = %ctx.user.id)
 )]
 async fn create_pull_request(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreatePullRequestRequest>,
-) -> Result<Json<PullRequest>, ErrorResponse> {
-    ensure_issue_access(state.pool(), ctx.user.id, payload.issue_id).await?;
+) -> Result<Json<MutationResponse<PullRequest>>, ErrorResponse> {
+    let issue_id = payload.issue_id;
 
-    // Resolve local_workspace_id to remote workspace_id
-    let workspace_id = match payload.local_workspace_id {
-        Some(local_id) => {
-            let workspace = WorkspaceRepository::find_by_local_id(state.pool(), local_id)
-                .await
-                .map_err(|error| {
-                    tracing::error!(?error, local_workspace_id = %local_id, "failed to find workspace");
-                    ErrorResponse::new(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "failed to find workspace",
-                    )
-                })?
-                .ok_or_else(|| {
-                    tracing::warn!(local_workspace_id = %local_id, "workspace not found");
-                    ErrorResponse::new(StatusCode::NOT_FOUND, "workspace not found")
-                })?;
-            Some(workspace.id)
-        }
-        None => None,
-    };
+    ensure_issue_access(state.pool(), ctx.user.id, issue_id).await?;
 
-    let pr = PullRequestRepository::create(
-        state.pool(),
-        payload.url,
-        payload.number,
-        payload.status,
-        payload.merged_at,
-        payload.merge_commit_sha,
-        payload.target_branch_name,
-        payload.issue_id,
-        workspace_id,
-    )
-    .await
-    .map_err(|error| {
-        tracing::error!(?error, "failed to create pull request");
-        db_error(error, "failed to create pull request")
-    })?;
-
-    IssueRepository::sync_status_from_pull_request(state.pool(), pr.issue_id, pr.status)
+    let issue = IssueRepository::find_by_id(state.pool(), issue_id)
         .await
         .map_err(|error| {
-            tracing::error!(?error, "failed to sync issue status");
+            tracing::error!(?error, "failed to find issue");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to find issue")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "issue not found"))?;
+
+    let project_id = issue.project_id;
+
+    let mut tx = state.pool().begin().await.map_err(|error| {
+        tracing::error!(?error, "failed to begin transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    let pr =
+        match PullRequestRepository::find_by_url_and_project(&mut *tx, &payload.url, project_id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, "failed to look up existing pull request");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+            })? {
+            Some(existing) => existing,
+            None => PullRequestRepository::create(
+                &mut *tx,
+                payload.url,
+                payload.number,
+                payload.status,
+                payload.merged_at,
+                payload.merge_commit_sha,
+                payload.target_branch_name,
+                project_id,
+                issue_id,
+            )
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, "failed to create pull request");
+                db_error(error, "failed to create pull request")
+            })?,
+        };
+
+    PullRequestIssueRepository::create(&mut *tx, pr.id, issue_id, None)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to link pull request to issue");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(Json(pr))
+    IssueRepository::sync_status_from_pull_request(&mut tx, issue_id, pr.status)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %issue_id, "failed to sync issue status after PR creation");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?;
+
+    let txid = get_txid(&mut *tx).await.map_err(|error| {
+        tracing::error!(?error, "failed to get txid");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    tx.commit().await.map_err(|error| {
+        tracing::error!(?error, "failed to commit transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    Ok(Json(MutationResponse { data: pr, txid }))
 }
 
 #[instrument(
@@ -150,41 +178,82 @@ async fn update_pull_request(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<UpdatePullRequestRequest>,
-) -> Result<Json<PullRequest>, ErrorResponse> {
-    let pull_request = PullRequestRepository::find_by_url(state.pool(), &payload.url)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, url = %payload.url, "failed to load pull request");
-            ErrorResponse::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to load pull request",
-            )
-        })?
-        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "pull request not found"))?;
+) -> Result<Json<MutationResponse<PullRequest>>, ErrorResponse> {
+    let pull_requests =
+        PullRequestRepository::list_by_url_for_user(state.pool(), &payload.url, ctx.user.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, url = %payload.url, "failed to load pull requests");
+                ErrorResponse::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "failed to load pull requests",
+                )
+            })?;
 
-    ensure_issue_access(state.pool(), ctx.user.id, pull_request.issue_id).await?;
+    if pull_requests.is_empty() {
+        return Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "pull request not found",
+        ));
+    }
 
-    let pr = PullRequestRepository::update(
-        state.pool(),
-        pull_request.id,
-        payload.status,
-        payload.merged_at,
-        payload.merge_commit_sha,
-    )
-    .await
-    .map_err(|error| {
-        tracing::error!(?error, "failed to update pull request");
+    let mut tx = state.pool().begin().await.map_err(|error| {
+        tracing::error!(?error, "failed to begin transaction");
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    IssueRepository::sync_status_from_pull_request(state.pool(), pr.issue_id, pr.status)
+    let mut last_pr = None;
+    for pull_request in &pull_requests {
+        let updated = PullRequestRepository::update(
+            &mut *tx,
+            pull_request.id,
+            payload.status,
+            payload.merged_at,
+            payload.merge_commit_sha.clone(),
+        )
         .await
         .map_err(|error| {
-            tracing::error!(?error, "failed to sync issue status");
+            tracing::error!(?error, pr_id = %pull_request.id, "failed to update pull request");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
+        last_pr = Some(updated);
+    }
 
-    Ok(Json(pr))
+    let pr = last_pr.ok_or_else(|| {
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "no pull requests updated",
+        )
+    })?;
+
+    for pull_request in &pull_requests {
+        let issue_ids = PullRequestIssueRepository::issue_ids_for_pr(&mut *tx, pull_request.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, "failed to get issue ids for pull request");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+            })?;
+        for issue_id in issue_ids {
+            IssueRepository::sync_status_from_pull_request(&mut tx, issue_id, pr.status)
+                .await
+                .map_err(|error| {
+                    tracing::error!(?error, %issue_id, "failed to sync issue status after PR update");
+                    ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+                })?;
+        }
+    }
+
+    let txid = get_txid(&mut *tx).await.map_err(|error| {
+        tracing::error!(?error, "failed to get txid");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    tx.commit().await.map_err(|error| {
+        tracing::error!(?error, "failed to commit transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    Ok(Json(MutationResponse { data: pr, txid }))
 }
 
 #[instrument(
@@ -196,8 +265,7 @@ async fn upsert_pull_request(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<UpsertPullRequestRequest>,
-) -> Result<Json<PullRequest>, ErrorResponse> {
-    // Resolve local_workspace_id to workspace and get issue_id
+) -> Result<Json<MutationResponse<PullRequest>>, ErrorResponse> {
     let workspace = WorkspaceRepository::find_by_local_id(state.pool(), payload.local_workspace_id)
         .await
         .map_err(|error| {
@@ -218,23 +286,32 @@ async fn upsert_pull_request(
 
     ensure_issue_access(state.pool(), ctx.user.id, issue_id).await?;
 
-    // Try to find existing PR by URL
-    let existing_pr = PullRequestRepository::find_by_url(state.pool(), &payload.url)
+    let issue = IssueRepository::find_by_id(state.pool(), issue_id)
         .await
         .map_err(|error| {
-            tracing::error!(?error, url = %payload.url, "failed to check for existing PR");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-        })?;
+            tracing::error!(?error, "failed to find issue");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to find issue")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "issue not found"))?;
+
+    let project_id = issue.project_id;
+
+    let mut tx = state.pool().begin().await.map_err(|error| {
+        tracing::error!(?error, "failed to begin transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    let existing_pr =
+        PullRequestRepository::find_by_url_and_project(&mut *tx, &payload.url, project_id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, url = %payload.url, "failed to check for existing PR");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+            })?;
 
     let pr = if let Some(existing) = existing_pr {
-        if existing.issue_id != issue_id {
-            return Err(ErrorResponse::new(
-                StatusCode::FORBIDDEN,
-                "PR URL belongs to a different issue",
-            ));
-        }
         PullRequestRepository::update(
-            state.pool(),
+            &mut *tx,
             existing.id,
             Some(payload.status),
             Some(payload.merged_at),
@@ -246,17 +323,16 @@ async fn upsert_pull_request(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?
     } else {
-        // Create new PR
         PullRequestRepository::create(
-            state.pool(),
+            &mut *tx,
             payload.url,
             payload.number,
             payload.status,
             payload.merged_at,
             payload.merge_commit_sha,
             payload.target_branch_name,
+            project_id,
             issue_id,
-            Some(workspace.id),
         )
         .await
         .map_err(|error| {
@@ -265,12 +341,29 @@ async fn upsert_pull_request(
         })?
     };
 
-    IssueRepository::sync_status_from_pull_request(state.pool(), pr.issue_id, pr.status)
+    PullRequestIssueRepository::create(&mut *tx, pr.id, issue_id, None)
         .await
         .map_err(|error| {
-            tracing::error!(?error, "failed to sync issue status");
+            tracing::error!(?error, "failed to link pull request to issue");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(Json(pr))
+    IssueRepository::sync_status_from_pull_request(&mut tx, issue_id, pr.status)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %issue_id, "failed to sync issue status after PR upsert");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?;
+
+    let txid = get_txid(&mut *tx).await.map_err(|error| {
+        tracing::error!(?error, "failed to get txid");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    tx.commit().await.map_err(|error| {
+        tracing::error!(?error, "failed to commit transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    Ok(Json(MutationResponse { data: pr, txid }))
 }

@@ -26,7 +26,7 @@ import {
   McpServerQuery,
   UpdateMcpServersBody,
   GetMcpServerResponse,
-  ImageResponse,
+  AttachmentResponse,
   GitOperationError,
   ApprovalResponse,
   RebaseWorkspaceRequest,
@@ -78,9 +78,10 @@ import {
   Workspace,
   StartReviewRequest,
   ReviewError,
-  OpenPrInfo,
   GitRemote,
   ListPrsError,
+  PullRequestDetail,
+  LinkPrToIssueRequest,
   AttachExistingPrRequest,
   AttachPrResponse,
   CreateWorkspaceFromPrBody,
@@ -94,10 +95,18 @@ import {
   RelayPairedClient,
   ListRelayPairedClientsResponse,
   RemoveRelayPairedClientResponse,
+  PairRelayHostRequest,
+  PairRelayHostResponse,
+  RelayPairedHost,
+  ListRelayPairedHostsResponse,
+  RemoveRelayPairedHostResponse,
+  OpenRemoteWorkspaceInEditorRequest,
+  OpenRemoteEditorResponse,
 } from 'shared/types';
 import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
+import { resolveHostRequestScope } from '@/shared/lib/hostRequestScope';
 import { makeRequest as makeRemoteRequest } from '@/shared/lib/remoteApi';
 import { makeLocalApiRequest } from '@/shared/lib/localApiTransport';
 
@@ -128,6 +137,42 @@ const makeRequest = async (url: string, options: RequestInit = {}) => {
     ...options,
     headers,
   });
+};
+
+const makeScopedRequest = async (
+  url: string,
+  hostId: string | null,
+  options: RequestInit = {}
+) => {
+  const headers = new Headers(options.headers ?? {});
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  return makeLocalApiRequest(url, {
+    ...options,
+    headers,
+    hostScope: 'explicit',
+    hostId,
+  });
+};
+
+const makeHostAwareRequest = async (
+  url: string,
+  hostId: string | null | undefined,
+  options: RequestInit = {}
+) => {
+  const scope = resolveHostRequestScope(hostId);
+
+  if (scope.kind === 'current') {
+    return makeRequest(url, options);
+  }
+
+  return makeScopedRequest(
+    url,
+    scope.kind === 'host' ? scope.hostId : null,
+    options
+  );
 };
 
 export type Ok<T> = { success: true; data: T };
@@ -287,6 +332,7 @@ export const sessionsApi = {
   create: async (data: {
     workspace_id: string;
     executor?: string;
+    name?: string;
   }): Promise<Session> => {
     const response = await makeRequest('/api/sessions', {
       method: 'POST',
@@ -337,6 +383,17 @@ export const sessionsApi = {
     return handleApiResponseAsResult<ExecutionProcess, RunScriptError>(
       response
     );
+  },
+
+  update: async (
+    sessionId: string,
+    data: { name?: string }
+  ): Promise<Session> => {
+    const response = await makeRequest(`/api/sessions/${sessionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Session>(response);
   },
 };
 
@@ -461,6 +518,15 @@ export const workspacesApi = {
       }
     );
     return handleApiResponse<OpenEditorResponse>(response);
+  },
+
+  getEditorPath: async (
+    workspaceId: string
+  ): Promise<{ workspace_path: string }> => {
+    const response = await makeRequest(
+      `/api/workspaces/${workspaceId}/integration/editor/path`
+    );
+    return handleApiResponse<{ workspace_path: string }>(response);
   },
 
   getBranchStatus: async (workspaceId: string): Promise<RepoBranchStatus[]> => {
@@ -768,8 +834,8 @@ export const fileSystemApi = {
 
 // Repo APIs
 export const repoApi = {
-  list: async (): Promise<Repo[]> => {
-    const response = await makeRequest('/api/repos');
+  list: async (hostId?: string | null): Promise<Repo[]> => {
+    const response = await makeHostAwareRequest('/api/repos', hostId);
     return handleApiResponse<Repo[]>(response);
   },
 
@@ -778,47 +844,71 @@ export const repoApi = {
     return handleApiResponse<Repo[]>(response);
   },
 
-  getById: async (repoId: string): Promise<Repo> => {
-    const response = await makeRequest(`/api/repos/${repoId}`);
+  getById: async (repoId: string, hostId?: string | null): Promise<Repo> => {
+    const response = await makeHostAwareRequest(`/api/repos/${repoId}`, hostId);
     return handleApiResponse<Repo>(response);
   },
 
-  update: async (repoId: string, data: UpdateRepo): Promise<Repo> => {
-    const response = await makeRequest(`/api/repos/${repoId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+  update: async (
+    repoId: string,
+    data: UpdateRepo,
+    hostId?: string | null
+  ): Promise<Repo> => {
+    const response = await makeHostAwareRequest(
+      `/api/repos/${repoId}`,
+      hostId,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<Repo>(response);
   },
 
-  delete: async (repoId: string): Promise<void> => {
-    const response = await makeRequest(`/api/repos/${repoId}`, {
-      method: 'DELETE',
-    });
+  delete: async (repoId: string, hostId?: string | null): Promise<void> => {
+    const response = await makeHostAwareRequest(
+      `/api/repos/${repoId}`,
+      hostId,
+      {
+        method: 'DELETE',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
-  register: async (data: {
-    path: string;
-    display_name?: string;
-  }): Promise<Repo> => {
-    const response = await makeRequest('/api/repos', {
+  register: async (
+    data: {
+      path: string;
+      display_name?: string;
+    },
+    hostId?: string | null
+  ): Promise<Repo> => {
+    const response = await makeHostAwareRequest('/api/repos', hostId, {
       method: 'POST',
       body: JSON.stringify(data),
     });
     return handleApiResponse<Repo>(response);
   },
 
-  getBranches: async (repoId: string): Promise<GitBranch[]> => {
-    const response = await makeRequest(`/api/repos/${repoId}/branches`);
+  getBranches: async (
+    repoId: string,
+    hostId?: string | null
+  ): Promise<GitBranch[]> => {
+    const response = await makeHostAwareRequest(
+      `/api/repos/${repoId}/branches`,
+      hostId
+    );
     return handleApiResponse<GitBranch[]>(response);
   },
 
-  init: async (data: {
-    parent_path: string;
-    folder_name: string;
-  }): Promise<Repo> => {
-    const response = await makeRequest('/api/repos/init', {
+  init: async (
+    data: {
+      parent_path: string;
+      folder_name: string;
+    },
+    hostId?: string | null
+  ): Promise<Repo> => {
+    const response = await makeHostAwareRequest('/api/repos/init', hostId, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -861,12 +951,14 @@ export const repoApi = {
   listOpenPrs: async (
     repoId: string,
     remoteName?: string
-  ): Promise<Result<OpenPrInfo[], ListPrsError>> => {
+  ): Promise<Result<PullRequestDetail[], ListPrsError>> => {
     const params = remoteName
       ? `?remote=${encodeURIComponent(remoteName)}`
       : '';
     const response = await makeRequest(`/api/repos/${repoId}/prs${params}`);
-    return handleApiResponseAsResult<OpenPrInfo[], ListPrsError>(response);
+    return handleApiResponseAsResult<PullRequestDetail[], ListPrsError>(
+      response
+    );
   },
 
   listRemotes: async (repoId: string): Promise<GitRemote[]> => {
@@ -875,14 +967,39 @@ export const repoApi = {
   },
 };
 
+// Issue PR linking APIs
+export const issuePrsApi = {
+  getPrInfo: async (
+    url: string
+  ): Promise<Result<PullRequestDetail, ListPrsError>> => {
+    const response = await makeRequest(
+      `/api/repos/pr-info?url=${encodeURIComponent(url)}`
+    );
+    return handleApiResponseAsResult<PullRequestDetail, ListPrsError>(response);
+  },
+
+  linkToIssue: async (data: LinkPrToIssueRequest): Promise<void> => {
+    const response = await makeRequest('/api/remote/pull-requests/link', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    await handleApiResponse<void>(response);
+  },
+};
+
 // Config APIs (backwards compatible)
 export const configApi = {
-  getConfig: async (): Promise<UserSystemInfo> => {
-    const response = await makeRequest('/api/info', { cache: 'no-store' });
+  getConfig: async (hostId?: string | null): Promise<UserSystemInfo> => {
+    const response = await makeHostAwareRequest('/api/info', hostId, {
+      cache: 'no-store',
+    });
     return handleApiResponse<UserSystemInfo>(response);
   },
-  saveConfig: async (config: Config): Promise<Config> => {
-    const response = await makeRequest('/api/config', {
+  saveConfig: async (
+    config: Config,
+    hostId?: string | null
+  ): Promise<Config> => {
+    const response = await makeHostAwareRequest('/api/config', hostId, {
       method: 'PUT',
       body: JSON.stringify(config),
     });
@@ -942,21 +1059,32 @@ export const tagsApi = {
 
 // MCP Servers APIs
 export const mcpServersApi = {
-  load: async (query: McpServerQuery): Promise<GetMcpServerResponse> => {
+  load: async (
+    query: McpServerQuery,
+    hostId?: string | null
+  ): Promise<GetMcpServerResponse> => {
     const params = new URLSearchParams(query);
-    const response = await makeRequest(`/api/mcp-config?${params.toString()}`);
+    const response = await makeHostAwareRequest(
+      `/api/mcp-config?${params.toString()}`,
+      hostId
+    );
     return handleApiResponse<GetMcpServerResponse>(response);
   },
   save: async (
     query: McpServerQuery,
-    data: UpdateMcpServersBody
+    data: UpdateMcpServersBody,
+    hostId?: string | null
   ): Promise<void> => {
     const params = new URLSearchParams(query);
     // params.set('profile', profile);
-    const response = await makeRequest(`/api/mcp-config?${params.toString()}`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    const response = await makeHostAwareRequest(
+      `/api/mcp-config?${params.toString()}`,
+      hostId,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     if (!response.ok) {
       const errorData = await response.json();
       console.error('[API Error] Failed to save MCP servers', {
@@ -976,12 +1104,14 @@ export const mcpServersApi = {
 
 // Profiles API
 export const profilesApi = {
-  load: async (): Promise<{ content: string; path: string }> => {
-    const response = await makeRequest('/api/profiles');
+  load: async (
+    hostId?: string | null
+  ): Promise<{ content: string; path: string }> => {
+    const response = await makeHostAwareRequest('/api/profiles', hostId);
     return handleApiResponse<{ content: string; path: string }>(response);
   },
-  save: async (content: string): Promise<string> => {
-    const response = await makeRequest('/api/profiles', {
+  save: async (content: string, hostId?: string | null): Promise<string> => {
+    const response = await makeHostAwareRequest('/api/profiles', hostId, {
       method: 'PUT',
       body: content,
       headers: {
@@ -992,13 +1122,13 @@ export const profilesApi = {
   },
 };
 
-// Images API
-export const imagesApi = {
-  upload: async (file: File): Promise<ImageResponse> => {
+// Workspace attachments API
+export const attachmentsApi = {
+  upload: async (attachment: File): Promise<AttachmentResponse> => {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', attachment);
 
-    const response = await makeLocalApiRequest('/api/images/upload', {
+    const response = await makeLocalApiRequest('/api/attachments/upload', {
       method: 'POST',
       body: formData,
       credentials: 'include',
@@ -1007,21 +1137,24 @@ export const imagesApi = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new ApiError(
-        `Failed to upload image: ${errorText}`,
+        `Failed to upload attachment: ${errorText}`,
         response.status,
         response
       );
     }
 
-    return handleApiResponse<ImageResponse>(response);
+    return handleApiResponse<AttachmentResponse>(response);
   },
 
-  uploadForTask: async (taskId: string, file: File): Promise<ImageResponse> => {
+  uploadForTask: async (
+    taskId: string,
+    attachment: File
+  ): Promise<AttachmentResponse> => {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', attachment);
 
     const response = await makeLocalApiRequest(
-      `/api/images/task/${taskId}/upload`,
+      `/api/attachments/task/${taskId}/upload`,
       {
         method: 'POST',
         body: formData,
@@ -1032,29 +1165,25 @@ export const imagesApi = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new ApiError(
-        `Failed to upload image: ${errorText}`,
+        `Failed to upload attachment: ${errorText}`,
         response.status,
         response
       );
     }
 
-    return handleApiResponse<ImageResponse>(response);
+    return handleApiResponse<AttachmentResponse>(response);
   },
 
-  /**
-   * Upload an image for a workspace and immediately copy it to the container.
-   * Returns the image with a file_path that can be used in markdown.
-   */
   uploadForAttempt: async (
     workspaceId: string,
     sessionId: string,
-    file: File
-  ): Promise<ImageResponse> => {
+    attachment: File
+  ): Promise<AttachmentResponse> => {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', attachment);
 
     const response = await makeLocalApiRequest(
-      `/api/workspaces/${workspaceId}/images/upload?session_id=${sessionId}`,
+      `/api/workspaces/${workspaceId}/attachments/upload?session_id=${sessionId}`,
       {
         method: 'POST',
         body: formData,
@@ -1065,29 +1194,29 @@ export const imagesApi = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new ApiError(
-        `Failed to upload image: ${errorText}`,
+        `Failed to upload attachment: ${errorText}`,
         response.status,
         response
       );
     }
 
-    return handleApiResponse<ImageResponse>(response);
+    return handleApiResponse<AttachmentResponse>(response);
   },
 
-  delete: async (imageId: string): Promise<void> => {
-    const response = await makeRequest(`/api/images/${imageId}`, {
+  delete: async (attachmentId: string): Promise<void> => {
+    const response = await makeRequest(`/api/attachments/${attachmentId}`, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
   },
 
-  getTaskImages: async (taskId: string): Promise<ImageResponse[]> => {
-    const response = await makeRequest(`/api/images/task/${taskId}`);
-    return handleApiResponse<ImageResponse[]>(response);
+  getTaskAttachments: async (taskId: string): Promise<AttachmentResponse[]> => {
+    const response = await makeRequest(`/api/attachments/task/${taskId}`);
+    return handleApiResponse<AttachmentResponse[]>(response);
   },
 
-  getImageUrl: (imageId: string): string => {
-    return `/api/images/${imageId}/file`;
+  getAttachmentUrl: (attachmentId: string): string => {
+    return `/api/attachments/${attachmentId}/file`;
   },
 };
 
@@ -1479,14 +1608,17 @@ export const migrationApi = {
 // Relay API
 export const relayApi = {
   getEnrollmentCode: async (): Promise<{ enrollment_code: string }> => {
-    const response = await makeRequest('/api/relay-auth/enrollment-code', {
-      method: 'POST',
-    });
+    const response = await makeRequest(
+      '/api/relay-auth/server/enrollment-code',
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<{ enrollment_code: string }>(response);
   },
 
   listPairedClients: async (): Promise<RelayPairedClient[]> => {
-    const response = await makeRequest('/api/relay-auth/clients');
+    const response = await makeRequest('/api/relay-auth/server/clients');
     const body =
       await handleApiResponse<ListRelayPairedClientsResponse>(response);
     return body.clients;
@@ -1496,12 +1628,51 @@ export const relayApi = {
     clientId: string
   ): Promise<RemoveRelayPairedClientResponse> => {
     const response = await makeRequest(
-      `/api/relay-auth/clients/${encodeURIComponent(clientId)}`,
+      `/api/relay-auth/server/clients/${encodeURIComponent(clientId)}`,
       {
         method: 'DELETE',
       }
     );
     return handleApiResponse<RemoveRelayPairedClientResponse>(response);
+  },
+
+  pairRelayHost: async (
+    payload: PairRelayHostRequest
+  ): Promise<PairRelayHostResponse> => {
+    const response = await makeRequest('/api/relay-auth/client/pair', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return handleApiResponse<PairRelayHostResponse>(response);
+  },
+
+  listPairedRelayHosts: async (): Promise<RelayPairedHost[]> => {
+    const response = await makeRequest('/api/relay-auth/client/hosts');
+    const body =
+      await handleApiResponse<ListRelayPairedHostsResponse>(response);
+    return body.hosts;
+  },
+
+  removePairedRelayHost: async (
+    hostId: string
+  ): Promise<RemoveRelayPairedHostResponse> => {
+    const response = await makeRequest(
+      `/api/relay-auth/client/hosts/${encodeURIComponent(hostId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<RemoveRelayPairedHostResponse>(response);
+  },
+
+  openRemoteWorkspaceInEditor: async (
+    payload: OpenRemoteWorkspaceInEditorRequest
+  ): Promise<OpenRemoteEditorResponse> => {
+    const response = await makeRequest('/api/open-remote-editor/workspace', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return handleApiResponse<OpenRemoteEditorResponse>(response);
   },
 };
 

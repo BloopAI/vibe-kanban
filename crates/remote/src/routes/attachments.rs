@@ -55,7 +55,6 @@ pub fn router() -> Router<AppState> {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct InitUploadRequest {
     pub project_id: Uuid,
     pub filename: String,
@@ -65,7 +64,6 @@ pub struct InitUploadRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct InitUploadResponse {
     pub upload_url: String,
     pub upload_id: Uuid,
@@ -75,7 +73,6 @@ pub struct InitUploadResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct ConfirmUploadRequest {
     pub project_id: Uuid,
     pub upload_id: Uuid,
@@ -92,13 +89,11 @@ pub struct ConfirmUploadRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct CommitAttachmentsRequest {
     pub attachment_ids: Vec<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct CommitAttachmentsResponse {
     pub attachments: Vec<AttachmentWithBlob>,
 }
@@ -470,17 +465,17 @@ async fn delete_attachment(
     AttachmentRepository::delete(state.pool(), id).await?;
 
     let remaining = AttachmentRepository::count_by_blob_id(state.pool(), blob_id).await?;
-    if remaining == 0 {
-        if let Some(blob) = BlobRepository::delete(state.pool(), blob_id).await? {
-            let azure = state.azure_blob().ok_or(RouteError::NotConfigured)?;
-            if let Err(e) = azure.delete_blob(&blob.blob_path).await {
-                tracing::warn!(error = %e, blob_path = %blob.blob_path, "Failed to delete blob");
-            }
-            if let Some(thumb_path) = blob.thumbnail_blob_path {
-                if let Err(e) = azure.delete_blob(&thumb_path).await {
-                    tracing::warn!(error = %e, blob_path = %thumb_path, "Failed to delete thumbnail");
-                }
-            }
+    if remaining == 0
+        && let Some(blob) = BlobRepository::delete(state.pool(), blob_id).await?
+    {
+        let azure = state.azure_blob().ok_or(RouteError::NotConfigured)?;
+        if let Err(e) = azure.delete_blob(&blob.blob_path).await {
+            tracing::warn!(error = %e, blob_path = %blob.blob_path, "Failed to delete blob");
+        }
+        if let Some(thumb_path) = blob.thumbnail_blob_path
+            && let Err(e) = azure.delete_blob(&thumb_path).await
+        {
+            tracing::warn!(error = %e, blob_path = %thumb_path, "Failed to delete thumbnail");
         }
     }
 

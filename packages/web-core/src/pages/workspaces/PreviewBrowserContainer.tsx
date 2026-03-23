@@ -6,8 +6,6 @@ import {
   useRef,
   useMemo,
 } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { configApi } from '@/shared/lib/api';
 import {
   PreviewBrowser,
   MOBILE_WIDTH,
@@ -24,6 +22,8 @@ import {
 import { useLogStream } from '@/shared/hooks/useLogStream';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
+import { useHostId } from '@/shared/providers/HostIdProvider';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
 import { usePreviewNavigation } from '@/shared/hooks/usePreviewNavigation';
 import { PreviewDevToolsBridge } from '@/shared/lib/previewDevToolsBridge';
@@ -77,12 +77,25 @@ function normalizePreviewUrl(rawUrl: string, baseUrl?: string): string | null {
   return parsePreviewUrl(rawUrl, baseUrl)?.toString() ?? null;
 }
 
+function stripPreviewRefreshParam(rawUrl: string): string | null {
+  try {
+    const url = new URL(rawUrl);
+    url.searchParams.delete('_refresh');
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Transform a proxy URL back to the dev server URL.
  * Proxy format: http://{devPort}.localhost:{proxyPort}{path}?_refresh=...
  * Dev format:   http://localhost:{devPort}{path}
  */
-function transformProxyUrlToDevUrl(proxyUrl: string): string | null {
+function transformProxyUrlToDevUrl(
+  proxyUrl: string,
+  devPort: string
+): string | null {
   try {
     const url = new URL(proxyUrl);
 
@@ -91,11 +104,6 @@ function transformProxyUrlToDevUrl(proxyUrl: string): string | null {
       hostnameParts.length < 2 ||
       !hostnameParts.slice(1).join('.').startsWith('localhost')
     ) {
-      return null;
-    }
-
-    const devPort = hostnameParts[0];
-    if (!/^\d+$/.test(devPort)) {
       return null;
     }
 
@@ -112,8 +120,7 @@ function transformProxyUrlToDevUrl(proxyUrl: string): string | null {
       devUrl.hash = url.hash;
     }
 
-    const portNum = parseInt(devPort, 10);
-    if (portNum !== 80) {
+    if (devPort !== '80') {
       devUrl.port = devPort;
     }
 
@@ -121,6 +128,25 @@ function transformProxyUrlToDevUrl(proxyUrl: string): string | null {
   } catch {
     return null;
   }
+}
+
+function getTargetDevPort(url: URL, previewProxyPort?: number): string {
+  const hostnameParts = url.hostname.split('.');
+  const hasLocalhostSuffix =
+    hostnameParts.length >= 2 &&
+    hostnameParts.slice(1).join('.').startsWith('localhost');
+
+  if (
+    hasLocalhostSuffix &&
+    (!previewProxyPort || url.port === String(previewProxyPort))
+  ) {
+    const tokenPort = hostnameParts[0]?.split('--')[0];
+    if (tokenPort && /^\d+$/.test(tokenPort)) {
+      return tokenPort;
+    }
+  }
+
+  return url.port || (url.protocol === 'https:' ? '443' : '80');
 }
 
 interface PreviewBrowserContainerProps {
@@ -143,14 +169,8 @@ export function PreviewBrowserContainer({
     (s) => s.triggerPreviewRefresh
   );
   const { repos, workspaceId: activeWorkspaceId } = useWorkspaceContext();
-
-  // Get preview proxy port for security isolation
-  const { data: systemInfo } = useQuery({
-    queryKey: ['user-system'],
-    queryFn: configApi.getConfig,
-    staleTime: 5 * 60 * 1000,
-  });
-  const previewProxyPort = systemInfo?.preview_proxy_port;
+  const { previewProxyPort } = useUserSystem();
+  const hostId = useHostId();
 
   const {
     start,
@@ -198,13 +218,84 @@ export function PreviewBrowserContainer({
   // effectiveUrl:       The override URL (if set) or the auto-detected dev server URL.
   // urlInputValue:      Local state for the URL bar text. Decoupled from effectiveUrl
   //                     so that external URL changes don't disrupt the user while typing.
-  // prevEffectiveUrlRef: Tracks the previous effectiveUrl so the sync effect can detect
-  //                     when it changes (new URL detected or override toggled).
   // Use override URL if set, otherwise fall back to auto-detected
   const effectiveUrl = hasOverride ? overrideUrl : urlInfo?.url;
+  const effectiveParsedUrl = useMemo(
+    () =>
+      effectiveUrl
+        ? parsePreviewUrl(effectiveUrl, urlInfo?.url ?? undefined)
+        : null,
+    [effectiveUrl, urlInfo?.url]
+  );
+  const devServerPort = useMemo(() => {
+    if (!effectiveParsedUrl) {
+      return null;
+    }
+    // When user has overridden the URL, derive port from their URL, not auto-detected.
+    if (!hasOverride && urlInfo?.port != null) {
+      return String(urlInfo.port);
+    }
+    return (
+      effectiveParsedUrl.port ||
+      (effectiveParsedUrl.protocol === 'https:' ? '443' : '80')
+    );
+  }, [hasOverride, urlInfo?.port, effectiveParsedUrl]);
+
+  // Builds the subdomain-based proxy URL loaded by the iframe.
+  //   Dev server at localhost:4000 → iframe loads http://4000.localhost:{proxyPort}/path
+  //   The proxy extracts the target port from the subdomain and forwards to the dev server.
+  //   _refresh query param forces iframe reload on refresh button click.
+  const iframeUrl = useMemo(() => {
+    if (!effectiveParsedUrl || !previewProxyPort || !devServerPort) {
+      return undefined;
+    }
+
+    // Don't proxy to Vibe Kanban's own ports (would create infinite loop)
+    const vibeKanbanPort = window.location.port || '80';
+    if (devServerPort === vibeKanbanPort) {
+      console.warn(
+        `[Preview] Ignoring dev server URL with same port as Vibe Kanban (${devServerPort}). ` +
+          'This usually means the dev server failed to start or reported the wrong port.'
+      );
+      return undefined;
+    }
+
+    // Also check if it's the preview proxy port itself
+    if (devServerPort === String(previewProxyPort)) {
+      console.warn(
+        `[Preview] Ignoring dev server URL with same port as preview proxy (${devServerPort}).`
+      );
+      return undefined;
+    }
+
+    // Warn if not on localhost (subdomain routing requires localhost)
+    if (!['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+      console.warn(
+        '[Preview] Preview proxy subdomain routing may not work on non-localhost hostname'
+      );
+    }
+
+    const path = effectiveParsedUrl.pathname + effectiveParsedUrl.search;
+
+    // Subdomain-based routing: the proxy extracts the port from the Host header
+    const hostToken =
+      hostId != null ? `${devServerPort}--${hostId}` : devServerPort;
+    const proxyUrl = new URL(
+      `http://${hostToken}.localhost:${previewProxyPort}${path}`
+    );
+    proxyUrl.searchParams.set('_refresh', String(previewRefreshKey));
+
+    return proxyUrl.toString();
+  }, [
+    devServerPort,
+    effectiveParsedUrl,
+    hostId,
+    previewProxyPort,
+    previewRefreshKey,
+  ]);
+
   const urlInputRef = useRef<HTMLInputElement>(null);
   const [urlInputValue, setUrlInputValue] = useState(effectiveUrl ?? '');
-  const prevEffectiveUrlRef = useRef(effectiveUrl);
 
   // ─── Iframe Display Timing ──────────────────────────────────────────────────
   // Controls when the iframe becomes visible after URL detection.
@@ -225,11 +316,15 @@ export function PreviewBrowserContainer({
   // That script reports navigation events (URL changes, page ready) via postMessage.
   // PreviewDevToolsBridge wraps the postMessage protocol for type-safe communication.
   //
-  // navigationDevUrl transforms proxy URLs back to dev URLs:
+  // For local previews we show a localhost dev URL in the URL bar.
+  // For host-scoped previews we keep showing the proxy URL.
+  //
+  // displayedPreviewUrl = best-known URL shown in toolbar/copy/open actions.
+  // Priority: iframe navigation (if present) then fallback URL.
+  //
+  // For local mode, navigation proxy URLs are transformed back to localhost URLs:
   //   proxy:  http://4000.localhost:{proxyPort}/path
   //   dev:    http://localhost:4000/path
-  //
-  // currentPreviewUrl = best-known current URL (navigation > effectiveUrl).
   // Eruda DevTools state
   const [isErudaVisible, setIsErudaVisible] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -240,13 +335,28 @@ export function PreviewBrowserContainer({
     reset: resetNavigation,
   } = usePreviewNavigation();
   const bridgeRef = useRef<PreviewDevToolsBridge | null>(null);
-  const navigationDevUrl = useMemo(() => {
-    if (!navigation?.url || !previewProxyPort) {
-      return null;
+  const displayedPreviewUrl = useMemo(() => {
+    if (navigation?.url) {
+      if (hostId != null) {
+        return stripPreviewRefreshParam(navigation.url) ?? navigation.url;
+      }
+      if (devServerPort) {
+        const transformed = transformProxyUrlToDevUrl(
+          navigation.url,
+          devServerPort
+        );
+        if (transformed) {
+          return transformed;
+        }
+      }
     }
-    return transformProxyUrlToDevUrl(navigation.url);
-  }, [navigation?.url, previewProxyPort]);
-  const currentPreviewUrl = navigationDevUrl ?? effectiveUrl ?? null;
+
+    if (hostId != null && iframeUrl) {
+      return stripPreviewRefreshParam(iframeUrl) ?? iframeUrl;
+    }
+
+    return effectiveUrl ?? null;
+  }, [devServerPort, effectiveUrl, hostId, iframeUrl, navigation?.url]);
 
   const handleBridgeMessage = useCallback(
     (message: PreviewDevToolsMessage) => {
@@ -256,11 +366,9 @@ export function PreviewBrowserContainer({
   );
 
   // ─── URL Sync Effect ──────────────────────────────────────────────────────
-  // Keeps urlInputValue in sync with navigation/effectiveUrl. Priority:
+  // Keeps urlInputValue in sync with displayed preview URL.
   //   1. Skip if input is focused (user is typing)
-  //   2. Prefer navigationDevUrl (iframe reported this URL via postMessage)
-  //   3. Use effectiveUrl if it changed (new URL detected or override set)
-  //   4. Fallback: set to effectiveUrl (catch-all for initial render, etc.)
+  //   2. Use displayedPreviewUrl otherwise
   //
   // NOTE: After resetNavigation() in handleUrlSubmit, there's a brief flash
   // where the URL bar shows the old URL before the iframe reports the new URL.
@@ -271,19 +379,8 @@ export function PreviewBrowserContainer({
       return;
     }
 
-    if (navigationDevUrl) {
-      setUrlInputValue(navigationDevUrl);
-      return;
-    }
-
-    if (prevEffectiveUrlRef.current !== effectiveUrl) {
-      prevEffectiveUrlRef.current = effectiveUrl;
-      setUrlInputValue(effectiveUrl ?? '');
-      return;
-    }
-
-    setUrlInputValue(effectiveUrl ?? '');
-  }, [effectiveUrl, navigation?.url, navigationDevUrl]);
+    setUrlInputValue(displayedPreviewUrl ?? '');
+  }, [displayedPreviewUrl]);
 
   useEffect(() => {
     bridgeRef.current = new PreviewDevToolsBridge(
@@ -565,17 +662,32 @@ export function PreviewBrowserContainer({
       return;
     }
 
-    const baseUrl = currentPreviewUrl ?? urlInfo?.url ?? undefined;
-    const normalizedInput = normalizePreviewUrl(trimmed, baseUrl);
-    if (!normalizedInput) {
+    const baseUrl = displayedPreviewUrl ?? undefined;
+    const normalizedInputUrl = parsePreviewUrl(trimmed, baseUrl);
+    if (!normalizedInputUrl) {
+      return;
+    }
+    const normalizedInput = normalizedInputUrl.toString();
+    const normalizedInputDevPort = getTargetDevPort(
+      normalizedInputUrl,
+      previewProxyPort ?? undefined
+    );
+    const normalizedInputDevUrl =
+      transformProxyUrlToDevUrl(normalizedInput, normalizedInputDevPort) ??
+      normalizedInput;
+    const normalizedInputDevParsed = parsePreviewUrl(normalizedInputDevUrl);
+    if (!normalizedInputDevParsed) {
       return;
     }
 
     urlInputRef.current?.blur();
-    const normalizedCurrentUrl = currentPreviewUrl
-      ? normalizePreviewUrl(currentPreviewUrl, urlInfo?.url ?? undefined)
+    const normalizedCurrentUrl = displayedPreviewUrl
+      ? normalizePreviewUrl(displayedPreviewUrl, baseUrl)
       : null;
-    if (normalizedCurrentUrl && normalizedInput === normalizedCurrentUrl) {
+    if (
+      normalizedCurrentUrl &&
+      normalizedInputDevUrl === normalizedCurrentUrl
+    ) {
       if (hasOverride) {
         clearOverride();
       }
@@ -585,35 +697,28 @@ export function PreviewBrowserContainer({
     resetNavigation();
 
     if (showIframe && iframeRef.current?.contentWindow && previewProxyPort) {
-      try {
-        const parsed = new URL(normalizedInput);
-        const devPort =
-          parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
-
-        const currentUrl = currentPreviewUrl
-          ? parsePreviewUrl(currentPreviewUrl, urlInfo?.url ?? undefined)
-          : null;
-        const currentPort =
-          currentUrl?.port ||
-          (currentUrl?.protocol === 'https:' ? '443' : '80');
-
-        if (currentPort != null && devPort === currentPort) {
-          const proxyPath = parsed.pathname + parsed.search + parsed.hash;
-          const proxyUrl = `http://${devPort}.localhost:${previewProxyPort}${proxyPath}`;
-          bridgeRef.current?.navigateTo(proxyUrl);
-          return;
-        }
-      } catch {
-        // fall through to iframe src change
+      if (devServerPort != null && normalizedInputDevPort === devServerPort) {
+        const proxyPath =
+          normalizedInputDevParsed.pathname +
+          normalizedInputDevParsed.search +
+          normalizedInputDevParsed.hash;
+        const hostToken =
+          hostId != null
+            ? `${normalizedInputDevPort}--${hostId}`
+            : normalizedInputDevPort;
+        const proxyUrl = `http://${hostToken}.localhost:${previewProxyPort}${proxyPath}`;
+        bridgeRef.current?.navigateTo(proxyUrl);
+        return;
       }
     }
 
-    setOverrideUrl(normalizedInput);
+    setOverrideUrl(normalizedInputDevUrl);
     setImmediateLoad(true);
   }, [
+    devServerPort,
     urlInputValue,
-    urlInfo?.url,
-    currentPreviewUrl,
+    displayedPreviewUrl,
+    hostId,
     hasOverride,
     showIframe,
     previewProxyPort,
@@ -625,9 +730,9 @@ export function PreviewBrowserContainer({
   // handleUrlEscape: reverts URL bar to the current page URL and blurs,
   // discarding whatever the user typed.
   const handleUrlEscape = useCallback(() => {
-    setUrlInputValue(navigationDevUrl ?? effectiveUrl ?? '');
+    setUrlInputValue(displayedPreviewUrl ?? '');
     urlInputRef.current?.blur();
-  }, [navigationDevUrl, effectiveUrl]);
+  }, [displayedPreviewUrl]);
 
   const handleStart = useCallback(() => {
     start();
@@ -699,28 +804,22 @@ export function PreviewBrowserContainer({
   }, [isErudaVisible, sendErudaCommand]);
 
   const handleCopyUrl = useCallback(async () => {
-    if (!currentPreviewUrl) return;
+    if (!displayedPreviewUrl) return;
 
-    const normalizedUrl = normalizePreviewUrl(
-      currentPreviewUrl,
-      urlInfo?.url ?? undefined
-    );
+    const normalizedUrl = normalizePreviewUrl(displayedPreviewUrl);
     if (normalizedUrl) {
       await navigator.clipboard.writeText(normalizedUrl);
     }
-  }, [currentPreviewUrl, urlInfo?.url]);
+  }, [displayedPreviewUrl]);
 
   const handleOpenInNewTab = useCallback(() => {
-    if (!currentPreviewUrl) return;
+    if (!displayedPreviewUrl) return;
 
-    const normalizedUrl = normalizePreviewUrl(
-      currentPreviewUrl,
-      urlInfo?.url ?? undefined
-    );
+    const normalizedUrl = normalizePreviewUrl(displayedPreviewUrl);
     if (normalizedUrl) {
       window.open(normalizedUrl, '_blank');
     }
-  }, [currentPreviewUrl, urlInfo?.url]);
+  }, [displayedPreviewUrl]);
 
   const handleScreenSizeChange = useCallback(
     (size: ScreenSize) => {
@@ -728,62 +827,6 @@ export function PreviewBrowserContainer({
     },
     [setScreenSize]
   );
-
-  // ─── Iframe URL Construction ────────────────────────────────────────────────
-  // Builds the subdomain-based proxy URL loaded by the iframe.
-  //   Dev server at localhost:4000 → iframe loads http://4000.localhost:{proxyPort}/path
-  //   The proxy extracts the target port from the subdomain and forwards to the dev server.
-  //   _refresh query param forces iframe reload on refresh button click.
-  // Construct proxy URL for iframe to enable security isolation via separate origin
-  // Uses subdomain-based routing: http://{devPort}.localhost:{proxyPort}{path}
-  const iframeUrl = useMemo(() => {
-    if (!effectiveUrl || !previewProxyPort) return undefined;
-
-    const parsed = parsePreviewUrl(effectiveUrl, urlInfo?.url ?? undefined);
-    if (!parsed) return undefined;
-
-    try {
-      const devServerPort =
-        parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
-
-      // Don't proxy to Vibe Kanban's own ports (would create infinite loop)
-      const vibeKanbanPort = window.location.port || '80';
-      if (devServerPort === vibeKanbanPort) {
-        console.warn(
-          `[Preview] Ignoring dev server URL with same port as Vibe Kanban (${devServerPort}). ` +
-            'This usually means the dev server failed to start or reported the wrong port.'
-        );
-        return undefined;
-      }
-
-      // Also check if it's the preview proxy port itself
-      if (devServerPort === String(previewProxyPort)) {
-        console.warn(
-          `[Preview] Ignoring dev server URL with same port as preview proxy (${devServerPort}).`
-        );
-        return undefined;
-      }
-
-      // Warn if not on localhost (subdomain routing requires localhost)
-      if (!['localhost', '127.0.0.1'].includes(window.location.hostname)) {
-        console.warn(
-          '[Preview] Preview proxy subdomain routing may not work on non-localhost hostname'
-        );
-      }
-
-      const path = parsed.pathname + parsed.search;
-
-      // Subdomain-based routing: the proxy extracts the port from the Host header
-      const proxyUrl = new URL(
-        `http://${devServerPort}.localhost:${previewProxyPort}${path}`
-      );
-      proxyUrl.searchParams.set('_refresh', String(previewRefreshKey));
-
-      return proxyUrl.toString();
-    } catch {
-      return undefined;
-    }
-  }, [effectiveUrl, previewProxyPort, previewRefreshKey, urlInfo?.url]);
 
   // ─── Navigation Reset on URL Change ────────────────────────────────────────
   // Resets navigation state when the iframe URL changes (e.g., new dev server
