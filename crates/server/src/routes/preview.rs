@@ -153,6 +153,14 @@ async fn subdomain_proxy_request(
             .into_response();
     };
 
+    let Some(backend_hostname) = deployment.client_info().get_hostname() else {
+        return (
+            StatusCode::BAD_REQUEST,
+            "Local backend hostname is not available",
+        )
+            .into_response();
+    };
+
     let Some(proxy_port) = deployment.client_info().get_preview_proxy_port() else {
         return (
             StatusCode::BAD_REQUEST,
@@ -164,6 +172,7 @@ async fn subdomain_proxy_request(
     preview_proxy::proxy_subdomain_request(
         deployment.preview_proxy(),
         backend_port,
+        &backend_hostname,
         proxy_port,
         request,
     )
