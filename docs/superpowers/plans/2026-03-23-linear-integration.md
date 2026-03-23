@@ -670,6 +670,45 @@ struct PageInfo {
     end_cursor: Option<String>,
 }
 
+/// Linear issue with optional project_id field (used only for filtering).
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LinearIssueRaw {
+    pub id: String,
+    pub identifier: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub priority: i32,
+    pub due_date: Option<String>,
+    pub state: LinearWorkflowState,
+    pub assignee: Option<LinearUser>,
+    pub labels: LinearLabelConnection,
+    pub project: Option<LinearProjectRef>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct LinearProjectRef { pub id: String }
+
+impl LinearIssueRaw {
+    pub fn has_ignore_label(&self) -> bool {
+        self.labels.nodes.iter().any(|l| l.name.eq_ignore_ascii_case(IGNORE_LABEL_NAME))
+    }
+    /// Convert to LinearIssue (drops project field).
+    pub fn into_issue(self) -> LinearIssue {
+        LinearIssue {
+            id: self.id,
+            identifier: self.identifier,
+            title: self.title,
+            description: self.description,
+            priority: self.priority,
+            due_date: self.due_date,
+            state: self.state,
+            assignee: self.assignee,
+            labels: self.labels,
+        }
+    }
+}
+
 pub async fn list_issues_page(
     client: &Client,
     api_key: &str,
@@ -679,19 +718,14 @@ pub async fn list_issues_page(
 ) -> Result<(Vec<LinearIssue>, bool, Option<String>), LinearClientError> {
     #[derive(Serialize)]
     #[serde(rename_all = "camelCase")]
-    struct Vars<'a> {
-        team_id: &'a str,
-        project_id: Option<&'a str>,
-        after: Option<&'a str>,
-    }
+    struct Vars<'a> { team_id: &'a str, after: Option<&'a str> }
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
-    struct IssueConn { nodes: Vec<LinearIssue>, page_info: PageInfo }
+    struct IssueConn { nodes: Vec<LinearIssueRaw>, page_info: PageInfo }
     #[derive(Deserialize)]
     struct Team { issues: IssueConn }
     #[derive(Deserialize)]
     struct Data { team: Team }
-    // Note: project filtering is done client-side (filter by project_id after fetch) when project_id is set
     let data: Data = gql(
         client, api_key,
         r#"query($team_id: String!, $after: String) {
@@ -707,16 +741,22 @@ pub async fn list_issues_page(
                 }
             }
         }"#,
-        Vars { team_id, project_id, after },
+        Vars { team_id, after },
     ).await?;
-    let issues: Vec<LinearIssue> = if let Some(proj_id) = project_id {
-        // Filter to project (Linear doesn't support filtering by project in team query easily)
-        // We re-use the same type; project field is ignored beyond filtering
-        data.team.issues.nodes  // ideally filter, but requires project field on LinearIssue
-    } else {
-        data.team.issues.nodes
-    };
-    Ok((issues, data.team.issues.page_info.has_next_page, data.team.issues.page_info.end_cursor))
+    let raw = data.team.issues.nodes;
+    // Filter by project_id server-side using the project field returned in the query
+    let filtered: Vec<LinearIssue> = raw
+        .into_iter()
+        .filter(|i| {
+            if let Some(proj_id) = project_id {
+                i.project.as_ref().map(|p| p.id.as_str()) == Some(proj_id)
+            } else {
+                true
+            }
+        })
+        .map(|i| i.into_issue())
+        .collect();
+    Ok((filtered, data.team.issues.page_info.has_next_page, data.team.issues.page_info.end_cursor))
 }
 
 // ── Issue mutations ───────────────────────────────────────────────────────────
@@ -1638,17 +1678,52 @@ pub fn protected_router() -> Router<AppState> {
         .route("/linear/connections/:id/teams", get(list_teams_for_connection))
         .route("/linear/connections/:id/sync", post(trigger_sync))
         .route("/linear/connections/:id/stats", get(get_connection_stats))
+        .route("/linear/connections/:id/workflow-states", get(get_workflow_states))
         .route("/linear/teams-preview", post(teams_preview))
 }
 
-// ── teams_preview (no stored connection needed) ───────────────────────────────
-// POST /v1/linear/teams-preview { api_key: String } → Vec<LinearTeam>
-// Used by ConnectLinearPanel to validate key + list teams before creating a connection.
+// ── teams_preview ─────────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+struct TeamsPreviewRequest { api_key: String }
+
+async fn teams_preview(
+    State(state): State<AppState>,
+    Json(req): Json<TeamsPreviewRequest>,
+) -> Response {
+    match client::list_teams(&state.http_client, &req.api_key).await {
+        Ok(teams) => Json(teams).into_response(),
+        Err(e) => (StatusCode::UNPROCESSABLE_ENTITY, format!("Invalid API key: {e}")).into_response(),
+    }
+}
 
 // ── get_connection_stats ──────────────────────────────────────────────────────
-// GET /v1/linear/connections/:id/stats → { linkedCount: i64, lastSyncedAt: Option<DateTime> }
-// SELECT COUNT(*), MAX(last_synced_at) FROM linear_issue_links
-//   WHERE vk_issue_id IN (SELECT id FROM issues WHERE project_id = conn.project_id)
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ConnectionStats {
+    linked_count: i64,
+    last_synced_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+async fn get_connection_stats(State(state): State<AppState>, Path(id): Path<Uuid>) -> Response {
+    let conn = match db::get_connection_by_id(state.pool(), id).await {
+        Ok(Some(c)) => c,
+        _ => return StatusCode::NOT_FOUND.into_response(),
+    };
+    let row = sqlx::query!(
+        r#"SELECT COUNT(*) as "count!", MAX(last_synced_at) as last_synced
+           FROM linear_issue_links
+           WHERE vk_issue_id IN (SELECT id FROM issues WHERE project_id = $1)"#,
+        conn.project_id
+    )
+    .fetch_one(state.pool())
+    .await;
+    match row {
+        Ok(r) => Json(ConnectionStats { linked_count: r.count, last_synced_at: r.last_synced }).into_response(),
+        Err(e) => { tracing::error!(?e); StatusCode::INTERNAL_SERVER_ERROR.into_response() }
+    }
+}
 
 // ── List connections ──────────────────────────────────────────────────────────
 
@@ -2215,12 +2290,12 @@ async fn handle_linear_comment_event(
             db::create_comment_link(state.pool(), conn.id, vk_comment_id, linear_comment_id).await?;
         }
         "update" => {
-            if let Some(vk_comment_id) = get_vk_comment_by_linear_id(state, conn.id, linear_comment_id).await? {
+            if let Some(vk_comment_id) = get_vk_comment_by_linear_id(state.pool(), conn.id, linear_comment_id).await? {
                 update_vk_comment(state, vk_comment_id, body).await?;
             }
         }
         "remove" => {
-            if let Some(vk_comment_id) = get_vk_comment_by_linear_id(state, conn.id, linear_comment_id).await? {
+            if let Some(vk_comment_id) = get_vk_comment_by_linear_id(state.pool(), conn.id, linear_comment_id).await? {
                 delete_vk_comment(state, vk_comment_id).await?;
                 db::delete_comment_link(state.pool(), vk_comment_id).await?;
             }
@@ -2837,16 +2912,21 @@ export function StatusMappingPanel({ connectionId, vkStatuses }: Props) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Fetch current mappings and Linear states
     Promise.all([
       fetch(`/v1/linear/connections/${connectionId}/status-mappings`).then(r => r.json()),
-      fetch(`/v1/linear/connections/${connectionId}/teams`).then(r => r.json()),
-    ]).then(([savedMappings, teams]) => {
+      // GET /v1/linear/connections/:id/workflow-states proxies list_workflow_states for the connection's team
+      fetch(`/v1/linear/connections/${connectionId}/workflow-states`).then(r => r.json()),
+    ]).then(([savedMappings, states]) => {
       const map: Record<string, string> = {};
-      savedMappings.forEach((m: Mapping) => { map[m.vkStatusId] = m.linearStateId; });
+      (savedMappings as Mapping[]).forEach(m => { map[m.vkStatusId] = m.linearStateId; });
       setMappings(map);
+      setLinearStates(states as LinearState[]);
     });
   }, [connectionId]);
+
+  // GET /v1/linear/connections/:id/workflow-states is implemented as:
+  // get_connection_by_id → decrypt API key → client::list_workflow_states(&team_id) → Json(states)
+  // Pattern is identical to list_teams_for_connection above (already in Task 9).
 
   async function save() {
     setSaving(true);
