@@ -67,6 +67,7 @@ import {
   TwoColumnPickerBadge,
   TwoColumnPickerEmpty,
 } from './SettingsComponents';
+import { LinearIntegration } from './linear-integration';
 import { useSettingsDirty } from './SettingsDirtyContext';
 import type { DraftWorkspaceRepo, GitBranch, Repo } from 'shared/types';
 import { repoApi } from '@/shared/lib/api';
@@ -1363,6 +1364,34 @@ export function RemoteProjectsSettingsSection({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          </div>
+        )}
+
+        {/* Linear integration */}
+        {selectedProjectId && (
+          <div className="bg-secondary/50 border border-border rounded-sm p-4 space-y-base">
+            <div>
+              <p className="text-sm font-medium text-normal">
+                {t(
+                  'settings.remoteProjects.form.linear.label',
+                  'Linear Integration'
+                )}
+              </p>
+              <p className="text-sm text-low mt-1">
+                {t(
+                  'settings.remoteProjects.form.linear.description',
+                  'Sync issues with a Linear team.'
+                )}
+              </p>
+            </div>
+            <LinearIntegration
+              projectId={selectedProjectId}
+              vkStatuses={localStatuses.map((s) => ({
+                id: s.id,
+                name: s.name,
+                color: s.color,
+              }))}
+            />
           </div>
         )}
 
