@@ -43,13 +43,8 @@ impl ServerHandle {
         // proxying) and is shared between the standalone binary and Tauri.
         self.deployment
             .client_info()
-            .set_port(self.port)
-            .expect("client port already set");
-        let host = self.main_listener.local_addr()?.ip().to_string();
-        self.deployment
-            .client_info()
-            .set_hostname(host)
-            .expect("client hostname already set");
+            .set_server_addr(self.main_listener.local_addr()?)
+            .expect("client server address already set");
         self.deployment
             .client_info()
             .set_preview_proxy_port(self.proxy_port)

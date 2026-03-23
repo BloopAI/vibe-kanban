@@ -1,6 +1,8 @@
 //! Relay host connection — registers the local backend with the relay server
 //! so it can receive tunneled connections from remote browsers.
 
+use std::net::SocketAddr;
+
 use anyhow::Context as _;
 use deployment::Deployment as _;
 use relay_tunnel_core::client::{RelayClientConfig, start_relay_client};
@@ -27,8 +29,7 @@ pub fn clean_host_nickname(config: &Config, user_id: &str) -> String {
 }
 
 struct RelayParams {
-    local_port: u16,
-    local_hostname: String,
+    server_addr: SocketAddr,
     remote_client: RemoteClient,
     relay_base: String,
     machine_id: String,
@@ -62,19 +63,13 @@ async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams
         return None;
     }
 
-    let local_port = deployment.client_info().get_port().or_else(|| {
-        tracing::warn!("Relay local port not set; cannot spawn relay");
-        None
-    })?;
-
-    let local_hostname = deployment.client_info().get_hostname().or_else(|| {
-        tracing::warn!("Relay local hostname not set; cannot spawn relay");
+    let server_addr = deployment.client_info().get_server_addr().or_else(|| {
+        tracing::warn!("Server address not set; cannot spawn relay");
         None
     })?;
 
     Some(RelayParams {
-        local_port,
-        local_hostname,
+        server_addr,
         remote_client,
         relay_base,
         machine_id: deployment.user_id().to_string(),
@@ -156,14 +151,7 @@ async fn start_relay(
     start_relay_client(RelayClientConfig {
         ws_url,
         bearer_token: access_token,
-        local_addr: std::net::SocketAddr::new(
-            params
-                .local_hostname
-                .parse::<std::net::IpAddr>()
-                .context("local hostname is a valid IP")?,
-            params.local_port,
-        )
-        .to_string(),
+        local_addr: params.server_addr.to_string(),
         shutdown,
     })
     .await

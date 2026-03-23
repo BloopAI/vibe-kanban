@@ -132,12 +132,8 @@ async fn main() -> Result<(), VibeKanbanError> {
 
     deployment
         .client_info()
-        .set_port(actual_main_port)
-        .expect("client port already set");
-    deployment
-        .client_info()
-        .set_hostname(host.clone())
-        .expect("client hostname already set");
+        .set_server_addr(main_listener.local_addr()?)
+        .expect("client server address already set");
     deployment
         .client_info()
         .set_preview_proxy_port(actual_proxy_port)
