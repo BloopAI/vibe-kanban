@@ -4,14 +4,11 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
-use git2::{
-    BranchType, Delta, DiffFindOptions, DiffOptions, Error as GitError, Reference, Remote,
-    Repository, Sort,
-};
+use git2::{BranchType, DiffOptions, Error as GitError, Reference, Remote, Repository, Sort};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
-use utils::diff::{Diff, DiffChangeKind, FileDiffDetails};
+use utils::diff::{Diff, DiffChangeKind};
 
 mod cli;
 mod validation;
@@ -169,17 +166,6 @@ pub enum DiffTarget<'p> {
     Worktree {
         worktree_path: &'p Path,
         base_commit: &'p Commit,
-    },
-    /// Fully committed branch vs base branch
-    Branch {
-        repo_path: &'p Path,
-        branch_name: &'p str,
-        base_branch: &'p str,
-    },
-    /// Specific commit vs base branch
-    Commit {
-        repo_path: &'p Path,
-        commit_sha: &'p str,
     },
 }
 
@@ -421,228 +407,7 @@ impl GitService {
                     .map(|e| Self::status_entry_to_diff(&repo, &base_tree, e))
                     .collect())
             }
-            DiffTarget::Branch {
-                repo_path,
-                branch_name,
-                base_branch,
-            } => {
-                let repo = self.open_repo(repo_path)?;
-                let base_tree = Self::find_branch(&repo, base_branch)?
-                    .get()
-                    .peel_to_commit()?
-                    .tree()?;
-                let branch_tree = Self::find_branch(&repo, branch_name)?
-                    .get()
-                    .peel_to_commit()?
-                    .tree()?;
-
-                let mut diff_opts = DiffOptions::new();
-                diff_opts.include_typechange(true);
-
-                // Add path filtering if specified
-                if let Some(paths) = path_filter {
-                    for path in paths {
-                        diff_opts.pathspec(*path);
-                    }
-                }
-
-                let mut diff = repo.diff_tree_to_tree(
-                    Some(&base_tree),
-                    Some(&branch_tree),
-                    Some(&mut diff_opts),
-                )?;
-
-                // Enable rename detection
-                let mut find_opts = DiffFindOptions::new();
-                diff.find_similar(Some(&mut find_opts))?;
-
-                self.convert_diff_to_file_diffs(diff, &repo)
-            }
-            DiffTarget::Commit {
-                repo_path,
-                commit_sha,
-            } => {
-                let repo = self.open_repo(repo_path)?;
-
-                // Resolve commit and its baseline (the parent before the squash landed)
-                let commit_oid = git2::Oid::from_str(commit_sha).map_err(|_| {
-                    GitServiceError::InvalidRepository(format!("Invalid commit SHA: {commit_sha}"))
-                })?;
-                let commit = repo.find_commit(commit_oid)?;
-                let parent = commit.parent(0).map_err(|_| {
-                    GitServiceError::InvalidRepository(
-                        "Commit has no parent; cannot diff a squash merge without a baseline"
-                            .into(),
-                    )
-                })?;
-
-                let parent_tree = parent.tree()?;
-                let commit_tree = commit.tree()?;
-
-                // Diff options
-                let mut diff_opts = git2::DiffOptions::new();
-                diff_opts.include_typechange(true);
-
-                // Optional path filtering
-                if let Some(paths) = path_filter {
-                    for path in paths {
-                        diff_opts.pathspec(*path);
-                    }
-                }
-
-                // Compute the diff parent -> commit
-                let mut diff = repo.diff_tree_to_tree(
-                    Some(&parent_tree),
-                    Some(&commit_tree),
-                    Some(&mut diff_opts),
-                )?;
-
-                // Enable rename detection
-                let mut find_opts = git2::DiffFindOptions::new();
-                diff.find_similar(Some(&mut find_opts))?;
-
-                self.convert_diff_to_file_diffs(diff, &repo)
-            }
         }
-    }
-
-    /// Convert git2::Diff to our Diff structs
-    fn convert_diff_to_file_diffs(
-        &self,
-        diff: git2::Diff,
-        repo: &Repository,
-    ) -> Result<Vec<Diff>, GitServiceError> {
-        let mut file_diffs = Vec::new();
-
-        let mut delta_index: usize = 0;
-        diff.foreach(
-            &mut |delta, _| {
-                if delta.status() == Delta::Unreadable {
-                    return true;
-                }
-
-                let status = delta.status();
-
-                // Decide if we should omit content due to size
-                let mut content_omitted = false;
-                // Check old blob size when applicable
-                if !matches!(status, Delta::Added) {
-                    let oid = delta.old_file().id();
-                    if !oid.is_zero()
-                        && let Ok(blob) = repo.find_blob(oid)
-                        && !blob.is_binary()
-                        && blob.size() > MAX_INLINE_DIFF_BYTES
-                    {
-                        content_omitted = true;
-                    }
-                }
-                // Check new blob size when applicable
-                if !matches!(status, Delta::Deleted) {
-                    let oid = delta.new_file().id();
-                    if !oid.is_zero()
-                        && let Ok(blob) = repo.find_blob(oid)
-                        && !blob.is_binary()
-                        && blob.size() > MAX_INLINE_DIFF_BYTES
-                    {
-                        content_omitted = true;
-                    }
-                }
-
-                // Only build old/new content if not omitted
-                let (old_path, old_content) = if matches!(status, Delta::Added) {
-                    (None, None)
-                } else {
-                    let path_opt = delta
-                        .old_file()
-                        .path()
-                        .map(|p| p.to_string_lossy().to_string());
-                    if content_omitted {
-                        (path_opt, None)
-                    } else {
-                        let details = delta
-                            .old_file()
-                            .path()
-                            .map(|p| self.create_file_details(p, &delta.old_file().id(), repo));
-                        (
-                            details.as_ref().and_then(|f| f.file_name.clone()),
-                            details.and_then(|f| f.content),
-                        )
-                    }
-                };
-
-                let (new_path, new_content) = if matches!(status, Delta::Deleted) {
-                    (None, None)
-                } else {
-                    let path_opt = delta
-                        .new_file()
-                        .path()
-                        .map(|p| p.to_string_lossy().to_string());
-                    if content_omitted {
-                        (path_opt, None)
-                    } else {
-                        let details = delta
-                            .new_file()
-                            .path()
-                            .map(|p| self.create_file_details(p, &delta.new_file().id(), repo));
-                        (
-                            details.as_ref().and_then(|f| f.file_name.clone()),
-                            details.and_then(|f| f.content),
-                        )
-                    }
-                };
-
-                let mut change = match status {
-                    Delta::Added => DiffChangeKind::Added,
-                    Delta::Deleted => DiffChangeKind::Deleted,
-                    Delta::Modified => DiffChangeKind::Modified,
-                    Delta::Renamed => DiffChangeKind::Renamed,
-                    Delta::Copied => DiffChangeKind::Copied,
-                    Delta::Untracked => DiffChangeKind::Added,
-                    _ => DiffChangeKind::Modified,
-                };
-
-                // Detect pure mode changes (e.g., chmod +/-x) and classify as PermissionChange
-                if matches!(status, Delta::Modified)
-                    && delta.old_file().mode() != delta.new_file().mode()
-                {
-                    // Only downgrade to PermissionChange if we KNOW content is unchanged
-                    if old_content.is_some() && new_content.is_some() && old_content == new_content
-                    {
-                        change = DiffChangeKind::PermissionChange;
-                    }
-                }
-
-                // Always compute line stats via libgit2 Patch
-                let (additions, deletions) = if let Ok(Some(patch)) =
-                    git2::Patch::from_diff(&diff, delta_index)
-                    && let Ok((_ctx, adds, dels)) = patch.line_stats()
-                {
-                    (Some(adds), Some(dels))
-                } else {
-                    (None, None)
-                };
-
-                file_diffs.push(Diff {
-                    change,
-                    old_path,
-                    new_path,
-                    old_content,
-                    new_content,
-                    content_omitted,
-                    additions,
-                    deletions,
-                    repo_id: None,
-                });
-
-                delta_index += 1;
-                true
-            },
-            None,
-            None,
-            None,
-        )?;
-
-        Ok(file_diffs)
     }
 
     /// Extract file path from a Diff (for indexing and ConversationPatch)
@@ -701,39 +466,6 @@ impl GitService {
                 tracing::debug!("File is not valid UTF-8: {:?}: {}", abs_path, e);
                 None
             }
-        }
-    }
-
-    /// Create FileDiffDetails from path and blob with filesystem fallback
-    fn create_file_details(
-        &self,
-        path: &Path,
-        blob_id: &git2::Oid,
-        repo: &Repository,
-    ) -> FileDiffDetails {
-        let file_name = path.to_string_lossy().to_string();
-
-        // Try to get content from blob first (for non-zero OIDs)
-        let content = if !blob_id.is_zero() {
-            repo.find_blob(*blob_id)
-                .ok()
-                .and_then(|blob| Self::blob_to_string(&blob))
-                .or_else(|| {
-                    // Fallback to filesystem for unstaged changes
-                    tracing::debug!(
-                        "Blob not found for non-zero OID, reading from filesystem: {}",
-                        file_name
-                    );
-                    Self::read_file_to_string(repo, path)
-                })
-        } else {
-            // For zero OIDs, check filesystem directly (covers new/untracked files)
-            Self::read_file_to_string(repo, path)
-        };
-
-        FileDiffDetails {
-            file_name: Some(file_name),
-            content,
         }
     }
 
