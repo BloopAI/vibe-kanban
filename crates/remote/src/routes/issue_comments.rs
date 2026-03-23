@@ -284,6 +284,31 @@ async fn delete_issue_comment(
         ));
     }
 
+    // Capture linear comment link data BEFORE deleting the VK comment, because the
+    // ON DELETE CASCADE on linear_comment_links.vk_comment_id will remove the link row
+    // automatically when the VK comment is deleted, making it unreachable afterwards.
+    let linear_comment_data = if let Some(enc_key) = state
+        .config()
+        .linear_encryption_key
+        .as_ref()
+        .map(|k| k.expose_secret().to_string())
+    {
+        let row = sqlx::query!(
+            r#"SELECT lcl.linear_comment_id, lpc.encrypted_api_key
+               FROM linear_comment_links lcl
+               JOIN linear_project_connections lpc ON lpc.id = lcl.connection_id
+               WHERE lcl.vk_comment_id = $1"#,
+            issue_comment_id
+        )
+        .fetch_optional(state.pool())
+        .await
+        .ok()
+        .flatten();
+        row.map(|r| (enc_key, r.encrypted_api_key, r.linear_comment_id))
+    } else {
+        None
+    };
+
     let response = IssueCommentRepository::delete(state.pool(), issue_comment_id)
         .await
         .map_err(|error| {
@@ -291,19 +316,16 @@ async fn delete_issue_comment(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    if let Some(enc_key) = state
-        .config()
-        .linear_encryption_key
-        .as_ref()
-        .map(|k| k.expose_secret().to_string())
-    {
-        let (pool, http, cid) = (
-            state.pool().clone(),
-            state.http_client.clone(),
-            issue_comment_id,
-        );
+    if let Some((enc_key, encrypted_api_key, linear_comment_id)) = linear_comment_data {
+        let http = state.http_client.clone();
         tokio::spawn(async move {
-            crate::linear::outbound::delete_comment_from_linear(&pool, &http, &enc_key, cid).await;
+            crate::linear::outbound::delete_linear_issue_comment(
+                &http,
+                &enc_key,
+                &encrypted_api_key,
+                &linear_comment_id,
+            )
+            .await;
         });
     }
 

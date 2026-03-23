@@ -153,6 +153,22 @@ pub async fn push_comment_to_linear(
     }
 }
 
+/// Delete a Linear comment using pre-captured link data.
+/// Must be called AFTER capturing the link data but BEFORE (or after) the VK comment deletion.
+/// Use this instead of `delete_comment_from_linear` when the cascade-delete has already removed
+/// the `linear_comment_links` row.
+pub async fn delete_linear_issue_comment(
+    http: &Client,
+    enc_key: &str,
+    encrypted_api_key: &str,
+    linear_comment_id: &str,
+) {
+    let Ok(api_key) = crypto::decrypt(enc_key, encrypted_api_key) else {
+        return;
+    };
+    let _ = client::delete_comment(http, &api_key, linear_comment_id).await;
+}
+
 /// Delete a comment from Linear. Safe to call after the VK comment is deleted since
 /// `linear_comment_links` is not cascade-deleted when `issue_comments` rows are removed.
 pub async fn delete_comment_from_linear(
