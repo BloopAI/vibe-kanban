@@ -140,8 +140,9 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
     }
 
     /// Discover PRs created outside of VK on workspace branches.
-    /// Scans all active workspaces, queries GitHub for PRs on their branch,
-    /// and links any not already known. Runs before check_all_open_prs so
+    /// On the first run, scans all active workspaces; on subsequent runs,
+    /// only checks workspaces updated since the last discovery cycle.
+    /// Links any PRs not already known. Runs before check_all_open_prs so
     /// newly discovered PRs get their status checked in the same cycle.
     async fn discover_new_prs(&self) -> Result<(), PrMonitorError> {
         let updated_since = *self.last_discovery_at.lock().unwrap();
