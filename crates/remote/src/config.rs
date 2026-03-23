@@ -215,7 +215,7 @@ impl RemoteServerConfig {
         let refresh_token_overlap_secs = env::var("REFRESH_TOKEN_OVERLAP_SECS")
             .ok()
             .and_then(|value| value.parse::<i64>().ok())
-            .filter(|value| *value >= 0)
+            .filter(|value| *value >= 0 && *value <= 300)
             .unwrap_or(60);
 
         let electric_url =

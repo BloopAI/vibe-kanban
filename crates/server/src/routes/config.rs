@@ -130,6 +130,15 @@ async fn get_user_system_info(
                             .await;
                     }
 
+                    deployment
+                        .track_if_analytics_allowed(
+                            "login_status_timeout",
+                            serde_json::json!({
+                                "has_cached_profile": cached_profile.is_some(),
+                            }),
+                        )
+                        .await;
+
                     LoginStatus::LoggedIn {
                         profile: cached_profile,
                     }
