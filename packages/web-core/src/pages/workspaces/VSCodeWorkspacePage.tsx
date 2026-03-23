@@ -117,9 +117,7 @@ export function VSCodeWorkspacePage() {
   }, []);
 
   const handleGetActiveTurnPatchKey = useCallback(() => {
-    return (
-      conversationListRef.current?.getVisibleUserMessagePatchKey() ?? null
-    );
+    return conversationListRef.current?.getVisibleUserMessagePatchKey() ?? null;
   }, []);
 
   const handleScrollToBottom = useCallback(
