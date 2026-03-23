@@ -36,7 +36,6 @@
 | File | Change |
 |------|--------|
 | `crates/remote/src/config.rs` | Add `linear_encryption_key: Option<SecretString>` |
-| `crates/remote/src/state.rs` | Add `linear_config: Option<LinearConfig>` + accessor |
 | `crates/remote/src/lib.rs` | Add `pub mod linear;` |
 | `crates/remote/src/routes/mod.rs` | Register `linear::public_router()` and `linear::protected_router()` |
 | `crates/remote/src/routes/issues.rs` | Spawn outbound sync after create/update/delete/bulk |
@@ -103,6 +102,7 @@ CREATE TABLE linear_comment_links (
     connection_id       UUID NOT NULL REFERENCES linear_project_connections(id) ON DELETE CASCADE,
     vk_comment_id       UUID NOT NULL UNIQUE REFERENCES issue_comments(id) ON DELETE CASCADE,
     linear_comment_id   TEXT NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_comment_link_per_conn UNIQUE (connection_id, linear_comment_id)
 );
 
@@ -120,12 +120,14 @@ CREATE INDEX idx_linear_sync_in_flight_expiry ON linear_sync_in_flight(expires_a
 SELECT electric_sync_table('public', 'linear_project_connections');
 ```
 
-- [ ] **Step 2: Run the migration to verify it applies cleanly**
+- [ ] **Step 2: Run the migration and regenerate SQLx offline snapshots**
 
 ```bash
 pnpm run remote:prepare-db
 ```
 Expected: exits 0, no errors.
+
+> **Important for all subsequent tasks:** Any task that adds new `sqlx::query!` or `sqlx::query_as!` macros referencing the new `linear_*` tables requires the offline snapshots to be up-to-date. After the migration in Task 1, the snapshots are current for the initial tables. If you add queries in later tasks and see `cargo check` fail with "no offline data", run `pnpm run remote:prepare-db` again (requires a running Postgres with the migration applied).
 
 - [ ] **Step 3: Commit**
 
@@ -1635,7 +1637,18 @@ pub fn protected_router() -> Router<AppState> {
         .route("/linear/connections/:id/status-mappings", get(get_status_mappings).put(save_status_mappings))
         .route("/linear/connections/:id/teams", get(list_teams_for_connection))
         .route("/linear/connections/:id/sync", post(trigger_sync))
+        .route("/linear/connections/:id/stats", get(get_connection_stats))
+        .route("/linear/teams-preview", post(teams_preview))
 }
+
+// ── teams_preview (no stored connection needed) ───────────────────────────────
+// POST /v1/linear/teams-preview { api_key: String } → Vec<LinearTeam>
+// Used by ConnectLinearPanel to validate key + list teams before creating a connection.
+
+// ── get_connection_stats ──────────────────────────────────────────────────────
+// GET /v1/linear/connections/:id/stats → { linkedCount: i64, lastSyncedAt: Option<DateTime> }
+// SELECT COUNT(*), MAX(last_synced_at) FROM linear_issue_links
+//   WHERE vk_issue_id IN (SELECT id FROM issues WHERE project_id = conn.project_id)
 
 // ── List connections ──────────────────────────────────────────────────────────
 
@@ -2229,23 +2242,39 @@ async fn resolve_status_id(
     Ok(sync::map_linear_state_to_vk(linear_state_id, &mappings, fallback))
 }
 
-// Stub helpers — implement by calling IssueCommentRepository (same pattern as issue_comments.rs)
-async fn create_vk_comment(state: &AppState, issue_id: Uuid, body: &str) -> anyhow::Result<Uuid> {
-    // TODO: call IssueCommentRepository::create, return the new comment UUID
-    todo!("implement using IssueCommentRepository")
-}
-async fn update_vk_comment(state: &AppState, comment_id: Uuid, body: &str) -> anyhow::Result<()> {
-    todo!()
-}
-async fn delete_vk_comment(state: &AppState, comment_id: Uuid) -> anyhow::Result<()> {
-    todo!()
-}
-async fn get_vk_comment_by_linear_id(state: &AppState, connection_id: Uuid, linear_comment_id: &str) -> anyhow::Result<Option<Uuid>> {
+async fn get_vk_comment_by_linear_id(pool: &sqlx::PgPool, connection_id: Uuid, linear_comment_id: &str) -> anyhow::Result<Option<Uuid>> {
     let row = sqlx::query!(
         "SELECT vk_comment_id FROM linear_comment_links WHERE connection_id = $1 AND linear_comment_id = $2",
         connection_id, linear_comment_id
-    ).fetch_optional(state.pool()).await?;
+    ).fetch_optional(pool).await?;
     Ok(row.map(|r| r.vk_comment_id))
+}
+
+/// Create a VK comment. Look at `crates/remote/src/db/issue_comments.rs` for the exact
+/// `IssueCommentRepository::create` signature and call it with a system/bot user_id
+/// (use the connection's project owner, or a sentinel UUID if no user context is available).
+/// Return the new comment's UUID.
+async fn create_vk_comment(state: &AppState, issue_id: Uuid, body: &str) -> anyhow::Result<Uuid> {
+    // Read crates/remote/src/db/issue_comments.rs to find IssueCommentRepository::create signature
+    // It typically takes: pool, issue_id, body, created_by_user_id -> Result<IssueComment, _>
+    // Use a sentinel UUID or the project creator's user_id as created_by.
+    // Example (adjust to actual signature):
+    //
+    // let comment = IssueCommentRepository::create(
+    //     state.pool(), issue_id, body.to_string(), SYSTEM_USER_ID
+    // ).await?;
+    // Ok(comment.id)
+    todo!("Implement after reading crates/remote/src/db/issue_comments.rs")
+}
+
+async fn update_vk_comment(state: &AppState, comment_id: Uuid, body: &str) -> anyhow::Result<()> {
+    // IssueCommentRepository::update(state.pool(), comment_id, body.to_string()).await?;
+    todo!("Implement after reading crates/remote/src/db/issue_comments.rs")
+}
+
+async fn delete_vk_comment(state: &AppState, comment_id: Uuid) -> anyhow::Result<()> {
+    // IssueCommentRepository::delete(state.pool(), comment_id).await?;
+    todo!("Implement after reading crates/remote/src/db/issue_comments.rs")
 }
 ```
 
@@ -2330,48 +2359,42 @@ The outbound sync is a shared function that fires after mutations. Extract it to
 
 - [ ] **Step 1: Create `crates/remote/src/linear/outbound.rs`**
 
+All public functions accept `enc_key: &str` (the plaintext `VIBEKANBAN_REMOTE_LINEAR_ENCRYPTION_KEY`) so callers (which have `AppState`) don't need to be threaded through.
+
 ```rust
 use reqwest::Client;
 use sqlx::PgPool;
-use tracing::{info, warn};
+use tracing::warn;
 use uuid::Uuid;
 
 use crate::linear::{client, crypto, db, loop_guard, sync};
-use secrecy::ExposeSecret;
 
-pub async fn push_issue_to_linear(pool: &PgPool, http: &Client, vk_issue_id: Uuid) {
-    let Ok(Some(issue)) = crate::db::issues::IssueRepository::find_by_id(pool, vk_issue_id).await else { return };
+/// Push a VK issue create/update to Linear.
+/// `enc_key` is the plaintext AES-256-GCM key from config.
+pub async fn push_issue_to_linear(pool: &PgPool, http: &Client, enc_key: &str, vk_issue_id: Uuid) {
+    let Ok(Some(issue)) = fetch_issue(pool, vk_issue_id).await else { return };
     let Ok(Some(conn)) = db::get_connection_for_project(pool, issue.project_id).await else { return };
-    let Ok(Some(config)) = get_linear_config(pool).await else { return };
+    let Ok(api_key) = crypto::decrypt(enc_key, &conn.encrypted_api_key) else { return };
 
-    // Acquire outbound lock
     match loop_guard::try_acquire(pool, conn.id, vk_issue_id, loop_guard::SyncDirection::Outbound).await {
         Ok(true) => {}
-        _ => return, // already in flight or error
+        _ => return,
     }
 
-    let api_key = match get_api_key(&conn, &config) {
-        Ok(k) => k,
-        Err(_) => { loop_guard::release(pool, conn.id, vk_issue_id, loop_guard::SyncDirection::Outbound).await.ok(); return; }
-    };
-
-    let mappings = match db::get_status_mappings(pool, conn.id).await {
-        Ok(m) => m,
-        Err(_) => { loop_guard::release(pool, conn.id, vk_issue_id, loop_guard::SyncDirection::Outbound).await.ok(); return; }
-    };
-
-    let linear_state_id = sync::map_vk_status_to_linear(issue.status_id, &mappings)
-        .map(String::from);
+    let mappings = db::get_status_mappings(pool, conn.id).await.unwrap_or_default();
+    let linear_state_id = sync::map_vk_status_to_linear(issue.status_id, &mappings).map(String::from);
     let priority = sync::vk_priority_to_linear(issue.priority.clone());
     let due_date = issue.target_date.map(|d| d.format("%Y-%m-%d").to_string());
 
-    let link = match db::get_link_for_vk_issue(pool, vk_issue_id).await {
-        Ok(l) => l,
-        Err(_) => { loop_guard::release(pool, conn.id, vk_issue_id, loop_guard::SyncDirection::Outbound).await.ok(); return; }
-    };
+    // Resolve first assignee's Linear user ID (by email lookup)
+    let assignee_id = resolve_linear_assignee(pool, http, &api_key, vk_issue_id).await;
+
+    // Resolve label IDs, creating missing ones in Linear
+    let label_ids = resolve_linear_labels(pool, http, &api_key, &conn, vk_issue_id).await;
+
+    let link = db::get_link_for_vk_issue(pool, vk_issue_id).await.unwrap_or(None);
 
     let result = if let Some(link) = link {
-        // Update existing Linear issue
         client::update_issue(
             http, &api_key, &link.linear_issue_id,
             client::UpdateIssueInput {
@@ -2380,12 +2403,11 @@ pub async fn push_issue_to_linear(pool: &PgPool, http: &Client, vk_issue_id: Uui
                 state_id: linear_state_id.as_deref(),
                 priority: Some(priority),
                 due_date: due_date.as_deref(),
-                assignee_id: None, // assignee handled separately
-                label_ids: None,   // labels handled separately
+                assignee_id: assignee_id.as_deref(),
+                label_ids: Some(label_ids.iter().map(|s| s.as_str()).collect()),
             },
         ).await.map(|_| ())
     } else {
-        // Create new Linear issue
         let result = client::create_issue(
             http, &api_key,
             client::CreateIssueInput {
@@ -2396,15 +2418,12 @@ pub async fn push_issue_to_linear(pool: &PgPool, http: &Client, vk_issue_id: Uui
                 state_id: linear_state_id.as_deref(),
                 priority: Some(priority),
                 due_date: due_date.as_deref(),
-                assignee_id: None,
-                label_ids: None,
+                assignee_id: assignee_id.as_deref(),
+                label_ids: Some(label_ids.iter().map(|s| s.as_str()).collect()),
             },
         ).await;
         match result {
-            Ok(li) => {
-                let _ = db::create_issue_link(pool, vk_issue_id, &li.id, &li.identifier).await;
-                Ok(())
-            }
+            Ok(li) => { let _ = db::create_issue_link(pool, vk_issue_id, &li.id, &li.identifier).await; Ok(()) }
             Err(e) => Err(e),
         }
     };
@@ -2414,73 +2433,139 @@ pub async fn push_issue_to_linear(pool: &PgPool, http: &Client, vk_issue_id: Uui
     } else {
         let _ = db::touch_link(pool, vk_issue_id).await;
     }
-
     loop_guard::release(pool, conn.id, vk_issue_id, loop_guard::SyncDirection::Outbound).await.ok();
 }
 
-pub async fn delete_issue_from_linear(pool: &PgPool, http: &Client, vk_issue_id: Uuid) {
-    let Ok(Some(link)) = db::get_link_for_vk_issue(pool, vk_issue_id).await else { return };
-    let Ok(Some(issue)) = crate::db::issues::IssueRepository::find_by_id(pool, vk_issue_id).await else { return };
-    let Ok(Some(conn)) = db::get_connection_for_project(pool, issue.project_id).await else { return };
-    let Ok(Some(config)) = get_linear_config(pool).await else { return };
-    let Ok(api_key) = get_api_key(&conn, &config) else { return };
-
-    let _ = client::delete_issue(http, &api_key, &link.linear_issue_id).await;
-    // Link is cascade-deleted when VK issue is deleted
+/// Delete a Linear issue. Call this BEFORE deleting the VK issue (cascade would remove the link).
+/// `encrypted_api_key` is the stored encrypted key for the connection.
+pub async fn delete_linear_issue(
+    http: &Client,
+    enc_key: &str,
+    encrypted_api_key: &str,
+    linear_issue_id: &str,
+) {
+    let Ok(api_key) = crypto::decrypt(enc_key, encrypted_api_key) else { return };
+    let _ = client::delete_issue(http, &api_key, linear_issue_id).await;
 }
 
-pub async fn push_comment_to_linear(pool: &PgPool, http: &Client, vk_comment_id: Uuid) {
+pub async fn push_comment_to_linear(pool: &PgPool, http: &Client, enc_key: &str, vk_comment_id: Uuid) {
     let Ok(Some(comment)) = fetch_vk_comment(pool, vk_comment_id).await else { return };
     let Ok(Some(issue_link)) = db::get_link_for_vk_issue(pool, comment.issue_id).await else { return };
-    let Ok(Some(issue)) = crate::db::issues::IssueRepository::find_by_id(pool, comment.issue_id).await else { return };
-    let Ok(Some(conn)) = db::get_connection_for_project(pool, issue.project_id).await else { return };
-    let Ok(Some(config)) = get_linear_config(pool).await else { return };
-    let Ok(api_key) = get_api_key(&conn, &config) else { return };
+    let Ok(Some(conn)) = db::get_connection_for_project(pool, comment.project_id).await else { return };
+    let Ok(api_key) = crypto::decrypt(enc_key, &conn.encrypted_api_key) else { return };
 
-    let existing_link = db::get_comment_link(pool, vk_comment_id).await.ok().flatten();
-    if let Some(linear_comment_id) = existing_link {
+    let existing = db::get_comment_link(pool, vk_comment_id).await.ok().flatten();
+    if let Some(linear_comment_id) = existing {
         let _ = client::update_comment(http, &api_key, &linear_comment_id, &comment.body).await;
-    } else {
-        if let Ok(linear_comment_id) = client::create_comment(http, &api_key, &issue_link.linear_issue_id, &comment.body).await {
-            let _ = db::create_comment_link(pool, conn.id, vk_comment_id, &linear_comment_id).await;
-        }
+    } else if let Ok(linear_comment_id) = client::create_comment(http, &api_key, &issue_link.linear_issue_id, &comment.body).await {
+        let _ = db::create_comment_link(pool, conn.id, vk_comment_id, &linear_comment_id).await;
     }
 }
 
-pub async fn delete_comment_from_linear(pool: &PgPool, http: &Client, vk_comment_id: Uuid) {
+pub async fn delete_comment_from_linear(pool: &PgPool, http: &Client, enc_key: &str, vk_comment_id: Uuid) {
     let Ok(Some(linear_comment_id)) = db::get_comment_link(pool, vk_comment_id).await else { return };
-    // Need connection to get API key — join through comment → issue → project → connection
-    // (simplified: fetch comment → issue → connection inline)
-    // TODO: resolve connection + decrypt key, then call client::delete_comment
+    let Ok(Some(comment)) = fetch_vk_comment(pool, vk_comment_id).await else { return };
+    let Ok(Some(conn)) = db::get_connection_for_project(pool, comment.project_id).await else { return };
+    let Ok(api_key) = crypto::decrypt(enc_key, &conn.encrypted_api_key) else { return };
+    let _ = client::delete_comment(http, &api_key, &linear_comment_id).await;
     let _ = db::delete_comment_link(pool, vk_comment_id).await;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-struct LinearConfig {
-    encryption_key: String,
+struct VkIssue {
+    project_id: Uuid,
+    status_id: Uuid,
+    title: String,
+    description: Option<String>,
+    priority: Option<api_types::issue::IssuePriority>,
+    target_date: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-async fn get_linear_config(pool: &PgPool) -> anyhow::Result<Option<LinearConfig>> {
-    // Read from environment directly (config is not stored in DB)
-    let key = std::env::var("VIBEKANBAN_REMOTE_LINEAR_ENCRYPTION_KEY").ok()
-        .filter(|v| !v.is_empty());
-    Ok(key.map(|k| LinearConfig { encryption_key: k }))
+async fn fetch_issue(pool: &PgPool, id: Uuid) -> sqlx::Result<Option<VkIssue>> {
+    let row = sqlx::query!(
+        "SELECT project_id, status_id, title, description, priority as \"priority: api_types::issue::IssuePriority\", target_date FROM issues WHERE id = $1",
+        id
+    ).fetch_optional(pool).await?;
+    Ok(row.map(|r| VkIssue {
+        project_id: r.project_id,
+        status_id: r.status_id,
+        title: r.title,
+        description: r.description,
+        priority: r.priority,
+        target_date: r.target_date,
+    }))
 }
 
-fn get_api_key(conn: &db::LinearProjectConnection, config: &LinearConfig) -> anyhow::Result<String> {
-    crate::linear::crypto::decrypt(&config.encryption_key, &conn.encrypted_api_key)
-        .map_err(|e| anyhow::anyhow!(e))
-}
-
-struct VkComment { issue_id: Uuid, body: String }
+struct VkComment { issue_id: Uuid, project_id: Uuid, body: String }
 
 async fn fetch_vk_comment(pool: &PgPool, comment_id: Uuid) -> sqlx::Result<Option<VkComment>> {
     let row = sqlx::query!(
-        "SELECT issue_id, body FROM issue_comments WHERE id = $1",
+        r#"SELECT ic.issue_id, i.project_id, ic.body
+           FROM issue_comments ic JOIN issues i ON i.id = ic.issue_id
+           WHERE ic.id = $1"#,
         comment_id
     ).fetch_optional(pool).await?;
-    Ok(row.map(|r| VkComment { issue_id: r.issue_id, body: r.body }))
+    Ok(row.map(|r| VkComment { issue_id: r.issue_id, project_id: r.project_id, body: r.body }))
+}
+
+/// Find the first assignee's email, then look up that email in Linear's member list.
+/// Returns the Linear user ID if found.
+async fn resolve_linear_assignee(
+    pool: &PgPool,
+    http: &Client,
+    api_key: &str,
+    vk_issue_id: Uuid,
+) -> Option<String> {
+    // Fetch first assignee's email from VK users table via issue_assignees
+    let row = sqlx::query!(
+        r#"SELECT u.email FROM issue_assignees ia
+           JOIN users u ON u.id = ia.user_id
+           WHERE ia.issue_id = $1 ORDER BY ia.created_at LIMIT 1"#,
+        vk_issue_id
+    ).fetch_optional(pool).await.ok()??;
+
+    // Find Linear user by email — requires listing members; cache this in production
+    // For simplicity: call viewer endpoint and check email match, or search members
+    // Linear doesn't expose a "find user by email" query publicly on the free plan;
+    // use a cached list from the team's members query instead.
+    // This is a best-effort: return None if can't resolve.
+    None // Implement when Linear user resolution is available in the client
+}
+
+/// Resolve Linear label IDs for all VK tags on an issue.
+/// Creates missing labels in Linear and stores the link.
+async fn resolve_linear_labels(
+    pool: &PgPool,
+    http: &Client,
+    api_key: &str,
+    conn: &db::LinearProjectConnection,
+    vk_issue_id: Uuid,
+) -> Vec<String> {
+    let tag_rows = sqlx::query!(
+        "SELECT t.id, t.name, t.color FROM issue_tags it JOIN tags t ON t.id = it.tag_id WHERE it.issue_id = $1",
+        vk_issue_id
+    ).fetch_all(pool).await.unwrap_or_default();
+
+    let label_links = db::get_label_links(pool, conn.id).await.unwrap_or_default();
+    let mut linear_label_ids = Vec::new();
+
+    for tag in &tag_rows {
+        if tag.name.eq_ignore_ascii_case(client::IGNORE_LABEL_NAME) {
+            continue; // never sync the ignore label as a VK tag
+        }
+        if let Some(link) = label_links.iter().find(|l| l.vk_tag_id == tag.id) {
+            linear_label_ids.push(link.linear_label_id.clone());
+        } else {
+            // Create label in Linear and store link
+            let color = tag.color.as_deref().unwrap_or("#808080");
+            if let Ok(linear_label_id) = client::create_label(http, api_key, &conn.linear_team_id, &tag.name, color).await {
+                let _ = db::upsert_label_link(pool, conn.id, tag.id, &linear_label_id, &tag.name).await;
+                linear_label_ids.push(linear_label_id);
+            }
+        }
+    }
+    linear_label_ids
 }
 ```
 
@@ -2488,33 +2573,65 @@ Add `pub mod outbound;` to `crates/remote/src/linear/mod.rs`.
 
 - [ ] **Step 2: Hook into `crates/remote/src/routes/issues.rs`**
 
-After the successful mutation response in `create_issue`, `update_issue`, `delete_issue`, and `bulk_update_issues`, add a `tokio::spawn`:
+After the successful mutation response in `create_issue`, `update_issue`, and `bulk_update_issues`, add a `tokio::spawn`. The encryption key comes from `state.config()`:
 
 ```rust
-// In create_issue, after Ok(Json(MutationResponse { ... })):
-let (pool, http, id) = (state.pool().clone(), state.http_client.clone(), issue_id);
-tokio::spawn(async move {
-    crate::linear::outbound::push_issue_to_linear(&pool, &http, id).await;
-});
-
-// In update_issue, same pattern with the updated issue's id
-// In delete_issue, use delete_issue_from_linear instead:
-tokio::spawn(async move {
-    crate::linear::outbound::delete_issue_from_linear(&pool, &http, id).await;
-});
-
-// In bulk_update_issues, loop over each affected issue_id and spawn
+// In create_issue / update_issue, after successful return:
+let enc_key = state.config().linear_encryption_key.as_ref()
+    .map(|k| k.expose_secret().to_string());
+if let Some(enc_key) = enc_key {
+    let (pool, http, id) = (state.pool().clone(), state.http_client.clone(), issue_id);
+    tokio::spawn(async move {
+        crate::linear::outbound::push_issue_to_linear(&pool, &http, &enc_key, id).await;
+    });
+}
 ```
+
+**For `delete_issue` — CRITICAL:** The `linear_issue_links` row is cascade-deleted when the VK issue is deleted, so you MUST fetch the linear link data BEFORE calling delete:
+
+```rust
+// In delete_issue, BEFORE deleting the issue:
+let linear_link = crate::linear::db::get_link_for_vk_issue(state.pool(), issue_id).await.ok().flatten();
+let linear_conn = if linear_link.is_some() {
+    crate::linear::db::get_connection_for_project(state.pool(), issue.project_id).await.ok().flatten()
+} else { None };
+
+// ... perform the actual delete here ...
+
+// AFTER delete, use the captured data:
+if let (Some(link), Some(conn)) = (linear_link, linear_conn) {
+    let enc_key = state.config().linear_encryption_key.as_ref()
+        .map(|k| k.expose_secret().to_string());
+    if let Some(enc_key) = enc_key {
+        let (http, linear_issue_id, encrypted_api_key) = (
+            state.http_client.clone(), link.linear_issue_id, conn.encrypted_api_key
+        );
+        tokio::spawn(async move {
+            crate::linear::outbound::delete_linear_issue(&http, &enc_key, &encrypted_api_key, &linear_issue_id).await;
+        });
+    }
+}
+```
+
+For `bulk_update_issues`, collect issue IDs and spawn one `push_issue_to_linear` per issue.
 
 - [ ] **Step 3: Hook into `crates/remote/src/routes/issue_comments.rs`**
 
-After create_comment success:
+After create/update comment success — pass `enc_key` from config:
 ```rust
-let (pool, http, cid) = (state.pool().clone(), state.http_client.clone(), new_comment_id);
-tokio::spawn(async move { crate::linear::outbound::push_comment_to_linear(&pool, &http, cid).await; });
+let enc_key = state.config().linear_encryption_key.as_ref()
+    .map(|k| k.expose_secret().to_string());
+if let Some(enc_key) = enc_key {
+    let (pool, http, cid) = (state.pool().clone(), state.http_client.clone(), comment_id);
+    tokio::spawn(async move {
+        crate::linear::outbound::push_comment_to_linear(&pool, &http, &enc_key, cid).await;
+    });
+}
 ```
 
-After update_comment, same `push_comment_to_linear`. After delete_comment, `delete_comment_from_linear`.
+After delete_comment, same pattern with `delete_comment_from_linear(&pool, &http, &enc_key, comment_id)`.
+
+Also hook `issue_assignees.rs` and `issue_tags.rs` — after add/remove, call `push_issue_to_linear` with the issue_id (retrieved from the request path or body), since those mutations affect the issue's assignee/label state.
 
 - [ ] **Step 4: Compile check**
 
@@ -2593,44 +2710,59 @@ interface Props {
 
 export function ConnectLinearPanel({ projectId, onConnected }: Props) {
   const [apiKey, setApiKey] = useState('');
-  const [teams, setTeams] = useState<Array<{ id: string; name: string; key: string }>>([]);
+  const [teams, setTeams] = useState<Array<{ id: string; name: string; key: string }> | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [validating, setValidating] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
 
-  async function validateKey() {
+  // Step 1: validate API key and fetch teams (called on blur or button press)
+  async function fetchTeams() {
     if (!apiKey.trim()) return;
     setValidating(true);
     setError('');
+    setTeams(null);
     try {
-      // POST to /v1/linear/connections/teams-preview (or use a validate endpoint)
-      // For now: just try to connect immediately when they click Connect
+      // Create a temporary connection record just to proxy the team list,
+      // OR expose a standalone endpoint: POST /v1/linear/teams-preview { api_key }
+      // For now use the validate-then-connect flow: try connecting and if it fails show error.
+      // Simpler: add a GET /v1/linear/teams?api_key=... proxy to the protected router.
+      // We'll use a POST to a dedicated preview endpoint added in Task 9:
+      const res = await fetch('/v1/linear/teams-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey }),
+      });
+      if (!res.ok) {
+        setError('Invalid API key or network error');
+        return;
+      }
+      const data = await res.json();
+      setTeams(data);
+      if (data.length === 1) setSelectedTeamId(data[0].id);
+    } catch {
+      setError('Network error');
     } finally {
       setValidating(false);
     }
   }
 
   async function handleConnect() {
+    if (!selectedTeamId) { setError('Select a team'); return; }
     setConnecting(true);
     setError('');
     try {
       const res = await fetch('/v1/linear/connections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId,
-          apiKey,
-          linearTeamId: selectedTeamId,
-        }),
+        body: JSON.stringify({ projectId, apiKey, linearTeamId: selectedTeamId }),
       });
       if (!res.ok) {
-        const text = await res.text();
-        setError(text || 'Failed to connect');
+        setError(await res.text() || 'Failed to connect');
         return;
       }
       onConnected();
-    } catch (e) {
+    } catch {
       setError('Network error');
     } finally {
       setConnecting(false);
@@ -2641,21 +2773,37 @@ export function ConnectLinearPanel({ projectId, onConnected }: Props) {
     <div className="space-y-4">
       <h3 className="text-sm font-medium">Connect Linear</h3>
       <div>
-        <label className="block text-xs text-muted-foreground mb-1">
-          Linear Personal API Key
-        </label>
-        <input
-          type="password"
-          value={apiKey}
-          onChange={e => setApiKey(e.target.value)}
-          placeholder="lin_api_..."
-          className="w-full rounded border px-3 py-2 text-sm"
-        />
+        <label className="block text-xs text-muted-foreground mb-1">Linear Personal API Key</label>
+        <div className="flex gap-2">
+          <input
+            type="password"
+            value={apiKey}
+            onChange={e => { setApiKey(e.target.value); setTeams(null); }}
+            placeholder="lin_api_..."
+            className="flex-1 rounded border px-3 py-2 text-sm"
+          />
+          <button onClick={fetchTeams} disabled={!apiKey.trim() || validating} className="btn btn-secondary text-sm">
+            {validating ? 'Checking…' : 'Validate'}
+          </button>
+        </div>
       </div>
+      {teams !== null && (
+        <div>
+          <label className="block text-xs text-muted-foreground mb-1">Linear Team</label>
+          <select
+            value={selectedTeamId}
+            onChange={e => setSelectedTeamId(e.target.value)}
+            className="w-full rounded border px-3 py-2 text-sm"
+          >
+            <option value="">Select a team…</option>
+            {teams.map(t => <option key={t.id} value={t.id}>{t.name} ({t.key})</option>)}
+          </select>
+        </div>
+      )}
       {error && <p className="text-xs text-destructive">{error}</p>}
       <button
         onClick={handleConnect}
-        disabled={!apiKey.trim() || connecting}
+        disabled={!selectedTeamId || connecting}
         className="btn btn-primary text-sm"
       >
         {connecting ? 'Connecting…' : 'Connect & Import'}
@@ -2663,6 +2811,10 @@ export function ConnectLinearPanel({ projectId, onConnected }: Props) {
     </div>
   );
 }
+
+// NOTE: Also add a POST /v1/linear/teams-preview route in Task 9's protected_router:
+// POST /v1/linear/teams-preview { api_key } → calls client::list_teams, returns teams
+// This avoids creating a connection just to list teams.
 ```
 
 - [ ] **Step 2: Create `status-mapping.tsx`**
@@ -2767,6 +2919,11 @@ interface Connection {
   createdAt: string;
 }
 
+interface SyncStats {
+  linkedCount: number;
+  lastSyncedAt: string | null;
+}
+
 interface Props {
   connection: Connection;
   onDisconnect: () => void;
@@ -2776,6 +2933,18 @@ interface Props {
 export function SyncStatusPanel({ connection, onDisconnect, onToggleSync }: Props) {
   const [syncing, setSyncing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [stats, setStats] = useState<SyncStats | null>(null);
+
+  useEffect(() => {
+    // Fetch linked issue count and last synced timestamp
+    // Add GET /v1/linear/connections/:id/stats endpoint that returns these fields
+    // (returns COUNT(*) from linear_issue_links WHERE vk_issue_id IN project issues,
+    //  and MAX(last_synced_at) from the same)
+    fetch(`/v1/linear/connections/${connection.id}/stats`)
+      .then(r => r.json())
+      .then(setStats)
+      .catch(() => {});
+  }, [connection.id]);
 
   async function triggerSync() {
     setSyncing(true);
@@ -2800,6 +2969,12 @@ export function SyncStatusPanel({ connection, onDisconnect, onToggleSync }: Prop
           <p className="text-xs text-muted-foreground">
             Connected {new Date(connection.createdAt).toLocaleDateString()}
           </p>
+          {stats && (
+            <p className="text-xs text-muted-foreground">
+              {stats.linkedCount} issues linked
+              {stats.lastSyncedAt && ` · last synced ${new Date(stats.lastSyncedAt).toLocaleString()}`}
+            </p>
+          )}
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -2821,6 +2996,11 @@ export function SyncStatusPanel({ connection, onDisconnect, onToggleSync }: Prop
     </div>
   );
 }
+
+// NOTE: Add GET /v1/linear/connections/:id/stats to protected_router in Task 9:
+// Returns { linkedCount: i64, lastSyncedAt: Option<DateTime<Utc>> }
+// Query: SELECT COUNT(*), MAX(last_synced_at) FROM linear_issue_links
+//        WHERE vk_issue_id IN (SELECT id FROM issues WHERE project_id = conn.project_id)
 ```
 
 - [ ] **Step 4: Create `index.tsx`**
@@ -2887,7 +3067,15 @@ export function LinearIntegration({ projectId, vkStatuses }: Props) {
 
 - [ ] **Step 5: Wire `LinearIntegration` into the project settings panel**
 
-Find the project settings component in `packages/web-core/src/components/settings/` (look for a `ProjectSettings` or similar component). Add a "Linear" tab/section that renders `<LinearIntegration projectId={...} vkStatuses={...} />`.
+First, find the exact project settings file:
+```bash
+find packages/web-core/src -name "*.tsx" | xargs grep -l "ProjectSettings\|project-settings\|projectSettings" | head -5
+```
+Or look in `packages/web-core/src/components/` for a file like `project-settings.tsx` or a settings panel that renders per-project config. Add a "Integrations" or "Linear" section/tab that renders:
+```tsx
+<LinearIntegration projectId={project.id} vkStatuses={project.statuses} />
+```
+Import from `'./linear-integration'`.
 
 - [ ] **Step 6: Type check frontend**
 
