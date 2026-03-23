@@ -280,11 +280,11 @@ export function SessionChatBox<TExecutor extends string = string>({
   // Derived state from status
   const isDisabled = Boolean(
     status === "sending" ||
-      status === "stopping" ||
-      feedbackMode?.isSubmitting ||
-      editMode?.isSubmitting ||
-      approvalMode?.isSubmitting ||
-      askQuestionMode?.isSubmitting,
+    status === "stopping" ||
+    feedbackMode?.isSubmitting ||
+    editMode?.isSubmitting ||
+    approvalMode?.isSubmitting ||
+    askQuestionMode?.isSubmitting,
   );
   const hasContent =
     editor.value.trim().length > 0 || (reviewComments?.count ?? 0) > 0;
