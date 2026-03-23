@@ -58,6 +58,7 @@ export interface ConversationListHandle {
   adjustScrollBy: (delta: number) => void;
   getScrollElement: () => HTMLDivElement | null;
   scrollToEntryByPatchKey: (patchKey: string) => void;
+  getVisibleUserMessagePatchKey: () => string | null;
 }
 
 const ALWAYS_UNVIRTUALIZED_TAIL_ROWS = 8;
@@ -660,6 +661,36 @@ export const ConversationList = forwardRef<
           programmaticScrollDeadlineRef.current = performance.now() + 1000;
           scrollToAbsoluteIndex(targetIndex, 'start', 'smooth');
         }
+      },
+      getVisibleUserMessagePatchKey: () => {
+        const scrollEl = tanstackScrollRef.current;
+        if (!scrollEl || conversationRows.length === 0) return null;
+
+        const containerTop = scrollEl.getBoundingClientRect().top;
+        const rowNodes = Array.from(
+          scrollEl.querySelectorAll<HTMLElement>('[data-row-index]')
+        );
+
+        let firstVisibleIndex = conversationRows.length - 1;
+
+        for (const node of rowNodes) {
+          const rect = node.getBoundingClientRect();
+          if (rect.bottom <= containerTop + 1) continue;
+          const indexAttr = node.dataset.rowIndex;
+          if (!indexAttr) continue;
+          const parsedIndex = Number.parseInt(indexAttr, 10);
+          if (!Number.isFinite(parsedIndex)) continue;
+          firstVisibleIndex = parsedIndex;
+          break;
+        }
+
+        // Find the nearest user message at or before the first visible index
+        for (let i = firstVisibleIndex; i >= 0; i--) {
+          if (conversationRows[i].isUserMessage) {
+            return conversationRows[i].entry.patchKey;
+          }
+        }
+        return null;
       },
     }),
     [

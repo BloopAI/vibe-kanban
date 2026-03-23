@@ -100,6 +100,8 @@ interface SharedProps {
   onScrollToBottom: (behavior?: 'auto' | 'smooth') => void;
   /** Callback to scroll to a specific user message by patchKey */
   onScrollToUserMessage: (patchKey: string) => void;
+  /** Returns the patchKey of the user message currently visible in the viewport */
+  getActiveTurnPatchKey?: () => string | null;
   /** Disable the "view code" click handler (for VS Code extension) */
   disableViewCode: boolean;
   /** Replace diff stats with an "Open Workspace" button in header */
@@ -146,6 +148,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     onScrollToPreviousMessage,
     onScrollToBottom,
     onScrollToUserMessage,
+    getActiveTurnPatchKey,
     disableViewCode = false,
     showOpenWorkspaceButton,
   } = props;
@@ -1002,6 +1005,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       onScrollToPreviousMessage={onScrollToPreviousMessage}
       userMessageTurns={userMessageTurns}
       onScrollToUserMessage={onScrollToUserMessage}
+      getActiveTurnPatchKey={getActiveTurnPatchKey}
       renderEditor={renderEditor}
       repoIds={repoIds}
       tokenUsageInfo={tokenUsageInfo}

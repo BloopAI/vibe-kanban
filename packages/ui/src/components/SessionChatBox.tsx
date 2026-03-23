@@ -189,6 +189,7 @@ interface SessionChatBoxProps<TExecutor extends string = string> {
   onScrollToPreviousMessage?: () => void;
   userMessageTurns?: TurnNavigationItem[];
   onScrollToUserMessage?: (patchKey: string) => void;
+  getActiveTurnPatchKey?: () => string | null;
   tokenUsageInfo?: ContextUsageInfo | null;
   supportsContextUsage?: boolean;
   dropzone?: DropzoneProps;
@@ -250,6 +251,7 @@ export function SessionChatBox<TExecutor extends string = string>({
   onScrollToPreviousMessage,
   userMessageTurns,
   onScrollToUserMessage,
+  getActiveTurnPatchKey,
   tokenUsageInfo,
   supportsContextUsage,
   dropzone,
@@ -791,6 +793,7 @@ export function SessionChatBox<TExecutor extends string = string>({
                 <TurnNavigationPopup
                   turns={userMessageTurns ?? []}
                   onNavigateToTurn={onScrollToUserMessage ?? (() => {})}
+                  getActiveTurnPatchKey={getActiveTurnPatchKey}
                 >
                   <ToolbarIconButton
                     icon={ArrowUpIcon}

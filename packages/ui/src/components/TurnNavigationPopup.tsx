@@ -1,4 +1,11 @@
-import { useState, useRef, useCallback, type ReactNode } from 'react';
+import {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  type ReactNode,
+} from 'react';
+import { cn } from '../lib/cn';
 import { Popover, PopoverTrigger, PopoverContent } from './Popover';
 
 export interface TurnNavigationItem {
@@ -15,6 +22,8 @@ interface TurnNavigationPopupProps {
   turns: TurnNavigationItem[];
   /** Called when user clicks a turn to scroll to it */
   onNavigateToTurn: (patchKey: string) => void;
+  /** Returns the patchKey of the currently visible user message */
+  getActiveTurnPatchKey?: () => string | null;
   /** The trigger element (e.g. ArrowUp button) */
   children: ReactNode;
 }
@@ -22,10 +31,13 @@ interface TurnNavigationPopupProps {
 export function TurnNavigationPopup({
   turns,
   onNavigateToTurn,
+  getActiveTurnPatchKey,
   children,
 }: TurnNavigationPopupProps) {
   const [open, setOpen] = useState(false);
+  const [activePatchKey, setActivePatchKey] = useState<string | null>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   const clearCloseTimeout = useCallback(() => {
     if (closeTimeoutRef.current) {
@@ -44,8 +56,9 @@ export function TurnNavigationPopup({
   const handleTriggerEnter = useCallback(() => {
     if (turns.length === 0) return;
     clearCloseTimeout();
+    setActivePatchKey(getActiveTurnPatchKey?.() ?? null);
     setOpen(true);
-  }, [turns.length, clearCloseTimeout]);
+  }, [turns.length, clearCloseTimeout, getActiveTurnPatchKey]);
 
   const handleTriggerLeave = useCallback(() => {
     scheduleClose();
@@ -66,6 +79,21 @@ export function TurnNavigationPopup({
     },
     [onNavigateToTurn]
   );
+
+  // Scroll the list to show the active turn (or bottom if none)
+  useEffect(() => {
+    if (!open || !listRef.current) return;
+    if (activePatchKey) {
+      const activeEl = listRef.current.querySelector(
+        `[data-patch-key="${activePatchKey}"]`
+      );
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: 'center' });
+        return;
+      }
+    }
+    listRef.current.scrollTop = listRef.current.scrollHeight;
+  }, [open, activePatchKey]);
 
   if (turns.length === 0) {
     return <>{children}</>;
@@ -97,25 +125,45 @@ export function TurnNavigationPopup({
             </span>
           </div>
 
-          <ul className="space-y-0.5 overflow-y-auto min-h-0">
-            {turns.map((turn) => (
-              <li key={turn.patchKey}>
-                <button
-                  type="button"
-                  className="w-full text-left px-base py-half rounded hover:bg-secondary transition-colors group"
-                  onClick={() => handleNavigate(turn.patchKey)}
-                >
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xs text-low shrink-0 tabular-nums">
-                      #{turn.turnNumber}
-                    </span>
-                    <span className="text-sm text-normal truncate group-hover:text-high">
-                      {turn.content}
-                    </span>
-                  </div>
-                </button>
-              </li>
-            ))}
+          <ul ref={listRef} className="space-y-0.5 overflow-y-auto min-h-0">
+            {turns.map((turn) => {
+              const isActive = turn.patchKey === activePatchKey;
+              return (
+                <li key={turn.patchKey} data-patch-key={turn.patchKey}>
+                  <button
+                    type="button"
+                    className={cn(
+                      'w-full text-left px-base py-half rounded transition-colors group',
+                      isActive
+                        ? 'bg-brand/10 border-l-2 border-brand'
+                        : 'hover:bg-secondary'
+                    )}
+                    onClick={() => handleNavigate(turn.patchKey)}
+                  >
+                    <div className="flex items-baseline gap-2">
+                      <span
+                        className={cn(
+                          'text-xs shrink-0 tabular-nums',
+                          isActive ? 'text-brand' : 'text-low'
+                        )}
+                      >
+                        #{turn.turnNumber}
+                      </span>
+                      <span
+                        className={cn(
+                          'text-sm truncate',
+                          isActive
+                            ? 'text-brand font-medium'
+                            : 'text-normal group-hover:text-high'
+                        )}
+                      >
+                        {turn.content}
+                      </span>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </PopoverContent>
