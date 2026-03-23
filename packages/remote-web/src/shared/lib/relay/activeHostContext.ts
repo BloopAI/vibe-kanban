@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'vk-active-relay-host-id';
+const STORAGE_KEY = "vk-active-relay-host-id";
 
 function readPersistedHostId(): string | null {
   try {
