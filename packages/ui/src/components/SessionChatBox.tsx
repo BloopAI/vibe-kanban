@@ -787,13 +787,11 @@ export function SessionChatBox<TExecutor extends string = string>({
           {/* Turn navigation + Agent icon for existing session mode */}
           {!isNewSessionMode && (
             <>
-              {onScrollToUserMessage ? (
+              {onScrollToPreviousMessage && (
                 <TurnNavigationPopup
                   turns={userMessageTurns ?? []}
-                  onNavigateToTurn={onScrollToUserMessage}
-                />
-              ) : (
-                onScrollToPreviousMessage && (
+                  onNavigateToTurn={onScrollToUserMessage ?? (() => {})}
+                >
                   <ToolbarIconButton
                     icon={ArrowUpIcon}
                     title={t(
@@ -804,7 +802,7 @@ export function SessionChatBox<TExecutor extends string = string>({
                     )}
                     onClick={onScrollToPreviousMessage}
                   />
-                )
+                </TurnNavigationPopup>
               )}
               {renderAgentIcon?.(agent, 'size-icon-xl')}
             </>
