@@ -226,7 +226,8 @@ async fn local_login(
             expires_at: None,
         },
     )
-    .await?;
+    .await?
+    .ok_or(ApiError::Unauthorized)?;
 
     Ok(ResponseJson(ApiResponse::success(profile)))
 }
@@ -327,7 +328,7 @@ fn generate_secret() -> String {
 async fn finalize_login(
     deployment: &DeploymentImpl,
     mut credentials: Credentials,
-) -> Result<ProfileResponse, ApiError> {
+) -> Result<Option<ProfileResponse>, ApiError> {
     let access_token = credentials
         .access_token
         .as_ref()
@@ -378,9 +379,12 @@ async fn finalize_login(
     }
 
     let profile = match deployment.get_login_status().await {
-        api_types::LoginStatus::LoggedIn { profile } => profile,
+        api_types::LoginStatus::LoggedIn { profile } => Some(profile),
         api_types::LoginStatus::LoggedOut => {
-            return Err(ApiError::Unauthorized);
+            tracing::warn!(
+                "login status check returned LoggedOut after saving credentials; credentials are persisted but profile fetch may have failed transiently"
+            );
+            None
         }
     };
 
@@ -392,21 +396,23 @@ async fn finalize_login(
         });
     }
 
-    if let Some(analytics) = deployment.analytics() {
-        analytics.track_event(
-            deployment.user_id(),
-            "$identify",
-            Some(serde_json::json!({
-                "email": profile.email,
-            })),
-        );
-        analytics.track_event(
-            &profile.user_id.to_string(),
-            "$merge_dangerously",
-            Some(serde_json::json!({
-                "alias": deployment.user_id(),
-            })),
-        );
+    if let Some(profile) = &profile {
+        if let Some(analytics) = deployment.analytics() {
+            analytics.track_event(
+                deployment.user_id(),
+                "$identify",
+                Some(serde_json::json!({
+                    "email": profile.email,
+                })),
+            );
+            analytics.track_event(
+                &profile.user_id.to_string(),
+                "$merge_dangerously",
+                Some(serde_json::json!({
+                    "alias": deployment.user_id(),
+                })),
+            );
+        }
     }
 
     let relay_deployment = deployment.clone();
