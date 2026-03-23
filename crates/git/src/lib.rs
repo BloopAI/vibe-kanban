@@ -54,18 +54,6 @@ pub enum GitServiceError {
     RebaseInProgress,
 }
 
-impl GitServiceError {
-    /// Returns true if this error is caused by a git repository not being found.
-    pub fn is_repo_not_found(&self) -> bool {
-        matches!(
-            self,
-            GitServiceError::Git(git_err)
-                if git_err.code() == git2::ErrorCode::NotFound
-                    && git_err.class() == git2::ErrorClass::Repository
-        )
-    }
-}
-
 /// Whether a branch is local or remote (abstraction over git2::BranchType).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GitBranchType {

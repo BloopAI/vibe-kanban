@@ -108,17 +108,6 @@ pub enum DiffStreamError {
     Notify(#[from] notify::Error),
 }
 
-impl DiffStreamError {
-    /// Returns true if this error is caused by a git repository not being found
-    /// (e.g. the worktree directory was deleted while the diff stream was running).
-    fn is_repo_not_found(&self) -> bool {
-        matches!(
-            self,
-            DiffStreamError::GitService(git_err) if git_err.is_repo_not_found()
-        )
-    }
-}
-
 /// Diff stream that owns the filesystem watcher task
 /// When this stream is dropped, the watcher is automatically cleaned up
 pub struct DiffStreamHandle {
@@ -197,11 +186,7 @@ pub async fn create(args: DiffStreamArgs) -> Result<DiffStreamHandle, DiffStream
     let watcher_task = tokio::spawn(async move {
         let mut manager = DiffStreamManager::new(manager_args, tx);
         if let Err(e) = manager.run().await {
-            if e.is_repo_not_found() {
-                tracing::warn!("Diff stream ended: repository no longer found");
-            } else {
-                tracing::error!("Diff stream manager failed: {e}");
-            }
+            tracing::warn!("Diff stream ended: {e}");
             let _ = manager.tx.send(Err(io::Error::other(e.to_string()))).await;
         }
     });
