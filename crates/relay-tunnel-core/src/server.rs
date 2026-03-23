@@ -10,9 +10,9 @@ use futures_util::StreamExt;
 use hyper::{client::conn::http1 as client_http1, upgrade};
 use hyper_util::rt::TokioIo;
 use tokio::sync::Mutex;
-use tokio_yamux::{Config as YamuxConfig, Control, Session};
+use tokio_yamux::{Control, Session};
 
-use crate::ws_io::axum_ws_stream_io;
+use crate::{ws_io::axum_ws_stream_io, yamux_config};
 
 pub type SharedControl = Arc<Mutex<Control>>;
 
@@ -26,7 +26,7 @@ where
     Fut: Future<Output = ()>,
 {
     let ws_io = axum_ws_stream_io(socket);
-    let mut session = Session::new_server(ws_io, YamuxConfig::default());
+    let mut session = Session::new_server(ws_io, yamux_config());
     let control = Arc::new(Mutex::new(session.control()));
 
     on_connected(control).await;

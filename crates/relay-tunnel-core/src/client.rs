@@ -12,9 +12,9 @@ use hyper_util::rt::TokioIo;
 use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_util::sync::CancellationToken;
-use tokio_yamux::{Config as YamuxConfig, Session};
+use tokio_yamux::Session;
 
-use crate::{tls::ws_connector, ws_io::tungstenite_ws_stream_io};
+use crate::{tls::ws_connector, ws_io::tungstenite_ws_stream_io, yamux_config};
 
 pub struct RelayClientConfig {
     pub ws_url: String,
@@ -45,7 +45,7 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
             .context("Failed to connect relay control channel")?;
 
     let ws_io = tungstenite_ws_stream_io(ws_stream);
-    let mut session = Session::new_client(ws_io, YamuxConfig::default());
+    let mut session = Session::new_client(ws_io, yamux_config());
     let mut control = session.control();
 
     tracing::debug!("Relay control channel connected");
