@@ -6,7 +6,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import posthog from 'posthog-js';
 import { PostHogProvider } from 'posthog-js/react';
 import App from '@web/app/entry/App';
-import i18n from '@/i18n';
+import { CrashScreen } from '@vibe/ui/components/CrashScreen';
+import '@/i18n';
 import { router } from '@web/app/router';
 import { oauthApi } from '@/shared/lib/api';
 import { tokenManager } from '@/shared/lib/auth/tokenManager';
@@ -54,7 +55,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <PostHogProvider client={posthog}>
         <Sentry.ErrorBoundary
-          fallback={<p>{i18n.t('common:states.error')}</p>}
+          fallback={({ error, componentStack }) => (
+            <CrashScreen
+              error={error instanceof Error ? error : undefined}
+              componentStack={componentStack}
+            />
+          )}
           showDialog
         >
           <ClickToComponent />

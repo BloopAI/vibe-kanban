@@ -77,12 +77,7 @@
     "browserDefault": "Predeterminado del navegador"
   },
   "states": {
-    "error": "Error",
-    "loading": "Cargando...",
-    "loadingHistory": "Cargando historial",
-    "reconnecting": "Reconectando",
-    "saving": "Guardando...",
-    "success": "Éxito"
+    "loading": "Cargando..."
   },
   "orgSwitcher": {
     "organizations": "Organizaciones",
@@ -518,6 +513,13 @@
     "agent": "Agente",
     "default": "Predeterminado",
     "model": "Modelo"
+  },
+  "crashScreen": {
+    "title": "Something went wrong",
+    "description": "The application encountered an unexpected error.",
+    "reload": "Reload",
+    "showDetails": "Show details",
+    "hideDetails": "Hide details"
   },
   "syncError": {
     "networkErrors": "Errores de red",

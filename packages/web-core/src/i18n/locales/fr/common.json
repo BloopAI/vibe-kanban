@@ -26,12 +26,7 @@
     "selectOption": "Sélectionner une option..."
   },
   "states": {
-    "loading": "Chargement...",
-    "loadingHistory": "Chargement de l'historique",
-    "saving": "Enregistrement...",
-    "error": "Erreur",
-    "success": "Succès",
-    "reconnecting": "Reconnexion"
+    "loading": "Chargement..."
   },
   "language": {
     "browserDefault": "Par défaut du navigateur"
@@ -518,6 +513,13 @@
     "agent": "Agent",
     "default": "Par défaut",
     "model": "Modèle"
+  },
+  "crashScreen": {
+    "title": "Something went wrong",
+    "description": "The application encountered an unexpected error.",
+    "reload": "Reload",
+    "showDetails": "Show details",
+    "hideDetails": "Hide details"
   },
   "syncError": {
     "networkErrors": "Erreurs réseau",

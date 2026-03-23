@@ -77,12 +77,7 @@
     "browserDefault": "브라우저 기본값"
   },
   "states": {
-    "error": "오류",
-    "loading": "로딩 중...",
-    "loadingHistory": "기록 로딩 중",
-    "reconnecting": "재연결 중",
-    "saving": "저장 중...",
-    "success": "성공"
+    "loading": "로딩 중..."
   },
   "orgSwitcher": {
     "organizations": "조직",
@@ -518,6 +513,13 @@
     "agent": "에이전트",
     "default": "기본값",
     "model": "모델"
+  },
+  "crashScreen": {
+    "title": "Something went wrong",
+    "description": "The application encountered an unexpected error.",
+    "reload": "Reload",
+    "showDetails": "Show details",
+    "hideDetails": "Hide details"
   },
   "syncError": {
     "networkErrors": "네트워크 오류",

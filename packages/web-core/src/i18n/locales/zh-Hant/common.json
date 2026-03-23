@@ -26,12 +26,7 @@
     "selectOption": "選擇一個選項..."
   },
   "states": {
-    "loading": "載入中...",
-    "loadingHistory": "載入歷史紀錄",
-    "saving": "儲存中...",
-    "error": "錯誤",
-    "success": "成功",
-    "reconnecting": "重新連線中"
+    "loading": "載入中..."
   },
   "language": {
     "browserDefault": "瀏覽器預設"
@@ -518,6 +513,13 @@
     "agent": "代理",
     "default": "預設",
     "model": "模型"
+  },
+  "crashScreen": {
+    "title": "Something went wrong",
+    "description": "The application encountered an unexpected error.",
+    "reload": "Reload",
+    "showDetails": "Show details",
+    "hideDetails": "Hide details"
   },
   "syncError": {
     "networkErrors": "網路錯誤",

@@ -26,12 +26,7 @@
     "selectOption": "Select an option..."
   },
   "states": {
-    "loading": "Loading...",
-    "loadingHistory": "Loading History",
-    "saving": "Saving...",
-    "error": "Error",
-    "success": "Success",
-    "reconnecting": "Reconnecting"
+    "loading": "Loading..."
   },
   "ok": "OK",
   "error": "Error",
@@ -532,6 +527,13 @@
     "agent": "Agent",
     "default": "Default",
     "model": "Model"
+  },
+  "crashScreen": {
+    "title": "Something went wrong",
+    "description": "The application encountered an unexpected error.",
+    "reload": "Reload",
+    "showDetails": "Show details",
+    "hideDetails": "Hide details"
   },
   "syncError": {
     "networkErrors": "Network Errors",
