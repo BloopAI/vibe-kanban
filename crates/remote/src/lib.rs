@@ -8,6 +8,7 @@ mod billing;
 pub mod config;
 pub mod db;
 pub mod github_app;
+pub mod linear;
 pub mod mail;
 mod middleware;
 pub mod mutation_definition;

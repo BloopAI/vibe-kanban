@@ -19,6 +19,7 @@ pub struct RemoteServerConfig {
     pub review_worker_base_url: Option<String>,
     pub review_disabled: bool,
     pub github_app: Option<GitHubAppConfig>,
+    pub linear_encryption_key: Option<SecretString>,
 }
 
 #[derive(Debug, Clone)]
@@ -237,6 +238,11 @@ impl RemoteServerConfig {
 
         let github_app = GitHubAppConfig::from_env()?;
 
+        let linear_encryption_key = env::var("VIBEKANBAN_REMOTE_LINEAR_ENCRYPTION_KEY")
+            .ok()
+            .filter(|v| !v.is_empty())
+            .map(SecretString::from);
+
         Ok(Self {
             database_url,
             listen_addr,
@@ -251,6 +257,7 @@ impl RemoteServerConfig {
             review_worker_base_url,
             review_disabled,
             github_app,
+            linear_encryption_key,
         })
     }
 }
