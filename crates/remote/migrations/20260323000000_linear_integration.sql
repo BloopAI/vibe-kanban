@@ -22,7 +22,6 @@ CREATE TABLE linear_issue_links (
     created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_linear_issue_id UNIQUE (linear_issue_id)
 );
-CREATE INDEX idx_linear_issue_links_linear_id ON linear_issue_links(linear_issue_id);
 
 CREATE TABLE linear_status_mappings (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
