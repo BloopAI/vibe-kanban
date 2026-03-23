@@ -8,6 +8,7 @@ use axum::{
     extract::{Extension, Path, Query, State},
     http::StatusCode,
 };
+use secrecy::ExposeSecret;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -151,6 +152,22 @@ async fn create_issue_comment(
         .await;
     }
 
+    if let Some(enc_key) = state
+        .config()
+        .linear_encryption_key
+        .as_ref()
+        .map(|k| k.expose_secret().to_string())
+    {
+        let (pool, http, cid) = (
+            state.pool().clone(),
+            state.http_client.clone(),
+            response.data.id,
+        );
+        tokio::spawn(async move {
+            crate::linear::outbound::push_comment_to_linear(&pool, &http, &enc_key, cid).await;
+        });
+    }
+
     Ok(Json(response))
 }
 
@@ -205,6 +222,22 @@ async fn update_issue_comment(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
+    if let Some(enc_key) = state
+        .config()
+        .linear_encryption_key
+        .as_ref()
+        .map(|k| k.expose_secret().to_string())
+    {
+        let (pool, http, cid) = (
+            state.pool().clone(),
+            state.http_client.clone(),
+            issue_comment_id,
+        );
+        tokio::spawn(async move {
+            crate::linear::outbound::push_comment_to_linear(&pool, &http, &enc_key, cid).await;
+        });
+    }
+
     Ok(Json(response))
 }
 
@@ -257,6 +290,22 @@ async fn delete_issue_comment(
             tracing::error!(?error, "failed to delete issue comment");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
+
+    if let Some(enc_key) = state
+        .config()
+        .linear_encryption_key
+        .as_ref()
+        .map(|k| k.expose_secret().to_string())
+    {
+        let (pool, http, cid) = (
+            state.pool().clone(),
+            state.http_client.clone(),
+            issue_comment_id,
+        );
+        tokio::spawn(async move {
+            crate::linear::outbound::delete_comment_from_linear(&pool, &http, &enc_key, cid).await;
+        });
+    }
 
     Ok(Json(response))
 }

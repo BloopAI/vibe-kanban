@@ -7,6 +7,7 @@ use axum::{
     extract::{Extension, Path, Query, State},
     http::StatusCode,
 };
+use secrecy::ExposeSecret;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -128,6 +129,22 @@ async fn create_issue_assignee(
         .await;
     }
 
+    if let Some(enc_key) = state
+        .config()
+        .linear_encryption_key
+        .as_ref()
+        .map(|k| k.expose_secret().to_string())
+    {
+        let (pool, http, id) = (
+            state.pool().clone(),
+            state.http_client.clone(),
+            payload.issue_id,
+        );
+        tokio::spawn(async move {
+            crate::linear::outbound::push_issue_to_linear(&pool, &http, &enc_key, id).await;
+        });
+    }
+
     Ok(Json(response))
 }
 
@@ -177,6 +194,22 @@ async fn delete_issue_assignee(
             },
         )
         .await;
+    }
+
+    if let Some(enc_key) = state
+        .config()
+        .linear_encryption_key
+        .as_ref()
+        .map(|k| k.expose_secret().to_string())
+    {
+        let (pool, http, id) = (
+            state.pool().clone(),
+            state.http_client.clone(),
+            assignee.issue_id,
+        );
+        tokio::spawn(async move {
+            crate::linear::outbound::push_issue_to_linear(&pool, &http, &enc_key, id).await;
+        });
     }
 
     Ok(Json(response))
