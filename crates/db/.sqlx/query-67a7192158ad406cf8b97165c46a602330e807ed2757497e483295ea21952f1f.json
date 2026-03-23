@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                id AS \"id!: Uuid\",\n                workspace_id AS \"workspace_id!: Uuid\",\n                repo_id AS \"repo_id!: Uuid\",\n                merge_commit,\n                target_branch_name,\n                created_at AS \"created_at!: DateTime<Utc>\"\n            FROM merges\n            WHERE workspace_id = ? AND merge_type = 'direct'\n            ORDER BY created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "workspace_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "repo_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "merge_commit",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "target_branch_name",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "67a7192158ad406cf8b97165c46a602330e807ed2757497e483295ea21952f1f"
+}

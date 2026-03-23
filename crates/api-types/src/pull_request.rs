@@ -67,3 +67,15 @@ pub struct CreatePullRequestIssueRequest {
     pub merge_commit_sha: Option<String>,
     pub target_branch_name: String,
 }
+
+/// Request to update a PR status on the remote server.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct UpdatePullRequestApiRequest {
+    pub url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<PullRequestStatus>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub merged_at: Option<Option<DateTime<Utc>>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub merge_commit_sha: Option<Option<String>>,
+}

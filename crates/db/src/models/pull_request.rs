@@ -53,7 +53,7 @@ impl PullRequest {
 
         let pr = Self::find_by_url(pool, pr_url)
             .await?
-            .expect("row must exist after upsert");
+            .ok_or(sqlx::Error::RowNotFound)?;
         Ok(pr)
     }
 

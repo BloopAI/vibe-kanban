@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool, Type};
+use sqlx::{SqlitePool, Type};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -61,7 +61,6 @@ pub enum MergeType {
 }
 
 /// Row type for direct merges only (PR data now lives in pull_requests).
-#[derive(FromRow)]
 struct DirectMergeRow {
     id: Uuid,
     workspace_id: Uuid,
@@ -90,16 +89,16 @@ impl Merge {
         let id = Uuid::new_v4();
         let now = Utc::now();
 
-        sqlx::query(
+        sqlx::query!(
             "INSERT INTO merges (id, workspace_id, repo_id, merge_type, merge_commit, created_at, target_branch_name)
             VALUES (?, ?, ?, 'direct', ?, ?, ?)",
+            id,
+            workspace_id,
+            repo_id,
+            merge_commit,
+            now,
+            target_branch_name,
         )
-        .bind(id)
-        .bind(workspace_id)
-        .bind(repo_id)
-        .bind(merge_commit)
-        .bind(now)
-        .bind(target_branch_name)
         .execute(pool)
         .await?;
 
@@ -119,13 +118,20 @@ impl Merge {
         pool: &SqlitePool,
         workspace_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
-        let direct_rows = sqlx::query_as::<_, DirectMergeRow>(
-            "SELECT id, workspace_id, repo_id, merge_commit, target_branch_name, created_at
+        let direct_rows = sqlx::query_as!(
+            DirectMergeRow,
+            r#"SELECT
+                id AS "id!: Uuid",
+                workspace_id AS "workspace_id!: Uuid",
+                repo_id AS "repo_id!: Uuid",
+                merge_commit,
+                target_branch_name,
+                created_at AS "created_at!: DateTime<Utc>"
             FROM merges
             WHERE workspace_id = ? AND merge_type = 'direct'
-            ORDER BY created_at DESC",
+            ORDER BY created_at DESC"#,
+            workspace_id,
         )
-        .bind(workspace_id)
         .fetch_all(pool)
         .await?;
 
@@ -156,14 +162,21 @@ impl Merge {
         workspace_id: Uuid,
         repo_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
-        let direct_rows = sqlx::query_as::<_, DirectMergeRow>(
-            "SELECT id, workspace_id, repo_id, merge_commit, target_branch_name, created_at
+        let direct_rows = sqlx::query_as!(
+            DirectMergeRow,
+            r#"SELECT
+                id AS "id!: Uuid",
+                workspace_id AS "workspace_id!: Uuid",
+                repo_id AS "repo_id!: Uuid",
+                merge_commit,
+                target_branch_name,
+                created_at AS "created_at!: DateTime<Utc>"
             FROM merges
             WHERE workspace_id = ? AND repo_id = ? AND merge_type = 'direct'
-            ORDER BY created_at DESC",
+            ORDER BY created_at DESC"#,
+            workspace_id,
+            repo_id,
         )
-        .bind(workspace_id)
-        .bind(repo_id)
         .fetch_all(pool)
         .await?;
 

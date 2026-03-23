@@ -219,7 +219,12 @@ async fn update_pull_request(
         last_pr = Some(updated);
     }
 
-    let pr = last_pr.expect("pull_requests is non-empty");
+    let pr = last_pr.ok_or_else(|| {
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "no pull requests updated",
+        )
+    })?;
 
     for pull_request in &pull_requests {
         let issue_ids = PullRequestIssueRepository::issue_ids_for_pr(&mut *tx, pull_request.id)
