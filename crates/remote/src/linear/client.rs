@@ -43,6 +43,7 @@ async fn gql<V: Serialize, T: for<'de> Deserialize<'de>>(
         .json(&GraphQLRequest { query, variables })
         .send()
         .await?
+        .error_for_status()?
         .json::<GraphQLResponse<T>>()
         .await?;
     if let Some(errors) = resp.errors {
@@ -75,6 +76,7 @@ async fn gql_dynamic<V: Serialize, T: for<'de> Deserialize<'de>>(
         .json(&Req { query, variables })
         .send()
         .await?
+        .error_for_status()?
         .json::<GraphQLResponse<T>>()
         .await?;
     if let Some(errors) = resp.errors {
@@ -97,10 +99,7 @@ pub struct LinearViewer {
     pub name: String,
 }
 
-pub async fn get_viewer(
-    client: &Client,
-    api_key: &str,
-) -> Result<LinearViewer, LinearClientError> {
+pub async fn get_viewer(client: &Client, api_key: &str) -> Result<LinearViewer, LinearClientError> {
     #[derive(Deserialize)]
     struct Data {
         viewer: LinearViewer,
@@ -130,13 +129,7 @@ pub async fn list_teams(
     struct Data {
         teams: Nodes,
     }
-    let data: Data = gql(
-        client,
-        api_key,
-        "{ teams { nodes { id name key } } }",
-        (),
-    )
-    .await?;
+    let data: Data = gql(client, api_key, "{ teams { nodes { id name key } } }", ()).await?;
     Ok(data.teams.nodes)
 }
 
@@ -224,57 +217,6 @@ impl LinearIssue {
     }
 }
 
-/// Linear issue with optional project field (used only for filtering in list_issues_page).
-#[derive(Debug, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct LinearIssueRaw {
-    pub id: String,
-    pub identifier: String,
-    pub title: String,
-    pub description: Option<String>,
-    pub priority: i32,
-    pub due_date: Option<String>,
-    pub state: LinearWorkflowState,
-    pub assignee: Option<LinearUser>,
-    pub labels: LinearLabelConnection,
-    pub project: Option<LinearProjectRef>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct LinearProjectRef {
-    pub id: String,
-}
-
-impl LinearIssueRaw {
-    pub fn has_ignore_label(&self) -> bool {
-        self.labels
-            .nodes
-            .iter()
-            .any(|l| l.name.eq_ignore_ascii_case(IGNORE_LABEL_NAME))
-    }
-
-    pub fn into_issue(self) -> LinearIssue {
-        LinearIssue {
-            id: self.id,
-            identifier: self.identifier,
-            title: self.title,
-            description: self.description,
-            priority: self.priority,
-            due_date: self.due_date,
-            state: self.state,
-            assignee: self.assignee,
-            labels: self.labels,
-        }
-    }
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PageInfo {
-    has_next_page: bool,
-    end_cursor: Option<String>,
-}
-
 pub async fn list_issues_page(
     client: &Client,
     api_key: &str,
@@ -282,62 +224,73 @@ pub async fn list_issues_page(
     project_id: Option<&str>,
     after: Option<&str>,
 ) -> Result<(Vec<LinearIssue>, bool, Option<String>), LinearClientError> {
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Vars<'a> {
-        team_id: &'a str,
-        after: Option<&'a str>,
-    }
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct IssueConn {
-        nodes: Vec<LinearIssueRaw>,
-        page_info: PageInfo,
-    }
-    #[derive(Deserialize)]
-    struct Team {
-        issues: IssueConn,
-    }
-    #[derive(Deserialize)]
-    struct Data {
-        team: Team,
-    }
-    let data: Data = gql(
-        client,
-        api_key,
-        r#"query($team_id: String!, $after: String) {
-            team(id: $team_id) {
-                issues(first: 100, after: $after) {
-                    nodes { id identifier title description priority dueDate
-                            state { id name type position }
-                            assignee { id email name }
-                            labels { nodes { id name } }
-                            project { id }
-                    }
-                    pageInfo { hasNextPage endCursor }
-                }
-            }
-        }"#,
-        Vars { team_id, after },
-    )
-    .await?;
-    let raw = data.team.issues.nodes;
-    let filtered: Vec<LinearIssue> = raw
-        .into_iter()
-        .filter(|i| {
-            if let Some(proj_id) = project_id {
-                i.project.as_ref().map(|p| p.id.as_str()) == Some(proj_id)
-            } else {
-                true
-            }
-        })
-        .map(|i| i.into_issue())
-        .collect();
-    Ok((
-        filtered,
-        data.team.issues.page_info.has_next_page,
-        data.team.issues.page_info.end_cursor,
-    ))
+    let filter_arg = if project_id.is_some() {
+        ", filter: { project: { id: { eq: $project_id } } }"
+    } else {
+        ""
+    };
+    let query = format!(
+        r#"query($team_id: String!, $after: String{project_var}) {{
+            team(id: $team_id) {{
+                issues(first: 100, after: $after{filter_arg}) {{
+                    nodes {{ id identifier title description priority dueDate
+                            state {{ id name type position }}
+                            assignee {{ id email name }}
+                            labels {{ nodes {{ id name }} }}
+                    }}
+                    pageInfo {{ hasNextPage endCursor }}
+                }}
+            }}
+        }}"#,
+        project_var = if project_id.is_some() {
+            ", $project_id: ID"
+        } else {
+            ""
+        },
+        filter_arg = filter_arg,
+    );
+
+    let data: serde_json::Value = if let Some(proj_id) = project_id {
+        #[derive(Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct VarsWithProject<'a> {
+            team_id: &'a str,
+            after: Option<&'a str>,
+            project_id: &'a str,
+        }
+        gql_dynamic(
+            client,
+            api_key,
+            query,
+            VarsWithProject {
+                team_id,
+                after,
+                project_id: proj_id,
+            },
+        )
+        .await?
+    } else {
+        #[derive(Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Vars<'a> {
+            team_id: &'a str,
+            after: Option<&'a str>,
+        }
+        gql_dynamic(client, api_key, query, Vars { team_id, after }).await?
+    };
+
+    let issues_obj = data["team"]["issues"]
+        .as_object()
+        .ok_or(LinearClientError::MissingField)?;
+    let has_next_page = issues_obj["pageInfo"]["hasNextPage"]
+        .as_bool()
+        .unwrap_or(false);
+    let end_cursor = issues_obj["pageInfo"]["endCursor"]
+        .as_str()
+        .map(|s| s.to_string());
+    let nodes: Vec<LinearIssue> = serde_json::from_value(issues_obj["nodes"].clone())
+        .map_err(|e| LinearClientError::GraphQL(e.to_string()))?;
+    Ok((nodes, has_next_page, end_cursor))
 }
 
 // ── Issue mutations ───────────────────────────────────────────────────────────
@@ -409,13 +362,27 @@ pub async fn update_issue(
         id: &'a str,
         input: UpdateIssueInput<'a>,
     }
-    let _: serde_json::Value = gql_dynamic(
+    #[derive(Deserialize)]
+    struct IssueUpdate {
+        success: bool,
+    }
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Data {
+        issue_update: IssueUpdate,
+    }
+    let data: Data = gql_dynamic(
         client,
         api_key,
         "mutation($id: String!, $input: IssueUpdateInput!) { issueUpdate(id: $id, input: $input) { success } }".to_string(),
         Vars { id: issue_id, input },
     )
     .await?;
+    if !data.issue_update.success {
+        return Err(LinearClientError::GraphQL(
+            "issueUpdate returned success=false".to_string(),
+        ));
+    }
     Ok(())
 }
 
@@ -428,13 +395,27 @@ pub async fn delete_issue(
     struct Vars<'a> {
         id: &'a str,
     }
-    let _: serde_json::Value = gql(
+    #[derive(Deserialize)]
+    struct IssueDelete {
+        success: bool,
+    }
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Data {
+        issue_delete: IssueDelete,
+    }
+    let data: Data = gql(
         client,
         api_key,
         "mutation($id: String!) { issueDelete(id: $id) { success } }",
         Vars { id: issue_id },
     )
     .await?;
+    if !data.issue_delete.success {
+        return Err(LinearClientError::GraphQL(
+            "issueDelete returned success=false".to_string(),
+        ));
+    }
     Ok(())
 }
 
@@ -511,13 +492,27 @@ pub async fn update_comment(
         id: &'a str,
         body: &'a str,
     }
-    let _: serde_json::Value = gql(
+    #[derive(Deserialize)]
+    struct CommentUpdate {
+        success: bool,
+    }
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Data {
+        comment_update: CommentUpdate,
+    }
+    let data: Data = gql(
         client,
         api_key,
         "mutation($id: String!, $body: String!) { commentUpdate(id: $id, input: { body: $body }) { success } }",
         Vars { id: comment_id, body },
     )
     .await?;
+    if !data.comment_update.success {
+        return Err(LinearClientError::GraphQL(
+            "commentUpdate returned success=false".to_string(),
+        ));
+    }
     Ok(())
 }
 
@@ -530,13 +525,27 @@ pub async fn delete_comment(
     struct Vars<'a> {
         id: &'a str,
     }
-    let _: serde_json::Value = gql(
+    #[derive(Deserialize)]
+    struct CommentDelete {
+        success: bool,
+    }
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Data {
+        comment_delete: CommentDelete,
+    }
+    let data: Data = gql(
         client,
         api_key,
         "mutation($id: String!) { commentDelete(id: $id) { success } }",
         Vars { id: comment_id },
     )
     .await?;
+    if !data.comment_delete.success {
+        return Err(LinearClientError::GraphQL(
+            "commentDelete returned success=false".to_string(),
+        ));
+    }
     Ok(())
 }
 
@@ -619,7 +628,11 @@ pub async fn register_webhook(
                 resourceTypes: ["Issue", "Comment"]
             }) { webhook { id } }
         }"#,
-        Vars { team_id, url, secret },
+        Vars {
+            team_id,
+            url,
+            secret,
+        },
     )
     .await?;
     Ok(data.webhook_create.webhook.id)
@@ -634,12 +647,26 @@ pub async fn delete_webhook(
     struct Vars<'a> {
         id: &'a str,
     }
-    let _: serde_json::Value = gql(
+    #[derive(Deserialize)]
+    struct WebhookDelete {
+        success: bool,
+    }
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Data {
+        webhook_delete: WebhookDelete,
+    }
+    let data: Data = gql(
         client,
         api_key,
         "mutation($id: String!) { webhookDelete(id: $id) { success } }",
         Vars { id: webhook_id },
     )
     .await?;
+    if !data.webhook_delete.success {
+        return Err(LinearClientError::GraphQL(
+            "webhookDelete returned success=false".to_string(),
+        ));
+    }
     Ok(())
 }
