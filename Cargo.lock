@@ -8789,6 +8789,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-macos-fps"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11177f7c97f1322fbcb5d966ebb0378e411145d65f3f2a2f897d8389ebdba583"
+dependencies = [
+ "log",
+ "objc2",
+ "objc2-foundation",
+ "serde",
+ "tauri",
+]
+
+[[package]]
 name = "tauri-plugin-notification"
 version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9979,6 +9992,7 @@ dependencies = [
  "services",
  "tauri",
  "tauri-build",
+ "tauri-plugin-macos-fps",
  "tauri-plugin-notification",
  "tauri-plugin-opener",
  "tauri-plugin-shell",

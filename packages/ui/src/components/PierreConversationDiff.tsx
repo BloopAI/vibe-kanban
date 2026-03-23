@@ -55,7 +55,7 @@ const PIERRE_DIFFS_THEME_CSS = `
   }
 
   /* Light theme overrides */
-  [data-diffs][data-theme-type='light'] {
+  [data-diff][data-theme-type='light'] {
     --diffs-gap-style: none !important;
     
     /* Background colors - use standard CSS variables */
@@ -80,7 +80,7 @@ const PIERRE_DIFFS_THEME_CSS = `
   }
 
   /* Dark theme overrides */
-  [data-diffs][data-theme-type='dark'] {
+  [data-diff][data-theme-type='dark'] {
     --diffs-gap-style: none !important;
     
     /* Background colors - use standard CSS variables */
@@ -209,8 +209,8 @@ export function useDiffData(
           for (const content of hunk.hunkContent) {
             if (content.type === 'change') {
               const change = content as ChangeContent;
-              additions += change.additions.length;
-              deletions += change.deletions.length;
+              additions += change.additions;
+              deletions += change.deletions;
             }
           }
         }

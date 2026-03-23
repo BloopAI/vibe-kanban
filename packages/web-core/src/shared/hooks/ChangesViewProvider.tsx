@@ -3,7 +3,7 @@ import {
   useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
-import { useWorkspaceDiffContext } from '@/shared/hooks/useWorkspaceContext';
+import { useDiffPaths } from '@/shared/stores/useWorkspaceDiffStore';
 import {
   ChangesViewContext,
   ChangesViewActionsContext,
@@ -15,7 +15,7 @@ interface ChangesViewProviderProps {
 }
 
 export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
-  const { diffPaths } = useWorkspaceDiffContext();
+  const diffPaths = useDiffPaths();
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [selectedLineNumber, setSelectedLineNumber] = useState<number | null>(
     null

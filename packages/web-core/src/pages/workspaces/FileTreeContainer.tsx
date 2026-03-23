@@ -8,7 +8,14 @@ import {
   sortDiffs,
 } from '@/shared/lib/fileTreeUtils';
 import { usePersistedCollapsedPaths } from '@/shared/stores/useUiPreferencesStore';
-import { useWorkspaceDiffContext } from '@/shared/hooks/useWorkspaceContext';
+import {
+  useShowGitHubComments,
+  useSetShowGitHubComments,
+  useGetGitHubCommentCountForFile,
+  useGetFilesWithGitHubComments,
+  useGetFirstCommentLineForFile,
+  useIsGitHubCommentsLoading,
+} from '@/shared/stores/useWorkspaceDiffStore';
 import { useChangesView } from '@/shared/hooks/useChangesView';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { useTheme } from '@/shared/hooks/useTheme';
@@ -38,14 +45,12 @@ export function FileTreeContainer({
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  const {
-    showGitHubComments,
-    setShowGitHubComments,
-    getGitHubCommentCountForFile,
-    getFilesWithGitHubComments,
-    getFirstCommentLineForFile,
-    isGitHubCommentsLoading,
-  } = useWorkspaceDiffContext();
+  const showGitHubComments = useShowGitHubComments();
+  const setShowGitHubComments = useSetShowGitHubComments();
+  const getGitHubCommentCountForFile = useGetGitHubCommentCountForFile();
+  const getFilesWithGitHubComments = useGetFilesWithGitHubComments();
+  const getFirstCommentLineForFile = useGetFirstCommentLineForFile();
+  const isGitHubCommentsLoading = useIsGitHubCommentsLoading();
 
   const { selectFile, scrollToFile } = useChangesView();
 

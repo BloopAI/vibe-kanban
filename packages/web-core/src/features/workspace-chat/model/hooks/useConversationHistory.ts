@@ -3,7 +3,11 @@ import {
   ExecutionProcessStatus,
   PatchType,
 } from 'shared/types';
-import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
+import {
+  useExecutionProcessesVisible,
+  useExecutionProcessesIsLoading,
+  useExecutionProcessesIsConnected,
+} from '@/shared/stores/useExecutionProcessesStore';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamJsonPatchEntries } from '@/shared/lib/streamJsonPatchEntries';
 import type {
@@ -30,11 +34,9 @@ export const useConversationHistory = ({
   onTimelineUpdated,
   scopeKey,
 }: UseConversationHistoryParams): UseConversationHistoryResult => {
-  const {
-    executionProcessesVisible: executionProcessesRaw,
-    isLoading,
-    isConnected,
-  } = useExecutionProcessesContext();
+  const executionProcessesRaw = useExecutionProcessesVisible();
+  const isLoading = useExecutionProcessesIsLoading();
+  const isConnected = useExecutionProcessesIsConnected();
   const executionProcesses = useRef<ExecutionProcess[]>(executionProcessesRaw);
   const displayedExecutionProcesses = useRef<ExecutionProcessStateStore>({});
   const loadedInitialEntries = useRef(false);

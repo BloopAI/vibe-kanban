@@ -6,11 +6,32 @@ import {
 } from '@vibe/ui/components/ChangesPanel';
 import { sortDiffs } from '@/shared/lib/fileTreeUtils';
 import { useChangesView } from '@/shared/hooks/useChangesView';
-import { useWorkspaceDiffContext } from '@/shared/hooks/useWorkspaceContext';
+import { useDiffs } from '@/shared/stores/useWorkspaceDiffStore';
 import { useScrollSyncStateMachine } from '@/shared/hooks/useScrollSyncStateMachine';
 import { usePersistedExpanded } from '@/shared/stores/useUiPreferencesStore';
 import { PierreDiffCard } from './PierreDiffCard';
 import type { Diff, DiffChangeKind } from 'shared/types';
+
+/**
+ * Scroll to a specific line inside a Pierre diff.
+ * Pierre renders diff lines inside a `<diffs-container>` custom element
+ * with an open shadow DOM — regular querySelector can't reach [data-line].
+ */
+function scrollToLineInDiff(
+  fileEl: HTMLElement,
+  lineNumber: number,
+  onComplete?: () => void
+): void {
+  const container = fileEl.querySelector('diffs-container');
+  const shadowRoot = container?.shadowRoot ?? null;
+  if (shadowRoot) {
+    const lineEl = shadowRoot.querySelector(`[data-line="${lineNumber}"]`);
+    if (lineEl instanceof HTMLElement) {
+      lineEl.scrollIntoView({ behavior: 'instant', block: 'center' });
+    }
+  }
+  onComplete?.();
+}
 
 // Auto-collapse defaults based on change type (matches DiffsPanel behavior)
 const COLLAPSE_BY_CHANGE_TYPE: Record<DiffChangeKind, boolean> = {
@@ -83,7 +104,7 @@ export function ChangesPanelContainer({
   className,
   workspaceId,
 }: ChangesPanelContainerProps) {
-  const { diffs } = useWorkspaceDiffContext();
+  const diffs = useDiffs();
   const {
     selectedFilePath,
     selectedLineNumber,
@@ -231,20 +252,14 @@ export function ChangesPanelContainer({
       changesPanelRef.current?.scrollToIndex(index, { align: 'start' });
 
       requestAnimationFrame(() => {
-        setTimeout(() => {
-          if (lineNumber) {
-            const fileEl = diffRefs.current.get(path);
-            if (fileEl) {
-              const selector = `[data-line="${lineNumber}"]`;
-              const commentEl = fileEl.querySelector(selector);
-              commentEl?.scrollIntoView({
-                behavior: 'instant',
-                block: 'center',
-              });
-            }
+        if (lineNumber) {
+          const fileEl = diffRefs.current.get(path);
+          if (fileEl) {
+            scrollToLineInDiff(fileEl, lineNumber, onScrollComplete);
+            return;
           }
-          onScrollComplete();
-        }, 100);
+        }
+        onScrollComplete();
       });
     },
     [stateMachineScrollToFile, onScrollComplete]
@@ -265,14 +280,12 @@ export function ChangesPanelContainer({
       changesPanelRef.current?.scrollToIndex(index, { align: 'start' });
 
       if (selectedLineNumber) {
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           const fileEl = diffRefs.current.get(selectedFilePath);
           if (fileEl) {
-            const selector = `[data-line="${selectedLineNumber}"]`;
-            const commentEl = fileEl.querySelector(selector);
-            commentEl?.scrollIntoView({ behavior: 'instant', block: 'center' });
+            scrollToLineInDiff(fileEl, selectedLineNumber);
           }
-        }, 100);
+        });
       }
     }, 0);
 

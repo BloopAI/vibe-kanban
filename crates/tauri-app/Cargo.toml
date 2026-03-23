@@ -33,3 +33,4 @@ arboard = "3.6.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-web-kit = { version = "0.3", features = ["WKWebView"] }
+tauri-plugin-macos-fps = "0.1"

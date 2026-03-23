@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CaretDownIcon,
@@ -29,7 +29,10 @@ import {
   useIgnoreWhitespaceDiff,
 } from '@/shared/stores/useDiffViewStore';
 import { useReview, type ReviewDraft } from '@/shared/hooks/useReview';
-import { useWorkspaceDiffContext } from '@/shared/hooks/useWorkspaceContext';
+import {
+  useShowGitHubComments,
+  useGetGitHubCommentsForFile,
+} from '@/shared/stores/useWorkspaceDiffStore';
 import { isRealMobileDevice } from '@/shared/hooks/useIsMobile';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { OpenInIdeButton } from '@/shared/components/OpenInIdeButton';
@@ -142,7 +145,7 @@ const PIERRE_DIFFS_THEME_CSS = `
   }
 
   /* Light theme overrides */
-  [data-diffs][data-theme-type='light'] {
+  [data-diff][data-theme-type='light'] {
     --diffs-gap-style: none !important;
     
     /* Background colors - use standard CSS variables */
@@ -167,7 +170,7 @@ const PIERRE_DIFFS_THEME_CSS = `
   }
 
   /* Dark theme overrides */
-  [data-diffs][data-theme-type='dark'] {
+  [data-diff][data-theme-type='dark'] {
     --diffs-gap-style: none !important;
     
     /* Background colors - use standard CSS variables */
@@ -213,7 +216,9 @@ function mapAnnotationSideToSplitSide(side: AnnotationSide): DiffSide {
   return side === 'deletions' ? DiffSide.Old : DiffSide.New;
 }
 
-export function PierreDiffCard({
+const NOOP = () => {};
+
+const PierreDiffCardInner = function PierreDiffCard({
   diff,
   expanded,
   onToggle,
@@ -228,8 +233,8 @@ export function PierreDiffCard({
   const ignoreWhitespace = useIgnoreWhitespaceDiff();
 
   const { comments, drafts, setDraft, addComment } = useReview();
-  const { showGitHubComments, getGitHubCommentsForFile } =
-    useWorkspaceDiffContext();
+  const showGitHubComments = useShowGitHubComments();
+  const getGitHubCommentsForFile = useGetGitHubCommentsForFile();
 
   // File path logic
   const filePath = diff.newPath || diff.oldPath || 'unknown';
@@ -268,7 +273,7 @@ export function PierreDiffCard({
         acc +
         hunk.hunkContent.reduce((count, content) => {
           if (content.type === 'change') {
-            return count + (content as ChangeContent).additions.length;
+            return count + (content as ChangeContent).additions;
           }
           return count;
         }, 0)
@@ -282,7 +287,7 @@ export function PierreDiffCard({
         acc +
         hunk.hunkContent.reduce((count, content) => {
           if (content.type === 'change') {
-            return count + (content as ChangeContent).deletions.length;
+            return count + (content as ChangeContent).deletions;
           }
           return count;
         }, 0)
@@ -363,8 +368,8 @@ export function PierreDiffCard({
           <CommentWidgetLine
             draft={metadata.draft}
             widgetKey={metadata.widgetKey}
-            onSave={() => {}}
-            onCancel={() => {}}
+            onSave={NOOP}
+            onCancel={NOOP}
           />
         );
       }
@@ -477,14 +482,17 @@ export function PierreDiffCard({
   );
 
   // Large diff placeholder logic
-  const LARGE_DIFF_THRESHOLD = 2000;
+  const LARGE_DIFF_THRESHOLD = 1000;
   const [forceExpanded, setForceExpanded] = useState(false);
   const totalLines = additions + deletions;
   const isLargeDiff = totalLines > LARGE_DIFF_THRESHOLD;
   const shouldShowPlaceholder = expanded && isLargeDiff && !forceExpanded;
 
   return (
-    <div className={cn('pb-base rounded-sm', className)}>
+    <div
+      className={cn('pb-base rounded-sm', className)}
+      style={{ contain: 'content' }}
+    >
       <div
         className={cn(
           'w-full flex items-center bg-primary px-base gap-base sticky top-0 z-10 border-b border-transparent',
@@ -657,4 +665,6 @@ export function PierreDiffCard({
       )}
     </div>
   );
-}
+};
+
+export const PierreDiffCard = React.memo(PierreDiffCardInner);

@@ -108,6 +108,14 @@ fn main() {
             read_clipboard_text
         ]);
 
+    // Unlock WKWebView's native refresh rate on macOS ProMotion / high-Hz displays.
+    // On macOS 13–15 WKWebView caps rAF at 60fps; this plugin disables that cap
+    // via WebKit's private _features API. No-op on macOS 26+ (cap removed by Apple).
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.plugin(tauri_plugin_macos_fps::init());
+    }
+
     // Only register the updater plugin in release builds — dev builds have a
     // placeholder endpoint that fails config deserialization.
     if !cfg!(debug_assertions) {

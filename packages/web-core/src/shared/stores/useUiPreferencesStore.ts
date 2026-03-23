@@ -899,13 +899,12 @@ export function useMobileFontScale() {
 
 // Hook for workspace-specific panel state
 export function useWorkspacePanelState(workspaceId: string | undefined) {
-  // Get workspace-specific state (falls back to defaults when no workspaceId)
-  const workspacePanelStates = useUiPreferencesStore(
-    (s) => s.workspacePanelStates
+  // Subscribe only to this workspace's panel state slice (not the entire map)
+  const wsState = useUiPreferencesStore((s) =>
+    workspaceId
+      ? (s.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE)
+      : DEFAULT_WORKSPACE_PANEL_STATE
   );
-  const wsState = workspaceId
-    ? (workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE)
-    : DEFAULT_WORKSPACE_PANEL_STATE;
 
   // Global state (sidebars are global)
   const isLeftSidebarVisible = useUiPreferencesStore(

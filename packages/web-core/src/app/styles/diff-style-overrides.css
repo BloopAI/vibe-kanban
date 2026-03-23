@@ -426,6 +426,13 @@
 
 .diff-tailwindcss-wrapper .diff-style-root tr {
   content-visibility: auto;
+  contain: layout style;
+}
+
+/* CSS containment for diff scroll containers - reduces layout recalc in WebKit/Tauri */
+diffs-container {
+  contain: layout style paint;
+  will-change: transform;
 }
 
 .diff-tailwindcss-wrapper .diff-add-widget-wrapper {

@@ -9,15 +9,12 @@ import { useWorkspaceSessions } from '@/shared/hooks/useWorkspaceSessions';
 import { useGitHubComments } from '@/shared/hooks/useGitHubComments';
 import { useDiffStream } from '@/shared/hooks/useDiffStream';
 import { workspacesApi } from '@/shared/lib/api';
-import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
+import { useWorkspaceDiffStore } from '@/shared/stores/useWorkspaceDiffStore';
 import type { DiffStats } from 'shared/types';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 
-import {
-  WorkspaceContext,
-  WorkspaceDiffContext,
-} from '@/shared/hooks/useWorkspaceContext';
+import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 
 interface WorkspaceProviderProps {
   children: ReactNode;
@@ -88,11 +85,6 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     [diffs]
   );
 
-  useEffect(() => {
-    useDiffViewStore.getState().setDiffPaths(Array.from(diffPaths));
-    return () => useDiffViewStore.getState().setDiffPaths([]);
-  }, [diffPaths]);
-
   const diffStats: DiffStats = useMemo(
     () => ({
       files_changed: diffs.length,
@@ -101,6 +93,35 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     }),
     [diffs]
   );
+
+  useEffect(() => {
+    useWorkspaceDiffStore.getState().setWorkspaceDiffData({
+      diffs,
+      diffPaths,
+      diffStats,
+      gitHubComments,
+      isGitHubCommentsLoading,
+      showGitHubComments,
+      setShowGitHubComments,
+      getGitHubCommentsForFile,
+      getGitHubCommentCountForFile,
+      getFilesWithGitHubComments,
+      getFirstCommentLineForFile,
+    });
+    return () => useWorkspaceDiffStore.getState().clearWorkspaceDiffData();
+  }, [
+    diffs,
+    diffPaths,
+    diffStats,
+    gitHubComments,
+    isGitHubCommentsLoading,
+    showGitHubComments,
+    setShowGitHubComments,
+    getGitHubCommentsForFile,
+    getGitHubCommentCountForFile,
+    getFilesWithGitHubComments,
+    getFirstCommentLineForFile,
+  ]);
 
   const isLoading = isLoadingList || isLoadingWorkspace;
 
@@ -176,40 +197,9 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     ]
   );
 
-  const diffValue = useMemo(
-    () => ({
-      diffs,
-      diffPaths,
-      diffStats,
-      gitHubComments,
-      isGitHubCommentsLoading,
-      showGitHubComments,
-      setShowGitHubComments,
-      getGitHubCommentsForFile,
-      getGitHubCommentCountForFile,
-      getFilesWithGitHubComments,
-      getFirstCommentLineForFile,
-    }),
-    [
-      diffs,
-      diffPaths,
-      diffStats,
-      gitHubComments,
-      isGitHubCommentsLoading,
-      showGitHubComments,
-      setShowGitHubComments,
-      getGitHubCommentsForFile,
-      getGitHubCommentCountForFile,
-      getFilesWithGitHubComments,
-      getFirstCommentLineForFile,
-    ]
-  );
-
   return (
     <WorkspaceContext.Provider value={coreValue}>
-      <WorkspaceDiffContext.Provider value={diffValue}>
-        {children}
-      </WorkspaceDiffContext.Provider>
+      {children}
     </WorkspaceContext.Provider>
   );
 }

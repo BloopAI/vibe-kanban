@@ -144,6 +144,10 @@ const ChangesPanelInner = <TDiff extends ChangesPanelDiff>(
         'w-full h-full bg-secondary flex flex-col px-base',
         className
       )}
+      style={{
+        contain: 'layout style paint',
+        willChange: 'transform',
+      }}
     >
       <Virtuoso
         ref={virtuosoRef}
