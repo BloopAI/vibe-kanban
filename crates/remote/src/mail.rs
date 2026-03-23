@@ -126,12 +126,15 @@ impl LoopsMailer {
             .build()
             .expect("failed to build reqwest client");
 
-        let invite_template_id =
-            env_or("LOOPS_INVITE_TEMPLATE_ID", DEFAULT_INVITE_TEMPLATE_ID);
-        let review_ready_template_id =
-            env_or("LOOPS_REVIEW_READY_TEMPLATE_ID", DEFAULT_REVIEW_READY_TEMPLATE_ID);
-        let review_failed_template_id =
-            env_or("LOOPS_REVIEW_FAILED_TEMPLATE_ID", DEFAULT_REVIEW_FAILED_TEMPLATE_ID);
+        let invite_template_id = env_or("LOOPS_INVITE_TEMPLATE_ID", DEFAULT_INVITE_TEMPLATE_ID);
+        let review_ready_template_id = env_or(
+            "LOOPS_REVIEW_READY_TEMPLATE_ID",
+            DEFAULT_REVIEW_READY_TEMPLATE_ID,
+        );
+        let review_failed_template_id = env_or(
+            "LOOPS_REVIEW_FAILED_TEMPLATE_ID",
+            DEFAULT_REVIEW_FAILED_TEMPLATE_ID,
+        );
 
         Self {
             client,

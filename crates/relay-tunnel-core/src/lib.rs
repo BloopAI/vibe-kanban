@@ -12,10 +12,11 @@ pub mod ws_io;
 /// Increases the stream window size and write timeout over the defaults (256 KB / 10s)
 /// to handle large HTTP responses over slow connections without triggering write timeouts.
 pub(crate) fn yamux_config() -> YamuxConfig {
-    let mut config = YamuxConfig::default();
-    config.max_stream_window_size = 1024 * 1024; // 1 MB (default: 256 KB)
-    config.connection_write_timeout = Duration::from_secs(30); // (default: 10s)
-    config
+    YamuxConfig {
+        max_stream_window_size: 1024 * 1024, // 1 MB (default: 256 KB)
+        connection_write_timeout: Duration::from_secs(30), // (default: 10s)
+        ..Default::default()
+    }
 }
 
 /// Convert an HTTP(S) URL to its WebSocket equivalent (ws:// or wss://).
