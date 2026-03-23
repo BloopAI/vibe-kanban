@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use git::{DiffTarget, GitCli, GitService};
+use git::{GitCli, GitService};
 use git2::{Repository, build::CheckoutBuilder};
 use tempfile::TempDir;
 use utils::diff::DiffChangeKind;
@@ -296,13 +296,7 @@ fn worktree_diff_respects_path_filter() {
     let s = GitService::new();
     let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
     let diffs = s
-        .get_diffs(
-            DiffTarget::Worktree {
-                worktree_path: Path::new(&repo_path),
-                base_commit: &base_commit,
-            },
-            Some(&["src"]),
-        )
+        .get_diffs(Path::new(&repo_path), &base_commit, Some(&["src"]))
         .unwrap();
     assert!(
         diffs
@@ -368,13 +362,7 @@ fn worktree_diff_permission_only_change() {
     let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
     // Compute worktree diff vs main on feature
     let diffs = s
-        .get_diffs(
-            DiffTarget::Worktree {
-                worktree_path: Path::new(&repo_path),
-                base_commit: &base_commit,
-            },
-            None,
-        )
+        .get_diffs(Path::new(&repo_path), &base_commit, None)
         .unwrap();
     let d = diffs
         .into_iter()

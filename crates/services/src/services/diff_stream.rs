@@ -15,7 +15,7 @@ use db::{
 };
 use executors::logs::utils::{ConversationPatch, patch::escape_json_pointer_segment};
 use futures::StreamExt;
-use git::{Commit, DiffTarget, GitService, GitServiceError, compute_line_change_counts};
+use git::{Commit, GitService, GitServiceError, compute_line_change_counts};
 use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{
     DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache, new_debouncer,
@@ -72,15 +72,7 @@ pub async fn compute_diff_stats(
         let diffs_result = tokio::task::spawn_blocking({
             let git = git.clone();
             let worktree = worktree_path.clone();
-            move || {
-                git.get_diffs(
-                    DiffTarget::Worktree {
-                        worktree_path: &worktree,
-                        base_commit: &base_commit,
-                    },
-                    None,
-                )
-            }
+            move || git.get_diffs(&worktree, &base_commit, None)
         })
         .await;
 
@@ -319,13 +311,7 @@ impl DiffStreamManager {
         let cumulative = self.cumulative.clone();
 
         tokio::task::spawn_blocking(move || {
-            let diffs = git.get_diffs(
-                DiffTarget::Worktree {
-                    worktree_path: &worktree,
-                    base_commit: &base,
-                },
-                None,
-            )?;
+            let diffs = git.get_diffs(&worktree, &base, None)?;
 
             let mut processed_diffs = Vec::with_capacity(diffs.len());
             for mut diff in diffs {
@@ -547,13 +533,7 @@ fn process_file_changes(
 ) -> Result<Vec<LogMsg>, DiffStreamError> {
     let path_filter: Vec<&str> = changed_paths.iter().map(|s| s.as_str()).collect();
 
-    let current_diffs = git_service.get_diffs(
-        DiffTarget::Worktree {
-            worktree_path,
-            base_commit,
-        },
-        Some(&path_filter),
-    )?;
+    let current_diffs = git_service.get_diffs(worktree_path, base_commit, Some(&path_filter))?;
 
     let mut msgs = Vec::new();
     let mut files_with_diffs = HashSet::new();

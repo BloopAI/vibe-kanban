@@ -160,15 +160,6 @@ pub struct WorktreeResetOutcome {
     pub applied: bool,
 }
 
-/// Target for diff generation
-pub enum DiffTarget<'p> {
-    /// Work-in-progress branch checked out in this worktree
-    Worktree {
-        worktree_path: &'p Path,
-        base_commit: &'p Commit,
-    },
-}
-
 impl Default for GitService {
     fn default() -> Self {
         Self::new()
@@ -371,43 +362,33 @@ impl GitService {
         Ok(true)
     }
 
-    /// Get diffs between branches or worktree changes
+    /// Get worktree diffs against a base commit
     pub fn get_diffs(
         &self,
-        target: DiffTarget,
+        worktree_path: &Path,
+        base_commit: &Commit,
         path_filter: Option<&[&str]>,
     ) -> Result<Vec<Diff>, GitServiceError> {
-        match target {
-            DiffTarget::Worktree {
-                worktree_path,
-                base_commit,
-            } => {
-                // Use Git CLI to compute diff vs base to avoid sparse false deletions
-                let repo = Repository::open(worktree_path)?;
-                let base_tree = repo
-                    .find_commit(base_commit.as_oid())?
-                    .tree()
-                    .map_err(|e| {
-                        GitServiceError::InvalidRepository(format!(
-                            "Failed to find base commit tree: {e}"
-                        ))
-                    })?;
+        // Use Git CLI to compute diff vs base to avoid sparse false deletions
+        let repo = Repository::open(worktree_path)?;
+        let base_tree = repo
+            .find_commit(base_commit.as_oid())?
+            .tree()
+            .map_err(|e| {
+                GitServiceError::InvalidRepository(format!("Failed to find base commit tree: {e}"))
+            })?;
 
-                let git = GitCli::new();
-                let cli_opts = StatusDiffOptions {
-                    path_filter: path_filter.map(|fs| fs.iter().map(|s| s.to_string()).collect()),
-                };
-                let entries = git
-                    .diff_status(worktree_path, base_commit, cli_opts)
-                    .map_err(|e| {
-                        GitServiceError::InvalidRepository(format!("git diff failed: {e}"))
-                    })?;
-                Ok(entries
-                    .into_iter()
-                    .map(|e| Self::status_entry_to_diff(&repo, &base_tree, e))
-                    .collect())
-            }
-        }
+        let git = GitCli::new();
+        let cli_opts = StatusDiffOptions {
+            path_filter: path_filter.map(|fs| fs.iter().map(|s| s.to_string()).collect()),
+        };
+        let entries = git
+            .diff_status(worktree_path, base_commit, cli_opts)
+            .map_err(|e| GitServiceError::InvalidRepository(format!("git diff failed: {e}")))?;
+        Ok(entries
+            .into_iter()
+            .map(|e| Self::status_entry_to_diff(&repo, &base_tree, e))
+            .collect())
     }
 
     /// Extract file path from a Diff (for indexing and ConversationPatch)

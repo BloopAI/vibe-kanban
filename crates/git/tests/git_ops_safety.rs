@@ -74,8 +74,6 @@ fn add_path(repo_path: &Path, path: &str) {
     git.git(repo_path, ["add", path]).unwrap();
 }
 
-use git::DiffTarget;
-
 // Non-conflicting setup used by several tests
 fn setup_repo_with_worktree(root: &TempDir) -> (PathBuf, PathBuf) {
     let repo_path = root.path().join("repo");
@@ -979,15 +977,7 @@ fn sparse_checkout_respected_in_worktree_diffs_and_commit() {
     write_file(&wt, "included/a.txt", "A-mod\n");
     let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
     // get worktree diffs vs main, ensure excluded/b.txt is NOT reported deleted
-    let diffs = s
-        .get_diffs(
-            DiffTarget::Worktree {
-                worktree_path: Path::new(&wt),
-                base_commit: &base_commit,
-            },
-            None,
-        )
-        .unwrap();
+    let diffs = s.get_diffs(Path::new(&wt), &base_commit, None).unwrap();
     assert!(
         diffs
             .iter()
@@ -1024,15 +1014,7 @@ fn worktree_diff_ignores_commits_where_base_branch_is_ahead() {
     write_file(&wt, "feature.txt", "feature change\n");
     let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
 
-    let diffs = s
-        .get_diffs(
-            DiffTarget::Worktree {
-                worktree_path: Path::new(&wt),
-                base_commit: &base_commit,
-            },
-            None,
-        )
-        .unwrap();
+    let diffs = s.get_diffs(Path::new(&wt), &base_commit, None).unwrap();
 
     assert!(
         diffs
