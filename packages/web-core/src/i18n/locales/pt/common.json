@@ -27,12 +27,7 @@
     "selectOption": "Selecione uma opção..."
   },
   "states": {
-    "loading": "Carregando...",
-    "loadingHistory": "Carregando Histórico",
-    "saving": "Salvando...",
-    "error": "Erro",
-    "success": "Sucesso",
-    "reconnecting": "Reconectando"
+    "loading": "Carregando..."
   },
   "ok": "OK",
   "error": "Erro",
