@@ -510,11 +510,11 @@
     "model": "モデル"
   },
   "crashScreen": {
-    "title": "Something went wrong",
-    "description": "The application encountered an unexpected error.",
-    "reload": "Reload",
-    "showDetails": "Show details",
-    "hideDetails": "Hide details"
+    "title": "問題が発生しました",
+    "description": "アプリケーションで予期しないエラーが発生しました。",
+    "reload": "再読み込み",
+    "showDetails": "詳細を表示",
+    "hideDetails": "詳細を非表示"
   },
   "syncError": {
     "networkErrors": "ネットワークエラー",

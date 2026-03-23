@@ -510,11 +510,11 @@
     "model": "모델"
   },
   "crashScreen": {
-    "title": "Something went wrong",
-    "description": "The application encountered an unexpected error.",
-    "reload": "Reload",
-    "showDetails": "Show details",
-    "hideDetails": "Hide details"
+    "title": "문제가 발생했습니다",
+    "description": "애플리케이션에서 예기치 않은 오류가 발생했습니다.",
+    "reload": "새로고침",
+    "showDetails": "세부정보 표시",
+    "hideDetails": "세부정보 숨기기"
   },
   "syncError": {
     "networkErrors": "네트워크 오류",

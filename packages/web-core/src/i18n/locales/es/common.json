@@ -510,11 +510,11 @@
     "model": "Modelo"
   },
   "crashScreen": {
-    "title": "Something went wrong",
-    "description": "The application encountered an unexpected error.",
-    "reload": "Reload",
-    "showDetails": "Show details",
-    "hideDetails": "Hide details"
+    "title": "Algo salió mal",
+    "description": "La aplicación encontró un error inesperado.",
+    "reload": "Recargar",
+    "showDetails": "Mostrar detalles",
+    "hideDetails": "Ocultar detalles"
   },
   "syncError": {
     "networkErrors": "Errores de red",

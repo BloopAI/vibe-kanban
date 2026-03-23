@@ -510,11 +510,11 @@
     "model": "模型"
   },
   "crashScreen": {
-    "title": "Something went wrong",
-    "description": "The application encountered an unexpected error.",
-    "reload": "Reload",
-    "showDetails": "Show details",
-    "hideDetails": "Hide details"
+    "title": "出了点问题",
+    "description": "应用程序遇到了意外错误。",
+    "reload": "重新加载",
+    "showDetails": "显示详情",
+    "hideDetails": "隐藏详情"
   },
   "syncError": {
     "networkErrors": "网络错误",
