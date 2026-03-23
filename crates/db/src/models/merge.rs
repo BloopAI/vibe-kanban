@@ -123,8 +123,11 @@ impl Merge {
 
     /// Find all active (non-archived) workspace-repo pairs.
     /// Used by the PR monitor to discover PRs created outside of VK.
+    /// When `updated_since` is provided, only returns workspaces that have been
+    /// updated since that time, reducing unnecessary GitHub API calls.
     pub async fn get_active_workspace_repos(
         pool: &SqlitePool,
+        updated_since: Option<DateTime<Utc>>,
     ) -> Result<Vec<ActiveWorkspaceRepo>, sqlx::Error> {
         sqlx::query_as!(
             ActiveWorkspaceRepo,
@@ -136,7 +139,10 @@ impl Merge {
             FROM workspace_repos wr
             JOIN workspaces w ON w.id = wr.workspace_id
             WHERE w.archived = FALSE
+              AND (? IS NULL OR w.updated_at >= ?)
             ORDER BY w.updated_at DESC"#,
+            updated_since,
+            updated_since,
         )
         .fetch_all(pool)
         .await

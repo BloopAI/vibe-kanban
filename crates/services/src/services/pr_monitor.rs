@@ -1,7 +1,7 @@
-use std::{sync::Arc, time::Duration};
+use std::{sync::Arc, sync::Mutex, time::Duration};
 
 use api_types::{PullRequestStatus, UpdatePullRequestApiRequest, UpsertPullRequestRequest};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use db::{
     DBService,
     models::{
@@ -57,6 +57,10 @@ pub struct PrMonitorService<C: ContainerService> {
     container: C,
     remote_client: Option<RemoteClient>,
     sync_notify: Arc<Notify>,
+    /// Tracks when we last ran PR discovery so we only poll workspaces
+    /// that have been updated since then, avoiding unnecessary GitHub API calls
+    /// that could exhaust rate limits for users with many active workspaces.
+    last_discovery_at: Mutex<Option<DateTime<Utc>>>,
 }
 
 impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
@@ -74,6 +78,7 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
             container,
             remote_client,
             sync_notify,
+            last_discovery_at: Mutex::new(None),
         };
         tokio::spawn(async move {
             service.start().await;
@@ -139,16 +144,22 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
     /// and links any not already known. Runs before check_all_open_prs so
     /// newly discovered PRs get their status checked in the same cycle.
     async fn discover_new_prs(&self) -> Result<(), PrMonitorError> {
-        let candidates = Merge::get_active_workspace_repos(&self.db.pool).await?;
+        let updated_since = *self.last_discovery_at.lock().unwrap();
+        let candidates = Merge::get_active_workspace_repos(&self.db.pool, updated_since).await?;
+
+        // Record the time before we start checking so we don't miss concurrent updates.
+        let discovery_started_at = Utc::now();
 
         if candidates.is_empty() {
             debug!("No active workspace repos to check for PRs");
+            *self.last_discovery_at.lock().unwrap() = Some(discovery_started_at);
             return Ok(());
         }
 
         debug!(
-            "Checking {} workspace-repo pairs for new PRs",
-            candidates.len()
+            "Checking {} workspace-repo pairs for new PRs (since {:?})",
+            candidates.len(),
+            updated_since,
         );
 
         for candidate in &candidates {
@@ -166,6 +177,8 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
                 }
             }
         }
+
+        *self.last_discovery_at.lock().unwrap() = Some(discovery_started_at);
         Ok(())
     }
 
