@@ -42,6 +42,13 @@ pub trait GitHostProvider: Send + Sync {
         pr_number: i64,
     ) -> Result<Vec<UnifiedPrComment>, GitHostError>;
 
+    async fn squash_merge_pr(
+        &self,
+        repo_path: &Path,
+        remote_url: &str,
+        pr_number: i64,
+    ) -> Result<PullRequestInfo, GitHostError>;
+
     async fn list_open_prs(
         &self,
         repo_path: &Path,

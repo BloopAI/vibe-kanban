@@ -400,6 +400,42 @@ impl GhCli {
         Self::parse_pr_review_comments(&raw)
     }
 
+    /// Squash-merge a pull request via `gh pr merge --squash`.
+    pub fn squash_merge_pr(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        pr_number: i64,
+    ) -> Result<PullRequestInfo, GhCliError> {
+        let repo_spec = repo_info.repo_spec();
+        self.run(
+            [
+                "pr",
+                "merge",
+                &pr_number.to_string(),
+                "--repo",
+                &repo_spec,
+                "--squash",
+                "--delete-branch",
+            ],
+            None,
+        )?;
+
+        // After merge, fetch the updated PR info to get merge commit SHA
+        let raw = self.run(
+            [
+                "pr",
+                "view",
+                &pr_number.to_string(),
+                "--repo",
+                &repo_spec,
+                "--json",
+                "number,url,state,mergedAt,mergeCommit",
+            ],
+            None,
+        )?;
+        Self::parse_pr_view(&raw)
+    }
+
     pub fn pr_checkout(
         &self,
         repo_path: &Path,

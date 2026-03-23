@@ -17,7 +17,12 @@ import { EntriesProvider } from '@/features/workspace-chat/model/contexts/Entrie
 import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/MessageEditContext';
 import { CreateModeProvider } from '@/features/create-mode/model/CreateModeProvider';
 import { useWorkspaceSessions } from '@/shared/hooks/useWorkspaceSessions';
-import { useWorkspaceRecord } from '@/shared/hooks/useWorkspaceRecord';
+import {
+  useWorkspaceRecord,
+  workspaceRecordKeys,
+} from '@/shared/hooks/useWorkspaceRecord';
+import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
+import { workspacesApi } from '@/shared/lib/api';
 import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
 import { CreateChatBoxContainer } from '@/shared/components/CreateChatBoxContainer';
 import { KanbanIssuePanelContainer } from './KanbanIssuePanelContainer';

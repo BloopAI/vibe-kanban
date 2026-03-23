@@ -247,6 +247,15 @@ impl GitHostProvider for AzureDevOpsProvider {
         .await
     }
 
+    async fn squash_merge_pr(
+        &self,
+        _repo_path: &Path,
+        _remote_url: &str,
+        _pr_number: i64,
+    ) -> Result<PullRequestInfo, GitHostError> {
+        Err(GitHostError::UnsupportedProvider)
+    }
+
     async fn list_open_prs(
         &self,
         _repo_path: &Path,
