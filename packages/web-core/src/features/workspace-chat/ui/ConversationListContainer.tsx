@@ -658,6 +658,7 @@ export const ConversationList = forwardRef<
           (row) => row.entry.patchKey === patchKey
         );
         if (targetIndex >= 0) {
+          conversationVirtualizer.releaseBottomLock();
           programmaticScrollDeadlineRef.current = performance.now() + 1000;
           scrollToAbsoluteIndex(targetIndex, 'start', 'smooth');
         }

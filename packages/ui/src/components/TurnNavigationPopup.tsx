@@ -2,7 +2,7 @@ import {
   useState,
   useRef,
   useCallback,
-  useEffect,
+  useLayoutEffect,
   type ReactNode,
 } from 'react';
 import { cn } from '../lib/cn';
@@ -81,7 +81,7 @@ export function TurnNavigationPopup({
   );
 
   // Scroll the list to show the active turn (or bottom if none)
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open || !listRef.current) return;
     if (activePatchKey) {
       const activeEl = listRef.current.querySelector(
@@ -100,7 +100,7 @@ export function TurnNavigationPopup({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open}>
       <PopoverTrigger asChild>
         <span
           className="inline-flex"
