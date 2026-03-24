@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT ic.message, i.title AS issue_title, i.project_id,\n               p.name AS project_name,\n               COALESCE(u.username, u.email, 'Unknown') AS author\n        FROM issue_comments ic\n        JOIN issues i ON i.id = ic.issue_id\n        JOIN projects p ON p.id = i.project_id\n        LEFT JOIN users u ON u.id = ic.author_id\n        WHERE ic.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "message",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "issue_title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "project_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "author",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "ece58d6539ed47ed0587ac8ecc1f3489b47eb2e74d296ec13b2ca8ddca921898"
+}

@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT i.title, i.project_id, p.name AS project_name, ps.name AS status_name\n        FROM issues i\n        JOIN projects p ON p.id = i.project_id\n        JOIN project_statuses ps ON ps.id = i.status_id\n        WHERE i.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "status_name",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "9e6ef41b87c325f21a6a0497bc5644e40b6169bdf83c457c2b38724a6c9f9dbb"
+}
