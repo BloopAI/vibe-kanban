@@ -1,24 +1,20 @@
 use axum::{
-    Router,
+    Extension, Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{delete, get, post},
-    Extension, Json,
 };
 use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::{error::ErrorResponse, organization_members::ensure_project_access};
 use crate::{
     AppState,
     auth::RequestContext,
     linear::crypto,
     slack::{client, db},
-};
-use super::{
-    error::ErrorResponse,
-    organization_members::ensure_project_access,
 };
 
 pub fn protected_router() -> Router<AppState> {
@@ -67,7 +63,10 @@ async fn connect(
         .linear_encryption_key
         .as_ref()
         .ok_or_else(|| {
-            ErrorResponse::new(StatusCode::SERVICE_UNAVAILABLE, "Slack integration not configured")
+            ErrorResponse::new(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Slack integration not configured",
+            )
         })?;
 
     ensure_project_access(state.pool(), ctx.user.id, req.project_id).await?;
@@ -80,8 +79,8 @@ async fn connect(
             ErrorResponse::new(StatusCode::UNPROCESSABLE_ENTITY, "Invalid Slack bot token")
         })?;
 
-    let encrypted_token = crypto::encrypt(enc_key.expose_secret(), &req.bot_token)
-        .map_err(|e| {
+    let encrypted_token =
+        crypto::encrypt(enc_key.expose_secret(), &req.bot_token).map_err(|e| {
             tracing::error!(error = %e, "failed to encrypt Slack token");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "encryption failed")
         })?;
@@ -124,12 +123,10 @@ async fn disconnect(
 
     ensure_project_access(state.pool(), ctx.user.id, conn.project_id).await?;
 
-    db::delete_connection(state.pool(), id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, %id, "failed to delete Slack connection");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "database error")
-        })?;
+    db::delete_connection(state.pool(), id).await.map_err(|e| {
+        tracing::error!(error = %e, %id, "failed to delete Slack connection");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "database error")
+    })?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -144,7 +141,10 @@ async fn status(
         .linear_encryption_key
         .as_ref()
         .ok_or_else(|| {
-            ErrorResponse::new(StatusCode::SERVICE_UNAVAILABLE, "Slack integration not configured")
+            ErrorResponse::new(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Slack integration not configured",
+            )
         })?;
 
     ensure_project_access(state.pool(), ctx.user.id, query.project_id).await?;

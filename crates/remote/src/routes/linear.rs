@@ -217,9 +217,8 @@ async fn create_connection(
     {
         let auto_mappings = sync::auto_map_statuses(&vk_statuses, &states);
         for (vk_id, linear_id, linear_name) in auto_mappings {
-            let _ =
-                db::upsert_status_mapping(state.pool(), conn.id, vk_id, linear_id, linear_name)
-                    .await;
+            let _ = db::upsert_status_mapping(state.pool(), conn.id, vk_id, linear_id, linear_name)
+                .await;
         }
     }
 

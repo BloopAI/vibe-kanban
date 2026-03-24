@@ -21,12 +21,7 @@ async fn send(pool: &PgPool, http: &Client, enc_key: &str, project_id: Uuid, tex
 }
 
 /// Notify Slack when an issue's status changes.
-pub async fn notify_status_change(
-    pool: &PgPool,
-    http: &Client,
-    enc_key: &str,
-    vk_issue_id: Uuid,
-) {
+pub async fn notify_status_change(pool: &PgPool, http: &Client, enc_key: &str, vk_issue_id: Uuid) {
     let Ok(Some(row)) = sqlx::query!(
         r#"
         SELECT i.title, i.project_id, p.name AS project_name, ps.name AS status_name
@@ -96,6 +91,9 @@ pub async fn notify_pr_created(
     pr_title: &str,
     author: &str,
 ) {
-    let text = format!("[{}] PR opened: \"{}\" by {}", project_name, pr_title, author);
+    let text = format!(
+        "[{}] PR opened: \"{}\" by {}",
+        project_name, pr_title, author
+    );
     send(pool, http, enc_key, project_id, &text).await;
 }

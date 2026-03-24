@@ -208,13 +208,7 @@ impl LinearAnalysisService {
                 {
                     info!(%issue_id, score, branch, "Low impact score — auto-starting workspace");
                     if let Err(e) = self
-                        .auto_start_workspace(
-                            issue_id,
-                            title,
-                            description,
-                            comments,
-                            branch,
-                        )
+                        .auto_start_workspace(issue_id, title, description, comments, branch)
                         .await
                     {
                         error!(?e, %issue_id, "Failed to auto-start workspace");

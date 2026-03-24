@@ -56,10 +56,7 @@ pub async fn get_connection_by_id(
 
 /// Upsert a connection. On conflict (same project_id), update channel and token.
 /// Returns the connection id.
-pub async fn upsert_connection(
-    pool: &PgPool,
-    input: UpsertConnectionInput,
-) -> sqlx::Result<Uuid> {
+pub async fn upsert_connection(pool: &PgPool, input: UpsertConnectionInput) -> sqlx::Result<Uuid> {
     let row = sqlx::query!(
         r#"
         INSERT INTO slack_project_connections (project_id, channel_id, encrypted_bot_token)
@@ -82,11 +79,8 @@ pub async fn upsert_connection(
 
 /// Delete a connection by id. Returns true if a row was deleted.
 pub async fn delete_connection(pool: &PgPool, id: Uuid) -> sqlx::Result<bool> {
-    let result = sqlx::query!(
-        "DELETE FROM slack_project_connections WHERE id = $1",
-        id
-    )
-    .execute(pool)
-    .await?;
+    let result = sqlx::query!("DELETE FROM slack_project_connections WHERE id = $1", id)
+        .execute(pool)
+        .await?;
     Ok(result.rows_affected() > 0)
 }
