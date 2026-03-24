@@ -20,6 +20,7 @@ pub mod shape_route;
 pub mod shape_routes;
 pub mod shapes;
 mod shared_key_auth;
+pub mod slack;
 mod state;
 
 use std::env;
