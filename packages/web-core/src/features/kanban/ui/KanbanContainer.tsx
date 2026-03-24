@@ -60,6 +60,7 @@ import { resolveRelationshipsForIssue } from '@/shared/lib/resolveRelationships'
 import { KanbanFilterBar } from '@vibe/ui/components/KanbanFilterBar';
 import { ViewNavTabs } from '@vibe/ui/components/ViewNavTabs';
 import { IssueListView } from '@vibe/ui/components/IssueListView';
+import { useWorkspaceActions } from '@/shared/hooks/useWorkspaceActions';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { KanbanFiltersDialog } from '@/shared/dialogs/kanban/KanbanFiltersDialog';
 import {
@@ -644,6 +645,29 @@ export function KanbanContainer() {
     userId,
   ]);
 
+  // Workspace action handlers (shared with issue sidebar)
+  const findWorkspaceInKanban = useCallback(
+    (localWorkspaceId: string) => {
+      for (const workspaces of workspacesByIssueId.values()) {
+        const found = workspaces.find(
+          (ws) => ws.localWorkspaceId === localWorkspaceId
+        );
+        if (found) return found;
+      }
+      return undefined;
+    },
+    [workspacesByIssueId]
+  );
+
+  const {
+    unlinkWorkspace: handleUnlinkWorkspace,
+    archiveWorkspace: handleArchiveWorkspace,
+    deleteWorkspace: handleDeleteWorkspace,
+  } = useWorkspaceActions({
+    localWorkspacesById,
+    findWorkspace: findWorkspaceInKanban,
+  });
+
   // Calculate sort_order based on column index and issue position
   // Formula: 1000 * [COLUMN_INDEX] + [ISSUE_INDEX] (both 1-based)
   const calculateSortOrder = useCallback(
@@ -1105,6 +1129,34 @@ export function KanbanContainer() {
                                             openIssueWorkspace(
                                               issue.id,
                                               workspace.localWorkspaceId!
+                                            )
+                                        : undefined
+                                    }
+                                    onUnlink={
+                                      workspace.localWorkspaceId
+                                        ? () =>
+                                            handleUnlinkWorkspace(
+                                              workspace.localWorkspaceId!
+                                            )
+                                        : undefined
+                                    }
+                                    onArchive={
+                                      workspace.localWorkspaceId &&
+                                      workspace.isOwnedByCurrentUser
+                                        ? () =>
+                                            handleArchiveWorkspace(
+                                              workspace.localWorkspaceId!
+                                            )
+                                        : undefined
+                                    }
+                                    onDelete={
+                                      workspace.localWorkspaceId &&
+                                      workspace.isOwnedByCurrentUser
+                                        ? () =>
+                                            handleDeleteWorkspace(
+                                              workspace.localWorkspaceId!,
+                                              issuesById.get(issue.id)
+                                                ?.simple_id
                                             )
                                         : undefined
                                     }
