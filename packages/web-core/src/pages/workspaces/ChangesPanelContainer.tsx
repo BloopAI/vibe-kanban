@@ -12,6 +12,16 @@ import { usePersistedExpanded } from '@/shared/stores/useUiPreferencesStore';
 import { PierreDiffCard } from './PierreDiffCard';
 import type { Diff, DiffChangeKind } from 'shared/types';
 
+const PERF_DEBUG = true;
+function cpcLog(label: string, ...args: unknown[]) {
+  if (!PERF_DEBUG) return;
+  console.log(`%c[Container] ${label}`, 'color: #ffb74d', ...args);
+}
+function cpcWarn(label: string, ...args: unknown[]) {
+  if (!PERF_DEBUG) return;
+  console.log(`[Container] ${label}`, ...args);
+}
+
 /**
  * Scroll to a specific line inside a Pierre diff.
  * Pierre renders diff lines inside a `<diffs-container>` custom element
@@ -121,7 +131,12 @@ export function ChangesPanelContainer({
   const [processedPaths] = useState(() => new Set<string>());
 
   const diffItems = useMemo(() => {
-    return sortDiffs(diffs).map((diff) => {
+    const t0 = performance.now();
+    const sorted = sortDiffs(diffs);
+    const sortElapsed = performance.now() - t0;
+    if (sortElapsed > 5) cpcWarn(`sortDiffs ${sortElapsed.toFixed(1)}ms for ${diffs.length} diffs`);
+    cpcLog(`diffItems recompute: ${diffs.length} diffs, sort=${sortElapsed.toFixed(1)}ms`);
+    return sorted.map((diff) => {
       const path = diff.newPath || diff.oldPath || '';
 
       let initialExpanded = true;
@@ -189,7 +204,6 @@ export function ChangesPanelContainer({
   );
 
   const {
-    state: syncState,
     fileInView: stateMachineFileInView,
     scrollToFile: stateMachineScrollToFile,
     onRangeChanged,
@@ -200,41 +214,11 @@ export function ChangesPanelContainer({
     getTopFilePath,
   });
 
-  // Keep a ref to syncState for the scroll listener (avoids stale closure)
-  const syncStateRef = useRef(syncState);
-  syncStateRef.current = syncState;
-
   useEffect(() => {
     if (stateMachineFileInView !== null) {
       setFileInView(stateMachineFileInView);
     }
   }, [stateMachineFileInView, setFileInView]);
-
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      const currentState = syncStateRef.current;
-      if (
-        currentState === 'programmatic-scroll' ||
-        currentState === 'sync-cooldown'
-      ) {
-        return;
-      }
-
-      const range = visibleRangeRef.current;
-      const topPath = getTopFilePath(range);
-      if (topPath !== null) {
-        setFileInView(topPath);
-      }
-    };
-
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      container.removeEventListener('scroll', handleScroll);
-    };
-  }, [getTopFilePath, setFileInView]);
 
   const handleRangeChanged = useCallback(
     (range: { startIndex: number; endIndex: number }) => {
@@ -251,16 +235,31 @@ export function ChangesPanelContainer({
 
       changesPanelRef.current?.scrollToIndex(index, { align: 'start' });
 
-      requestAnimationFrame(() => {
-        if (lineNumber) {
+      let retries = 0;
+      const maxRetries = 3;
+
+      function attemptComplete() {
+        requestAnimationFrame(() => {
           const fileEl = diffRefs.current.get(path);
           if (fileEl) {
-            scrollToLineInDiff(fileEl, lineNumber, onScrollComplete);
+            if (lineNumber) {
+              scrollToLineInDiff(fileEl, lineNumber, onScrollComplete);
+            } else {
+              onScrollComplete();
+            }
             return;
           }
-        }
-        onScrollComplete();
-      });
+
+          retries++;
+          if (retries < maxRetries) {
+            attemptComplete();
+          } else {
+            onScrollComplete();
+          }
+        });
+      }
+
+      attemptComplete();
     },
     [stateMachineScrollToFile, onScrollComplete]
   );

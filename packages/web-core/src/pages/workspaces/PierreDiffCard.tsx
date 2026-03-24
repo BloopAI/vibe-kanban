@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CaretDownIcon,
@@ -218,6 +218,16 @@ function mapAnnotationSideToSplitSide(side: AnnotationSide): DiffSide {
 
 const NOOP = () => {};
 
+const PERF_DEBUG = true;
+function dcLog(label: string, ...args: unknown[]) {
+  if (!PERF_DEBUG) return;
+  console.log(`%c[DiffCard] ${label}`, 'color: #81c784', ...args);
+}
+function dcWarn(label: string, ...args: unknown[]) {
+  if (!PERF_DEBUG) return;
+  console.log(`[DiffCard] ${label}`, ...args);
+}
+
 const PierreDiffCardInner = function PierreDiffCard({
   diff,
   expanded,
@@ -225,6 +235,30 @@ const PierreDiffCardInner = function PierreDiffCard({
   workspaceId,
   className = '',
 }: PierreDiffCardProps) {
+  const renderStartTime = performance.now();
+  const renderCountRef = useRef(0);
+  renderCountRef.current++;
+  const filePath_ = diff.newPath || diff.oldPath || 'unknown';
+
+  useEffect(() => {
+    const elapsed = performance.now() - renderStartTime;
+    if (elapsed > 16) {
+      dcWarn(
+        `SLOW render #${renderCountRef.current}`,
+        filePath_,
+        `${elapsed.toFixed(1)}ms`,
+        expanded ? 'expanded' : 'collapsed'
+      );
+    } else {
+      dcLog(
+        `render #${renderCountRef.current}`,
+        filePath_,
+        `${elapsed.toFixed(1)}ms`,
+        expanded ? 'expanded' : 'collapsed'
+      );
+    }
+  });
+
   const { t } = useTranslation('tasks');
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
@@ -261,11 +295,13 @@ const PierreDiffCardInner = function PierreDiffCard({
     void writeClipboardViaBridge(filePath);
   }, [filePath]);
 
-  // Transform diff to pierre/diffs metadata
-  const fileDiffMetadata = useMemo(
-    () => transformDiffToFileDiffMetadata(diff, { ignoreWhitespace }),
-    [diff, ignoreWhitespace]
-  );
+  const fileDiffMetadata = useMemo(() => {
+    const t0 = performance.now();
+    const result = transformDiffToFileDiffMetadata(diff, { ignoreWhitespace });
+    const elapsed = performance.now() - t0;
+    if (elapsed > 5) dcWarn(`transformDiffToFileDiffMetadata ${filePath_} ${elapsed.toFixed(1)}ms`);
+    return result;
+  }, [diff, ignoreWhitespace]);
 
   const additions = useMemo(() => {
     return fileDiffMetadata.hunks.reduce((acc, hunk) => {
@@ -332,7 +368,7 @@ const PierreDiffCardInner = function PierreDiffCard({
     commentsForFile.length + githubCommentsForFile.length;
 
   const annotations = useMemo(() => {
-    // 1. Get standard comments
+    const t0 = performance.now();
     const baseAnnotations = transformCommentsToAnnotations(
       commentsForFile,
       githubCommentsForFile,
@@ -356,7 +392,10 @@ const PierreDiffCardInner = function PierreDiffCard({
       });
     });
 
-    return [...baseAnnotations, ...draftAnnotations];
+    const result = [...baseAnnotations, ...draftAnnotations];
+    const elapsed = performance.now() - t0;
+    if (elapsed > 2) dcWarn(`annotations ${filePath_} ${elapsed.toFixed(1)}ms count=${result.length}`);
+    return result;
   }, [commentsForFile, githubCommentsForFile, filePath, drafts]);
 
   const renderAnnotation = useCallback(
@@ -465,7 +504,9 @@ const PierreDiffCardInner = function PierreDiffCard({
   );
 
   const fileDiffOptions = useMemo(
-    () => ({
+    () => {
+    dcLog(`fileDiffOptions recompute ${filePath_} mode=${globalMode} theme=${actualTheme}`);
+    return {
       diffStyle:
         globalMode === 'split' ? ('split' as const) : ('unified' as const),
       diffIndicators: 'classic' as const,
@@ -477,7 +518,8 @@ const PierreDiffCardInner = function PierreDiffCard({
       onLineClick: handleLineClick,
       theme: { dark: 'github-dark', light: 'github-light' } as const,
       unsafeCSS: PIERRE_DIFFS_THEME_CSS,
-    }),
+    };
+    },
     [globalMode, actualTheme, wrapText, handleLineClick]
   );
 
@@ -489,10 +531,7 @@ const PierreDiffCardInner = function PierreDiffCard({
   const shouldShowPlaceholder = expanded && isLargeDiff && !forceExpanded;
 
   return (
-    <div
-      className={cn('pb-base rounded-sm', className)}
-      style={{ contain: 'content' }}
-    >
+    <div className={cn('pb-base rounded-sm', className)}>
       <div
         className={cn(
           'w-full flex items-center bg-primary px-base gap-base sticky top-0 z-10 border-b border-transparent',
