@@ -218,6 +218,8 @@ function mapAnnotationSideToSplitSide(side: AnnotationSide): DiffSide {
 
 const NOOP = () => {};
 
+
+
 const PERF_DEBUG = true;
 function dcLog(label: string, ...args: unknown[]) {
   if (!PERF_DEBUG) return;
@@ -523,12 +525,13 @@ const PierreDiffCardInner = function PierreDiffCard({
     [globalMode, actualTheme, wrapText, handleLineClick]
   );
 
-  // Large diff placeholder logic
   const LARGE_DIFF_THRESHOLD = 1000;
   const [forceExpanded, setForceExpanded] = useState(false);
   const totalLines = additions + deletions;
   const isLargeDiff = totalLines > LARGE_DIFF_THRESHOLD;
   const shouldShowPlaceholder = expanded && isLargeDiff && !forceExpanded;
+
+
 
   return (
     <div className={cn('pb-base rounded-sm', className)}>

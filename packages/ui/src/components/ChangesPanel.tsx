@@ -141,6 +141,7 @@ const ChangesPanelInner = <TDiff extends ChangesPanelDiff>(
     overscan: 2,
     paddingStart: SPACING,
     useFlushSync: false,
+    useAnimationFrameWithResizeObserver: true,
     getItemKey: (index) => getDiffPath(diffItems[index]?.diff) || String(index),
     onChange: (instance) => {
       const range = instance.range;

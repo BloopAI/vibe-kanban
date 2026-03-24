@@ -9,8 +9,22 @@ import { useChangesView } from '@/shared/hooks/useChangesView';
 import { useDiffs } from '@/shared/stores/useWorkspaceDiffStore';
 import { useScrollSyncStateMachine } from '@/shared/hooks/useScrollSyncStateMachine';
 import { usePersistedExpanded } from '@/shared/stores/useUiPreferencesStore';
+import { preloadHighlighter } from '@pierre/diffs';
 import { PierreDiffCard } from './PierreDiffCard';
 import type { Diff, DiffChangeKind } from 'shared/types';
+
+let highlighterPreloaded = false;
+function ensureHighlighterPreloaded() {
+  if (highlighterPreloaded) return;
+  highlighterPreloaded = true;
+  const t0 = performance.now();
+  preloadHighlighter({
+    themes: ['github-dark', 'github-light'],
+    langs: [],
+  }).then(() => {
+    cpcLog(`highlighter preloaded in ${(performance.now() - t0).toFixed(0)}ms`);
+  });
+}
 
 const PERF_DEBUG = true;
 function cpcLog(label: string, ...args: unknown[]) {
@@ -114,6 +128,7 @@ export function ChangesPanelContainer({
   className,
   workspaceId,
 }: ChangesPanelContainerProps) {
+  ensureHighlighterPreloaded();
   const diffs = useDiffs();
   const {
     selectedFilePath,
