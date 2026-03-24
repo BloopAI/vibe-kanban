@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { SpinnerIcon } from '@phosphor-icons/react';
 import { Button } from '@vibe/ui/components/Button';
 import { cn } from '@/shared/lib/utils';
-import { makeLocalApiRequest } from '@/shared/lib/localApiTransport';
+import { makeRequest } from '@/shared/lib/remoteApi';
 
 interface LinearTeam {
   id: string;
@@ -29,7 +29,7 @@ export function ConnectLinearPanel({ projectId, onConnected }: Props) {
     setError('');
     setTeams(null);
     try {
-      const res = await makeLocalApiRequest('/v1/linear/teams-preview', {
+      const res = await makeRequest('/v1/linear/teams-preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey }),
@@ -57,7 +57,7 @@ export function ConnectLinearPanel({ projectId, onConnected }: Props) {
     setConnecting(true);
     setError('');
     try {
-      const res = await makeLocalApiRequest('/v1/linear/connections', {
+      const res = await makeRequest('/v1/linear/connections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

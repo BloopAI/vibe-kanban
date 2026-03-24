@@ -781,6 +781,28 @@ impl RemoteClient {
         self.post_authed("/v1/issues", Some(request)).await
     }
 
+    /// Creates a new issue comment.
+    pub async fn create_issue_comment(
+        &self,
+        issue_id: Uuid,
+        body: &str,
+    ) -> Result<(), RemoteClientError> {
+        #[derive(serde::Serialize)]
+        struct CreateCommentRequest<'a> {
+            issue_id: Uuid,
+            message: &'a str,
+        }
+        self.post_authed::<serde_json::Value, _>(
+            "/v1/issue_comments",
+            Some(&CreateCommentRequest {
+                issue_id,
+                message: body,
+            }),
+        )
+        .await?;
+        Ok(())
+    }
+
     /// Updates an existing issue.
     pub async fn update_issue(
         &self,
@@ -789,6 +811,14 @@ impl RemoteClient {
     ) -> Result<MutationResponse<Issue>, RemoteClientError> {
         self.patch_authed(&format!("/v1/issues/{issue_id}"), request)
             .await
+    }
+
+    /// Bulk updates multiple issues (e.g. from kanban drag-and-drop).
+    pub async fn bulk_update_issues(
+        &self,
+        body: &serde_json::Value,
+    ) -> Result<serde_json::Value, RemoteClientError> {
+        self.post_authed("/v1/issues/bulk", Some(body)).await
     }
 
     /// Deletes an issue.

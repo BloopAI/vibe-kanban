@@ -12,6 +12,7 @@ import type {
   IssueRelationship,
   PullRequest,
   Workspace,
+  LinearIssueLink,
   CreateIssueRequest,
   UpdateIssueRequest,
   CreateProjectStatusRequest,
@@ -51,6 +52,7 @@ export interface ProjectContextValue {
   issueRelationships: IssueRelationship[];
   pullRequests: PullRequest[];
   workspaces: Workspace[];
+  linearIssueLinks: LinearIssueLink[];
 
   // Loading/error state
   isLoading: boolean;
@@ -114,6 +116,7 @@ export interface ProjectContextValue {
   getTag: (tagId: string) => Tag | undefined;
   getPullRequestsForIssue: (issueId: string) => PullRequest[];
   getWorkspacesForIssue: (issueId: string) => Workspace[];
+  getLinearIssueLinkForIssue: (issueId: string) => LinearIssueLink | undefined;
 
   // Computed aggregations (Maps for O(1) lookup)
   issuesById: Map<string, Issue>;

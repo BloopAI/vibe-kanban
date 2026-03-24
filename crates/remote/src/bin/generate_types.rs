@@ -15,6 +15,7 @@ use api_types::{
     User, UserData, Workspace,
 };
 use remote::{
+    linear::db::LinearIssueLink,
     routes::{
         all_mutation_definitions,
         attachments::{
@@ -109,6 +110,7 @@ fn export_shapes() -> String {
         RelaySessionAuthCodeResponse::decl(),
         MemberRole::decl(),
         OrganizationMember::decl(),
+        LinearIssueLink::decl(),
         // Mutation request types
         CreateProjectRequest::decl(),
         UpdateProjectRequest::decl(),

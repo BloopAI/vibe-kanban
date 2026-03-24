@@ -10,6 +10,7 @@ import {
   PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
   PROJECT_PULL_REQUESTS_SHAPE,
   PROJECT_WORKSPACES_SHAPE,
+  PROJECT_LINEAR_ISSUE_LINKS_SHAPE,
   ISSUE_MUTATION,
   PROJECT_STATUS_MUTATION,
   TAG_MUTATION,
@@ -71,6 +72,11 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
   const workspacesResult = useShape(PROJECT_WORKSPACES_SHAPE, params, {
     enabled,
   });
+  const linearIssueLinksResult = useShape(
+    PROJECT_LINEAR_ISSUE_LINKS_SHAPE,
+    params,
+    { enabled }
+  );
 
   // Board readiness depends on core kanban data only.
   // Other project-scoped shapes hydrate opportunistically after render.
@@ -87,6 +93,7 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueRelationshipsResult.error ||
     pullRequestsResult.error ||
     workspacesResult.error ||
+    linearIssueLinksResult.error ||
     null;
 
   // Combined retry
@@ -100,6 +107,7 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueRelationshipsResult.retry();
     pullRequestsResult.retry();
     workspacesResult.retry();
+    linearIssueLinksResult.retry();
   }, [
     issuesResult,
     statusesResult,
@@ -110,6 +118,7 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     issueRelationshipsResult,
     pullRequestsResult,
     workspacesResult,
+    linearIssueLinksResult,
   ]);
 
   // Computed Maps for O(1) lookup
@@ -209,6 +218,12 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
     [workspacesResult.data]
   );
 
+  const getLinearIssueLinkForIssue = useCallback(
+    (issueId: string) =>
+      linearIssueLinksResult.data.find((l) => l.vk_issue_id === issueId),
+    [linearIssueLinksResult.data]
+  );
+
   const value = useMemo<ProjectContextValue>(
     () => ({
       projectId,
@@ -223,6 +238,7 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       issueRelationships: issueRelationshipsResult.data,
       pullRequests: pullRequestsResult.data,
       workspaces: workspacesResult.data,
+      linearIssueLinks: linearIssueLinksResult.data,
 
       // Loading/error
       isLoading,
@@ -272,6 +288,7 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       getTag,
       getPullRequestsForIssue,
       getWorkspacesForIssue,
+      getLinearIssueLinkForIssue,
 
       // Computed aggregations
       issuesById,
@@ -303,6 +320,7 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
       getTag,
       getPullRequestsForIssue,
       getWorkspacesForIssue,
+      getLinearIssueLinkForIssue,
       issuesById,
       statusesById,
       tagsById,

@@ -181,6 +181,16 @@ impl Server {
             spawn_cleanup_task(pool.clone(), azure_blob_service.clone());
         }
 
+        // Spawn periodic Linear sync (imports new issues created in Linear)
+        {
+            use secrecy::ExposeSecret;
+            let enc_key = config
+                .linear_encryption_key
+                .as_ref()
+                .map(|s| s.expose_secret().to_string());
+            crate::linear::sync_service::spawn(pool.clone(), http_client.clone(), enc_key);
+        }
+
         let state = AppState::new(
             pool.clone(),
             config.clone(),

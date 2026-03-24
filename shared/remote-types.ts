@@ -76,6 +76,8 @@ export enum MemberRole { ADMIN = "ADMIN", MEMBER = "MEMBER" }
 
 export type OrganizationMember = { organization_id: string, user_id: string, role: MemberRole, joined_at: string, last_seen_at: string | null, };
 
+export type LinearIssueLink = { id: string, vk_issue_id: string, linear_issue_id: string, linear_issue_identifier: string, last_synced_at: string | null, created_at: string, gitnexus_analyzed: boolean, linear_ignored: boolean, worktree_branch: string | null, };
+
 export type CreateProjectRequest = { 
 /**
  * Optional client-generated ID. If not provided, server generates one.
@@ -288,6 +290,13 @@ export const PROJECT_PULL_REQUESTS_SHAPE = defineShape<PullRequest>(
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/pull_requests',
   '/v1/fallback/pull_requests'
+);
+
+export const PROJECT_LINEAR_ISSUE_LINKS_SHAPE = defineShape<LinearIssueLink>(
+  'linear_issue_links',
+  ['project_id'] as const,
+  '/v1/shape/project/{project_id}/linear_issue_links',
+  '/v1/fallback/linear_issue_links'
 );
 
 export const ISSUE_COMMENTS_SHAPE = defineShape<IssueComment>(

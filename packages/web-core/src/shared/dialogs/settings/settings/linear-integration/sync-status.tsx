@@ -6,7 +6,7 @@ import {
 } from '@phosphor-icons/react';
 import { Button } from '@vibe/ui/components/Button';
 import { Switch } from '@vibe/ui/components/Switch';
-import { makeLocalApiRequest } from '@/shared/lib/localApiTransport';
+import { makeRequest } from '@/shared/lib/remoteApi';
 
 interface Connection {
   id: string;
@@ -36,7 +36,7 @@ export function SyncStatusPanel({
   const [stats, setStats] = useState<SyncStats | null>(null);
 
   useEffect(() => {
-    makeLocalApiRequest(`/v1/linear/connections/${connection.id}/stats`)
+    makeRequest(`/v1/linear/connections/${connection.id}/stats`)
       .then((r) => r.json())
       .then((data: SyncStats) => setStats(data))
       .catch(() => {});
@@ -45,10 +45,9 @@ export function SyncStatusPanel({
   async function triggerSync() {
     setSyncing(true);
     try {
-      await makeLocalApiRequest(
-        `/v1/linear/connections/${connection.id}/sync`,
-        { method: 'POST' }
-      );
+      await makeRequest(`/v1/linear/connections/${connection.id}/sync`, {
+        method: 'POST',
+      });
     } catch {
       // ignore
     } finally {
@@ -66,7 +65,7 @@ export function SyncStatusPanel({
     }
     setDisconnecting(true);
     try {
-      await makeLocalApiRequest(`/v1/linear/connections/${connection.id}`, {
+      await makeRequest(`/v1/linear/connections/${connection.id}`, {
         method: 'DELETE',
       });
       onDisconnect();

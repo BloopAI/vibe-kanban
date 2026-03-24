@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { SpinnerIcon } from '@phosphor-icons/react';
 import { Button } from '@vibe/ui/components/Button';
 import { cn } from '@/shared/lib/utils';
-import { makeLocalApiRequest } from '@/shared/lib/localApiTransport';
+import { makeRequest } from '@/shared/lib/remoteApi';
 
 interface VkStatus {
   id: string;
@@ -37,10 +37,10 @@ export function StatusMappingPanel({ connectionId, vkStatuses }: Props) {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      makeLocalApiRequest(
+      makeRequest(
         `/v1/linear/connections/${connectionId}/status-mappings`
       ).then((r) => r.json()),
-      makeLocalApiRequest(
+      makeRequest(
         `/v1/linear/connections/${connectionId}/workflow-states`
       ).then((r) => r.json()),
     ])
@@ -69,7 +69,7 @@ export function StatusMappingPanel({ connectionId, vkStatuses }: Props) {
       })
     );
     try {
-      await makeLocalApiRequest(
+      await makeRequest(
         `/v1/linear/connections/${connectionId}/status-mappings`,
         {
           method: 'PUT',

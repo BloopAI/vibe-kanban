@@ -6,7 +6,7 @@ use api_types::{
     Workspace,
 };
 
-use crate::shape_definition::ShapeDefinition;
+use crate::{linear::db::LinearIssueLink, shape_definition::ShapeDefinition};
 
 // =============================================================================
 // Organization-scoped shapes
@@ -129,6 +129,14 @@ pub const PROJECT_PULL_REQUESTS_SHAPE: ShapeDefinition<PullRequest> = crate::def
     table: "pull_requests",
     where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
     url: "/shape/project/{project_id}/pull_requests",
+    params: ["project_id"],
+);
+
+pub const PROJECT_LINEAR_ISSUE_LINKS_SHAPE: ShapeDefinition<LinearIssueLink> = crate::define_shape!(
+    name: "PROJECT_LINEAR_ISSUE_LINKS_SHAPE",
+    table: "linear_issue_links",
+    where_clause: r#""vk_issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+    url: "/shape/project/{project_id}/linear_issue_links",
     params: ["project_id"],
 );
 

@@ -2,7 +2,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
 pub const LINEAR_API_URL: &str = "https://api.linear.app/graphql";
-pub const IGNORE_LABEL_NAME: &str = "vibe-kanban-ignore";
+pub const IGNORE_LABEL_NAME: &str = "ignore";
 
 #[derive(Debug, thiserror::Error)]
 pub enum LinearClientError {
@@ -39,7 +39,7 @@ async fn gql<V: Serialize, T: for<'de> Deserialize<'de>>(
 ) -> Result<T, LinearClientError> {
     let resp = client
         .post(LINEAR_API_URL)
-        .bearer_auth(api_key)
+        .header("Authorization", api_key)
         .json(&GraphQLRequest { query, variables })
         .send()
         .await?
@@ -70,15 +70,18 @@ async fn gql_dynamic<V: Serialize, T: for<'de> Deserialize<'de>>(
         query: String,
         variables: V,
     }
-    let resp = client
+    let raw = client
         .post(LINEAR_API_URL)
-        .bearer_auth(api_key)
+        .header("Authorization", api_key)
         .json(&Req { query, variables })
         .send()
-        .await?
-        .error_for_status()?
-        .json::<GraphQLResponse<T>>()
         .await?;
+    if !raw.status().is_success() {
+        let status = raw.status();
+        let body = raw.text().await.unwrap_or_default();
+        return Err(LinearClientError::GraphQL(format!("HTTP {status}: {body}")));
+    }
+    let resp = raw.json::<GraphQLResponse<T>>().await?;
     if let Some(errors) = resp.errors {
         let msg = errors
             .into_iter()
@@ -149,6 +152,7 @@ pub async fn list_workflow_states(
     team_id: &str,
 ) -> Result<Vec<LinearWorkflowState>, LinearClientError> {
     #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct Vars<'a> {
         team_id: &'a str,
     }
@@ -167,7 +171,7 @@ pub async fn list_workflow_states(
     let data: Data = gql(
         client,
         api_key,
-        "query($team_id: String!) { team(id: $team_id) { states { nodes { id name type position } } } }",
+        "query($teamId: String!) { team(id: $teamId) { states { nodes { id name type position } } } }",
         Vars { team_id },
     )
     .await?;
@@ -215,6 +219,15 @@ impl LinearIssue {
             .iter()
             .any(|l| l.name.eq_ignore_ascii_case(IGNORE_LABEL_NAME))
     }
+
+    /// Extracts the branch name from a label like `branch_my-feature-branch`.
+    pub fn worktree_branch(&self) -> Option<String> {
+        self.labels.nodes.iter().find_map(|l| {
+            l.name
+                .strip_prefix("branch_")
+                .map(|branch| branch.to_string())
+        })
+    }
 }
 
 pub async fn list_issues_page(
@@ -225,13 +238,13 @@ pub async fn list_issues_page(
     after: Option<&str>,
 ) -> Result<(Vec<LinearIssue>, bool, Option<String>), LinearClientError> {
     let filter_arg = if project_id.is_some() {
-        ", filter: { project: { id: { eq: $project_id } } }"
+        ", filter: { project: { id: { eq: $projectId } } }"
     } else {
         ""
     };
     let query = format!(
-        r#"query($team_id: String!, $after: String{project_var}) {{
-            team(id: $team_id) {{
+        r#"query($teamId: String!, $after: String{project_var}) {{
+            team(id: $teamId) {{
                 issues(first: 100, after: $after{filter_arg}) {{
                     nodes {{ id identifier title description priority dueDate
                             state {{ id name type position }}
@@ -243,7 +256,7 @@ pub async fn list_issues_page(
             }}
         }}"#,
         project_var = if project_id.is_some() {
-            ", $project_id: ID"
+            ", $projectId: ID"
         } else {
             ""
         },
@@ -474,7 +487,7 @@ pub async fn create_comment(
     let data: Data = gql(
         client,
         api_key,
-        "mutation($issue_id: String!, $body: String!) { commentCreate(input: { issueId: $issue_id, body: $body }) { comment { id } } }",
+        "mutation($issueId: String!, $body: String!) { commentCreate(input: { issueId: $issueId, body: $body }) { comment { id } } }",
         Vars { issue_id, body },
     )
     .await?;
@@ -582,7 +595,7 @@ pub async fn create_label(
     let data: Data = gql(
         client,
         api_key,
-        "mutation($team_id: String!, $name: String!, $color: String!) { issueLabelCreate(input: { teamId: $team_id, name: $name, color: $color }) { label { id } } }",
+        "mutation($teamId: String!, $name: String!, $color: String!) { issueLabelCreate(input: { teamId: $teamId, name: $name, color: $color }) { label { id } } }",
         Vars { team_id, name, color },
     )
     .await?;
@@ -622,9 +635,9 @@ pub async fn register_webhook(
     let data: Data = gql(
         client,
         api_key,
-        r#"mutation($team_id: String!, $url: String!, $secret: String!) {
+        r#"mutation($teamId: String!, $url: String!, $secret: String!) {
             webhookCreate(input: {
-                teamId: $team_id, url: $url, secret: $secret,
+                teamId: $teamId, url: $url, secret: $secret,
                 resourceTypes: ["Issue", "Comment"]
             }) { webhook { id } }
         }"#,

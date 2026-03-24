@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SpinnerIcon } from '@phosphor-icons/react';
-import { makeLocalApiRequest } from '@/shared/lib/localApiTransport';
+import { makeRequest } from '@/shared/lib/remoteApi';
 import { ConnectLinearPanel } from './connect-panel';
 import { StatusMappingPanel } from './status-mapping';
 import { SyncStatusPanel } from './sync-status';
@@ -25,7 +25,7 @@ export function LinearIntegration({ projectId, vkStatuses }: Props) {
   >(undefined);
 
   function loadConnection() {
-    makeLocalApiRequest('/v1/linear/connections')
+    makeRequest('/v1/linear/connections')
       .then((r) => r.json())
       .then((conns: LinearConnection[]) => {
         const conn = conns.find((c) => c.projectId === projectId) ?? null;
@@ -41,7 +41,7 @@ export function LinearIntegration({ projectId, vkStatuses }: Props) {
 
   async function handleToggleSync(enabled: boolean) {
     if (!connection) return;
-    await makeLocalApiRequest(`/v1/linear/connections/${connection.id}`, {
+    await makeRequest(`/v1/linear/connections/${connection.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ syncEnabled: enabled }),

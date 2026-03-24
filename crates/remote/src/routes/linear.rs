@@ -28,31 +28,34 @@ pub fn protected_router() -> Router<AppState> {
             get(list_connections).post(create_connection),
         )
         .route(
-            "/linear/connections/:id",
+            "/linear/connections/{id}",
             get(get_connection)
                 .patch(update_connection)
                 .delete(delete_connection),
         )
         .route(
-            "/linear/connections/:id/status-mappings",
+            "/linear/connections/{id}/status-mappings",
             get(get_status_mappings).put(save_status_mappings),
         )
         .route(
-            "/linear/connections/:id/teams",
+            "/linear/connections/{id}/teams",
             get(list_teams_for_connection),
         )
-        .route("/linear/connections/:id/sync", post(trigger_sync))
-        .route("/linear/connections/:id/stats", get(get_connection_stats))
+        .route("/linear/connections/{id}/sync", post(trigger_sync))
+        .route("/linear/connections/{id}/stats", get(get_connection_stats))
         .route(
-            "/linear/connections/:id/workflow-states",
+            "/linear/connections/{id}/workflow-states",
             get(get_workflow_states),
         )
         .route("/linear/teams-preview", post(teams_preview))
+        .route("/linear/pending-analysis", get(list_pending_analysis))
+        .route("/linear/issues/{id}/mark-analyzed", post(mark_analyzed))
 }
 
 // ── teams_preview ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct TeamsPreviewRequest {
     api_key: String,
 }
@@ -294,9 +297,7 @@ async fn delete_connection(State(state): State<AppState>, Path(id): Path<Uuid>) 
         &conn.linear_webhook_id,
         state.config().linear_encryption_key.as_ref(),
     ) {
-        if let Ok(api_key) =
-            crypto::decrypt(enc_key.expose_secret(), &conn.encrypted_api_key)
-        {
+        if let Ok(api_key) = crypto::decrypt(enc_key.expose_secret(), &conn.encrypted_api_key) {
             let _ = client::delete_webhook(&state.http_client, &api_key, webhook_id).await;
         }
     }
@@ -674,8 +675,7 @@ async fn handle_linear_comment_event(
         Some(k) => k,
         None => return Ok(()),
     };
-    let _api_key = match crypto::decrypt(enc_key.expose_secret(), &conn.encrypted_api_key)
-    {
+    let _api_key = match crypto::decrypt(enc_key.expose_secret(), &conn.encrypted_api_key) {
         Ok(k) => k,
         Err(_) => return Ok(()),
     };
@@ -761,6 +761,106 @@ async fn delete_vk_comment(state: &AppState, comment_id: Uuid) -> anyhow::Result
     Ok(())
 }
 
+// ── GitNexus analysis ─────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingAnalysisIssue {
+    pub issue_id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    pub worktree_branch: Option<String>,
+    pub comments: Vec<String>,
+}
+
+async fn list_pending_analysis(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+) -> Response {
+    let rows = sqlx::query!(
+        r#"
+        SELECT i.id AS "id!: Uuid", i.title, i.description, lil.worktree_branch
+        FROM issues i
+        JOIN linear_issue_links lil ON lil.vk_issue_id = i.id
+        JOIN projects p ON p.id = i.project_id
+        JOIN organization_member_metadata om ON om.organization_id = p.organization_id
+        WHERE om.user_id = $1
+          AND lil.gitnexus_analyzed = FALSE
+        "#,
+        ctx.user.id
+    )
+    .fetch_all(state.pool())
+    .await;
+
+    match rows {
+        Ok(rows) => {
+            let mut issues = Vec::with_capacity(rows.len());
+            for r in rows {
+                let comments = sqlx::query_scalar!(
+                    r#"SELECT message AS "message!" FROM issue_comments WHERE issue_id = $1 ORDER BY created_at"#,
+                    r.id
+                )
+                .fetch_all(state.pool())
+                .await
+                .unwrap_or_default();
+                issues.push(PendingAnalysisIssue {
+                    issue_id: r.id,
+                    title: r.title,
+                    description: r.description,
+                    worktree_branch: r.worktree_branch,
+                    comments,
+                });
+            }
+            Json(issues).into_response()
+        }
+        Err(e) => {
+            tracing::error!(?e, "Failed to list pending analysis issues");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+async fn mark_analyzed(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(issue_id): Path<Uuid>,
+) -> Response {
+    // Verify the user has access to this issue
+    let ok = sqlx::query_scalar!(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM issues i
+            JOIN projects p ON p.id = i.project_id
+            JOIN organization_member_metadata om ON om.organization_id = p.organization_id
+            WHERE i.id = $1 AND om.user_id = $2
+        ) AS "exists!"
+        "#,
+        issue_id,
+        ctx.user.id
+    )
+    .fetch_one(state.pool())
+    .await
+    .unwrap_or(false);
+
+    if !ok {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+
+    match sqlx::query!(
+        "UPDATE linear_issue_links SET gitnexus_analyzed = TRUE WHERE vk_issue_id = $1",
+        issue_id
+    )
+    .execute(state.pool())
+    .await
+    {
+        Ok(_) => StatusCode::NO_CONTENT.into_response(),
+        Err(e) => {
+            tracing::error!(?e, "Failed to mark issue as analyzed");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize)]
@@ -810,7 +910,7 @@ async fn fetch_project_statuses(
     Ok(rows.into_iter().map(|r| (r.id, r.name)).collect())
 }
 
-async fn fetch_fallback_status_id(
+pub async fn fetch_fallback_status_id(
     pool: &sqlx::PgPool,
     project_id: Uuid,
 ) -> sqlx::Result<Option<Uuid>> {

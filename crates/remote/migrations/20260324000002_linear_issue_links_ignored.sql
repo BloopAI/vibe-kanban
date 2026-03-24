@@ -1,0 +1,1 @@
+ALTER TABLE linear_issue_links ADD COLUMN linear_ignored BOOLEAN NOT NULL DEFAULT FALSE;

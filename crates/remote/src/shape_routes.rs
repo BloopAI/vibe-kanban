@@ -26,6 +26,7 @@ use crate::{
         project_statuses::ProjectStatusRepository, projects::ProjectRepository,
         pull_requests::PullRequestRepository, tags::TagRepository, workspaces::WorkspaceRepository,
     },
+    linear::db::LinearIssueLink,
     routes::{
         error::ErrorResponse,
         organization_members::{ensure_issue_access, ensure_member_access, ensure_project_access},
@@ -59,6 +60,11 @@ struct ListUsersResponse {
 #[derive(Debug, Serialize)]
 struct ListWorkspacesResponse {
     workspaces: Vec<Workspace>,
+}
+
+#[derive(Debug, Serialize)]
+struct ListLinearIssueLinksResponse {
+    linear_issue_links: Vec<LinearIssueLink>,
 }
 
 // =============================================================================
@@ -156,6 +162,12 @@ pub fn all_shape_routes() -> Vec<ShapeRoute> {
             ShapeScope::Project,
             "/fallback/pull_requests",
             fallback_list_pull_requests,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_LINEAR_ISSUE_LINKS_SHAPE,
+            ShapeScope::Project,
+            "/fallback/linear_issue_links",
+            fallback_list_linear_issue_links,
         ),
         // Issue-scoped
         ShapeRoute::new(
@@ -454,6 +466,36 @@ async fn fallback_list_pull_requests(
         })?;
 
     Ok(Json(ListPullRequestsResponse { pull_requests }))
+}
+
+async fn fallback_list_linear_issue_links(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Query(query): Query<ProjectFallbackQuery>,
+) -> Result<Json<ListLinearIssueLinksResponse>, ErrorResponse> {
+    ensure_project_access(state.pool(), ctx.user.id, query.project_id).await?;
+
+    let linear_issue_links = sqlx::query_as!(
+        LinearIssueLink,
+        r#"
+        SELECT id, vk_issue_id, linear_issue_id, linear_issue_identifier,
+               last_synced_at, created_at, gitnexus_analyzed, linear_ignored, worktree_branch
+        FROM linear_issue_links
+        WHERE vk_issue_id IN (SELECT id FROM issues WHERE project_id = $1)
+        "#,
+        query.project_id
+    )
+    .fetch_all(state.pool())
+    .await
+    .map_err(|error| {
+        tracing::error!(?error, project_id = %query.project_id, "failed to list linear issue links (fallback)");
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to list linear issue links",
+        )
+    })?;
+
+    Ok(Json(ListLinearIssueLinksResponse { linear_issue_links }))
 }
 
 // =============================================================================

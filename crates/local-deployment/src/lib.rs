@@ -219,6 +219,17 @@ impl Deployment for LocalDeployment {
             PrMonitorService::spawn(db, analytics, container, rc).await;
         }
 
+        // Spawn Linear GitNexus analysis service if repo path is configured
+        {
+            let inku_repo_path = std::env::var("INKU_REPO_PATH")
+                .ok()
+                .map(std::path::PathBuf::from);
+            services::services::linear_analysis::LinearAnalysisService::spawn(
+                remote_client.clone().ok(),
+                inku_repo_path,
+            );
+        }
+
         let deployment = Self {
             config,
             user_id,

@@ -18,7 +18,8 @@ pub struct LinearProjectConnection {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize, ts_rs::TS)]
+#[ts(export)]
 pub struct LinearIssueLink {
     pub id: Uuid,
     pub vk_issue_id: Uuid,
@@ -26,6 +27,9 @@ pub struct LinearIssueLink {
     pub linear_issue_identifier: String,
     pub last_synced_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
+    pub gitnexus_analyzed: bool,
+    pub linear_ignored: bool,
+    pub worktree_branch: Option<String>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow, serde::Serialize)]
@@ -109,6 +113,23 @@ pub async fn get_connection_by_webhook_id(
         webhook_id
     )
     .fetch_optional(pool)
+    .await
+}
+
+pub async fn list_all_active_connections(
+    pool: &PgPool,
+) -> sqlx::Result<Vec<LinearProjectConnection>> {
+    sqlx::query_as!(
+        LinearProjectConnection,
+        r#"
+        SELECT id, project_id, linear_team_id, linear_project_id,
+               encrypted_api_key, linear_webhook_id, linear_webhook_secret,
+               sync_enabled, created_at, updated_at
+        FROM linear_project_connections
+        WHERE sync_enabled = TRUE
+        "#,
+    )
+    .fetch_all(pool)
     .await
 }
 
@@ -209,7 +230,7 @@ pub async fn get_link_for_vk_issue(
         LinearIssueLink,
         r#"
         SELECT id, vk_issue_id, linear_issue_id, linear_issue_identifier,
-               last_synced_at, created_at
+               last_synced_at, created_at, gitnexus_analyzed, linear_ignored, worktree_branch
         FROM linear_issue_links
         WHERE vk_issue_id = $1
         "#,
@@ -227,7 +248,7 @@ pub async fn get_link_for_linear_issue(
         LinearIssueLink,
         r#"
         SELECT id, vk_issue_id, linear_issue_id, linear_issue_identifier,
-               last_synced_at, created_at
+               last_synced_at, created_at, gitnexus_analyzed, linear_ignored, worktree_branch
         FROM linear_issue_links
         WHERE linear_issue_id = $1
         "#,
@@ -250,7 +271,7 @@ pub async fn create_issue_link(
             (vk_issue_id, linear_issue_id, linear_issue_identifier, last_synced_at)
         VALUES ($1, $2, $3, NOW())
         RETURNING id, vk_issue_id, linear_issue_id, linear_issue_identifier,
-                  last_synced_at, created_at
+                  last_synced_at, created_at, gitnexus_analyzed, linear_ignored, worktree_branch
         "#,
         vk_issue_id,
         linear_issue_id,
@@ -272,6 +293,55 @@ pub async fn touch_link(pool: &PgPool, vk_issue_id: Uuid) -> sqlx::Result<()> {
     .execute(pool)
     .await?;
     Ok(())
+}
+
+pub async fn set_linear_ignored(
+    pool: &PgPool,
+    linear_issue_id: &str,
+    ignored: bool,
+) -> sqlx::Result<()> {
+    sqlx::query!(
+        "UPDATE linear_issue_links SET linear_ignored = $2 WHERE linear_issue_id = $1",
+        linear_issue_id,
+        ignored,
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn set_worktree_branch(
+    pool: &PgPool,
+    linear_issue_id: &str,
+    branch: Option<&str>,
+) -> sqlx::Result<()> {
+    sqlx::query!(
+        "UPDATE linear_issue_links SET worktree_branch = $2 WHERE linear_issue_id = $1",
+        linear_issue_id,
+        branch,
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn list_issue_links_for_project(
+    pool: &PgPool,
+    project_id: Uuid,
+) -> sqlx::Result<Vec<LinearIssueLink>> {
+    sqlx::query_as!(
+        LinearIssueLink,
+        r#"
+        SELECT ll.id, ll.vk_issue_id, ll.linear_issue_id, ll.linear_issue_identifier,
+               ll.last_synced_at, ll.created_at, ll.gitnexus_analyzed, ll.linear_ignored, ll.worktree_branch
+        FROM linear_issue_links ll
+        JOIN issues i ON i.id = ll.vk_issue_id
+        WHERE i.project_id = $1
+        "#,
+        project_id
+    )
+    .fetch_all(pool)
+    .await
 }
 
 pub async fn delete_issue_link_by_vk_id(pool: &PgPool, vk_issue_id: Uuid) -> sqlx::Result<()> {
@@ -394,6 +464,19 @@ pub async fn get_label_links(
     )
     .fetch_all(pool)
     .await
+}
+
+pub async fn fetch_fallback_status_id(
+    pool: &PgPool,
+    project_id: Uuid,
+) -> sqlx::Result<Option<Uuid>> {
+    let row = sqlx::query!(
+        "SELECT id FROM project_statuses WHERE project_id = $1 ORDER BY sort_order LIMIT 1",
+        project_id
+    )
+    .fetch_optional(pool)
+    .await?;
+    Ok(row.map(|r| r.id))
 }
 
 pub async fn upsert_label_link(

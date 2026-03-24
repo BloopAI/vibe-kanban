@@ -8,6 +8,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, post},
 };
+use serde_json::Value;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -16,6 +17,7 @@ use crate::{DeploymentImpl, error::ApiError};
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/issues", get(list_issues).post(create_issue))
+        .route("/issues/bulk", post(bulk_update_issues))
         .route("/issues/search", post(search_issues))
         .route(
             "/issues/{issue_id}",
@@ -67,6 +69,15 @@ async fn update_issue(
     let client = deployment.remote_client()?;
     let response = client.update_issue(issue_id, &request).await?;
     Ok(ResponseJson(ApiResponse::success(response)))
+}
+
+async fn bulk_update_issues(
+    State(deployment): State<DeploymentImpl>,
+    Json(body): Json<Value>,
+) -> Result<ResponseJson<Value>, ApiError> {
+    let client = deployment.remote_client()?;
+    let response = client.bulk_update_issues(&body).await?;
+    Ok(ResponseJson(response))
 }
 
 async fn delete_issue(

@@ -1,23 +1,23 @@
-'use client';
+"use client";
 
-import type { MouseEvent, ReactNode } from 'react';
-import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import type { MouseEvent, ReactNode } from "react";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   CircleDashedIcon,
   DotsThreeIcon,
   PlusIcon,
-} from '@phosphor-icons/react';
-import { cn } from '../lib/cn';
-import { PriorityIcon, type PriorityLevel } from './PriorityIcon';
-import { KanbanBadge } from './KanbanBadge';
-import { KanbanAssignee, type KanbanAssigneeUser } from './KanbanAssignee';
-import { RunningDots } from './RunningDots';
-import { PrBadge, type PrBadgeStatus } from './PrBadge';
+} from "@phosphor-icons/react";
+import { cn } from "../lib/cn";
+import { PriorityIcon, type PriorityLevel } from "./PriorityIcon";
+import { KanbanBadge } from "./KanbanBadge";
+import { KanbanAssignee, type KanbanAssigneeUser } from "./KanbanAssignee";
+import { RunningDots } from "./RunningDots";
+import { PrBadge, type PrBadgeStatus } from "./PrBadge";
 import {
   RelationshipBadge,
   type RelationshipDisplayType,
-} from './RelationshipBadge';
+} from "./RelationshipBadge";
 
 export interface KanbanTag {
   id: string;
@@ -74,7 +74,7 @@ function formatKanbanDescriptionPreview(
     imageWithNameLabel: (name: string) => string;
     fileLabel: string;
     fileWithNameLabel: (name: string) => string;
-  }
+  },
 ): string {
   return markdown
     .replace(/```[\s\S]*?```/g, options.codeBlockLabel)
@@ -84,7 +84,7 @@ function formatKanbanDescriptionPreview(
         const normalizedAlt = altText.trim();
         const normalizedUrl = url.trim();
         const isImageAttachment =
-          normalizedUrl.startsWith('attachment://') &&
+          normalizedUrl.startsWith("attachment://") &&
           isImageLikeAttachmentName(normalizedAlt);
 
         if (isImageAttachment) {
@@ -96,7 +96,7 @@ function formatKanbanDescriptionPreview(
         return normalizedAlt
           ? options.fileWithNameLabel(normalizedAlt)
           : options.fileLabel;
-      }
+      },
     )
     .replace(
       /(?<!!)\[([^\]]*)\]\((attachment:\/\/[^)]+|\.vibe-attachments\/[^)]+)\)/g,
@@ -105,19 +105,19 @@ function formatKanbanDescriptionPreview(
         return normalizedLabel
           ? options.fileWithNameLabel(normalizedLabel)
           : options.fileLabel;
-      }
+      },
     )
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/^\s*>\s?/gm, '')
-    .replace(/^\s*([-*+]|\d+\.)\s+/gm, '')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/__([^_]+)__/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/_([^_]+)_/g, '$1')
-    .replace(/~~([^~]+)~~/g, '$1')
-    .replace(/\s+/g, ' ')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/^\s*([-*+]|\d+\.)\s+/gm, "")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
+    .replace(/~~([^~]+)~~/g, "$1")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -132,6 +132,7 @@ export type KanbanCardContentProps<TTag extends KanbanTag = KanbanTag> = {
   relationships?: KanbanRelationship[];
   isSubIssue?: boolean;
   isLoading?: boolean;
+  gitnexusAnalysisPending?: boolean;
   className?: string;
   onPriorityClick?: (e: MouseEvent) => void;
   onAssigneeClick?: (e: MouseEvent) => void;
@@ -151,6 +152,7 @@ export function KanbanCardContent<TTag extends KanbanTag = KanbanTag>({
   relationships = [],
   isSubIssue,
   isLoading = false,
+  gitnexusAnalysisPending = false,
   className,
   onPriorityClick,
   onAssigneeClick,
@@ -158,20 +160,20 @@ export function KanbanCardContent<TTag extends KanbanTag = KanbanTag>({
   tagEditProps,
   isMobile,
 }: KanbanCardContentProps<TTag>) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
   const previewDescription = useMemo(() => {
     if (!description) {
       return null;
     }
 
     const formatted = formatKanbanDescriptionPreview(description, {
-      codeBlockLabel: t('kanban.previewCodeBlock'),
-      imageLabel: t('kanban.previewImage'),
+      codeBlockLabel: t("kanban.previewCodeBlock"),
+      imageLabel: t("kanban.previewImage"),
       imageWithNameLabel: (name: string) =>
-        t('kanban.previewImageWithName', { name }),
-      fileLabel: t('kanban.previewFile'),
+        t("kanban.previewImageWithName", { name }),
+      fileLabel: t("kanban.previewFile"),
       fileWithNameLabel: (name: string) =>
-        t('kanban.previewFileWithName', { name }),
+        t("kanban.previewFileWithName", { name }),
     });
     return formatted.length > 0 ? formatted : null;
   }, [description, t]);
@@ -200,19 +202,27 @@ export function KanbanCardContent<TTag extends KanbanTag = KanbanTag>({
   );
 
   return (
-    <div className={cn('flex flex-col gap-half min-w-0', className)}>
+    <div className={cn("flex flex-col gap-half min-w-0", className)}>
       {/* Row 1: Task ID + sub-issue indicator + loading dots + more actions */}
       <div className="flex items-center justify-between gap-half">
         <div className="flex items-center gap-half min-w-0">
           {isSubIssue && (
             <span className="text-sm text-low">
-              {t('kanban.subIssueIndicator')}
+              {t("kanban.subIssueIndicator")}
             </span>
           )}
           <span className="font-ibm-plex-mono text-sm text-low truncate">
             {displayId}
           </span>
           {isLoading && <RunningDots />}
+          {gitnexusAnalysisPending && (
+            <span
+              className="text-xs text-low bg-secondary border border-border rounded px-1 py-px shrink-0"
+              title="GitNexus impact analysis in progress"
+            >
+              Analyzing…
+            </span>
+          )}
         </div>
         {onMoreActionsClick && (
           <button
@@ -223,11 +233,11 @@ export function KanbanCardContent<TTag extends KanbanTag = KanbanTag>({
             }}
             onMouseDown={(e) => e.stopPropagation()}
             className={cn(
-              'p-half -m-half rounded-sm text-low hover:text-normal hover:bg-secondary shrink-0',
+              "p-half -m-half rounded-sm text-low hover:text-normal hover:bg-secondary shrink-0",
               isMobile
-                ? ''
-                : 'invisible opacity-0 group-hover:visible group-hover:opacity-100',
-              'transition-[opacity,color,background-color]'
+                ? ""
+                : "invisible opacity-0 group-hover:visible group-hover:opacity-100",
+              "transition-[opacity,color,background-color]",
             )}
             aria-label="More actions"
             title="More actions"
@@ -244,10 +254,10 @@ export function KanbanCardContent<TTag extends KanbanTag = KanbanTag>({
       {previewDescription && (
         <p
           className={cn(
-            'text-sm text-low m-0',
+            "text-sm text-low m-0",
             isMobile
-              ? 'leading-tight line-clamp-2'
-              : 'leading-relaxed line-clamp-4'
+              ? "leading-tight line-clamp-2"
+              : "leading-relaxed line-clamp-4",
           )}
         >
           {previewDescription}

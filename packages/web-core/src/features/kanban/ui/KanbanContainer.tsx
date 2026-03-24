@@ -131,6 +131,7 @@ export function KanbanContainer() {
     getPullRequestsForIssue,
     getWorkspacesForIssue,
     getRelationshipsForIssue,
+    getLinearIssueLinkForIssue,
     issuesById,
     insertIssueTag,
     removeIssueTag,
@@ -249,7 +250,7 @@ export function KanbanContainer() {
   );
   const shouldAnimateCreateButton = issues.length === 0;
 
-  const { filteredIssues } = useKanbanFilters({
+  const { filteredIssues: filteredIssuesRaw } = useKanbanFilters({
     issues,
     issueAssignees,
     issueTags,
@@ -257,6 +258,15 @@ export function KanbanContainer() {
     showSubIssues,
     currentUserId: userId,
   });
+
+  const filteredIssues = useMemo(
+    () =>
+      filteredIssuesRaw.filter((issue) => {
+        const link = getLinearIssueLinkForIssue(issue.id);
+        return !link?.linear_ignored;
+      }),
+    [filteredIssuesRaw, getLinearIssueLinkForIssue]
+  );
 
   const setKanbanSearchQuery = useCallback(
     (searchQuery: string) => {
@@ -947,6 +957,14 @@ export function KanbanContainer() {
                               )}
                               isSubIssue={!!issue.parent_issue_id}
                               isMobile={isMobile}
+                              gitnexusAnalysisPending={(() => {
+                                const link = getLinearIssueLinkForIssue(
+                                  issue.id
+                                );
+                                return (
+                                  link !== undefined && !link.gitnexus_analyzed
+                                );
+                              })()}
                               onPriorityClick={(e) => {
                                 e.stopPropagation();
                                 handleCardPriorityClick(issue.id);
