@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use backon::{ExponentialBuilder, Retryable};
 pub use cli::AzCli;
 use cli::{AzCliError, AzureRepoInfo};
+use db::models::merge::PullRequestInfo;
 use tokio::task;
 use tracing::info;
 

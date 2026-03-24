@@ -11,7 +11,7 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
-use db::models::merge::MergeStatus;
+use db::models::merge::{MergeStatus, PullRequestInfo};
 use serde::Deserialize;
 use tempfile::NamedTempFile;
 use thiserror::Error;
@@ -433,7 +433,14 @@ impl GhCli {
             ],
             None,
         )?;
-        Self::parse_pr_view(&raw)
+        let detail = Self::parse_pr_view(&raw)?;
+        Ok(PullRequestInfo {
+            number: detail.number,
+            url: detail.url,
+            status: detail.status,
+            merged_at: detail.merged_at,
+            merge_commit_sha: detail.merge_commit_sha,
+        })
     }
 
     pub fn pr_checkout(
