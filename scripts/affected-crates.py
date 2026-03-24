@@ -65,6 +65,7 @@ _GLOBAL_TRIGGERS = {
     "Cargo.toml",
     "rust-toolchain.toml",
     "rust-toolchain",
+    "rustfmt.toml",
     ".cargo/config.toml",
 }
 
