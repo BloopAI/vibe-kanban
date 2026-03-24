@@ -265,6 +265,14 @@ pub trait StandardCodingAgentExecutor {
         vec![]
     }
 
+    fn normalize_logs_historical(
+        &self,
+        raw_logs_event_store: Arc<MsgStore>,
+        worktree_path: &Path,
+    ) -> Vec<JoinHandle<()>> {
+        self.normalize_logs(raw_logs_event_store, worktree_path)
+    }
+
     // MCP configuration methods
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf>;
 

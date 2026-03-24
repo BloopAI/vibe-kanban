@@ -831,6 +831,48 @@ pub trait ContainerService {
         &self,
         id: &Uuid,
     ) -> Option<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>> {
+        struct AbortOnDrop {
+            handle: Option<JoinHandle<()>>,
+        }
+
+        impl Drop for AbortOnDrop {
+            fn drop(&mut self) {
+                if let Some(handle) = self.handle.take() {
+                    handle.abort();
+                }
+            }
+        }
+
+        struct AbortJoinHandle(Option<JoinHandle<()>>);
+
+        impl AbortJoinHandle {
+            async fn wait(mut self) {
+                if let Some(handle) = self.0.take() {
+                    let _ = handle.await;
+                }
+            }
+        }
+
+        impl Drop for AbortJoinHandle {
+            fn drop(&mut self) {
+                if let Some(handle) = self.0.take() {
+                    handle.abort();
+                }
+            }
+        }
+
+        struct AbortHandleList {
+            handles: Vec<JoinHandle<()>>,
+        }
+
+        impl Drop for AbortHandleList {
+            fn drop(&mut self) {
+                for handle in &self.handles {
+                    handle.abort();
+                }
+            }
+        }
+
         // First try in-memory store (existing behavior)
         if let Some(store) = self.get_msg_store_by_id(id).await {
             Some(
@@ -918,7 +960,7 @@ pub trait ContainerService {
                     #[cfg(feature = "qa-mode")]
                     {
                         let executor = QaMockExecutor;
-                        executor.normalize_logs(
+                        executor.normalize_logs_historical(
                             temp_store.clone(),
                             &request.effective_dir(&current_dir),
                         )
@@ -927,7 +969,7 @@ pub trait ContainerService {
                     {
                         let executor = ExecutorConfigs::get_cached()
                             .get_coding_agent_or_default(&request.executor_config.profile_id());
-                        executor.normalize_logs(
+                        executor.normalize_logs_historical(
                             temp_store.clone(),
                             &request.effective_dir(&current_dir),
                         )
@@ -937,7 +979,7 @@ pub trait ContainerService {
                     #[cfg(feature = "qa-mode")]
                     {
                         let executor = QaMockExecutor;
-                        executor.normalize_logs(
+                        executor.normalize_logs_historical(
                             temp_store.clone(),
                             &request.effective_dir(&current_dir),
                         )
@@ -946,7 +988,7 @@ pub trait ContainerService {
                     {
                         let executor = ExecutorConfigs::get_cached()
                             .get_coding_agent_or_default(&request.executor_config.profile_id());
-                        executor.normalize_logs(
+                        executor.normalize_logs_historical(
                             temp_store.clone(),
                             &request.effective_dir(&current_dir),
                         )
@@ -955,13 +997,13 @@ pub trait ContainerService {
                 #[cfg(feature = "qa-mode")]
                 ExecutorActionType::ReviewRequest(_request) => {
                     let executor = QaMockExecutor;
-                    executor.normalize_logs(temp_store.clone(), &current_dir)
+                    executor.normalize_logs_historical(temp_store.clone(), &current_dir)
                 }
                 #[cfg(not(feature = "qa-mode"))]
                 ExecutorActionType::ReviewRequest(request) => {
                     let executor = ExecutorConfigs::get_cached()
                         .get_coding_agent_or_default(&request.executor_config.profile_id());
-                    executor.normalize_logs(temp_store.clone(), &current_dir)
+                    executor.normalize_logs_historical(temp_store.clone(), &current_dir)
                 }
                 _ => {
                     tracing::debug!(
@@ -974,15 +1016,20 @@ pub trait ContainerService {
 
             // Await all normalizer tasks, then push Ready so the dedup
             // stream knows when to flush its buffer and terminate.
-            {
+            let handles = {
                 let store = temp_store.clone();
-                tokio::spawn(async move {
-                    for handle in handles {
-                        let _ = handle.await;
+                let ready_handle = tokio::spawn(async move {
+                    let mut handles = AbortHandleList { handles };
+                    while let Some(handle) = handles.handles.pop() {
+                        AbortJoinHandle(Some(handle)).wait().await;
                     }
                     store.push(LogMsg::Ready);
                 });
-            }
+
+                AbortOnDrop {
+                    handle: Some(ready_handle),
+                }
+            };
 
             // Stream normalized patches, deduplicating consecutive patches
             // that target the same path (only the final state matters for
@@ -1003,31 +1050,36 @@ pub trait ContainerService {
                 });
 
             let deduped = futures::stream::unfold(
-                (stream.boxed(), None::<Patch>, HashSet::<String>::new()),
-                |(mut stream, buffered, mut sent_paths)| async move {
+                (
+                    stream.boxed(),
+                    None::<Patch>,
+                    HashSet::<String>::new(),
+                    handles,
+                ),
+                |(mut stream, buffered, mut sent_paths, handles)| async move {
                     match stream.next().await {
                         Some(PatchOrDone::Patch(patch)) => {
                             let Some(prev) = buffered else {
                                 // First patch — just buffer it
-                                return Some((None, (stream, Some(patch), sent_paths)));
+                                return Some((None, (stream, Some(patch), sent_paths, handles)));
                             };
                             if patch_entry_path(&patch) == patch_entry_path(&prev)
                                 && is_add_or_replace(&patch)
                                 && is_add_or_replace(&prev)
                             {
                                 // Same path, both add/replace — replace buffer
-                                Some((None, (stream, Some(patch), sent_paths)))
+                                Some((None, (stream, Some(patch), sent_paths, handles)))
                             } else {
                                 // Different — emit prev, buffer new
                                 let prev = fix_patch_ops(prev, &mut sent_paths);
-                                Some((Some(prev), (stream, Some(patch), sent_paths)))
+                                Some((Some(prev), (stream, Some(patch), sent_paths, handles)))
                             }
                         }
                         Some(PatchOrDone::Done) | None => {
                             // Sentinel or stream end: flush buffer and terminate
                             if let Some(prev) = buffered {
                                 let prev = fix_patch_ops(prev, &mut sent_paths);
-                                return Some((Some(prev), (stream, None, sent_paths)));
+                                return Some((Some(prev), (stream, None, sent_paths, handles)));
                             }
                             None
                         }
