@@ -245,7 +245,8 @@ impl StandardCodingAgentExecutor for Droid {
                     ("gpt-5.3-codex", "GPT 5.3 Codex"),
                     ("claude-sonnet-4-6", "Claude Sonnet 4.6"),
                     ("kimi-k2.5", "Kimi K2.5"),
-                    ("minimax-m2.5", "MiniMax M2.5"),
+                    ("minimax-m2.7", "MiniMax M2.7"),
+                    ("minimax-m2.7-highspeed", "MiniMax M2.7 Highspeed"),
                     ("glm-4.7", "GLM-4.7"),
                     ("claude-opus-4-5-20251101", "Claude Opus 4.5"),
                     ("claude-sonnet-4-5-20250929", "Claude Sonnet 4.5"),
@@ -273,5 +274,90 @@ impl StandardCodingAgentExecutor for Droid {
         Ok(Box::pin(futures::stream::once(async move {
             patch::executor_discovered_options(options)
         })))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn default_droid() -> Droid {
+        Droid {
+            append_prompt: AppendPrompt::default(),
+            autonomy: Autonomy::SkipPermissionsUnsafe,
+            model: None,
+            reasoning_effort: None,
+            cmd: Default::default(),
+        }
+    }
+
+    #[tokio::test]
+    async fn discover_options_includes_minimax_m2_7() {
+        let droid = default_droid();
+        let stream = droid.discover_options(None, None).await.unwrap();
+
+        use futures::StreamExt;
+        let patches: Vec<_> = stream.collect().await;
+        let serialized = serde_json::to_string(&patches).unwrap();
+
+        assert!(
+            serialized.contains("minimax-m2.7"),
+            "discover_options should include minimax-m2.7 model"
+        );
+        assert!(
+            serialized.contains("minimax-m2.7-highspeed"),
+            "discover_options should include minimax-m2.7-highspeed model"
+        );
+        assert!(
+            serialized.contains("MiniMax M2.7"),
+            "discover_options should include MiniMax M2.7 display name"
+        );
+        assert!(
+            serialized.contains("MiniMax M2.7 Highspeed"),
+            "discover_options should include MiniMax M2.7 Highspeed display name"
+        );
+    }
+
+    #[test]
+    fn apply_overrides_sets_model() {
+        let mut droid = default_droid();
+        let config = ExecutorConfig {
+            executor: BaseCodingAgent::Droid,
+            variant: None,
+            model_id: Some("minimax-m2.7".to_string()),
+            agent_id: None,
+            reasoning_id: None,
+            permission_policy: None,
+        };
+
+        droid.apply_overrides(&config);
+        assert_eq!(droid.model, Some("minimax-m2.7".to_string()));
+    }
+
+    #[test]
+    fn build_command_with_minimax_model() {
+        let droid = Droid {
+            model: Some("minimax-m2.7-highspeed".to_string()),
+            ..default_droid()
+        };
+
+        // Verify the command builder succeeds with a MiniMax model
+        let builder = droid.build_command_builder().unwrap();
+        let serialized = serde_json::to_string(&builder).unwrap();
+        assert!(
+            serialized.contains("minimax-m2.7-highspeed"),
+            "command builder should contain minimax-m2.7-highspeed model param"
+        );
+    }
+
+    #[test]
+    fn get_preset_options_returns_droid_agent() {
+        let droid = Droid {
+            model: Some("minimax-m2.7".to_string()),
+            ..default_droid()
+        };
+        let preset = droid.get_preset_options();
+        assert_eq!(preset.executor, BaseCodingAgent::Droid);
+        assert_eq!(preset.model_id, Some("minimax-m2.7".to_string()));
     }
 }
