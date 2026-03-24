@@ -63,7 +63,7 @@ impl McpServer {
         let response: MutationResponse<IssueRelationship> =
             match self.send_json(self.client.post(&url).json(&payload)).await {
                 Ok(r) => r,
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(Self::tool_error(e)),
             };
 
         McpServer::success(&McpCreateIssueRelationshipResponse {
@@ -83,7 +83,7 @@ impl McpServer {
             relationship_id
         ));
         if let Err(e) = self.send_empty_json(self.client.delete(&url)).await {
-            return Ok(e);
+            return Ok(Self::tool_error(e));
         }
 
         McpServer::success(&McpDeleteIssueRelationshipResponse {

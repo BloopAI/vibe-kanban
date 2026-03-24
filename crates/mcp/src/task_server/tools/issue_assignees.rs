@@ -76,7 +76,7 @@ impl McpServer {
         let response: ListIssueAssigneesResponse = match self.send_json(self.client.get(&url)).await
         {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let assignees = response
@@ -112,7 +112,7 @@ impl McpServer {
         let response: MutationResponse<IssueAssignee> =
             match self.send_json(self.client.post(&url).json(&payload)).await {
                 Ok(r) => r,
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(Self::tool_error(e)),
             };
 
         McpServer::success(&McpAssignIssueResponse {
@@ -132,7 +132,7 @@ impl McpServer {
             issue_assignee_id
         ));
         if let Err(e) = self.send_empty_json(self.client.delete(&url)).await {
-            return Ok(e);
+            return Ok(Self::tool_error(e));
         }
 
         McpServer::success(&McpUnassignIssueResponse {

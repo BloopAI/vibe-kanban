@@ -56,7 +56,7 @@ impl McpServer {
         ));
         let response: ListProjectsResponse = match self.send_json(self.client.get(&url)).await {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let project_summaries: Vec<ProjectSummary> = response
