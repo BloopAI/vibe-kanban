@@ -392,7 +392,17 @@ impl AuthConfig {
                     );
                     crate::auth::jwt::DEFAULT_ACCESS_TOKEN_TTL_SECONDS
                 }
-                Ok(val) => val,
+                Ok(val) => {
+                    if val <= crate::auth::jwt::DEFAULT_JWT_LEEWAY_SECONDS {
+                        tracing::warn!(
+                            "ACCESS_TOKEN_TTL_SECONDS ({val}s) is at or below the JWT validation leeway ({}s). \
+                             Tokens will remain valid for approximately {}s total.",
+                            crate::auth::jwt::DEFAULT_JWT_LEEWAY_SECONDS,
+                            val + crate::auth::jwt::DEFAULT_JWT_LEEWAY_SECONDS,
+                        );
+                    }
+                    val
+                }
                 Err(_) => {
                     tracing::warn!(
                         "ACCESS_TOKEN_TTL_SECONDS={:?} is not a valid u64, using default ({}s)",

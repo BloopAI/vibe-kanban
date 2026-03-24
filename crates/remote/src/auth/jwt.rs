@@ -21,7 +21,7 @@ use crate::{auth::provider::ProviderTokenDetails, db::auth::AuthSession};
 
 pub const DEFAULT_ACCESS_TOKEN_TTL_SECONDS: u64 = 120;
 pub const REFRESH_TOKEN_TTL_DAYS: i64 = 365;
-const DEFAULT_JWT_LEEWAY_SECONDS: u64 = 60;
+pub(crate) const DEFAULT_JWT_LEEWAY_SECONDS: u64 = 60;
 
 #[derive(Debug, Error)]
 pub enum JwtError {
