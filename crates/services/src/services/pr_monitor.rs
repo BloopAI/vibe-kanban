@@ -1,4 +1,7 @@
-use std::{sync::Arc, sync::Mutex, time::Duration};
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use api_types::{PullRequestStatus, UpdatePullRequestApiRequest, UpsertPullRequestRequest};
 use chrono::{DateTime, Utc};
@@ -146,10 +149,13 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
     /// newly discovered PRs get their status checked in the same cycle.
     async fn discover_new_prs(&self) -> Result<(), PrMonitorError> {
         let updated_since = *self.last_discovery_at.lock().unwrap();
-        let candidates = Merge::get_active_workspace_repos(&self.db.pool, updated_since).await?;
 
-        // Record the time before we start checking so we don't miss concurrent updates.
+        // Capture the timestamp before the DB query to prevent a race condition:
+        // a workspace updated between the query and this timestamp would be missed
+        // by both the current and future discovery cycles. Capturing early may
+        // re-query some workspaces, but that is safe since discovery is idempotent.
         let discovery_started_at = Utc::now();
+        let candidates = Merge::get_active_workspace_repos(&self.db.pool, updated_since).await?;
 
         if candidates.is_empty() {
             debug!("No active workspace repos to check for PRs");
@@ -163,6 +169,7 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
             updated_since,
         );
 
+        let mut had_failures = false;
         for candidate in &candidates {
             if let Err(e) = self.discover_prs_for_workspace_repo(candidate).await {
                 if e.is_environmental() {
@@ -175,11 +182,16 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
                         "Error discovering PR for workspace {} repo {}: {}",
                         candidate.workspace_id, candidate.repo_id, e
                     );
+                    had_failures = true;
                 }
             }
         }
 
-        *self.last_discovery_at.lock().unwrap() = Some(discovery_started_at);
+        // Only advance the watermark if all candidates were successfully processed,
+        // so that failed candidates are retried in the next discovery cycle.
+        if !had_failures {
+            *self.last_discovery_at.lock().unwrap() = Some(discovery_started_at);
+        }
         Ok(())
     }
 
