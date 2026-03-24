@@ -401,11 +401,14 @@ impl GhCli {
     }
 
     /// Squash-merge a pull request via `gh pr merge --squash`.
+    ///
+    /// This only performs the merge itself. Use [`get_pr_merge_info`] afterwards
+    /// to retrieve the resulting [`PullRequestInfo`].
     pub fn squash_merge_pr(
         &self,
         repo_info: &GitHubRepoInfo,
         pr_number: i64,
-    ) -> Result<PullRequestInfo, GhCliError> {
+    ) -> Result<(), GhCliError> {
         let repo_spec = repo_info.repo_spec();
         self.run(
             [
@@ -419,8 +422,16 @@ impl GhCli {
             ],
             None,
         )?;
+        Ok(())
+    }
 
-        // After merge, fetch the updated PR info to get merge commit SHA
+    /// Fetch merge info (number, url, state, mergedAt, mergeCommit) for a PR.
+    pub fn get_pr_merge_info(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        pr_number: i64,
+    ) -> Result<PullRequestInfo, GhCliError> {
+        let repo_spec = repo_info.repo_spec();
         let raw = self.run(
             [
                 "pr",

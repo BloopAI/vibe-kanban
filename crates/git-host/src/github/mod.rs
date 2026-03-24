@@ -363,18 +363,19 @@ impl GitHostProvider for GitHubProvider {
 
         let cli = self.gh_cli.clone();
 
+        // Step 1: Perform the merge (non-idempotent — only retry this on its own).
         (|| async {
             let cli = cli.clone();
             let repo_info = repo_info.clone();
 
-            let result = task::spawn_blocking(move || cli.squash_merge_pr(&repo_info, pr_number))
+            task::spawn_blocking(move || cli.squash_merge_pr(&repo_info, pr_number))
                 .await
                 .map_err(|err| {
                     GitHostError::PullRequest(format!(
                         "Failed to execute GitHub CLI for squash-merge: {err}"
                     ))
-                })?;
-            result.map_err(GitHostError::from)
+                })?
+                .map_err(GitHostError::from)
         })
         .retry(
             &ExponentialBuilder::default()
@@ -386,7 +387,38 @@ impl GitHostProvider for GitHubProvider {
         .when(|e: &GitHostError| e.should_retry())
         .notify(|err: &GitHostError, dur: Duration| {
             tracing::warn!(
-                "GitHub API call failed, retrying after {:.2}s: {}",
+                "GitHub squash-merge failed, retrying after {:.2}s: {}",
+                dur.as_secs_f64(),
+                err
+            );
+        })
+        .await?;
+
+        // Step 2: Fetch the resulting PR info (idempotent — safe to retry independently).
+        (|| async {
+            let cli = cli.clone();
+            let repo_info = repo_info.clone();
+
+            task::spawn_blocking(move || cli.get_pr_merge_info(&repo_info, pr_number))
+                .await
+                .map_err(|err| {
+                    GitHostError::PullRequest(format!(
+                        "Failed to execute GitHub CLI for fetching merge info: {err}"
+                    ))
+                })?
+                .map_err(GitHostError::from)
+        })
+        .retry(
+            &ExponentialBuilder::default()
+                .with_min_delay(Duration::from_secs(1))
+                .with_max_delay(Duration::from_secs(30))
+                .with_max_times(3)
+                .with_jitter(),
+        )
+        .when(|e: &GitHostError| e.should_retry())
+        .notify(|err: &GitHostError, dur: Duration| {
+            tracing::warn!(
+                "GitHub merge-info fetch failed, retrying after {:.2}s: {}",
                 dur.as_secs_f64(),
                 err
             );
