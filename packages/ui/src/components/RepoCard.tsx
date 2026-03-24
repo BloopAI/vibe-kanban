@@ -25,6 +25,7 @@ import { SplitButton, type SplitButtonOption } from './SplitButton';
 
 export type RepoAction =
   | 'pull-request'
+  | 'pr-and-squash-merge'
   | 'link-pr'
   | 'merge'
   | 'change-target'
@@ -36,6 +37,11 @@ const repoActionOptions: SplitButtonOption<RepoAction>[] = [
     value: 'pull-request',
     label: 'Open pull request',
     icon: GitPullRequestIcon,
+  },
+  {
+    value: 'pr-and-squash-merge',
+    label: 'PR & squash-merge',
+    icon: GitMergeIcon,
   },
   { value: 'link-pr', label: 'Link pull request', icon: LinkIcon },
   { value: 'merge', label: 'Merge', icon: GitMergeIcon },
@@ -99,6 +105,11 @@ export function RepoCard({
     () =>
       repoActionOptions.filter((opt) => {
         if (opt.value === 'pull-request' && hasPrOpen) return false;
+        if (
+          opt.value === 'pr-and-squash-merge' &&
+          (hasPrOpen || hasPrLinked || !isTargetRemote)
+        )
+          return false;
         if (opt.value === 'link-pr' && hasPrLinked) return false;
         if (opt.value === 'merge' && (hasPrOpen || isTargetRemote))
           return false;

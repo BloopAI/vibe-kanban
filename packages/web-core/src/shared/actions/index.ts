@@ -139,6 +139,54 @@ function invalidateWorkspaceQueries(
   queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
 }
 
+// Shared implementation for GitCreatePR and GitPRAndSquashMerge actions
+async function executeCreatePR(
+  ctx: ActionExecutorContext,
+  workspaceId: string,
+  repoId: string,
+  opts?: { defaultSquashMerge?: boolean }
+) {
+  const workspace = await getWorkspace(ctx.queryClient, workspaceId);
+
+  const repos = await workspacesApi.getRepos(workspaceId);
+  const repo = repos.find((r) => r.id === repoId);
+
+  // Resolve vibe-kanban identifier from remote workspace + issue
+  let issueIdentifier: string | undefined;
+  const remoteWs = ctx.remoteWorkspaces.find(
+    (w) => w.local_workspace_id === workspaceId
+  );
+  if (remoteWs?.issue_id && ctx.projectMutations?.getIssue) {
+    const issue = ctx.projectMutations.getIssue(remoteWs.issue_id);
+    issueIdentifier = issue?.simple_id || remoteWs.issue_id;
+  }
+
+  const result = await CreatePRDialog.show({
+    attempt: workspace,
+    repoId,
+    targetBranch: repo?.target_branch,
+    issueIdentifier,
+    defaultSquashMerge: opts?.defaultSquashMerge,
+  });
+
+  if (!result.success && result.error) {
+    throw new Error(result.error);
+  }
+
+  if (result.success && result.squashMerge) {
+    const mergeResult = await workspacesApi.squashMergePR(workspaceId, {
+      repo_id: repoId,
+    });
+    ctx.queryClient.invalidateQueries({
+      queryKey: ['branchStatus', workspaceId],
+    });
+    invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+    if (!mergeResult.success) {
+      throw new Error(mergeResult.message || 'Failed to squash-merge PR');
+    }
+  }
+}
+
 // Helper to find the next workspace to navigate to when removing current workspace
 function getNextWorkspaceId(
   activeWorkspaces: { id: string; isRunning?: boolean }[],
@@ -856,33 +904,18 @@ export const Actions = {
     shortcut: 'X P',
     requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    execute: async (ctx, workspaceId, repoId) => {
-      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
+    execute: (ctx, workspaceId, repoId) =>
+      executeCreatePR(ctx, workspaceId, repoId),
+  },
 
-      const repos = await workspacesApi.getRepos(workspaceId);
-      const repo = repos.find((r) => r.id === repoId);
-
-      // Resolve vibe-kanban identifier from remote workspace + issue
-      let issueIdentifier: string | undefined;
-      const remoteWs = ctx.remoteWorkspaces.find(
-        (w) => w.local_workspace_id === workspaceId
-      );
-      if (remoteWs?.issue_id && ctx.projectMutations?.getIssue) {
-        const issue = ctx.projectMutations.getIssue(remoteWs.issue_id);
-        issueIdentifier = issue?.simple_id || remoteWs.issue_id;
-      }
-
-      const result = await CreatePRDialog.show({
-        attempt: workspace,
-        repoId,
-        targetBranch: repo?.target_branch,
-        issueIdentifier,
-      });
-
-      if (!result.success && result.error) {
-        throw new Error(result.error);
-      }
-    },
+  GitPRAndSquashMerge: {
+    id: 'git-pr-and-squash-merge',
+    label: 'PR & squash-merge',
+    icon: GitMergeIcon,
+    requiresTarget: ActionTargetType.GIT,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: (ctx, workspaceId, repoId) =>
+      executeCreatePR(ctx, workspaceId, repoId, { defaultSquashMerge: true }),
   },
 
   GitLinkPR: {
