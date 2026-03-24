@@ -163,25 +163,22 @@ async fn create_issue_comment(
             state.http_client.clone(),
             response.data.id,
         );
+        let enc_key_clone = enc_key.clone();
         tokio::spawn(async move {
-            crate::linear::outbound::push_comment_to_linear(&pool, &http, &enc_key, cid).await;
+            crate::linear::outbound::push_comment_to_linear(&pool, &http, &enc_key_clone, cid)
+                .await;
         });
-    }
 
-    if let Some(enc_key) = state
-        .config()
-        .linear_encryption_key
-        .as_ref()
-        .map(|k| k.expose_secret().to_string())
-    {
-        let (pool, http, cid) = (
-            state.pool().clone(),
-            state.http_client.clone(),
-            response.data.id,
-        );
-        tokio::spawn(async move {
-            crate::slack::notify::notify_comment_added(&pool, &http, &enc_key, cid).await;
-        });
+        if !is_reply {
+            let (pool, http, cid) = (
+                state.pool().clone(),
+                state.http_client.clone(),
+                response.data.id,
+            );
+            tokio::spawn(async move {
+                crate::slack::notify::notify_comment_added(&pool, &http, &enc_key, cid).await;
+            });
+        }
     }
 
     Ok(Json(response))

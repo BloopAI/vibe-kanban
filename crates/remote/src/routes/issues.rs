@@ -663,11 +663,27 @@ async fn bulk_update_issues(
     {
         let issue_ids: Vec<Uuid> = results.iter().map(|i| i.id).collect();
         let (pool, http) = (state.pool().clone(), state.http_client.clone());
+        let enc_key_clone = enc_key.clone();
         tokio::spawn(async move {
             for id in issue_ids {
-                crate::linear::outbound::push_issue_to_linear(&pool, &http, &enc_key, id).await;
+                crate::linear::outbound::push_issue_to_linear(&pool, &http, &enc_key_clone, id)
+                    .await;
             }
         });
+
+        let status_changed_ids: Vec<Uuid> = notification_pairs
+            .iter()
+            .filter(|(old, new)| old.status_id != new.status_id)
+            .map(|(_, new)| new.id)
+            .collect();
+        if !status_changed_ids.is_empty() {
+            let (pool, http) = (state.pool().clone(), state.http_client.clone());
+            tokio::spawn(async move {
+                for id in status_changed_ids {
+                    crate::slack::notify::notify_status_change(&pool, &http, &enc_key, id).await;
+                }
+            });
+        }
     }
 
     Ok(Json(BulkUpdateIssuesResponse {
