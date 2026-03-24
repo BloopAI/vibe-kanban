@@ -424,6 +424,20 @@ async fn update_issue(
         });
     }
 
+    if data.status_id != issue.status_id {
+        if let Some(enc_key) = state
+            .config()
+            .linear_encryption_key
+            .as_ref()
+            .map(|k| k.expose_secret().to_string())
+        {
+            let (pool, http, id) = (state.pool().clone(), state.http_client.clone(), issue_id);
+            tokio::spawn(async move {
+                crate::slack::notify::notify_status_change(&pool, &http, &enc_key, id).await;
+            });
+        }
+    }
+
     Ok(Json(MutationResponse { data, txid }))
 }
 
