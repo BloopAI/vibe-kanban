@@ -37,16 +37,12 @@ jobs:
       new_version: ${{ steps.version.outputs.new_version }}
       branch_suffix: ${{ steps.branch.outputs.suffix }}
     steps:
-      - name: Cache cargo-edit
-        uses: actions/cache@v5
-        id: cache-cargo-edit
-        with:
-          path: ~/.cargo/bin/cargo-set-version
-          key: cargo-edit-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}
-
       - name: Install cargo-edit
-        if: steps.cache-cargo-edit.outputs.cache-hit != 'true'
-        run: cargo install cargo-edit
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+        with:
+          tool: cargo-edit
+          git: https://github.com/killercup/cargo-edit
+          rev: 96a3879fe3bafda6d0f943b642997fbf03e235cd # v0.13.9
 
       - uses: actions/checkout@v6
         with:
@@ -59,7 +55,7 @@ jobs:
       - name: Setup SSH Agent for private dependencies
         id: ssh-setup
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-        uses: webfactory/ssh-agent@v0.9.0
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
         with:
           ssh-private-key: ${{ secrets.VK_PRIVATE_DEPLOY_KEY }}
 
@@ -196,7 +192,7 @@ jobs:
           VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
       - name: Create Sentry release
-        uses: getsentry/action-release@v3
+        uses: getsentry/action-release@dab6548b3c03c4717878099e43782cf5be654289 # v3
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -262,7 +258,7 @@ jobs:
           key: rust-toolchain-${{ runner.os }}-${{ matrix.target }}-${{ env.RUST_TOOLCHAIN }}
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: ${{ matrix.target }}
@@ -301,11 +297,19 @@ jobs:
 
       - name: Install cargo zigbuild
         if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
-        run: cargo install --locked cargo-zigbuild --version 0.20.1
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+        with:
+          tool: cargo-zigbuild
+          git: https://github.com/rust-cross/cargo-zigbuild
+          rev: bbb57ac6a5eb90f53617a5c218fda03080599e4a # v0.20.1
 
       - name: Install cargo xwin
         if: runner.os == 'Linux' && contains(matrix.target, 'windows')
-        run: cargo install --locked cargo-xwin --version ${{ env.CARGO_XWIN_VERSION }}
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+        with:
+          tool: cargo-xwin
+          git: https://github.com/rust-cross/cargo-xwin
+          rev: 635a9559d49d719e79e0f60d92eb44447faf3212 # v0.20.2
 
       - name: Cache xwin downloads
         if: runner.os == 'Linux' && contains(matrix.target, 'windows')
@@ -324,9 +328,11 @@ jobs:
             target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
 
       - name: Setup cargo-sweep
-        shell: bash
-        run: |
-          cargo install --locked cargo-sweep --version 0.8.0
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+        with:
+          tool: cargo-sweep
+          git: https://github.com/holmgr/cargo-sweep
+          rev: 82f42d3593923db6fe715b299036512d91ddb35e # v0.8.0
 
       - name: Download frontend artifact
         uses: actions/download-artifact@v7
@@ -384,7 +390,7 @@ jobs:
           CARGO_PROFILE_RELEASE_DEBUG: 0
 
       - name: Setup Sentry CLI
-        uses: matbour/setup-sentry-cli@v2
+        uses: matbour/setup-sentry-cli@3e938c54b3018bdd019973689ef984e033b0454b # v2
         with:
           token: ${{ secrets.SENTRY_AUTH_TOKEN }}
           organization: ${{ secrets.SENTRY_ORG }}
@@ -743,7 +749,7 @@ jobs:
           key: rust-toolchain-${{ runner.os }}-${{ matrix.target }}-${{ env.RUST_TOOLCHAIN }}
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: ${{ matrix.target }}
@@ -772,7 +778,11 @@ jobs:
             tauri-target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
 
       - name: Setup cargo-sweep
-        run: cargo install --locked cargo-sweep --version 0.8.0
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+        with:
+          tool: cargo-sweep
+          git: https://github.com/holmgr/cargo-sweep
+          rev: 82f42d3593923db6fe715b299036512d91ddb35e # v0.8.0
 
       - name: Setup Node
         uses: ./.github/actions/setup-node
@@ -802,7 +812,9 @@ jobs:
           RUSTC_WRAPPER: ""
         run: |
           cd /tmp
-          curl -sL https://download.gnome.org/sources/msitools/0.103/msitools-0.103.tar.xz | tar xJ
+          curl -sL https://download.gnome.org/sources/msitools/0.103/msitools-0.103.tar.xz -o msitools-0.103.tar.xz
+          echo "d17622eebbf37fa4c09b59be0bc8db08b26be300a6731c74da1ebce262bce839  msitools-0.103.tar.xz" | sha256sum -c -
+          tar xJf msitools-0.103.tar.xz
           cd msitools-0.103
           meson setup builddir --prefix=/usr
           meson compile -C builddir wixl
@@ -818,7 +830,11 @@ jobs:
 
       - name: Install cargo-xwin
         if: runner.os == 'Linux' && contains(matrix.target, 'windows')
-        run: cargo install --locked cargo-xwin --version ${{ env.CARGO_XWIN_VERSION }}
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+        with:
+          tool: cargo-xwin
+          git: https://github.com/rust-cross/cargo-xwin
+          rev: 635a9559d49d719e79e0f60d92eb44447faf3212 # v0.20.2
 
       - name: Cache xwin downloads
         if: runner.os == 'Linux' && contains(matrix.target, 'windows')
@@ -922,7 +938,7 @@ jobs:
 
       - name: Azure CLI login
         if: contains(matrix.target, 'windows') && env.AZURE_ENDPOINT != ''
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
         with:
           creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
           allow-no-subscriptions: true
@@ -1137,7 +1153,7 @@ jobs:
           npm pack
 
       - name: Create GitHub Pre-Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         with:
           tag_name: ${{ needs.bump-version.outputs.new_tag }}
           name: Pre-release ${{ needs.bump-version.outputs.new_tag }}

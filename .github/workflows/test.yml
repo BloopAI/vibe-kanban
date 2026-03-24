@@ -234,7 +234,7 @@ jobs:
           setup-sqlx-cli: 'true'
 
       - name: Setup SSH Agent for private dependencies
-        uses: webfactory/ssh-agent@v0.9.0
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
         with:
           ssh-private-key: ${{ secrets.VK_PRIVATE_DEPLOY_KEY }}
 
@@ -300,7 +300,11 @@ jobs:
           cache-key: backend-test-${{ runner.os }}-${{ runner.arch }}-${{ env.RUNNER_LABEL }}
 
       - name: Install cargo-nextest
-        uses: taiki-e/install-action@nextest
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+        with:
+          tool: cargo-nextest
+          git: https://github.com/nextest-rs/nextest
+          rev: 6e4a9d6f2c4964f30ff54a8cd5466f8869267daa # cargo-nextest-0.9.132
 
       - name: Run Cargo tests
         run: cargo nextest run --workspace --exclude vibe-kanban-tauri

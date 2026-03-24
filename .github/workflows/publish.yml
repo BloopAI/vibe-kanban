@@ -39,7 +39,7 @@ jobs:
         uses: ./.github/actions/setup-node
 
       - name: Upgrade npm for OIDC support
-        run: npm install -g npm@latest
+        run: npm install -g npm@11.12.0
 
       - name: Download release assets
         uses: actions/github-script@v8
