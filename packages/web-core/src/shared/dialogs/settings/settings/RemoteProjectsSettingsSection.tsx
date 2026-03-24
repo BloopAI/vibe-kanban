@@ -68,6 +68,7 @@ import {
   TwoColumnPickerEmpty,
 } from './SettingsComponents';
 import { LinearIntegration } from './linear-integration';
+import { SlackIntegration } from './slack-integration';
 import { useSettingsDirty } from './SettingsDirtyContext';
 import type { DraftWorkspaceRepo, GitBranch, Repo } from 'shared/types';
 import { repoApi } from '@/shared/lib/api';
@@ -1392,6 +1393,27 @@ export function RemoteProjectsSettingsSection({
                 color: s.color,
               }))}
             />
+          </div>
+        )}
+
+        {/* Slack integration */}
+        {selectedProjectId && (
+          <div className="bg-secondary/50 border border-border rounded-sm p-4 space-y-base">
+            <div>
+              <p className="text-sm font-medium text-normal">
+                {t(
+                  'settings.remoteProjects.form.slack.label',
+                  'Slack Integration'
+                )}
+              </p>
+              <p className="text-sm text-low mt-1">
+                {t(
+                  'settings.remoteProjects.form.slack.description',
+                  'Send notifications to a Slack channel.'
+                )}
+              </p>
+            </div>
+            <SlackIntegration projectId={selectedProjectId} />
           </div>
         )}
 
