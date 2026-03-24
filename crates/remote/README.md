@@ -101,7 +101,7 @@ Additional endpoint with the `relay` profile:
 
 ## Local HTTPS with Caddy (Optional)
 
-Use [Caddy](https://caddyserver.com) as a reverse proxy to terminate TLS locally. A `Caddyfile` is already provided in the repository root.
+Use [Caddy](https://caddyserver.com) as a reverse proxy to terminate TLS locally. A `Caddyfile.example` is provided in the repository root.
 
 ### Install Caddy
 
@@ -118,7 +118,7 @@ sudo apt install caddy
 In a separate terminal from the repo root:
 
 ```bash
-caddy run --config Caddyfile
+caddy run --config Caddyfile.example
 ```
 
 The first time Caddy runs it installs a local CA certificate — you may be prompted for your password.
