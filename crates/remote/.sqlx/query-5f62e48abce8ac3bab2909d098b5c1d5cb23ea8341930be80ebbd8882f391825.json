@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO slack_project_connections (project_id, channel_id, encrypted_bot_token)\n        VALUES ($1, $2, $3)\n        ON CONFLICT (project_id)\n        DO UPDATE SET\n            channel_id          = EXCLUDED.channel_id,\n            encrypted_bot_token = EXCLUDED.encrypted_bot_token,\n            updated_at          = NOW()\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5f62e48abce8ac3bab2909d098b5c1d5cb23ea8341930be80ebbd8882f391825"
+}
