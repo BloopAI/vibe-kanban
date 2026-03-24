@@ -1,7 +1,10 @@
 import { type ReactNode } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { FORMAT_TEXT_COMMAND, UNDO_COMMAND } from 'lexical';
-import { INSERT_MARKDOWN_LIST_COMMAND } from './MarkdownInsertPlugin';
+import {
+  INSERT_UNORDERED_LIST_COMMAND,
+  INSERT_ORDERED_LIST_COMMAND,
+} from '@lexical/list';
 import {
   TextB,
   TextItalic,
@@ -10,8 +13,6 @@ import {
   ListBullets,
   ListNumbers,
   ArrowCounterClockwise,
-  Eye,
-  PencilSimple,
   type Icon,
   CheckIcon,
 } from '@phosphor-icons/react';
@@ -44,7 +45,7 @@ function ToolbarButton({
         'p-half rounded-sm transition-colors',
         active
           ? 'text-normal bg-panel'
-          : 'text-low hover:text-normal hover:bg-panel/50'
+          : 'text-low hover:text-normal hover:bg-panel/50',
       )}
     >
       <Icon className="size-icon-sm" weight="bold" />
@@ -55,8 +56,6 @@ function ToolbarButton({
 interface StaticToolbarPluginProps {
   saveStatus?: 'idle' | 'saved';
   extraActions?: ReactNode;
-  isPreviewMode?: boolean;
-  onTogglePreview?: () => void;
   /** Called when a formatting button is clicked while the editor is read-only.
    *  The parent should switch to edit mode; the command will be dispatched after. */
   onRequestEdit?: () => void;
@@ -67,8 +66,6 @@ interface StaticToolbarPluginProps {
 export function StaticToolbarPlugin({
   saveStatus,
   extraActions,
-  isPreviewMode = false,
-  onTogglePreview,
   onRequestEdit,
   readOnly,
 }: StaticToolbarPluginProps) {
@@ -102,7 +99,7 @@ export function StaticToolbarPlugin({
       {/* Separator */}
       <div className="w-px h-4 bg-border mx-half" />
 
-      {/* Text formatting buttons — insert markdown syntax */}
+      {/* Text formatting buttons */}
       <ToolbarButton
         onClick={() =>
           dispatch(() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold'))
@@ -141,7 +138,7 @@ export function StaticToolbarPlugin({
       <ToolbarButton
         onClick={() =>
           dispatch(() =>
-            editor.dispatchCommand(INSERT_MARKDOWN_LIST_COMMAND, 'bullet')
+            editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)
           )
         }
         icon={ListBullets}
@@ -150,25 +147,12 @@ export function StaticToolbarPlugin({
       <ToolbarButton
         onClick={() =>
           dispatch(() =>
-            editor.dispatchCommand(INSERT_MARKDOWN_LIST_COMMAND, 'number')
+            editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)
           )
         }
         icon={ListNumbers}
         label="Numbered List"
       />
-
-      {/* Preview toggle */}
-      {onTogglePreview && (
-        <>
-          <div className="w-px h-4 bg-border mx-half" />
-          <ToolbarButton
-            onClick={onTogglePreview}
-            icon={isPreviewMode ? PencilSimple : Eye}
-            label={isPreviewMode ? 'Edit' : 'Preview'}
-            active={isPreviewMode}
-          />
-        </>
-      )}
 
       {extraActions && (
         <>
@@ -182,7 +166,7 @@ export function StaticToolbarPlugin({
         <div
           className={cn(
             'ml-auto mr-base flex items-center transition-opacity duration-300',
-            saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'
+            saveStatus === 'idle' ? 'opacity-0' : 'opacity-100',
           )}
         >
           <CheckIcon className="size-icon-sm text-success" weight="bold" />
