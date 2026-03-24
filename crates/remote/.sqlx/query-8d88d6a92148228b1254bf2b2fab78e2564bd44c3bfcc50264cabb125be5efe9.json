@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT om.user_id AS \"user_id!: Uuid\"\n            FROM projects p\n            JOIN organization_member_metadata om ON om.organization_id = p.organization_id\n            WHERE p.id = $1\n            LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id!: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8d88d6a92148228b1254bf2b2fab78e2564bd44c3bfcc50264cabb125be5efe9"
+}

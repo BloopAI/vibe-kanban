@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, vk_issue_id, linear_issue_id, linear_issue_identifier,\n               last_synced_at, created_at\n        FROM linear_issue_links\n        WHERE vk_issue_id = $1\n        ",
+  "query": "\n        SELECT ll.id, ll.vk_issue_id, ll.linear_issue_id, ll.linear_issue_identifier,\n               ll.last_synced_at, ll.created_at, ll.gitnexus_analyzed, ll.linear_ignored, ll.worktree_branch\n        FROM linear_issue_links ll\n        JOIN issues i ON i.id = ll.vk_issue_id\n        WHERE i.project_id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -32,6 +32,21 @@
         "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "gitnexus_analyzed",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "linear_ignored",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "worktree_branch",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -45,8 +60,11 @@
       false,
       false,
       true,
-      false
+      false,
+      false,
+      false,
+      true
     ]
   },
-  "hash": "45f60822ae44954bb2fb6a5313c0ea17f8a8732a8f29cd2c6335385d20a5f6ae"
+  "hash": "ee56abdab78938dfaa034189f288a461f1ea1ad7380fe3a57bd85fd63b3c54d6"
 }

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE linear_issue_links SET worktree_branch = $2 WHERE linear_issue_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0e71e17957c261646836e39e985d4e0be95d6dbf46f316515d1e9c44b5480b0e"
+}

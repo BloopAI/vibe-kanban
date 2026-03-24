@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO linear_issue_links\n            (vk_issue_id, linear_issue_id, linear_issue_identifier, last_synced_at)\n        VALUES ($1, $2, $3, NOW())\n        RETURNING id, vk_issue_id, linear_issue_id, linear_issue_identifier,\n                  last_synced_at, created_at\n        ",
+  "query": "\n        SELECT id, vk_issue_id, linear_issue_id, linear_issue_identifier,\n               last_synced_at, created_at, gitnexus_analyzed, linear_ignored, worktree_branch\n        FROM linear_issue_links\n        WHERE vk_issue_id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -32,13 +32,26 @@
         "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "gitnexus_analyzed",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "linear_ignored",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "worktree_branch",
+        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -47,8 +60,11 @@
       false,
       false,
       true,
-      false
+      false,
+      false,
+      false,
+      true
     ]
   },
-  "hash": "eb12d0dc97bd8c831976c64358e42b3c3c2ea74220d80c32e9c2afd29db7e438"
+  "hash": "eb7a78c3bc242e2bd7dbd61976a8f17e41edbe42bb2cafbda0e06f5f00f8e4b6"
 }

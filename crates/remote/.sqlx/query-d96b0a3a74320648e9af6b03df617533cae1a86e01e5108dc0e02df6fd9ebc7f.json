@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, vk_issue_id, linear_issue_id, linear_issue_identifier,\n               last_synced_at, created_at, gitnexus_analyzed, linear_ignored, worktree_branch\n        FROM linear_issue_links\n        WHERE vk_issue_id IN (SELECT id FROM issues WHERE project_id = $1)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "vk_issue_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "linear_issue_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "linear_issue_identifier",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_synced_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "gitnexus_analyzed",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "linear_ignored",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "worktree_branch",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "d96b0a3a74320648e9af6b03df617533cae1a86e01e5108dc0e02df6fd9ebc7f"
+}

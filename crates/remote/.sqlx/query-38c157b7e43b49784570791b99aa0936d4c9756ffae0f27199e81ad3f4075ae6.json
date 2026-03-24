@@ -1,0 +1,74 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, project_id, linear_team_id, linear_project_id,\n               encrypted_api_key, linear_webhook_id, linear_webhook_secret,\n               sync_enabled, created_at, updated_at\n        FROM linear_project_connections\n        WHERE sync_enabled = TRUE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "linear_team_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "linear_project_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "encrypted_api_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "linear_webhook_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "linear_webhook_secret",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "sync_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "38c157b7e43b49784570791b99aa0936d4c9756ffae0f27199e81ad3f4075ae6"
+}

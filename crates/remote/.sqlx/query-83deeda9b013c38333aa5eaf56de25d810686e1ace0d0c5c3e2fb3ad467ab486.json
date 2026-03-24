@@ -1,0 +1,72 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO linear_issue_links\n            (vk_issue_id, linear_issue_id, linear_issue_identifier, last_synced_at)\n        VALUES ($1, $2, $3, NOW())\n        RETURNING id, vk_issue_id, linear_issue_id, linear_issue_identifier,\n                  last_synced_at, created_at, gitnexus_analyzed, linear_ignored, worktree_branch\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "vk_issue_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "linear_issue_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "linear_issue_identifier",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_synced_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "gitnexus_analyzed",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "linear_ignored",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "worktree_branch",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "83deeda9b013c38333aa5eaf56de25d810686e1ace0d0c5c3e2fb3ad467ab486"
+}

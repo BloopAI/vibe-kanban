@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE linear_issue_links SET linear_ignored = $2 WHERE linear_issue_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fd6e0aa993cde9f959fc52e76f4b48a098bebf968c974cda4c478d2c786d8ee2"
+}

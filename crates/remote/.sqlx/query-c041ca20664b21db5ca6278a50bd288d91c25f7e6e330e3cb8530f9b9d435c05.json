@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE linear_issue_links SET gitnexus_analyzed = TRUE WHERE vk_issue_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c041ca20664b21db5ca6278a50bd288d91c25f7e6e330e3cb8530f9b9d435c05"
+}

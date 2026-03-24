@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT i.id AS \"id!: Uuid\", i.title, i.description, lil.worktree_branch\n        FROM issues i\n        JOIN linear_issue_links lil ON lil.vk_issue_id = i.id\n        JOIN projects p ON p.id = i.project_id\n        JOIN organization_member_metadata om ON om.organization_id = p.organization_id\n        WHERE om.user_id = $1\n          AND lil.gitnexus_analyzed = FALSE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "worktree_branch",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "08a1f6f57ff605f74e30a4c2007534723aae40709be401facf6824b14855b021"
+}
