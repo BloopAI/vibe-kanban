@@ -39,6 +39,7 @@ pub mod issue_relationships;
 pub mod issue_tags;
 pub mod issues;
 mod linear;
+mod slack;
 mod migration;
 pub mod notifications;
 mod oauth;
@@ -135,6 +136,7 @@ pub fn router(state: AppState) -> Router {
         .merge(billing::protected_router())
         .merge(migration::router())
         .merge(linear::protected_router())
+        .merge(slack::protected_router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,
