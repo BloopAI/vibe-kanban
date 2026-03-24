@@ -390,51 +390,9 @@ These functions fetch their own data from the DB (following `linear::outbound::p
 
 - [ ] **Step 1: Write `notify.rs`**
 
-```rust
-use reqwest::Client;
-use sqlx::PgPool;
-use uuid::Uuid;
-
-use crate::{linear::crypto, slack::{client, db}};
-
-/// Notify Slack when an issue's status changes.
-/// Fetches issue title, project name, and new status name from the DB.
-pub async fn notify_status_change(
-    pool: &PgPool,
-    http: &Client,
-    enc_key: &str,
-    vk_issue_id: Uuid,
-) {
-    let Ok(Some(row)) = sqlx::query!(
-        r#"
-        SELECT i.title, p.name AS project_name, ps.name AS status_name
-        FROM issues i
-        JOIN projects p ON p.id = i.project_id
-        JOIN project_statuses ps ON ps.id = i.status_id
-        WHERE i.id = $1
-        "#,
-        vk_issue_id
-    )
-    .fetch_optional(pool)
-    .await else {
-        return;
-    };
-
-    let Ok(Some(conn)) = db::get_connection_for_project(pool, row.project_id_from_issue(vk_issue_id, pool).await)
-        .await else {
-        return;
-    };
-    // NOTE: project_id must be fetched separately — see implementation note below.
-    // Simplify by fetching project_id inline:
-    send_notification(pool, http, enc_key, &conn, &format!(
-        "[{}] Issue status changed: {} → {}",
-        row.project_name, row.title, row.status_name
-    ))
-    .await;
-}
-```
-
-Wait — the query above needs `project_id` on the issue. Let me write this more carefully:
+Column name notes (verified against migrations):
+- `issue_comments` has `message TEXT` (not `body`) and `author_id UUID` (not `user_id`)
+- `users` has `username TEXT` and `email TEXT` — no `name` column
 
 ```rust
 use reqwest::Client;
@@ -495,13 +453,13 @@ pub async fn notify_comment_added(
 ) {
     let Ok(Some(row)) = sqlx::query!(
         r#"
-        SELECT ic.body, i.title AS issue_title, i.project_id,
+        SELECT ic.message, i.title AS issue_title, i.project_id,
                p.name AS project_name,
-               COALESCE(u.name, u.email, 'Unknown') AS author
+               COALESCE(u.username, u.email, 'Unknown') AS author
         FROM issue_comments ic
         JOIN issues i ON i.id = ic.issue_id
         JOIN projects p ON p.id = i.project_id
-        LEFT JOIN users u ON u.id = ic.user_id
+        LEFT JOIN users u ON u.id = ic.author_id
         WHERE ic.id = $1
         "#,
         vk_comment_id
@@ -514,13 +472,14 @@ pub async fn notify_comment_added(
 
     let text = format!(
         "[{}] New comment on \"{}\" by {}",
-        row.project_name, row.issue_title, row.author
+        row.project_name, row.issue_title, row.author.unwrap_or_else(|| "Unknown".into())
     );
     send(pool, http, enc_key, row.project_id, &text).await;
 }
 
 /// Notify Slack when a PR is created.
-/// project_id, pr_title, and author are passed directly (already in scope at the call site).
+/// project_id, project_name, pr_title, and author are passed directly (in scope at call site).
+/// Note: this adds `project_name: &str` vs the spec signature to avoid an extra DB query.
 pub async fn notify_pr_created(
     pool: &PgPool,
     http: &Client,
@@ -541,7 +500,7 @@ pub async fn notify_pr_created(
 cargo check -p remote
 ```
 
-Expected: exits 0. Fix any column name mismatches by checking the actual schema in `crates/remote/migrations/` if needed (e.g. `users.name` vs `users.display_name`).
+Expected: exits 0. If SQLx reports unknown column errors, verify column names against `crates/remote/migrations/` — the correct names are `message`, `author_id`, `username` as noted above.
 
 - [ ] **Step 3: Regenerate SQLx cache**
 
@@ -582,16 +541,19 @@ use axum::{
     routing::{delete, get, post},
     Extension, Json,
 };
+use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
+    AppState,
     auth::RequestContext,
-    error::ErrorResponse,
     linear::crypto,
-    routes::organization_members::ensure_project_access,
     slack::{client, db},
-    state::AppState,
+};
+use super::{
+    error::ErrorResponse,
+    organization_members::ensure_project_access,
 };
 
 pub fn protected_router() -> Router<AppState> {
@@ -646,7 +608,7 @@ async fn connect(
     ensure_project_access(state.pool(), ctx.user.id, req.project_id).await?;
 
     // Validate token before storing
-    client::auth_test(state.http_client(), &req.bot_token)
+    client::auth_test(&state.http_client, &req.bot_token)
         .await
         .map_err(|e| {
             tracing::warn!(error = %e, "Slack auth_test failed");
@@ -800,7 +762,7 @@ Add an identical block right after each existing Linear spawn, calling the Slack
 
 - [ ] **Step 1: Add `notify_status_change` to `issues.rs`**
 
-In `crates/remote/src/routes/issues.rs`, find every `tokio::spawn` block that calls `push_issue_to_linear`. After each one, add:
+In `crates/remote/src/routes/issues.rs`, find the **`update_issue`** handler (NOT `create_issue` — creating an issue is not a status change event). In `update_issue`, look for the `if status_changed` guard that wraps the `push_issue_to_linear` spawn. Place the Slack spawn **inside the same `if status_changed` block**, right after the Linear spawn:
 
 ```rust
 if let Some(enc_key) = state
@@ -816,7 +778,7 @@ if let Some(enc_key) = state
 }
 ```
 
-Note: only add this where the issue update actually changes status (the `status_changed` flag check already guards this in the update handler — look for `if status_changed` near the Linear spawn and place the Slack spawn inside the same block).
+Do NOT add this to `create_issue` — that would fire a spurious "status changed" notification for every new issue.
 
 - [ ] **Step 2: Add `notify_comment_added` to `issue_comments.rs`**
 
