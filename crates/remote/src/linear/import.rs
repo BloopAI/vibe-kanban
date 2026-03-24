@@ -37,21 +37,19 @@ pub async fn run_initial_import(ctx: ImportContext) -> anyhow::Result<()> {
             // Update ignore/branch state for already-linked issues
             if let Some(link) = db::get_link_for_linear_issue(&ctx.pool, &linear_issue.id).await? {
                 let should_ignore = linear_issue.has_ignore_label();
-                if should_ignore != link.linear_ignored {
-                    if let Err(e) =
+                if should_ignore != link.linear_ignored
+                    && let Err(e) =
                         db::set_linear_ignored(&ctx.pool, &linear_issue.id, should_ignore).await
-                    {
-                        warn!(?e, linear_id = %linear_issue.id, "Failed to update linear_ignored");
-                    }
+                {
+                    warn!(?e, linear_id = %linear_issue.id, "Failed to update linear_ignored");
                 }
                 let branch = linear_issue.worktree_branch();
-                if branch.as_deref() != link.worktree_branch.as_deref() {
-                    if let Err(e) =
+                if branch.as_deref() != link.worktree_branch.as_deref()
+                    && let Err(e) =
                         db::set_worktree_branch(&ctx.pool, &linear_issue.id, branch.as_deref())
                             .await
-                    {
-                        warn!(?e, linear_id = %linear_issue.id, "Failed to update worktree_branch");
-                    }
+                {
+                    warn!(?e, linear_id = %linear_issue.id, "Failed to update worktree_branch");
                 }
                 continue;
             }

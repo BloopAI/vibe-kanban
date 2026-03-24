@@ -424,18 +424,17 @@ async fn update_issue(
         });
     }
 
-    if data.status_id != issue.status_id {
-        if let Some(enc_key) = state
+    if data.status_id != issue.status_id
+        && let Some(enc_key) = state
             .config()
             .linear_encryption_key
             .as_ref()
             .map(|k| k.expose_secret().to_string())
-        {
-            let (pool, http, id) = (state.pool().clone(), state.http_client.clone(), issue_id);
-            tokio::spawn(async move {
-                crate::slack::notify::notify_status_change(&pool, &http, &enc_key, id).await;
-            });
-        }
+    {
+        let (pool, http, id) = (state.pool().clone(), state.http_client.clone(), issue_id);
+        tokio::spawn(async move {
+            crate::slack::notify::notify_status_change(&pool, &http, &enc_key, id).await;
+        });
     }
 
     Ok(Json(MutationResponse { data, txid }))
@@ -514,28 +513,27 @@ async fn delete_issue(
     )
     .await;
 
-    if let (Some(link), Some(conn)) = (linear_link, linear_conn) {
-        if let Some(enc_key) = state
+    if let (Some(link), Some(conn)) = (linear_link, linear_conn)
+        && let Some(enc_key) = state
             .config()
             .linear_encryption_key
             .as_ref()
             .map(|k| k.expose_secret().to_string())
-        {
-            let (http, linear_issue_id, encrypted_api_key) = (
-                state.http_client.clone(),
-                link.linear_issue_id,
-                conn.encrypted_api_key,
-            );
-            tokio::spawn(async move {
-                crate::linear::outbound::delete_linear_issue(
-                    &http,
-                    &enc_key,
-                    &encrypted_api_key,
-                    &linear_issue_id,
-                )
-                .await;
-            });
-        }
+    {
+        let (http, linear_issue_id, encrypted_api_key) = (
+            state.http_client.clone(),
+            link.linear_issue_id,
+            conn.encrypted_api_key,
+        );
+        tokio::spawn(async move {
+            crate::linear::outbound::delete_linear_issue(
+                &http,
+                &enc_key,
+                &encrypted_api_key,
+                &linear_issue_id,
+            )
+            .await;
+        });
     }
 
     Ok(Json(response))

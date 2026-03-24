@@ -40,9 +40,10 @@ pub fn decrypt(key_hex: &str, encoded: &str) -> Result<String, CryptoError> {
         return Err(CryptoError::Decrypt);
     }
     let (nonce_bytes, ciphertext) = combined.split_at(12);
-    let nonce = aes_gcm::Nonce::from_slice(nonce_bytes);
+    let nonce_arr: [u8; 12] = nonce_bytes.try_into().map_err(|_| CryptoError::Decrypt)?;
+    let nonce = aes_gcm::Nonce::from(nonce_arr);
     let plaintext = cipher
-        .decrypt(nonce, ciphertext)
+        .decrypt(&nonce, ciphertext)
         .map_err(|_| CryptoError::Decrypt)?;
     String::from_utf8(plaintext).map_err(|_| CryptoError::Decrypt)
 }

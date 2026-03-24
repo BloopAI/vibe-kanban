@@ -40,10 +40,10 @@ pub fn map_linear_state_to_vk(
 }
 
 /// Find the Linear state ID for a given VK status ID.
-pub fn map_vk_status_to_linear<'a>(
+pub fn map_vk_status_to_linear(
     vk_status_id: uuid::Uuid,
-    mappings: &'a [LinearStatusMapping],
-) -> Option<&'a str> {
+    mappings: &[LinearStatusMapping],
+) -> Option<&str> {
     mappings
         .iter()
         .find(|m| m.vk_status_id == vk_status_id)

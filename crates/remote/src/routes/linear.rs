@@ -213,14 +213,13 @@ async fn create_connection(
 
     if let Ok(states) =
         client::list_workflow_states(&state.http_client, &req.api_key, &req.linear_team_id).await
+        && let Ok(vk_statuses) = fetch_project_statuses(state.pool(), req.project_id).await
     {
-        if let Ok(vk_statuses) = fetch_project_statuses(state.pool(), req.project_id).await {
-            let auto_mappings = sync::auto_map_statuses(&vk_statuses, &states);
-            for (vk_id, linear_id, linear_name) in auto_mappings {
-                let _ =
-                    db::upsert_status_mapping(state.pool(), conn.id, vk_id, linear_id, linear_name)
-                        .await;
-            }
+        let auto_mappings = sync::auto_map_statuses(&vk_statuses, &states);
+        for (vk_id, linear_id, linear_name) in auto_mappings {
+            let _ =
+                db::upsert_status_mapping(state.pool(), conn.id, vk_id, linear_id, linear_name)
+                    .await;
         }
     }
 
@@ -274,11 +273,11 @@ async fn update_connection(
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateConnectionRequest>,
 ) -> Response {
-    if let Some(enabled) = req.sync_enabled {
-        if let Err(e) = db::set_sync_enabled(state.pool(), id, enabled).await {
-            tracing::error!(?e);
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
+    if let Some(enabled) = req.sync_enabled
+        && let Err(e) = db::set_sync_enabled(state.pool(), id, enabled).await
+    {
+        tracing::error!(?e);
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
     StatusCode::OK.into_response()
 }
@@ -296,10 +295,9 @@ async fn delete_connection(State(state): State<AppState>, Path(id): Path<Uuid>) 
     if let (Some(webhook_id), Some(enc_key)) = (
         &conn.linear_webhook_id,
         state.config().linear_encryption_key.as_ref(),
-    ) {
-        if let Ok(api_key) = crypto::decrypt(enc_key.expose_secret(), &conn.encrypted_api_key) {
-            let _ = client::delete_webhook(&state.http_client, &api_key, webhook_id).await;
-        }
+    ) && let Ok(api_key) = crypto::decrypt(enc_key.expose_secret(), &conn.encrypted_api_key)
+    {
+        let _ = client::delete_webhook(&state.http_client, &api_key, webhook_id).await;
     }
 
     if let Err(e) = db::delete_connection(state.pool(), id).await {

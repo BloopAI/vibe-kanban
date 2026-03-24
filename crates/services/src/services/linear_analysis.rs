@@ -202,23 +202,22 @@ impl LinearAnalysisService {
                 }
 
                 // Auto-start workspace if impact score < 50 and branch label is set
-                if let Some(branch) = worktree_branch {
-                    if let Some(score) = parse_impact_score(&analysis) {
-                        if score < 50 {
-                            info!(%issue_id, score, branch, "Low impact score — auto-starting workspace");
-                            if let Err(e) = self
-                                .auto_start_workspace(
-                                    issue_id,
-                                    title,
-                                    description,
-                                    comments,
-                                    branch,
-                                )
-                                .await
-                            {
-                                error!(?e, %issue_id, "Failed to auto-start workspace");
-                            }
-                        }
+                if let Some(branch) = worktree_branch
+                    && let Some(score) = parse_impact_score(&analysis)
+                    && score < 50
+                {
+                    info!(%issue_id, score, branch, "Low impact score — auto-starting workspace");
+                    if let Err(e) = self
+                        .auto_start_workspace(
+                            issue_id,
+                            title,
+                            description,
+                            comments,
+                            branch,
+                        )
+                        .await
+                    {
+                        error!(?e, %issue_id, "Failed to auto-start workspace");
                     }
                 }
             }
@@ -286,7 +285,7 @@ impl LinearAnalysisService {
         let payload = AutoStartRequest {
             name: Some(title.to_string()),
             repos: vec![RepoInput {
-                repo_id: repo_id,
+                repo_id,
                 target_branch: branch.to_string(),
             }],
             executor_config: serde_json::json!({"type": "Claude"}),
@@ -346,10 +345,10 @@ fn parse_impact_score(analysis: &str) -> Option<u32> {
         let line = line.trim();
         if let Some(rest) = line.trim_matches('*').trim().strip_prefix("Impact Score:") {
             let rest = rest.trim().trim_matches('*').trim();
-            if let Some(score_str) = rest.split('/').next() {
-                if let Ok(score) = score_str.trim().parse::<u32>() {
-                    return Some(score);
-                }
+            if let Some(score_str) = rest.split('/').next()
+                && let Ok(score) = score_str.trim().parse::<u32>()
+            {
+                return Some(score);
             }
         }
     }
