@@ -3,8 +3,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use axum::response::sse::Event;
-use futures::{StreamExt, TryStreamExt, future};
+use futures::{StreamExt, future};
 use tokio::{sync::broadcast, task::JoinHandle};
 use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 
@@ -68,9 +67,6 @@ impl MsgStore {
         self.push(LogMsg::Stdout(s.into()));
     }
 
-    pub fn push_stderr<S: Into<String>>(&self, s: S) {
-        self.push(LogMsg::Stderr(s.into()));
-    }
     pub fn push_patch(&self, patch: json_patch::Patch) {
         self.push(LogMsg::JsonPatch(patch));
     }
@@ -155,19 +151,6 @@ impl MsgStore {
                     _ => None,
                 }
             })
-            .boxed()
-    }
-
-    pub fn stderr_lines_stream(
-        &self,
-    ) -> futures::stream::BoxStream<'static, std::io::Result<String>> {
-        self.stderr_chunked_stream().lines()
-    }
-
-    /// Same stream but mapped to `Event` for SSE handlers.
-    pub fn sse_stream(&self) -> futures::stream::BoxStream<'static, Result<Event, std::io::Error>> {
-        self.history_plus_stream()
-            .map_ok(|m| m.to_sse_event())
             .boxed()
     }
 
