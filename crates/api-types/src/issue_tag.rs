@@ -2,8 +2,6 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use crate::some_if_present;
-
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct IssueTag {
     pub id: Uuid,
@@ -19,12 +17,6 @@ pub struct CreateIssueTagRequest {
     pub id: Option<Uuid>,
     pub issue_id: Uuid,
     pub tag_id: Uuid,
-}
-
-#[derive(Debug, Clone, Deserialize, TS)]
-pub struct UpdateIssueTagRequest {
-    #[serde(default, deserialize_with = "some_if_present")]
-    pub tag_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
