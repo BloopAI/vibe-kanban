@@ -19,7 +19,7 @@ use crate::{
 };
 
 #[derive(Debug, Deserialize)]
-pub struct TerminalQuery {
+struct TerminalQuery {
     pub workspace_id: Uuid,
     #[serde(default = "default_cols")]
     pub cols: u16,
@@ -49,7 +49,7 @@ enum TerminalMessage {
     Error { message: String },
 }
 
-pub async fn terminal_ws(
+async fn terminal_ws(
     ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TerminalQuery>,
@@ -175,6 +175,6 @@ async fn send_error(socket: &mut MaybeSignedWebSocket, message: &str) -> anyhow:
     Ok(())
 }
 
-pub fn router() -> Router<DeploymentImpl> {
+pub(super) fn router() -> Router<DeploymentImpl> {
     Router::new().route("/terminal/ws", get(terminal_ws))
 }

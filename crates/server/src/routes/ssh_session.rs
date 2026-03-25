@@ -3,7 +3,7 @@ use deployment::Deployment;
 
 use crate::{DeploymentImpl, middleware::signed_ws::SignedWsUpgrade};
 
-pub async fn ssh_session_ws(
+pub(super) async fn ssh_session_ws(
     State(deployment): State<DeploymentImpl>,
     ws: SignedWsUpgrade,
 ) -> impl IntoResponse {
