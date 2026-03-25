@@ -20,7 +20,7 @@ use crate::{DeploymentImpl, error::ApiError};
 
 type MaybeWsUpgrade = Result<WebSocketUpgrade, WebSocketUpgradeRejection>;
 
-pub fn router() -> Router<DeploymentImpl> {
+pub(super) fn router() -> Router<DeploymentImpl> {
     Router::new().route("/host/{host_id}/{*tail}", any(proxy_host_request))
 }
 

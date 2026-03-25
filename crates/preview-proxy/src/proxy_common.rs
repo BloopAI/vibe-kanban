@@ -1,6 +1,6 @@
 use axum::http::HeaderMap;
 
-pub const SKIP_REQUEST_HEADERS: &[&str] = &[
+pub(crate) const SKIP_REQUEST_HEADERS: &[&str] = &[
     "host",
     "connection",
     "transfer-encoding",

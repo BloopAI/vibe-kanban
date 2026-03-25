@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
-pub fn router() -> Router<DeploymentImpl> {
+pub(super) fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/issues", get(list_issues).post(create_issue))
         .route("/issues/search", post(search_issues))

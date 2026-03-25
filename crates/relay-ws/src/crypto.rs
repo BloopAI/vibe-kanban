@@ -48,14 +48,14 @@ pub struct RelayWsFrame {
 // Signer — encodes and Ed25519-signs outgoing frames
 // ---------------------------------------------------------------------------
 
-pub struct WsFrameSigner {
+pub(crate) struct WsFrameSigner {
     request_signature: RequestSignature,
     outbound_seq: u64,
     signing: RelaySigningService,
 }
 
 impl WsFrameSigner {
-    pub fn new(request_signature: &RequestSignature, signing: RelaySigningService) -> Self {
+    pub(crate) fn new(request_signature: &RequestSignature, signing: RelaySigningService) -> Self {
         Self {
             request_signature: request_signature.clone(),
             outbound_seq: 0,
@@ -68,7 +68,7 @@ impl WsFrameSigner {
     /// Increments the sequence counter, Ed25519-signs over the session id,
     /// nonce, sequence number, message type, and SHA-256 of the payload,
     /// then wraps everything into a versioned envelope.
-    pub fn encode(&mut self, frame: RelayWsFrame) -> anyhow::Result<Vec<u8>> {
+    pub(crate) fn encode(&mut self, frame: RelayWsFrame) -> anyhow::Result<Vec<u8>> {
         self.outbound_seq = self.outbound_seq.saturating_add(1);
         let signing_input = ws_signing_input(
             &self.request_signature,
@@ -93,14 +93,14 @@ impl WsFrameSigner {
 // Verifier — decodes and Ed25519-verifies incoming frames
 // ---------------------------------------------------------------------------
 
-pub struct WsFrameVerifier {
+pub(crate) struct WsFrameVerifier {
     request_signature: RequestSignature,
     inbound_seq: u64,
     peer_verify_key: VerifyingKey,
 }
 
 impl WsFrameVerifier {
-    pub fn new(request_signature: &RequestSignature, peer_verify_key: VerifyingKey) -> Self {
+    pub(crate) fn new(request_signature: &RequestSignature, peer_verify_key: VerifyingKey) -> Self {
         Self {
             request_signature: request_signature.clone(),
             inbound_seq: 0,
@@ -111,7 +111,7 @@ impl WsFrameVerifier {
     /// Verify a signed JSON envelope and deserialize it back into a frame.
     ///
     /// Checks the Ed25519 signature and enforces monotonic sequence ordering.
-    pub fn decode(&mut self, raw: &[u8]) -> anyhow::Result<RelayWsFrame> {
+    pub(crate) fn decode(&mut self, raw: &[u8]) -> anyhow::Result<RelayWsFrame> {
         use anyhow::Context as _;
 
         let envelope: SignedWsEnvelope =

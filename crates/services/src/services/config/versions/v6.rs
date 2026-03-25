@@ -24,7 +24,7 @@ pub enum UiLanguage {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
-pub struct Config {
+pub(crate) struct Config {
     pub config_version: String,
     pub theme: ThemeMode,
     pub executor_profile: ExecutorProfileId,
@@ -44,7 +44,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
+    pub(crate) fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
         let old_config = match serde_json::from_str::<v5::Config>(raw_config) {
             Ok(cfg) => cfg,
             Err(e) => {

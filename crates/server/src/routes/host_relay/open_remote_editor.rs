@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
-pub fn router() -> Router<DeploymentImpl> {
+pub(super) fn router() -> Router<DeploymentImpl> {
     Router::new().route(
         "/open-remote-editor/workspace",
         post(open_remote_workspace_in_editor),

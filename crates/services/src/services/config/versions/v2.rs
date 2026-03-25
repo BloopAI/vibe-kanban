@@ -37,7 +37,7 @@ impl From<v1::EditorType> for EditorType {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
-pub struct Config {
+pub(crate) struct Config {
     pub config_version: String,
     pub theme: ThemeMode,
     pub profile: String,
@@ -53,7 +53,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
+    pub(crate) fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
         let old_config = match serde_json::from_str::<v1::Config>(raw_config) {
             Ok(cfg) => cfg,
             Err(e) => {
