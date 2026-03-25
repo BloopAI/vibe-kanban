@@ -57,7 +57,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(terminal::router())
         .route("/ssh-session", get(ssh_session::ssh_session_ws))
         .nest("/remote", remote::router())
-        .merge(webrtc::router(&deployment))
+        .merge(webrtc::router())
         .nest("/attachments", attachments::routes())
         .layer(axum::middleware::from_fn_with_state(
             deployment.clone(),

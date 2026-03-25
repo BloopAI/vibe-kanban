@@ -15,10 +15,12 @@ ts-rs = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 reqwest = { workspace = true }
-relay-ws = { path = "../relay-ws" }
+relay-protocol = { path = "../relay-protocol" }
+ws-bridge = { path = "../ws-bridge" }
 tokio-tungstenite = "0.26"
 futures-util = { version = "0.3", features = ["sink"] }
 http = "1"
 base64 = "0.22"
-uuid = { version = "1.0", features = ["v4"] }
+uuid = { version = "1.0", features = ["serde", "v4"] }
 rand = "0.8"
+thiserror = { workspace = true }

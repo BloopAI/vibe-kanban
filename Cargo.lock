@@ -1843,7 +1843,6 @@ dependencies = [
  "axum",
  "client-info",
  "db",
- "desktop-bridge",
  "executors",
  "futures",
  "git",
@@ -1989,23 +1988,14 @@ dependencies = [
 name = "desktop-bridge"
 version = "0.1.36"
 dependencies = [
- "anyhow",
  "base64 0.22.1",
  "dirs 5.0.1",
  "relay-control",
- "relay-tunnel-core",
- "relay-ws",
  "serde",
- "serde_json",
  "sha2 0.10.9",
  "ssh-key",
  "thiserror 2.0.18",
- "tokio",
- "tokio-tungstenite 0.26.2",
- "tokio-util",
- "tracing",
  "ts-rs 11.0.1",
- "uuid",
 ]
 
 [[package]]
@@ -4494,7 +4484,6 @@ dependencies = [
  "command-group",
  "db",
  "deployment",
- "desktop-bridge",
  "dotenv",
  "ed25519-dalek",
  "embedded-ssh",
@@ -4507,6 +4496,7 @@ dependencies = [
  "relay-control",
  "relay-hosts",
  "relay-types",
+ "relay-webrtc",
  "remote-info",
  "russh",
  "serde",
@@ -6124,15 +6114,15 @@ dependencies = [
 name = "preview-proxy"
 version = "0.1.36"
 dependencies = [
- "anyhow",
  "axum",
- "relay-tunnel-core",
+ "http",
  "reqwest 0.13.2",
+ "thiserror 2.0.18",
  "tokio",
- "tokio-tungstenite 0.26.2",
  "tracing",
  "utils",
  "uuid",
+ "ws-bridge",
 ]
 
 [[package]]
@@ -6594,7 +6584,6 @@ dependencies = [
  "sha2 0.10.9",
  "tokio",
  "tokio-util",
- "ts-rs 11.0.1",
  "uuid",
 ]
 
@@ -6602,11 +6591,11 @@ dependencies = [
 name = "relay-hosts"
 version = "0.1.36"
 dependencies = [
- "anyhow",
  "base64 0.22.1",
+ "bytes",
  "chrono",
- "desktop-bridge",
  "ed25519-dalek",
+ "futures-util",
  "http",
  "relay-client",
  "relay-control",
@@ -6620,12 +6609,25 @@ dependencies = [
  "services",
  "thiserror 2.0.18",
  "tokio",
+ "tokio-tungstenite 0.26.2",
  "tokio-util",
  "tracing",
  "trusted-key-auth",
  "url",
  "utils",
  "uuid",
+ "ws-bridge",
+]
+
+[[package]]
+name = "relay-protocol"
+version = "0.1.36"
+dependencies = [
+ "anyhow",
+ "axum",
+ "serde",
+ "tokio-tungstenite 0.26.2",
+ "ts-rs 11.0.1",
 ]
 
 [[package]]
@@ -6634,8 +6636,6 @@ version = "0.1.36"
 dependencies = [
  "anyhow",
  "axum",
- "bytes",
- "futures",
  "futures-util",
  "http",
  "hyper",
@@ -6646,6 +6646,7 @@ dependencies = [
  "tokio-util",
  "tokio-yamux",
  "tracing",
+ "ws-bridge",
 ]
 
 [[package]]
@@ -6669,10 +6670,11 @@ dependencies = [
  "futures-util",
  "http",
  "rand 0.8.5",
- "relay-ws",
+ "relay-protocol",
  "reqwest 0.13.2",
  "serde",
  "serde_json",
+ "thiserror 2.0.18",
  "tokio",
  "tokio-tungstenite 0.26.2",
  "tokio-util",
@@ -6681,6 +6683,7 @@ dependencies = [
  "uuid",
  "webrtc",
  "webrtc-ice",
+ "ws-bridge",
 ]
 
 [[package]]
@@ -6693,11 +6696,14 @@ dependencies = [
  "ed25519-dalek",
  "futures-channel",
  "futures-util",
+ "http",
  "rand 0.8.5",
  "relay-control",
+ "relay-protocol",
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "thiserror 2.0.18",
  "tokio",
  "tokio-tungstenite 0.26.2",
  "uuid",
@@ -7896,6 +7902,7 @@ dependencies = [
  "relay-client",
  "relay-control",
  "relay-hosts",
+ "relay-protocol",
  "relay-tunnel-core",
  "relay-types",
  "relay-webrtc",
@@ -7928,6 +7935,7 @@ dependencies = [
  "uuid",
  "workspace-manager",
  "worktree-manager",
+ "ws-bridge",
 ]
 
 [[package]]
@@ -11626,6 +11634,20 @@ dependencies = [
  "windows-core 0.61.2",
  "windows-version",
  "x11-dl",
+]
+
+[[package]]
+name = "ws-bridge"
+version = "0.1.36"
+dependencies = [
+ "axum",
+ "bytes",
+ "futures",
+ "futures-util",
+ "http",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
 ]
 
 [[package]]

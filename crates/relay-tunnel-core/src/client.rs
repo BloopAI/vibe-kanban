@@ -13,8 +13,9 @@ use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_util::sync::CancellationToken;
 use tokio_yamux::Session;
+use ws_bridge::tungstenite_ws_stream_io;
 
-use crate::{tls::ws_connector, ws_io::tungstenite_ws_stream_io, yamux_config};
+use crate::{tls::ws_connector, yamux_config};
 
 pub struct RelayClientConfig {
     pub ws_url: String,

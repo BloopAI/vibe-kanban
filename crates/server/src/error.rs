@@ -17,6 +17,7 @@ use relay_hosts::{
     OpenRemoteEditorError, RelayApiError, RelayConnectionError, RelayHostLookupError,
     RelayPairingClientError,
 };
+use relay_webrtc::WebRtcError;
 use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
@@ -90,6 +91,8 @@ pub enum ApiError {
     Pty(#[from] PtyError),
     #[error(transparent)]
     Migration(#[from] MigrationError),
+    #[error(transparent)]
+    WebRtc(#[from] WebRtcError),
 }
 
 impl From<&'static str> for ApiError {
@@ -533,6 +536,21 @@ impl IntoResponse for ApiError {
                 "MigrationError",
                 format!("Remote error: {}", msg),
             ),
+            ApiError::WebRtc(err) => match err {
+                WebRtcError::SessionNotFound { .. } => {
+                    ErrorInfo::not_found("WebRtcError", err.to_string())
+                }
+                WebRtcError::IceGatheringTimedOut
+                | WebRtcError::IceGatheringChannelDropped
+                | WebRtcError::NoLocalDescription
+                | WebRtcError::WebRtc(_) => ErrorInfo::bad_request("WebRtcError", err.to_string()),
+                WebRtcError::ConnectUpstreamWs(_)
+                | WebRtcError::DataChannelSendQueueClosed
+                | WebRtcError::WsBridge(_) => {
+                    ErrorInfo::with_status(StatusCode::BAD_GATEWAY, "WebRtcError", err.to_string())
+                }
+                WebRtcError::SerializeMessage(_) => ErrorInfo::internal("WebRtcError"),
+            },
         };
 
         // Log internal errors so they are visible in server output.
@@ -625,10 +643,6 @@ impl From<OpenRemoteEditorError> for ApiError {
             OpenRemoteEditorError::Connection(err) => err.into(),
             OpenRemoteEditorError::CreateTunnel(ref detail) => {
                 tracing::warn!(%detail, "Failed to create SSH tunnel");
-                ApiError::BadGateway(err.to_string())
-            }
-            OpenRemoteEditorError::SshSetup(ref detail) => {
-                tracing::warn!(%detail, "Failed to open remote editor");
                 ApiError::BadGateway(err.to_string())
             }
         }

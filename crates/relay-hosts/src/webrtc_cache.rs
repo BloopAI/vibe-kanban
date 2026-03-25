@@ -12,7 +12,7 @@ use uuid::Uuid;
 const FAILED_RETRY_COOLDOWN: Duration = Duration::from_secs(5 * 60);
 
 /// State of a WebRTC connection for a single host.
-enum WebRtcHostState {
+enum WebRtcConnectionState {
     /// Handshake is in progress.
     Connecting,
     /// Connection established.
@@ -24,13 +24,13 @@ enum WebRtcHostState {
 /// Cache of active WebRTC direct connections keyed by host ID.
 #[derive(Clone, Default)]
 pub(crate) struct WebRtcConnectionCache {
-    hosts: Arc<RwLock<HashMap<Uuid, WebRtcHostState>>>,
+    hosts: Arc<RwLock<HashMap<Uuid, WebRtcConnectionState>>>,
 }
 
 impl WebRtcConnectionCache {
     pub async fn get(&self, host_id: Uuid) -> Option<Arc<WebRtcClient>> {
         match self.hosts.read().await.get(&host_id) {
-            Some(WebRtcHostState::Connected(client)) => Some(client.clone()),
+            Some(WebRtcConnectionState::Connected(client)) => Some(client.clone()),
             _ => None,
         }
     }
@@ -39,11 +39,12 @@ impl WebRtcConnectionCache {
         self.hosts
             .write()
             .await
-            .insert(host_id, WebRtcHostState::Connected(client));
+            .insert(host_id, WebRtcConnectionState::Connected(client));
     }
 
     pub async fn remove(&self, host_id: Uuid) {
-        if let Some(WebRtcHostState::Connected(client)) = self.hosts.write().await.remove(&host_id)
+        if let Some(WebRtcConnectionState::Connected(client)) =
+            self.hosts.write().await.remove(&host_id)
         {
             client.shutdown();
         }
@@ -57,14 +58,14 @@ impl WebRtcConnectionCache {
         let mut hosts = self.hosts.write().await;
         match hosts.entry(host_id) {
             Entry::Occupied(mut e) => match e.get() {
-                WebRtcHostState::Failed(at) if at.elapsed() >= FAILED_RETRY_COOLDOWN => {
-                    e.insert(WebRtcHostState::Connecting);
+                WebRtcConnectionState::Failed(at) if at.elapsed() >= FAILED_RETRY_COOLDOWN => {
+                    e.insert(WebRtcConnectionState::Connecting);
                     true
                 }
                 _ => false,
             },
             Entry::Vacant(e) => {
-                e.insert(WebRtcHostState::Connecting);
+                e.insert(WebRtcConnectionState::Connecting);
                 true
             }
         }
@@ -74,6 +75,6 @@ impl WebRtcConnectionCache {
         self.hosts
             .write()
             .await
-            .insert(host_id, WebRtcHostState::Failed(Instant::now()));
+            .insert(host_id, WebRtcConnectionState::Failed(Instant::now()));
     }
 }

@@ -262,7 +262,7 @@ fn generate_types_content() -> String {
         executors::model_selector::ModelSelectorConfig::decl(),
         executors::executor_discovery::ExecutorDiscoveredOptions::decl(),
         serde_json::Value::decl(),
-        relay_control::signed_ws::RelayWsMessageType::decl(),
+        relay_protocol::RelayWsMessageType::decl(),
         relay_webrtc::DataChannelMessage::decl(),
         relay_webrtc::DataChannelRequest::decl(),
         relay_webrtc::DataChannelResponse::decl(),

@@ -5,7 +5,6 @@ use async_trait::async_trait;
 use axum::response::sse::Event;
 use client_info::ClientInfo;
 use db::{DBService, models::workspace::WorkspaceError};
-use desktop_bridge::tunnel::TunnelManager;
 use executors::executors::ExecutorError;
 use futures::{StreamExt, TryStreamExt};
 use git::{GitService, GitServiceError};
@@ -117,8 +116,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn remote_info(&self) -> &RemoteInfo;
 
     fn preview_proxy(&self) -> &PreviewProxyService;
-
-    fn tunnel_manager(&self) -> &Arc<TunnelManager>;
 
     fn relay_hosts(&self) -> Result<&Arc<RelayHosts>, RelayHostsNotConfigured> {
         Err(RelayHostsNotConfigured)

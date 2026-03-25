@@ -1,22 +1,18 @@
 use std::{
     collections::HashMap,
-    pin::Pin,
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
     },
-    task::{Context, Poll, ready},
 };
 
 use bytes::Bytes;
-use futures_util::{Sink, Stream};
-use relay_ws::{RelayTransportMessage, RelayWsMessageType};
 use tokio::{
-    sync::{Mutex, mpsc, oneshot},
+    sync::{Mutex, Notify, mpsc, oneshot},
     time::Duration,
 };
-use tokio_tungstenite::tungstenite;
 use tokio_util::sync::{CancellationToken, PollSender};
+use uuid::Uuid;
 use webrtc::{
     data_channel::{RTCDataChannel, data_channel_message::DataChannelMessage as RtcDcMessage},
     ice_transport::{
@@ -32,13 +28,43 @@ use webrtc::{
 use crate::{
     fragment,
     proxy::{
-        DataChannelMessage, DataChannelRequest, DataChannelResponse, WsClose, WsFrame, WsOpen,
+        DataChannelMessage, DataChannelRequest, DataChannelResponse, DataChannelWsStream, WsClose,
+        WsFrame, WsOpen,
     },
     signaling::SdpOffer,
 };
 
-type PendingHttpMap = HashMap<String, oneshot::Sender<DataChannelResponse>>;
-type PendingWsOpenMap = HashMap<String, oneshot::Sender<Result<WsConnection, String>>>;
+#[derive(Debug, thiserror::Error)]
+pub enum WebRtcClientError {
+    #[error("WebRTC data channel not connected")]
+    NotConnected,
+    #[error("Failed to serialize data-channel message: {0}")]
+    SerializeMessage(#[from] serde_json::Error),
+    #[error("WebRTC operation failed: {0}")]
+    WebRtc(#[from] webrtc::Error),
+    #[error("WebRTC data-channel writer queue is closed (dropped {dropped_bytes} bytes)")]
+    WriteQueueClosed { dropped_bytes: usize },
+    #[error("WebRTC command queue is closed while enqueuing {command}")]
+    CommandQueueClosed { command: &'static str },
+    #[error("Timed out waiting for response")]
+    TimedOut,
+    #[error("Peer task dropped response channel")]
+    ResponseChannelDropped,
+    #[error("ICE gathering timed out")]
+    IceGatheringTimedOut,
+    #[error("ICE gathering channel dropped")]
+    IceGatheringChannelDropped,
+    #[error("No local description after ICE gathering")]
+    NoLocalDescription,
+    #[error("Data-channel write failed: {0}")]
+    DataChannelWriteFailed(String),
+    #[error("WS open failed: {0}")]
+    WsOpenFailed(String),
+}
+
+type PendingHttpMap =
+    HashMap<Uuid, oneshot::Sender<Result<DataChannelResponse, WebRtcClientError>>>;
+type PendingWsOpenMap = HashMap<Uuid, oneshot::Sender<Result<WsConnection, WebRtcClientError>>>;
 
 // ---------------------------------------------------------------------------
 // Internal command types
@@ -46,20 +72,19 @@ type PendingWsOpenMap = HashMap<String, oneshot::Sender<Result<WsConnection, Str
 
 struct PendingHttpRequest {
     data: Vec<u8>,
-    response_tx: oneshot::Sender<DataChannelResponse>,
+    response_tx: oneshot::Sender<Result<DataChannelResponse, WebRtcClientError>>,
+    request_id: Uuid,
 }
 
 struct PendingWsOpen {
     data: Vec<u8>,
-    result_tx: oneshot::Sender<Result<WsConnection, String>>,
-    conn_id: String,
+    result_tx: oneshot::Sender<Result<WsConnection, WebRtcClientError>>,
+    conn_id: Uuid,
 }
 
-pub(crate) enum ClientCommand {
+enum ClientCommand {
     Http(PendingHttpRequest),
     WsOpen(PendingWsOpen),
-    WsFrame(Vec<u8>),
-    WsClose(Vec<u8>),
 }
 
 // ---------------------------------------------------------------------------
@@ -68,7 +93,7 @@ pub(crate) enum ClientCommand {
 
 /// A WebSocket connection multiplexed over the WebRTC data channel.
 pub struct WsConnection {
-    pub conn_id: String,
+    pub conn_id: Uuid,
     pub selected_protocol: Option<String>,
     pub frame_rx: mpsc::Receiver<WsFrame>,
     sender: WsSender,
@@ -81,11 +106,11 @@ impl WsConnection {
 
     /// Convert into a `Stream + Sink<tungstenite::Message>` adapter for use
     /// with `ws_copy_bidirectional`.
-    pub fn into_ws_stream(self) -> WebRtcWsStream {
-        WebRtcWsStream {
+    pub fn into_ws_stream(self) -> DataChannelWsStream {
+        DataChannelWsStream {
             conn_id: self.conn_id,
             frame_rx: self.frame_rx,
-            poll_sender: PollSender::new(self.sender.cmd_tx),
+            poll_sender: PollSender::new(self.sender.dc_write_tx),
         }
     }
 }
@@ -93,122 +118,41 @@ impl WsConnection {
 /// Cloneable handle for sending frames and closing a WebRTC WS connection.
 #[derive(Clone)]
 pub struct WsSender {
-    conn_id: String,
-    pub(crate) cmd_tx: mpsc::Sender<ClientCommand>,
+    conn_id: Uuid,
+    pub(crate) dc_write_tx: mpsc::Sender<Vec<u8>>,
 }
 
 impl WsSender {
-    pub async fn send(&self, frame: WsFrame) -> anyhow::Result<()> {
+    pub async fn send(&self, frame: WsFrame) -> Result<(), WebRtcClientError> {
         let msg = DataChannelMessage::WsFrame(frame);
         let data = serde_json::to_vec(&msg)?;
-        self.cmd_tx
-            .send(ClientCommand::WsFrame(data))
+        self.dc_write_tx
+            .send(data)
             .await
-            .map_err(|_| anyhow::anyhow!("Peer task has exited"))?;
+            .map_err(|err| WebRtcClientError::WriteQueueClosed {
+                dropped_bytes: err.0.len(),
+            })?;
         Ok(())
     }
 
-    pub async fn close(&self, code: Option<u16>, reason: Option<String>) -> anyhow::Result<()> {
+    pub async fn close(
+        &self,
+        code: Option<u16>,
+        reason: Option<String>,
+    ) -> Result<(), WebRtcClientError> {
         let msg = DataChannelMessage::WsClose(WsClose {
-            conn_id: self.conn_id.clone(),
+            conn_id: self.conn_id,
             code,
             reason,
         });
         let data = serde_json::to_vec(&msg)?;
-        self.cmd_tx
-            .send(ClientCommand::WsClose(data))
+        self.dc_write_tx
+            .send(data)
             .await
-            .map_err(|_| anyhow::anyhow!("Peer task has exited"))?;
+            .map_err(|err| WebRtcClientError::WriteQueueClosed {
+                dropped_bytes: err.0.len(),
+            })?;
         Ok(())
-    }
-}
-
-// ---------------------------------------------------------------------------
-// WebRtcWsStream — Stream + Sink<tungstenite::Message> over the data channel
-// ---------------------------------------------------------------------------
-
-/// Adapts a WebRTC WS connection into `Stream + Sink<tungstenite::Message>` for
-/// use with `ws_copy_bidirectional`.
-///
-/// Preserves WebSocket message types (text, binary, ping/pong, close) through
-/// the data channel's JSON-based [`WsFrame`] protocol.
-pub struct WebRtcWsStream {
-    conn_id: String,
-    frame_rx: mpsc::Receiver<WsFrame>,
-    poll_sender: PollSender<ClientCommand>,
-}
-
-impl Stream for WebRtcWsStream {
-    type Item = Result<tungstenite::Message, anyhow::Error>;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.get_mut();
-        match this.frame_rx.poll_recv(cx) {
-            Poll::Ready(Some(ws_frame)) => {
-                let relay_frame = ws_frame.into_relay_frame();
-                Poll::Ready(Some(tungstenite::Message::reconstruct(relay_frame)))
-            }
-            Poll::Ready(None) => Poll::Ready(None),
-            Poll::Pending => Poll::Pending,
-        }
-    }
-}
-
-impl Sink<tungstenite::Message> for WebRtcWsStream {
-    type Error = anyhow::Error;
-
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let this = self.get_mut();
-        ready!(this.poll_sender.poll_reserve(cx))
-            .map_err(|_| anyhow::anyhow!("channel closed"))?;
-        Poll::Ready(Ok(()))
-    }
-
-    fn start_send(self: Pin<&mut Self>, item: tungstenite::Message) -> Result<(), Self::Error> {
-        let this = self.get_mut();
-        let relay_frame = item.decompose();
-
-        if matches!(relay_frame.msg_type, RelayWsMessageType::Close) {
-            let msg = DataChannelMessage::WsClose(WsClose {
-                conn_id: this.conn_id.clone(),
-                code: None,
-                reason: None,
-            });
-            let data = serde_json::to_vec(&msg)?;
-            this.poll_sender
-                .send_item(ClientCommand::WsClose(data))
-                .map_err(|_| anyhow::anyhow!("channel closed"))?;
-            return Ok(());
-        }
-
-        let ws_frame = WsFrame::from_relay_frame(this.conn_id.clone(), relay_frame);
-        let msg = DataChannelMessage::WsFrame(ws_frame);
-        let data = serde_json::to_vec(&msg)?;
-        this.poll_sender
-            .send_item(ClientCommand::WsFrame(data))
-            .map_err(|_| anyhow::anyhow!("channel closed"))?;
-        Ok(())
-    }
-
-    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let this = self.get_mut();
-        ready!(this.poll_sender.poll_reserve(cx))
-            .map_err(|_| anyhow::anyhow!("channel closed"))?;
-
-        let msg = DataChannelMessage::WsClose(WsClose {
-            conn_id: this.conn_id.clone(),
-            code: None,
-            reason: None,
-        });
-        let data = serde_json::to_vec(&msg)?;
-        this.poll_sender
-            .send_item(ClientCommand::WsClose(data))
-            .map_err(|_| anyhow::anyhow!("channel closed"))?;
-        Poll::Ready(Ok(()))
     }
 }
 
@@ -237,6 +181,7 @@ pub struct WebRtcOffer {
 pub struct WebRtcClient {
     cmd_tx: mpsc::Sender<ClientCommand>,
     connected: Arc<AtomicBool>,
+    connected_notify: Arc<Notify>,
     shutdown: CancellationToken,
 }
 
@@ -245,7 +190,7 @@ impl WebRtcClient {
     ///
     /// Returns a [`WebRtcOffer`] containing the SDP to send via signaling.
     /// After receiving the answer, pass the offer to [`connect`](Self::connect).
-    pub async fn create_offer(session_id: String) -> anyhow::Result<WebRtcOffer> {
+    pub async fn create_offer(session_id: String) -> Result<WebRtcOffer, WebRtcClientError> {
         let api = crate::build_api();
 
         let config = RTCConfiguration {
@@ -269,10 +214,11 @@ impl WebRtcClient {
         peer_connection.on_ice_gathering_state_change(Box::new(move |state| {
             let tx = gather_done_tx.clone();
             Box::pin(async move {
-                if state == RTCIceGathererState::Complete
-                    && let Some(sender) = tx.lock().unwrap().take()
-                {
-                    let _ = sender.send(());
+                if state == RTCIceGathererState::Complete {
+                    let maybe_sender = tx.lock().ok().and_then(|mut guard| guard.take());
+                    if let Some(sender) = maybe_sender {
+                        let _ = sender.send(());
+                    }
                 }
             })
         }));
@@ -281,13 +227,13 @@ impl WebRtcClient {
 
         tokio::time::timeout(Duration::from_secs(5), gather_done_rx)
             .await
-            .map_err(|_| anyhow::anyhow!("ICE gathering timed out"))?
-            .map_err(|_| anyhow::anyhow!("ICE gathering channel dropped"))?;
+            .map_err(|_| WebRtcClientError::IceGatheringTimedOut)?
+            .map_err(|_| WebRtcClientError::IceGatheringChannelDropped)?;
 
         let offer_sdp = peer_connection
             .local_description()
             .await
-            .ok_or_else(|| anyhow::anyhow!("No local description after ICE gathering"))?
+            .ok_or(WebRtcClientError::NoLocalDescription)?
             .sdp;
 
         Ok(WebRtcOffer {
@@ -310,7 +256,7 @@ impl WebRtcClient {
         webrtc_offer: WebRtcOffer,
         answer_sdp: &str,
         shutdown: CancellationToken,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self, WebRtcClientError> {
         let peer_connection = webrtc_offer.peer_connection;
         let data_channel = webrtc_offer.data_channel;
 
@@ -318,15 +264,15 @@ impl WebRtcClient {
         peer_connection.set_remote_description(answer).await?;
 
         let (cmd_tx, mut cmd_rx) = mpsc::channel(64);
+        let (dc_write_tx, mut dc_write_rx) = mpsc::channel::<Vec<u8>>(64);
         let connected = Arc::new(AtomicBool::new(false));
+        let connected_notify = Arc::new(Notify::new());
 
         // Shared state for routing incoming messages.
         let pending_http: Arc<Mutex<PendingHttpMap>> = Arc::new(Mutex::new(HashMap::new()));
         let pending_ws_open: Arc<Mutex<PendingWsOpenMap>> = Arc::new(Mutex::new(HashMap::new()));
-        let ws_frame_senders: Arc<Mutex<HashMap<String, mpsc::Sender<WsFrame>>>> =
+        let ws_frame_senders: Arc<Mutex<HashMap<Uuid, mpsc::Sender<WsFrame>>>> =
             Arc::new(Mutex::new(HashMap::new()));
-
-        let ws_cmd_tx = cmd_tx.clone();
 
         // Detect ICE disconnection.
         let disconnect_token = shutdown.child_token();
@@ -350,9 +296,11 @@ impl WebRtcClient {
         // The client created the data channel in create_offer, so we register
         // callbacks directly on it (no on_data_channel needed).
         let connected_dc = connected.clone();
+        let connected_notify_dc = connected_notify.clone();
         data_channel.on_open(Box::new(move || {
             tracing::debug!("[client-peer] data channel opened");
             connected_dc.store(true, Ordering::Relaxed);
+            connected_notify_dc.notify_waiters();
             Box::pin(async {})
         }));
 
@@ -402,7 +350,7 @@ impl WebRtcClient {
                         );
                         let mut pending = pending_http_dispatch.lock().await;
                         if let Some(tx) = pending.remove(&response.id) {
-                            let _ = tx.send(response);
+                            let _ = tx.send(Ok(response));
                         } else {
                             tracing::warn!(
                                 id = %response.id,
@@ -418,11 +366,11 @@ impl WebRtcClient {
                             ws_frame_senders_dispatch
                                 .lock()
                                 .await
-                                .insert(opened.conn_id.clone(), frame_tx);
+                                .insert(opened.conn_id, frame_tx);
                             let conn = WsConnection {
                                 sender: WsSender {
-                                    conn_id: opened.conn_id.clone(),
-                                    cmd_tx: ws_cmd_tx.clone(),
+                                    conn_id: opened.conn_id,
+                                    dc_write_tx: dc_write_tx.clone(),
                                 },
                                 conn_id: opened.conn_id,
                                 selected_protocol: opened.selected_protocol,
@@ -433,12 +381,15 @@ impl WebRtcClient {
                     }
 
                     DataChannelMessage::WsFrame(frame) => {
-                        let conn_id = frame.conn_id.clone();
-                        let senders = ws_frame_senders_dispatch.lock().await;
-                        if let Some(tx) = senders.get(&conn_id)
+                        let conn_id = frame.conn_id;
+                        let tx = {
+                            let senders = ws_frame_senders_dispatch.lock().await;
+                            senders.get(&conn_id).cloned()
+                        };
+
+                        if let Some(tx) = tx
                             && tx.send(frame).await.is_err()
                         {
-                            drop(senders);
                             ws_frame_senders_dispatch.lock().await.remove(&conn_id);
                         }
                     }
@@ -453,7 +404,7 @@ impl WebRtcClient {
                     DataChannelMessage::WsError(err) => {
                         let mut pending = pending_ws_open_dispatch.lock().await;
                         if let Some(result_tx) = pending.remove(&err.conn_id) {
-                            let _ = result_tx.send(Err(err.error));
+                            let _ = result_tx.send(Err(WebRtcClientError::WsOpenFailed(err.error)));
                         }
                         ws_frame_senders_dispatch.lock().await.remove(&err.conn_id);
                     }
@@ -479,6 +430,11 @@ impl WebRtcClient {
                             &pending_ws_open_writer,
                         ).await;
                     }
+                    Some(data) = dc_write_rx.recv() => {
+                        if let Err(e) = write_to_dc(&dc_writer, data).await {
+                            tracing::warn!(?e, "[client-peer] failed to write queued data");
+                        }
+                    }
                     _ = writer_shutdown.cancelled() => break,
                 }
             }
@@ -487,6 +443,7 @@ impl WebRtcClient {
         Ok(Self {
             cmd_tx,
             connected,
+            connected_notify,
             shutdown: disconnect_token,
         })
     }
@@ -501,12 +458,12 @@ impl WebRtcClient {
         path: &str,
         headers: HashMap<String, String>,
         body: Option<Vec<u8>>,
-    ) -> anyhow::Result<DataChannelResponse> {
+    ) -> Result<DataChannelResponse, WebRtcClientError> {
         if !self.is_connected() {
-            anyhow::bail!("WebRTC data channel not connected");
+            return Err(WebRtcClientError::NotConnected);
         }
 
-        let request_id = uuid::Uuid::new_v4().to_string();
+        let request_id = Uuid::new_v4();
 
         let body_b64 = body.map(|b| {
             use base64::Engine as _;
@@ -529,14 +486,21 @@ impl WebRtcClient {
             .send(ClientCommand::Http(PendingHttpRequest {
                 data,
                 response_tx,
+                request_id,
             }))
             .await
-            .map_err(|_| anyhow::anyhow!("Peer task has exited"))?;
+            .map_err(|err| {
+                let command = match err.0 {
+                    ClientCommand::Http(_) => "http_request",
+                    ClientCommand::WsOpen(_) => "ws_open",
+                };
+                WebRtcClientError::CommandQueueClosed { command }
+            })?;
 
         tokio::time::timeout(Self::HTTP_REQUEST_TIMEOUT, response_rx)
             .await
-            .map_err(|_| anyhow::anyhow!("WebRTC request timed out"))?
-            .map_err(|_| anyhow::anyhow!("Peer task dropped response channel"))
+            .map_err(|_| WebRtcClientError::TimedOut)?
+            .map_err(|_| WebRtcClientError::ResponseChannelDropped)?
     }
 
     /// Open a WebSocket connection to the remote host over the data channel.
@@ -544,15 +508,15 @@ impl WebRtcClient {
         &self,
         path: &str,
         protocols: Option<&str>,
-    ) -> anyhow::Result<WsConnection> {
+    ) -> Result<WsConnection, WebRtcClientError> {
         if !self.is_connected() {
-            anyhow::bail!("WebRTC data channel not connected");
+            return Err(WebRtcClientError::NotConnected);
         }
 
-        let conn_id = uuid::Uuid::new_v4().to_string();
+        let conn_id = Uuid::new_v4();
 
         let ws_open = WsOpen {
-            conn_id: conn_id.clone(),
+            conn_id,
             path: path.to_string(),
             protocols: protocols.map(String::from),
         };
@@ -568,17 +532,34 @@ impl WebRtcClient {
                 conn_id,
             }))
             .await
-            .map_err(|_| anyhow::anyhow!("Peer task has exited"))?;
+            .map_err(|err| {
+                let command = match err.0 {
+                    ClientCommand::Http(_) => "http_request",
+                    ClientCommand::WsOpen(_) => "ws_open",
+                };
+                WebRtcClientError::CommandQueueClosed { command }
+            })?;
 
         result_rx
             .await
-            .map_err(|_| anyhow::anyhow!("Peer task dropped WS open channel"))?
-            .map_err(|e| anyhow::anyhow!("WS open failed: {e}"))
+            .map_err(|_| WebRtcClientError::ResponseChannelDropped)?
     }
 
     /// Whether the data channel is currently open and connected.
     pub fn is_connected(&self) -> bool {
         self.connected.load(Ordering::Relaxed)
+    }
+
+    /// Wait until the data channel is open or timeout elapses.
+    pub async fn wait_until_connected(&self, timeout: Duration) -> bool {
+        if self.is_connected() {
+            return true;
+        }
+
+        tokio::time::timeout(timeout, self.connected_notify.notified())
+            .await
+            .is_ok()
+            && self.is_connected()
     }
 
     /// Shut down the WebRTC connection.
@@ -599,56 +580,50 @@ async fn handle_command(
 ) {
     match cmd {
         ClientCommand::Http(req) => {
-            let parsed = serde_json::from_slice::<DataChannelMessage>(&req.data).ok();
             tracing::trace!(
                 bytes = req.data.len(),
                 "[client-peer] writing HTTP request to data channel"
             );
-            if write_to_dc(dc, req.data).await {
-                if let Some(DataChannelMessage::HttpRequest(r)) = parsed {
-                    let mut pending = pending_http.lock().await;
-                    tracing::trace!(
-                        id = %r.id,
-                        pending = pending.len() + 1,
-                        "[client-peer] request queued"
-                    );
-                    pending.insert(r.id, req.response_tx);
-                }
-            } else {
-                let _ = req.response_tx.send(DataChannelResponse {
-                    id: String::new(),
-                    status: 503,
-                    headers: Default::default(),
-                    body_b64: None,
-                });
+            let request_id = req.request_id;
+            {
+                let mut pending = pending_http.lock().await;
+                tracing::trace!(
+                    id = %request_id,
+                    pending = pending.len() + 1,
+                    "[client-peer] request queued"
+                );
+                pending.insert(request_id, req.response_tx);
+            }
+
+            if let Err(e) = write_to_dc(dc, req.data).await
+                && let Some(response_tx) = pending_http.lock().await.remove(&request_id)
+            {
+                let _ = response_tx.send(Err(e));
             }
         }
         ClientCommand::WsOpen(ws) => {
-            if write_to_dc(dc, ws.data).await {
-                pending_ws_open
-                    .lock()
-                    .await
-                    .insert(ws.conn_id, ws.result_tx);
-            } else {
-                let _ = ws
-                    .result_tx
-                    .send(Err("Failed to write to data channel".into()));
+            let conn_id = ws.conn_id;
+            {
+                pending_ws_open.lock().await.insert(conn_id, ws.result_tx);
             }
-        }
-        ClientCommand::WsFrame(data) | ClientCommand::WsClose(data) => {
-            write_to_dc(dc, data).await;
+
+            if let Err(e) = write_to_dc(dc, ws.data).await
+                && let Some(result_tx) = pending_ws_open.lock().await.remove(&conn_id)
+            {
+                let _ = result_tx.send(Err(e));
+            }
         }
     }
 }
 
-/// Fragment and send data to the data channel. Returns true on success.
-async fn write_to_dc(dc: &Arc<RTCDataChannel>, data: Vec<u8>) -> bool {
+/// Fragment and send data to the data channel.
+async fn write_to_dc(dc: &Arc<RTCDataChannel>, data: Vec<u8>) -> Result<(), WebRtcClientError> {
     let chunks = fragment::fragment(data);
     for chunk in chunks {
         if let Err(e) = dc.send(&Bytes::from(chunk)).await {
             tracing::warn!(?e, "[client-peer] failed to write to data channel");
-            return false;
+            return Err(WebRtcClientError::DataChannelWriteFailed(e.to_string()));
         }
     }
-    true
+    Ok(())
 }

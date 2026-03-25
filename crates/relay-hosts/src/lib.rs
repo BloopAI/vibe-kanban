@@ -1,15 +1,14 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, io, pin::Pin, sync::Arc};
 
+use bytes::Bytes;
 use chrono::Utc;
-use desktop_bridge::{
-    DesktopBridgeError, service::OpenRemoteEditorResponse, tunnel::TunnelManager,
-};
-use http::{HeaderMap, Method};
+use futures_util::{Sink, Stream, StreamExt, stream};
+use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, header};
 pub use relay_client::RelayApiError;
 use relay_client::{RelayApiClient, RelayHostIdentity, RelayHostTransport};
 use relay_control::signing::RelaySigningService;
 use relay_types::{PairRelayHostRequest, RelayAuthState, RelayPairedHost, RemoteSession};
-use relay_webrtc::{WebRtcClient, WebRtcWsStream};
+use relay_webrtc::{DataChannelWsStream, WebRtcClient};
 use relay_ws::SignedTungsteniteSocket;
 use remote_info::RemoteInfo;
 use serde::{Deserialize, Serialize};
@@ -20,7 +19,9 @@ use trusted_key_auth::trusted_keys::parse_public_key_base64;
 use utils::assets::relay_host_credentials_path;
 use uuid::Uuid;
 
+mod tunnel_manager;
 mod webrtc_cache;
+use tunnel_manager::TunnelManager;
 use webrtc_cache::WebRtcConnectionCache;
 
 #[derive(Debug, Clone, Default)]
@@ -55,6 +56,20 @@ pub enum RelayConnectionError {
     RemoteClient(#[from] RemoteClientError),
     #[error(transparent)]
     Relay(#[from] RelayApiError),
+}
+
+#[derive(Debug, thiserror::Error)]
+enum NegotiateWebRtcError {
+    #[error(transparent)]
+    WebRtcClient(#[from] relay_webrtc::WebRtcClientError),
+    #[error("Failed to serialize WebRTC offer: {0}")]
+    SerializeOffer(#[from] serde_json::Error),
+    #[error(transparent)]
+    Relay(#[from] RelayApiError),
+    #[error("WebRTC offer rejected with status {0}")]
+    OfferRejected(StatusCode),
+    #[error("Invalid WebRTC answer response: {0}")]
+    InvalidAnswerResponse(reqwest::Error),
 }
 
 #[derive(Clone)]
@@ -196,20 +211,14 @@ impl RelaySessionCache {
     }
 }
 
-/// Response from [`RelayHost::proxy_http`], which may come from the relay
-/// or from a direct WebRTC data channel.
-pub enum ProxiedResponse {
-    /// Response received through the relay proxy.
-    Relay(reqwest::Response),
-    /// Response received directly via WebRTC data channel.
-    Direct(DirectProxyResponse),
-}
+pub type ProxiedBodyStream = Pin<Box<dyn Stream<Item = Result<Bytes, io::Error>> + Send>>;
 
-/// An HTTP response received over a WebRTC data channel.
-pub struct DirectProxyResponse {
-    pub status: u16,
-    pub headers: HashMap<String, String>,
-    pub body: Vec<u8>,
+/// Normalized HTTP response returned from relay-hosts, independent of whether
+/// the upstream transport was relay or WebRTC.
+pub struct ProxiedResponse {
+    pub status: StatusCode,
+    pub headers: HeaderMap,
+    pub body: ProxiedBodyStream,
 }
 
 #[derive(Clone)]
@@ -225,6 +234,7 @@ struct RelayRuntime {
     remote_client: RemoteClient,
     remote_info: RemoteInfo,
     relay_signing: RelaySigningService,
+    tunnel_manager: TunnelManager,
 }
 
 #[derive(Clone)]
@@ -238,14 +248,65 @@ pub struct RelayHost {
 /// A WebSocket connection proxied upstream (via relay, WebRTC, etc.).
 pub struct ProxiedWsConnection {
     pub selected_protocol: Option<String>,
-    pub upstream: UpstreamWs,
+    upstream: UpstreamWs,
 }
 
 /// The upstream WebSocket transport, either via the relay or a direct WebRTC
 /// data channel.
-pub enum UpstreamWs {
-    Relay(SignedTungsteniteSocket),
-    WebRtc(WebRtcWsStream),
+enum UpstreamWs {
+    Relay(Box<SignedTungsteniteSocket>),
+    WebRtc(DataChannelWsStream),
+}
+
+impl ProxiedWsConnection {
+    pub async fn bridge<MC, EC, C>(
+        self,
+        client_socket: C,
+        client_to_upstream: fn(MC) -> tokio_tungstenite::tungstenite::Message,
+        upstream_to_client: fn(tokio_tungstenite::tungstenite::Message) -> MC,
+    ) -> Result<(), ws_bridge::WsBridgeError>
+    where
+        C: Stream<Item = Result<MC, EC>> + Sink<MC, Error = EC> + Unpin,
+        EC: std::error::Error + Send + Sync + 'static,
+    {
+        match self.upstream {
+            UpstreamWs::Relay(socket) => {
+                ws_bridge::ws_copy_bidirectional(
+                    client_socket,
+                    *socket,
+                    client_to_upstream,
+                    upstream_to_client,
+                )
+                .await?;
+            }
+            UpstreamWs::WebRtc(stream) => {
+                ws_bridge::ws_copy_bidirectional(
+                    stream,
+                    client_socket,
+                    upstream_to_client,
+                    client_to_upstream,
+                )
+                .await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn bridge_tcp(self, mut tcp_stream: tokio::net::TcpStream) -> Result<(), io::Error> {
+        match self.upstream {
+            UpstreamWs::Relay(socket) => {
+                let mut ws_io = ws_bridge::tungstenite_ws_stream_io(*socket);
+                tokio::io::copy_bidirectional(&mut tcp_stream, &mut ws_io).await?;
+            }
+            UpstreamWs::WebRtc(stream) => {
+                let mut ws_io = ws_bridge::tungstenite_ws_stream_io(stream);
+                tokio::io::copy_bidirectional(&mut tcp_stream, &mut ws_io).await?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -254,8 +315,6 @@ pub enum OpenRemoteEditorError {
     Connection(#[from] RelayConnectionError),
     #[error("Failed to create SSH tunnel: {0}")]
     CreateTunnel(std::io::Error),
-    #[error("Failed to set up SSH for remote editor: {0}")]
-    SshSetup(DesktopBridgeError),
 }
 
 impl From<RelayApiError> for OpenRemoteEditorError {
@@ -278,15 +337,15 @@ pub enum RelayPairingClientError {
     Store(std::io::Error),
 }
 
-#[derive(Debug, Clone)]
-struct RelayTunnelAccess {
-    relay_url: String,
-    signing_session_id: Uuid,
-}
-
 #[derive(Debug, Clone, Deserialize)]
 struct RelayEditorPathResponse {
     workspace_path: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct WorkspaceEditorSetup {
+    pub workspace_path: String,
+    pub local_port: u16,
 }
 
 impl RelayHosts {
@@ -302,6 +361,7 @@ impl RelayHosts {
                 remote_client,
                 remote_info,
                 relay_signing,
+                tunnel_manager: TunnelManager::default(),
             },
             webrtc: WebRtcConnectionCache::default(),
         }
@@ -368,13 +428,14 @@ impl RelayHosts {
         let removed = self.repository.remove_credentials(host_id).await?;
         if removed {
             self.sessions.clear(host_id).await;
+            self.webrtc.remove(host_id).await;
         }
         Ok(removed)
     }
 }
 
 impl RelayHost {
-    async fn open_transport(&self) -> Result<RelayHostTransport, RelayConnectionError> {
+    async fn open_relay_transport(&self) -> Result<RelayHostTransport, RelayConnectionError> {
         let remote_client = self.runtime.remote_client.clone();
         let relay_base_url = self
             .runtime
@@ -401,6 +462,55 @@ impl RelayHost {
         Ok(transport)
     }
 
+    async fn send_http_via_relay(
+        &self,
+        method: &Method,
+        target_path: &str,
+        headers: &HeaderMap,
+        body: &[u8],
+    ) -> Result<ProxiedResponse, RelayConnectionError> {
+        let mut transport = self.open_relay_transport().await?;
+        let result = transport
+            .send_http(method, target_path, headers, body)
+            .await;
+        self.persist_auth_state(&transport).await;
+        if result.is_ok() {
+            self.maybe_start_webrtc(transport).await;
+        }
+        let response = result.map_err(RelayConnectionError::from)?;
+        let status = response.status();
+        let headers = response.headers().clone();
+        let body = Box::pin(
+            response
+                .bytes_stream()
+                .map(|chunk| chunk.map_err(|e| io::Error::other(e.to_string()))),
+        );
+
+        Ok(ProxiedResponse {
+            status,
+            headers,
+            body,
+        })
+    }
+
+    async fn connect_ws_via_relay(
+        &self,
+        target_path: &str,
+        protocols: Option<&str>,
+    ) -> Result<ProxiedWsConnection, RelayConnectionError> {
+        let mut transport = self.open_relay_transport().await?;
+        let result = transport.connect_ws(target_path, protocols).await;
+        self.persist_auth_state(&transport).await;
+        if result.is_ok() {
+            self.maybe_start_webrtc(transport).await;
+        }
+        let (upstream_socket, selected_protocol) = result.map_err(RelayConnectionError::from)?;
+        Ok(ProxiedWsConnection {
+            selected_protocol,
+            upstream: UpstreamWs::Relay(Box::new(upstream_socket)),
+        })
+    }
+
     async fn persist_auth_state(&self, transport: &RelayHostTransport) {
         self.sessions
             .cache_auth_state(self.identity.host_id, transport.auth_state())
@@ -419,21 +529,11 @@ impl RelayHost {
             .try_webrtc_proxy(method, target_path, headers, body)
             .await
         {
-            return Ok(ProxiedResponse::Direct(response));
+            return Ok(response);
         }
 
-        // Fall back to relay.
-        let mut transport = self.open_transport().await?;
-        let response = transport
-            .send_http(method, target_path, headers, body)
-            .await;
-        self.persist_auth_state(&transport).await;
-
-        // Kick off background WebRTC handshake for future requests,
-        // reusing the already-authenticated transport.
-        self.maybe_start_webrtc(transport).await;
-
-        Ok(ProxiedResponse::Relay(response?))
+        self.send_http_via_relay(method, target_path, headers, body)
+            .await
     }
 
     /// Try to proxy through an active WebRTC data channel. Returns `None`
@@ -444,9 +544,10 @@ impl RelayHost {
         target_path: &str,
         headers: &HeaderMap,
         body: &[u8],
-    ) -> Option<DirectProxyResponse> {
+    ) -> Option<ProxiedResponse> {
         let client = self.webrtc.get(self.identity.host_id).await?;
         if !client.is_connected() {
+            self.webrtc.remove(self.identity.host_id).await;
             return None;
         }
 
@@ -470,17 +571,39 @@ impl RelayHost {
             Ok(response) => {
                 let body = if let Some(body_b64) = &response.body_b64 {
                     use base64::Engine as _;
-                    base64::engine::general_purpose::STANDARD
-                        .decode(body_b64)
-                        .unwrap_or_default()
+                    match base64::engine::general_purpose::STANDARD.decode(body_b64) {
+                        Ok(bytes) => bytes,
+                        Err(e) => {
+                            tracing::debug!(
+                                ?e,
+                                host_id = %self.identity.host_id,
+                                "Invalid WebRTC HTTP response body encoding, falling back to relay"
+                            );
+                            self.webrtc.remove(self.identity.host_id).await;
+                            return None;
+                        }
+                    }
                 } else {
                     Vec::new()
                 };
 
-                Some(DirectProxyResponse {
-                    status: response.status,
-                    headers: response.headers,
-                    body,
+                let status =
+                    StatusCode::from_u16(response.status).unwrap_or(StatusCode::BAD_GATEWAY);
+                let mut header_map = HeaderMap::new();
+                for (name, value) in response.headers {
+                    let Ok(name) = HeaderName::from_bytes(name.as_bytes()) else {
+                        continue;
+                    };
+                    let Ok(value) = HeaderValue::from_str(&value) else {
+                        continue;
+                    };
+                    header_map.append(name, value);
+                }
+
+                Some(ProxiedResponse {
+                    status,
+                    headers: header_map,
+                    body: Box::pin(stream::once(async move { Ok(Bytes::from(body)) })),
                 })
             }
             Err(e) => {
@@ -505,9 +628,21 @@ impl RelayHost {
 
         tokio::spawn(async move {
             match negotiate_webrtc(transport).await {
-                Ok(client) => {
+                Ok(client)
+                    if client
+                        .wait_until_connected(std::time::Duration::from_secs(5))
+                        .await =>
+                {
                     webrtc.insert(host_id, Arc::new(client)).await;
                     tracing::debug!(%host_id, "WebRTC direct connection established");
+                }
+                Ok(client) => {
+                    tracing::debug!(
+                        %host_id,
+                        "WebRTC data channel did not open before timeout"
+                    );
+                    client.shutdown();
+                    webrtc.mark_failed(host_id).await;
                 }
                 Err(e) => {
                     tracing::debug!(?e, %host_id, "WebRTC handshake failed (relay fallback active)");
@@ -527,19 +662,7 @@ impl RelayHost {
             return Ok(conn);
         }
 
-        // Fall back to relay.
-        let mut transport = self.open_transport().await?;
-        let connection = transport.connect_ws(target_path, protocols).await;
-        self.persist_auth_state(&transport).await;
-        let (upstream_socket, selected_protocol) = connection?;
-
-        // Kick off WebRTC handshake for future requests.
-        self.maybe_start_webrtc(transport).await;
-
-        Ok(ProxiedWsConnection {
-            selected_protocol,
-            upstream: UpstreamWs::Relay(upstream_socket),
-        })
+        self.connect_ws_via_relay(target_path, protocols).await
     }
 
     /// Try to open a WebSocket through an active WebRTC data channel.
@@ -550,6 +673,7 @@ impl RelayHost {
     ) -> Option<ProxiedWsConnection> {
         let client = self.webrtc.get(self.identity.host_id).await?;
         if !client.is_connected() {
+            self.webrtc.remove(self.identity.host_id).await;
             return None;
         }
 
@@ -572,38 +696,68 @@ impl RelayHost {
         }
     }
 
-    pub async fn open_workspace_in_editor(
+    pub async fn prepare_workspace_editor(
         &self,
-        tunnel_manager: &TunnelManager,
         workspace_id: Uuid,
-        editor_type: Option<&str>,
         file_path: Option<&str>,
-    ) -> Result<OpenRemoteEditorResponse, OpenRemoteEditorError> {
-        let mut transport = self.open_transport().await?;
+    ) -> Result<WorkspaceEditorSetup, OpenRemoteEditorError> {
         let editor_path_api_path = build_workspace_editor_path_api_path(workspace_id, file_path);
-        let editor_path = transport
-            .get_signed_json::<RelayEditorPathResponse>(&editor_path_api_path)
-            .await;
-        self.persist_auth_state(&transport).await;
-        let editor_path = editor_path?;
-        let tunnel_access = relay_tunnel_access(&transport);
-        let local_port = tunnel_manager
-            .get_or_create_ssh_tunnel(
-                self.identity.host_id,
-                &tunnel_access.relay_url,
-                tunnel_access.signing_session_id,
-            )
-            .await
-            .map_err(OpenRemoteEditorError::CreateTunnel)?;
+        let editor_path = self.resolve_editor_path(&editor_path_api_path).await?;
+        let local_port = self.create_ssh_tunnel_port().await?;
 
-        desktop_bridge::service::open_remote_editor(
+        Ok(WorkspaceEditorSetup {
+            workspace_path: editor_path.workspace_path,
             local_port,
-            &self.runtime.relay_signing,
-            &self.identity.host_id.to_string(),
-            &editor_path.workspace_path,
-            editor_type,
-        )
-        .map_err(OpenRemoteEditorError::SshSetup)
+        })
+    }
+
+    async fn resolve_editor_path(
+        &self,
+        editor_path_api_path: &str,
+    ) -> Result<RelayEditorPathResponse, OpenRemoteEditorError> {
+        if let Some(path) = self
+            .try_webrtc_resolve_editor_path(editor_path_api_path)
+            .await
+        {
+            return Ok(path);
+        }
+
+        let response = self
+            .send_http_via_relay(&Method::GET, editor_path_api_path, &HeaderMap::new(), &[])
+            .await
+            .map_err(OpenRemoteEditorError::from)?;
+        parse_editor_path_response(response)
+            .await
+            .map_err(OpenRemoteEditorError::from)
+    }
+
+    /// Resolve editor path via WebRTC HTTP. Returns None when WebRTC is not
+    /// available or the response is invalid.
+    async fn try_webrtc_resolve_editor_path(
+        &self,
+        editor_path_api_path: &str,
+    ) -> Option<RelayEditorPathResponse> {
+        let response = self
+            .try_webrtc_proxy(&Method::GET, editor_path_api_path, &HeaderMap::new(), &[])
+            .await?;
+        match parse_editor_path_response(response).await {
+            Ok(path) => Some(path),
+            Err(error) => {
+                tracing::debug!(
+                    ?error,
+                    "WebRTC editor path request invalid, falling back to relay"
+                );
+                None
+            }
+        }
+    }
+
+    async fn create_ssh_tunnel_port(&self) -> Result<u16, OpenRemoteEditorError> {
+        self.runtime
+            .tunnel_manager
+            .get_or_create_ssh_tunnel(self.clone())
+            .await
+            .map_err(OpenRemoteEditorError::CreateTunnel)
     }
 }
 
@@ -611,37 +765,35 @@ impl RelayHost {
 ///
 /// Reuses an already-authenticated transport from the caller so no extra
 /// relay sessions are created and no shared session cache is touched.
-async fn negotiate_webrtc(mut transport: RelayHostTransport) -> anyhow::Result<WebRtcClient> {
+async fn negotiate_webrtc(
+    mut transport: RelayHostTransport,
+) -> Result<WebRtcClient, NegotiateWebRtcError> {
     let session_id = Uuid::new_v4().to_string();
     let webrtc_offer = WebRtcClient::create_offer(session_id).await?;
 
     let offer_json = serde_json::to_vec(&webrtc_offer.offer)?;
     let mut headers = HeaderMap::new();
-    headers.insert("content-type", "application/json".parse().unwrap());
+    headers.insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("application/json"),
+    );
 
     let response = transport
         .send_http(&Method::POST, "/api/webrtc/offer", &headers, &offer_json)
-        .await
-        .map_err(|e| anyhow::anyhow!("WebRTC offer request failed: {e:?}"))?;
+        .await?;
 
     if !response.status().is_success() {
-        anyhow::bail!("WebRTC offer rejected with status {}", response.status());
+        return Err(NegotiateWebRtcError::OfferRejected(response.status()));
     }
 
     let answer: relay_webrtc::SdpAnswer = response
         .json()
         .await
-        .map_err(|e| anyhow::anyhow!("Invalid WebRTC answer response: {e}"))?;
+        .map_err(NegotiateWebRtcError::InvalidAnswerResponse)?;
 
     let shutdown = CancellationToken::new();
-    WebRtcClient::connect(webrtc_offer, &answer.sdp, shutdown).await
-}
-
-fn relay_tunnel_access(transport: &RelayHostTransport) -> RelayTunnelAccess {
-    RelayTunnelAccess {
-        relay_url: transport.relay_url(),
-        signing_session_id: transport.auth_state().signing_session_id,
-    }
+    let client = WebRtcClient::connect(webrtc_offer, &answer.sdp, shutdown).await?;
+    Ok(client)
 }
 
 fn build_workspace_editor_path_api_path(workspace_id: Uuid, file_path: Option<&str>) -> String {
@@ -654,6 +806,28 @@ fn build_workspace_editor_path_api_path(workspace_id: Uuid, file_path: Option<&s
         .append_pair("file_path", file_path)
         .finish();
     format!("{base}?{query}")
+}
+
+async fn parse_editor_path_response(
+    mut response: ProxiedResponse,
+) -> Result<RelayEditorPathResponse, RelayApiError> {
+    if response.status != StatusCode::OK {
+        return Err(RelayApiError::Other(format!(
+            "editor path request failed with status {}",
+            response.status
+        )));
+    }
+
+    let mut response_body = Vec::new();
+    while let Some(chunk) = response.body.next().await {
+        let chunk = chunk.map_err(|error| {
+            RelayApiError::Other(format!("failed to read response body: {error}"))
+        })?;
+        response_body.extend_from_slice(&chunk);
+    }
+
+    serde_json::from_slice::<RelayEditorPathResponse>(&response_body)
+        .map_err(|error| RelayApiError::Other(format!("failed to parse response body: {error}")))
 }
 
 async fn load_relay_host_credentials_map() -> HashMap<Uuid, RelayHostCredentials> {

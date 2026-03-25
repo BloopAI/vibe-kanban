@@ -1,11 +1,40 @@
-//! Transport-level conversions between native WebSocket message types and
-//! [`RelayWsFrame`].
+//! Shared relay WebSocket transport message protocol.
+//!
+//! Defines transport-agnostic frame/message types and conversions between
+//! native WebSocket messages and relay frame envelopes.
 
 use anyhow::Context as _;
 use axum::extract::ws::{CloseFrame as AxumCloseFrame, Message as AxumMessage};
+use serde::{Deserialize, Serialize};
 use tokio_tungstenite::tungstenite;
 
-use crate::crypto::{RelayWsFrame, RelayWsMessageType};
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "lowercase")]
+pub enum RelayWsMessageType {
+    Text,
+    Binary,
+    Ping,
+    Pong,
+    Close,
+}
+
+impl RelayWsMessageType {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Text => "text",
+            Self::Binary => "binary",
+            Self::Ping => "ping",
+            Self::Pong => "pong",
+            Self::Close => "close",
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct RelayWsFrame {
+    pub msg_type: RelayWsMessageType,
+    pub payload: Vec<u8>,
+}
 
 /// Convert between a native WebSocket message type and [`RelayWsFrame`].
 pub trait RelayTransportMessage: Sized {
@@ -14,10 +43,6 @@ pub trait RelayTransportMessage: Sized {
     /// Convert a [`RelayWsFrame`] back into a native WS message.
     fn try_from_frame(frame: RelayWsFrame) -> anyhow::Result<Self>;
 }
-
-// ---------------------------------------------------------------------------
-// axum WebSocket
-// ---------------------------------------------------------------------------
 
 impl RelayTransportMessage for AxumMessage {
     fn into_frame(self) -> RelayWsFrame {
@@ -70,10 +95,6 @@ impl RelayTransportMessage for AxumMessage {
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// tungstenite WebSocket
-// ---------------------------------------------------------------------------
 
 impl RelayTransportMessage for tungstenite::Message {
     fn into_frame(self) -> RelayWsFrame {

@@ -1,16 +1,19 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{Arc, OnceLock},
+};
 
 use api_types::LoginStatus;
 use async_trait::async_trait;
 use client_info::ClientInfo;
 use db::DBService;
 use deployment::{Deployment, DeploymentError, RelayHostsNotConfigured, RemoteClientNotConfigured};
-use desktop_bridge::tunnel::TunnelManager;
 use executors::profile::ExecutorConfigs;
 use git::GitService;
 use preview_proxy::PreviewProxyService;
 use relay_control::{RelayControl, signing::RelaySigningService};
 use relay_hosts::RelayHosts;
+use relay_webrtc::WebRtcHost;
 use remote_info::RemoteInfo;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
@@ -29,6 +32,7 @@ use services::services::{
     repo::RepoService,
 };
 use tokio::sync::{Notify, RwLock};
+use tokio_util::sync::CancellationToken;
 use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
 use utils::{
     assets::{config_path, credentials_path, server_signing_key_path, trusted_keys_path},
@@ -69,8 +73,8 @@ pub struct LocalDeployment {
     client_info: ClientInfo,
     remote_info: RemoteInfo,
     preview_proxy: PreviewProxyService,
-    tunnel_manager: Arc<TunnelManager>,
     relay_hosts: Option<Arc<RelayHosts>>,
+    webrtc_host: OnceLock<Arc<WebRtcHost>>,
     ssh_config: Arc<russh::server::Config>,
     pty: PtyService,
     pr_sync_notify: Arc<Notify>,
@@ -234,7 +238,6 @@ impl Deployment for LocalDeployment {
         let file_search_cache = Arc::new(FileSearchCache::new());
 
         let pty = PtyService::new();
-        let tunnel_manager = Arc::new(TunnelManager::new(relay_signing.clone()));
         let relay_hosts = match remote_client.clone().ok() {
             Some(remote_client) => Some(Arc::new(
                 RelayHosts::load(remote_client, remote_info.clone(), relay_signing.clone()).await,
@@ -277,8 +280,8 @@ impl Deployment for LocalDeployment {
             client_info,
             remote_info,
             preview_proxy,
-            tunnel_manager,
             relay_hosts,
+            webrtc_host: OnceLock::new(),
             ssh_config,
             pty,
             pr_sync_notify,
@@ -363,10 +366,6 @@ impl Deployment for LocalDeployment {
         &self.preview_proxy
     }
 
-    fn tunnel_manager(&self) -> &Arc<TunnelManager> {
-        &self.tunnel_manager
-    }
-
     fn relay_hosts(&self) -> Result<&Arc<RelayHosts>, RelayHostsNotConfigured> {
         self.relay_hosts.as_ref().ok_or(RelayHostsNotConfigured)
     }
@@ -377,6 +376,16 @@ impl Deployment for LocalDeployment {
 }
 
 impl LocalDeployment {
+    pub fn webrtc_host(&self) -> Option<Arc<WebRtcHost>> {
+        let local_addr = self.client_info.get_server_addr()?;
+
+        Some(
+            self.webrtc_host
+                .get_or_init(|| Arc::new(WebRtcHost::new(local_addr, CancellationToken::new())))
+                .clone(),
+        )
+    }
+
     pub fn workspace_manager(&self) -> &WorkspaceManager {
         &self.workspace_manager
     }

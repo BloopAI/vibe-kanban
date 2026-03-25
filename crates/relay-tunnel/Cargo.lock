@@ -482,6 +482,7 @@ checksum = "70e796c081cee67dc755e1a36a0a172b897fab85fc3f6bc48307991f64e4eca9"
 dependencies = [
  "curve25519-dalek",
  "ed25519",
+ "rand_core 0.6.4",
  "serde",
  "sha2",
  "subtle",
@@ -1685,6 +1686,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
+name = "relay-control"
+version = "0.1.35"
+dependencies = [
+ "anyhow",
+ "base64",
+ "ed25519-dalek",
+ "rand 0.8.5",
+ "sha2",
+ "tokio",
+ "tokio-util",
+ "uuid",
+]
+
+[[package]]
 name = "relay-tunnel"
 version = "0.1.7"
 dependencies = [
@@ -1693,10 +1708,17 @@ dependencies = [
  "axum",
  "axum-extra",
  "base64",
+ "bytes",
  "chrono",
+ "futures",
+ "futures-util",
+ "http",
+ "hyper",
+ "hyper-util",
  "jsonwebtoken",
  "relay-tunnel-core",
  "relay-types",
+ "relay-ws",
  "rustls",
  "secrecy",
  "serde",
@@ -1704,6 +1726,9 @@ dependencies = [
  "sqlx",
  "thiserror",
  "tokio",
+ "tokio-tungstenite 0.26.2",
+ "tokio-util",
+ "tokio-yamux",
  "tower-http",
  "tracing",
  "tracing-subscriber",
@@ -1737,6 +1762,25 @@ dependencies = [
  "chrono",
  "serde",
  "sqlx",
+ "ts-rs",
+ "uuid",
+]
+
+[[package]]
+name = "relay-ws"
+version = "0.1.35"
+dependencies = [
+ "anyhow",
+ "axum",
+ "base64",
+ "ed25519-dalek",
+ "futures-util",
+ "relay-control",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
  "ts-rs",
  "uuid",
 ]

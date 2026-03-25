@@ -12,7 +12,6 @@ use utils::http_headers::is_hop_by_hop_header;
 use crate::{
     PreviewProxyService,
     proxy_common::{build_local_upstream_url, extract_ws_protocols, should_forward_request_header},
-    ws_bridge::{bridge_ws, connect_upstream_ws},
 };
 
 type MaybeWsUpgrade = Result<WebSocketUpgrade, WebSocketUpgradeRejection>;
@@ -92,7 +91,7 @@ async fn forward_ws(
     let protocols = extract_ws_protocols(request.headers());
 
     let (upstream_ws, selected_protocol) =
-        match connect_upstream_ws(ws_url, protocols.as_deref()).await {
+        match ws_bridge::connect_upstream_ws(ws_url, protocols.as_deref()).await {
             Ok(value) => value,
             Err(error) => {
                 tracing::warn!(?error, "Failed to connect preview upstream WebSocket");
@@ -106,7 +105,7 @@ async fn forward_ws(
     }
 
     ws.on_upgrade(move |client_socket| async move {
-        if let Err(error) = bridge_ws(upstream_ws, client_socket).await {
+        if let Err(error) = ws_bridge::bridge_axum_ws(client_socket, upstream_ws).await {
             tracing::debug!(?error, "Preview upstream WS bridge closed with error");
         }
     })
