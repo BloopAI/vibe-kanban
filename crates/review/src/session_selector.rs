@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// Result of session selection process
-pub enum SessionSelection {
+pub(crate) enum SessionSelection {
     /// User selected session files to include (all sessions from a project)
     Selected(Vec<PathBuf>),
     /// User chose to skip session attachment
@@ -27,7 +27,7 @@ pub enum SessionSelection {
 /// 4. Allow user to skip entirely
 ///
 /// When a project is selected, ALL sessions from that project are included.
-pub fn select_session(pr_branch: &str) -> Result<SessionSelection, ReviewError> {
+pub(crate) fn select_session(pr_branch: &str) -> Result<SessionSelection, ReviewError> {
     debug!(
         "Looking for Claude Code projects matching branch: {}",
         pr_branch

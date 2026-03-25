@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct Config {
+pub(crate) struct Config {
     #[serde(default)]
-    pub email: Option<String>,
+    pub(crate) email: Option<String>,
 }
 
 impl Config {
@@ -15,7 +15,7 @@ impl Config {
     }
 
     /// Load config from disk, returning default if file doesn't exist
-    pub fn load() -> Self {
+    pub(crate) fn load() -> Self {
         let Some(path) = Self::config_path() else {
             return Self::default();
         };
@@ -31,7 +31,7 @@ impl Config {
     }
 
     /// Save config to disk
-    pub fn save(&self) -> std::io::Result<()> {
+    pub(crate) fn save(&self) -> std::io::Result<()> {
         let Some(path) = Self::config_path() else {
             return Ok(());
         };

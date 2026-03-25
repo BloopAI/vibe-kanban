@@ -7,7 +7,7 @@ use tracing::debug;
 use crate::error::ReviewError;
 
 /// Create a tar.gz archive from a directory
-pub fn create_tarball(source_dir: &Path) -> Result<Vec<u8>, ReviewError> {
+pub(crate) fn create_tarball(source_dir: &Path) -> Result<Vec<u8>, ReviewError> {
     debug!("Creating tarball from {}", source_dir.display());
 
     let mut buffer = Vec::new();

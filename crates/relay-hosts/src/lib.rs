@@ -64,7 +64,7 @@ impl RelayHostRepository {
         }
     }
 
-    pub async fn upsert_credentials(
+    async fn upsert_credentials(
         &self,
         host_id: Uuid,
         host_name: Option<String>,
@@ -94,7 +94,7 @@ impl RelayHostRepository {
         persist_relay_host_credentials_map(&credentials).await
     }
 
-    pub async fn list_hosts(&self) -> Vec<RelayPairedHost> {
+    async fn list_hosts(&self) -> Vec<RelayPairedHost> {
         self.credentials
             .read()
             .await
@@ -107,7 +107,7 @@ impl RelayHostRepository {
             .collect()
     }
 
-    pub async fn remove_credentials(&self, host_id: Uuid) -> Result<bool, RelayPairingClientError> {
+    async fn remove_credentials(&self, host_id: Uuid) -> Result<bool, RelayPairingClientError> {
         let mut credentials = self.credentials.write().await;
         let removed = credentials.remove(&host_id).is_some();
 
@@ -118,7 +118,7 @@ impl RelayHostRepository {
         Ok(removed)
     }
 
-    pub async fn load_identity(
+    async fn load_identity(
         &self,
         host_id: Uuid,
     ) -> Result<RelayHostIdentity, RelayHostLookupError> {
@@ -155,7 +155,7 @@ struct RelaySessionCache {
 }
 
 impl RelaySessionCache {
-    pub async fn load_auth_state(&self, host_id: Uuid) -> Option<RelayAuthState> {
+    async fn load_auth_state(&self, host_id: Uuid) -> Option<RelayAuthState> {
         let sessions = self.auth_state.read().await;
         let entry = sessions.get(&host_id)?;
         let remote_session_id = entry.remote_session_id?;
@@ -170,14 +170,14 @@ impl RelaySessionCache {
         })
     }
 
-    pub async fn cache_auth_state(&self, host_id: Uuid, auth_state: &RelayAuthState) {
+    async fn cache_auth_state(&self, host_id: Uuid, auth_state: &RelayAuthState) {
         let mut sessions = self.auth_state.write().await;
         let entry = sessions.entry(host_id).or_default();
         entry.remote_session_id = Some(auth_state.remote_session.id);
         entry.signing_session_id = Some(auth_state.signing_session_id);
     }
 
-    pub async fn cache_signing_session_id(&self, host_id: Uuid, session_id: Uuid) {
+    async fn cache_signing_session_id(&self, host_id: Uuid, session_id: Uuid) {
         self.auth_state
             .write()
             .await
@@ -186,7 +186,7 @@ impl RelaySessionCache {
             .signing_session_id = Some(session_id);
     }
 
-    pub async fn clear(&self, host_id: Uuid) {
+    async fn clear(&self, host_id: Uuid) {
         self.auth_state.write().await.remove(&host_id);
     }
 }

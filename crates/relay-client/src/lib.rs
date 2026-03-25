@@ -301,7 +301,7 @@ impl RelayHostTransport {
         &self.auth_state
     }
 
-    pub fn relay_base_url(&self) -> &str {
+    fn relay_base_url(&self) -> &str {
         self.api_client.base_url()
     }
 

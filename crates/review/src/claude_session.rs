@@ -12,22 +12,22 @@ use crate::error::ReviewError;
 
 /// Represents a Claude Code project directory
 #[derive(Debug, Clone)]
-pub struct ClaudeProject {
-    pub path: PathBuf,
-    pub name: String,
-    pub git_branch: Option<String>,
-    pub first_prompt: Option<String>,
-    pub session_count: usize,
-    pub modified_at: SystemTime,
+pub(crate) struct ClaudeProject {
+    pub(crate) path: PathBuf,
+    pub(crate) name: String,
+    pub(crate) git_branch: Option<String>,
+    pub(crate) first_prompt: Option<String>,
+    pub(crate) session_count: usize,
+    pub(crate) modified_at: SystemTime,
 }
 
 /// Represents a single session file within a project
 #[derive(Debug, Clone)]
-pub struct ClaudeSession {
-    pub path: PathBuf,
-    pub git_branch: Option<String>,
-    pub first_prompt: Option<String>,
-    pub modified_at: SystemTime,
+pub(crate) struct ClaudeSession {
+    pub(crate) path: PathBuf,
+    pub(crate) git_branch: Option<String>,
+    pub(crate) first_prompt: Option<String>,
+    pub(crate) modified_at: SystemTime,
 }
 
 /// A JSONL record for metadata extraction
@@ -46,13 +46,13 @@ struct JsonlMessage {
 }
 
 /// Get the Claude projects directory path (~/.claude/projects)
-pub fn get_claude_projects_dir() -> Option<PathBuf> {
+fn get_claude_projects_dir() -> Option<PathBuf> {
     dirs::home_dir().map(|home| home.join(".claude").join("projects"))
 }
 
 /// Discover all Claude projects, sorted by modification time (most recent first)
 /// Aggregates session metadata (git_branch, first_prompt, session_count) from each project's sessions
-pub fn discover_projects() -> Result<Vec<ClaudeProject>, ReviewError> {
+pub(crate) fn discover_projects() -> Result<Vec<ClaudeProject>, ReviewError> {
     let projects_dir = get_claude_projects_dir().ok_or_else(|| {
         ReviewError::SessionDiscoveryFailed("Could not find home directory".into())
     })?;
@@ -142,7 +142,9 @@ fn extract_project_name(dir_name: &str) -> String {
 }
 
 /// Discover sessions in a project, excluding agent-* files
-pub fn discover_sessions(project: &ClaudeProject) -> Result<Vec<ClaudeSession>, ReviewError> {
+pub(crate) fn discover_sessions(
+    project: &ClaudeProject,
+) -> Result<Vec<ClaudeSession>, ReviewError> {
     discover_sessions_in_dir(&project.path)
 }
 
@@ -255,7 +257,7 @@ fn truncate_string(s: &str, max_len: usize) -> String {
 
 /// Find projects matching a specific git branch using fuzzy matching
 /// Returns matching projects with all their sessions
-pub fn find_projects_by_branch(
+pub(crate) fn find_projects_by_branch(
     projects: &[ClaudeProject],
     target_branch: &str,
 ) -> Result<Vec<(ClaudeProject, Vec<ClaudeSession>)>, ReviewError> {
@@ -321,7 +323,9 @@ struct TimestampedMessage {
 /// - Assistant messages with text content (role = "assistant" with content[].type = "text")
 ///
 /// For assistant messages, only text content blocks are kept (tool_use, etc. are filtered out).
-pub fn concatenate_sessions_to_json(session_paths: &[PathBuf]) -> Result<String, ReviewError> {
+pub(crate) fn concatenate_sessions_to_json(
+    session_paths: &[PathBuf],
+) -> Result<String, ReviewError> {
     let mut all_messages: Vec<TimestampedMessage> = Vec::new();
 
     for path in session_paths {

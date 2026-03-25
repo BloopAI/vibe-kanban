@@ -59,7 +59,7 @@ impl RemoteClientError {
     }
 
     /// Returns true if the error is transient and should be retried.
-    pub fn should_retry(&self) -> bool {
+    fn should_retry(&self) -> bool {
         match self {
             Self::Transport(_) | Self::Timeout => true,
             Self::Http { status, .. } => (500..=599).contains(status),
@@ -67,7 +67,7 @@ impl RemoteClientError {
         }
     }
 
-    pub fn is_definitive_auth_failure(&self) -> bool {
+    fn is_definitive_auth_failure(&self) -> bool {
         match self {
             Self::Auth => true,
             Self::Api(code) => code.is_definitive_auth_failure(),
