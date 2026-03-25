@@ -80,19 +80,23 @@ export function TurnNavigationPopup({
     [onNavigateToTurn]
   );
 
-  // Scroll the list to show the active turn (or bottom if none)
+  // Scroll the list to show the active turn (or bottom if none).
+  // Avoid scrollIntoView() as it can scroll ancestor containers.
   useLayoutEffect(() => {
-    if (!open || !listRef.current) return;
+    const list = listRef.current;
+    if (!open || !list) return;
     if (activePatchKey) {
-      const activeEl = listRef.current.querySelector(
+      const activeEl = list.querySelector<HTMLElement>(
         `[data-patch-key="${activePatchKey}"]`
       );
       if (activeEl) {
-        activeEl.scrollIntoView({ block: 'center' });
+        const top = activeEl.offsetTop - list.offsetTop;
+        list.scrollTop =
+          top - list.clientHeight / 2 + activeEl.offsetHeight / 2;
         return;
       }
     }
-    listRef.current.scrollTop = listRef.current.scrollHeight;
+    list.scrollTop = list.scrollHeight;
   }, [open, activePatchKey]);
 
   if (turns.length === 0) {
