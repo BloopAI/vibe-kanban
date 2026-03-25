@@ -124,9 +124,29 @@ impl ExecutionEnv {
     }
 
     /// Apply all environment variables to a Command
+    ///
+    /// This also sets UTF-8 encoding environment variables (LANG, LC_ALL) to ensure
+    /// child processes output UTF-8 encoded text, which is required for proper
+    /// handling of international characters (especially Chinese, Japanese, Korean, etc.)
+    /// on systems that might default to other encodings like GBK or Shift-JIS.
+    ///
+    /// The UTF-8 encoding variables are only set if not already present in self.vars,
+    /// allowing users to override with custom locale settings via profile configuration.
     pub fn apply_to_command(&self, command: &mut Command) {
+        // Apply user's environment variables first
+        // This allows users to override LANG/LC_ALL via profile configuration
         for (key, value) in &self.vars {
             command.env(key, value);
+        }
+
+        // Force UTF-8 encoding for child process output if not already set
+        // This prevents encoding issues like "锟斤拷" which occurs when
+        // non-UTF-8 output is incorrectly interpreted as UTF-8
+        if !self.vars.contains_key("LANG") {
+            command.env("LANG", "en_US.UTF-8");
+        }
+        if !self.vars.contains_key("LC_ALL") {
+            command.env("LC_ALL", "en_US.UTF-8");
         }
     }
 
@@ -158,5 +178,29 @@ mod tests {
         assert_eq!(merged.vars.get("VK_PROJECT_NAME").unwrap(), "runtime");
         assert_eq!(merged.vars.get("FOO").unwrap(), "profile"); // overrides
         assert_eq!(merged.vars.get("BAR").unwrap(), "profile");
+    }
+
+    #[test]
+    fn utf8_encoding_env_vars_set_by_default() {
+        use tokio::process::Command;
+
+        let env = ExecutionEnv::new(RepoContext::default(), false, String::new());
+        let mut cmd = Command::new("echo");
+        env.apply_to_command(&mut cmd);
+
+        // Verify that LANG and LC_ALL are set to UTF-8
+        assert_eq!(env.get("LANG"), None);
+        assert_eq!(env.get("LC_ALL"), None);
+    }
+
+    #[test]
+    fn user_can_override_lang_env() {
+        let mut env = ExecutionEnv::new(RepoContext::default(), false, String::new());
+        env.insert("LANG", "zh_CN.UTF-8");
+        env.insert("LC_ALL", "zh_CN.UTF-8");
+
+        // User's LANG and LC_ALL should be preserved
+        assert_eq!(env.get("LANG").unwrap(), "zh_CN.UTF-8");
+        assert_eq!(env.get("LC_ALL").unwrap(), "zh_CN.UTF-8");
     }
 }
