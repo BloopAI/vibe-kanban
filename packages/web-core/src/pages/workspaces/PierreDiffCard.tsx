@@ -570,7 +570,8 @@ export function PierreDiffCard({
                   className={cn(
                     'flex items-center justify-center transition-colors',
                     'text-low hover:text-normal',
-                    viewMode === 'preview' && 'text-brand hover:text-brand-hover'
+                    viewMode === 'preview' &&
+                      'text-brand hover:text-brand-hover'
                   )}
                   aria-label={
                     viewMode === 'diff'

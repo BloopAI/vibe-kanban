@@ -204,13 +204,19 @@ export function MarkdownPreview({
   );
 
   return (
-    <div className={cn(
-      'markdown-preview',
-      // Inline code styling: targets <code> not inside <pre> (i.e. not fenced blocks)
-      '[&_:not(pre)>code]:text-xs [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded-sm [&_:not(pre)>code]:bg-panel [&_:not(pre)>code]:text-high',
-      className,
-    )}>
-      <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}>
+    <div
+      className={cn(
+        'markdown-preview',
+        // Inline code styling: targets <code> not inside <pre> (i.e. not fenced blocks)
+        '[&_:not(pre)>code]:text-xs [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded-sm [&_:not(pre)>code]:bg-panel [&_:not(pre)>code]:text-high',
+        className
+      )}
+    >
+      <ReactMarkdown
+        remarkPlugins={remarkPlugins}
+        rehypePlugins={rehypePlugins}
+        components={components}
+      >
         {content}
       </ReactMarkdown>
     </div>
