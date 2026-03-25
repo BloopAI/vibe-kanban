@@ -62,14 +62,14 @@ pub enum RelayConnectionError {
 enum NegotiateWebRtcError {
     #[error(transparent)]
     WebRtcClient(#[from] relay_webrtc::WebRtcClientError),
-    #[error("Failed to serialize WebRTC offer: {0}")]
-    SerializeOffer(#[from] serde_json::Error),
+    #[error(transparent)]
+    Serialize(#[from] serde_json::Error),
     #[error(transparent)]
     Relay(#[from] RelayApiError),
     #[error("WebRTC offer rejected with status {0}")]
     OfferRejected(StatusCode),
-    #[error("Invalid WebRTC answer response: {0}")]
-    InvalidAnswerResponse(reqwest::Error),
+    #[error(transparent)]
+    AnswerResponse(#[from] reqwest::Error),
 }
 
 #[derive(Clone)]
@@ -786,10 +786,7 @@ async fn negotiate_webrtc(
         return Err(NegotiateWebRtcError::OfferRejected(response.status()));
     }
 
-    let answer: relay_webrtc::SdpAnswer = response
-        .json()
-        .await
-        .map_err(NegotiateWebRtcError::InvalidAnswerResponse)?;
+    let answer: relay_webrtc::SdpAnswer = response.json().await?;
 
     let shutdown = CancellationToken::new();
     let client = WebRtcClient::connect(webrtc_offer, &answer.sdp, shutdown).await?;
