@@ -657,11 +657,48 @@ export const ConversationList = forwardRef<
         const targetIndex = conversationRows.findIndex(
           (row) => row.entry.patchKey === patchKey
         );
-        if (targetIndex >= 0) {
-          conversationVirtualizer.releaseBottomLock();
-          programmaticScrollDeadlineRef.current = performance.now() + 1000;
-          scrollToAbsoluteIndex(targetIndex, 'start', 'smooth');
-        }
+        if (targetIndex < 0) return;
+
+        const scrollEl = tanstackScrollRef.current;
+        if (!scrollEl) return;
+
+        conversationVirtualizer.releaseBottomLock();
+        programmaticScrollDeadlineRef.current = performance.now() + 1000;
+
+        let attempts = 0;
+        const maxAttempts = 6;
+
+        const correctScroll = () => {
+          if (attempts >= maxAttempts) return;
+          attempts++;
+
+          programmaticScrollDeadlineRef.current = performance.now() + 500;
+
+          const node = scrollEl.querySelector<HTMLElement>(
+            `[data-row-index="${targetIndex}"]`
+          );
+          if (!node) {
+            if (attempts === 1) {
+              conversationVirtualizer.scrollToIndex(targetIndex, {
+                align: 'start',
+                behavior: 'auto',
+              });
+            }
+            requestAnimationFrame(correctScroll);
+            return;
+          }
+
+          const nodeRect = node.getBoundingClientRect();
+          const contRect = scrollEl.getBoundingClientRect();
+          const delta = nodeRect.top - contRect.top;
+
+          if (Math.abs(delta) < 2) return;
+
+          scrollEl.scrollTop += delta;
+          requestAnimationFrame(correctScroll);
+        };
+
+        correctScroll();
       },
       getVisibleUserMessagePatchKey: () => {
         const scrollEl = tanstackScrollRef.current;
