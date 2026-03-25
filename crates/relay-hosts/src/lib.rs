@@ -16,7 +16,7 @@ use services::services::remote_client::{RemoteClient, RemoteClientError};
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 use trusted_key_auth::trusted_keys::parse_public_key_base64;
-use utils::assets::relay_host_credentials_path;
+use utils::{assets::relay_host_credentials_path, response::ApiResponse};
 use uuid::Uuid;
 
 mod tunnel_manager;
@@ -786,7 +786,20 @@ async fn negotiate_webrtc(
         return Err(NegotiateWebRtcError::OfferRejected(response.status()));
     }
 
-    let answer: relay_webrtc::SdpAnswer = response.json().await?;
+    let answer_response: ApiResponse<relay_webrtc::SdpAnswer> = response.json().await?;
+    if !answer_response.is_success() {
+        let message = answer_response
+            .message()
+            .unwrap_or("WebRTC offer failed")
+            .to_string();
+        return Err(NegotiateWebRtcError::Relay(RelayApiError::Other(message)));
+    }
+
+    let answer = answer_response.into_data().ok_or_else(|| {
+        NegotiateWebRtcError::Relay(RelayApiError::Other(
+            "WebRTC offer response missing SDP answer".to_string(),
+        ))
+    })?;
 
     let shutdown = CancellationToken::new();
     let client = WebRtcClient::connect(webrtc_offer, &answer.sdp, shutdown).await?;
@@ -823,8 +836,21 @@ async fn parse_editor_path_response(
         response_body.extend_from_slice(&chunk);
     }
 
-    serde_json::from_slice::<RelayEditorPathResponse>(&response_body)
-        .map_err(|error| RelayApiError::Other(format!("failed to parse response body: {error}")))
+    let payload = serde_json::from_slice::<ApiResponse<RelayEditorPathResponse>>(&response_body)
+        .map_err(|error| RelayApiError::Other(format!("failed to parse response body: {error}")))?;
+
+    if !payload.is_success() {
+        return Err(RelayApiError::Other(
+            payload
+                .message()
+                .unwrap_or("editor path request failed")
+                .to_string(),
+        ));
+    }
+
+    payload.into_data().ok_or_else(|| {
+        RelayApiError::Other("editor path response missing workspace path".to_string())
+    })
 }
 
 async fn load_relay_host_credentials_map() -> HashMap<Uuid, RelayHostCredentials> {
