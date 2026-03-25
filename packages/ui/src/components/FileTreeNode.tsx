@@ -82,7 +82,7 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
         className={cn(
           'flex items-center h-[26px] cursor-pointer text-low hover:bg-panel rounded',
           'relative select-none',
-          isSelected && 'bg-panel text-normal'
+          isSelected && 'bg-panel text-normal ring-1 ring-border/70'
         )}
         onClick={handleClick}
       >

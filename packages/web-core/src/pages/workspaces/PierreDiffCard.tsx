@@ -1,283 +1,64 @@
-import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CaretDownIcon,
-  ChatCircleIcon,
   CopyIcon,
+  CheckIcon,
   EyeIcon,
-  GithubLogoIcon,
-  PlusIcon,
 } from '@phosphor-icons/react';
-import { FileDiff } from '@pierre/diffs/react';
-import type {
-  DiffLineAnnotation,
-  AnnotationSide,
-  ChangeContent,
-} from '@pierre/diffs';
 import { cn } from '@/shared/lib/utils';
-import { DiffSide } from '@/shared/types/diff';
-import {
-  transformDiffToFileDiffMetadata,
-  transformCommentsToAnnotations,
-  type CommentAnnotation,
-} from '@/shared/lib/diffDataAdapter';
 import { useTheme } from '@/shared/hooks/useTheme';
 import { getActualTheme } from '@/shared/lib/theme';
-import {
-  useDiffViewMode,
-  useWrapTextDiff,
-  useIgnoreWhitespaceDiff,
-} from '@/shared/stores/useDiffViewStore';
-import { useReview, type ReviewDraft } from '@/shared/hooks/useReview';
-import {
-  useShowGitHubComments,
-  useGetGitHubCommentsForFile,
-} from '@/shared/stores/useWorkspaceDiffStore';
 import { isRealMobileDevice } from '@/shared/hooks/useIsMobile';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
-import { OpenInIdeButton } from '@/shared/components/OpenInIdeButton';
-import { CopyButton } from '@/shared/components/CopyButton';
 import { useOpenInEditor } from '@/shared/hooks/useOpenInEditor';
+import { IdeIcon } from '@/shared/components/IdeIcon';
 import { writeClipboardViaBridge } from '@/shared/lib/clipboard';
 import { Tooltip } from '@vibe/ui/components/Tooltip';
-import { ReviewCommentRenderer } from './ReviewCommentRenderer';
-import { GitHubCommentRenderer } from './GitHubCommentRenderer';
-import { CommentWidgetLine } from './CommentWidgetLine';
 import { DisplayTruncatedPath } from '@/shared/lib/TruncatePath';
-import { stripLineEnding, splitLines } from '@/shared/lib/string';
+import { DiffCardExpandedBody } from './DiffCardExpandedBody';
 import { MarkdownPreview } from '@/shared/components/MarkdownPreview';
 import type { Diff } from 'shared/types';
-
-/**
- * Extracts a specific line from file content.
- * @param content - The full file content as a string
- * @param lineNumber - The 1-indexed line number to extract
- * @returns The line content, or undefined if the line doesn't exist
- */
-function getLineContent(
-  content: string | null,
-  lineNumber: number
-): string | undefined {
-  if (!content) return undefined;
-  const lines = splitLines(content);
-  const index = lineNumber - 1; // Convert 1-indexed to 0-indexed
-  if (index < 0 || index >= lines.length) return undefined;
-  return stripLineEnding(lines[index]);
-}
-
-/**
- * Gets the appropriate line content based on whether the comment is on
- * the old (deletions) or new (additions) side of the diff.
- * @param diff - The Diff object containing oldContent and newContent
- * @param lineNumber - The 1-indexed line number
- * @param side - The side of the diff (Old for deletions, New for additions)
- * @returns The line content, or undefined if not available
- */
-function getCodeLineForComment(
-  diff: Diff,
-  lineNumber: number,
-  side: DiffSide
-): string | undefined {
-  const content = side === DiffSide.Old ? diff.oldContent : diff.newContent;
-  return getLineContent(content, lineNumber);
-}
-
-/**
- * CSS overrides for @pierre/diffs to match our app's theme.
- * Injected via unsafeCSS which applies at @layer unsafe (highest priority).
- */
-const PIERRE_DIFFS_THEME_CSS = `
-  [data-separator="line-info"][data-separator-first] {
-    margin-top: 4px;
-  }
-  [data-separator="line-info"][data-separator-last] {
-    margin-bottom: 4px;
-  }
-
-  /* Add space for hover comment button between line numbers and code */
-  [data-indicators='classic'] [data-column-content] {
-    position: relative !important;
-    padding-inline-start: 34px !important;
-  }
-
-  /* Move +/- indicator right to make room for hover button */
-  [data-indicators='classic'] [data-line-type='change-addition'] [data-column-content]::before,
-  [data-indicators='classic'] [data-line-type='change-deletion'] [data-column-content]::before {
-    left: 22px !important;
-  }
-
-  /* Position hover utility dynamically based on line number column width */
-  [data-hover-slot] {
-    right: auto !important;
-    left: calc(var(--diffs-column-number-width, 3ch) - 25px) !important;
-    width: 22px !important;
-  }
-
-  /* Keep annotations full-row without inheriting long-line scroll width */
-  [data-annotation-content] {
-    grid-column: 1 / -1 !important;
-    left: 0 !important;
-    width: var(--diffs-column-width, 100%) !important;
-    max-width: 100% !important;
-  }
-  
-  [data-line-annotation] {
-    grid-column: 1 / -1 !important;
-  }
-
-  /* Show scrollbar only on hover */
-  [data-code] {
-    padding-bottom: 0 !important;
-  }
-  [data-code]::-webkit-scrollbar {
-    height: 8px !important;
-    background: transparent !important;
-  }
-  [data-code]::-webkit-scrollbar-track {
-    background: transparent !important;
-  }
-  [data-code]::-webkit-scrollbar-thumb {
-    background-color: transparent !important;
-    border-radius: 4px !important;
-  }
-  [data-code]:hover::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--text-low) / 0.3) !important;
-  }
-
-  /* Light theme overrides */
-  [data-diff][data-theme-type='light'] {
-    --diffs-gap-style: none !important;
-    
-    /* Background colors - use standard CSS variables */
-    --diffs-light-bg: hsl(var(--bg-primary)) !important;
-    --diffs-bg-context-override: hsl(var(--bg-primary)) !important;
-    --diffs-bg-separator-override: hsl(var(--bg-primary)) !important;
-    
-    /* Addition colors - soft green matching old design */
-    --diffs-light-addition-color: hsl(160, 77%, 35%) !important;
-    --diffs-bg-addition-override: hsl(160, 77%, 88%) !important;
-    --diffs-bg-addition-number-override: hsl(160, 77%, 85%) !important;
-    --diffs-bg-addition-hover-override: hsl(160, 77%, 82%) !important;
-    
-    /* Deletion colors - soft red matching old design */
-    --diffs-light-deletion-color: hsl(10, 100%, 40%) !important;
-    --diffs-bg-deletion-override: hsl(10, 100%, 90%) !important;
-    --diffs-bg-deletion-number-override: hsl(10, 100%, 87%) !important;
-    --diffs-bg-deletion-hover-override: hsl(10, 100%, 84%) !important;
-    
-    /* Line numbers */
-    --diffs-fg-number-override: hsl(var(--text-low)) !important;
-  }
-
-  /* Dark theme overrides */
-  [data-diff][data-theme-type='dark'] {
-    --diffs-gap-style: none !important;
-    
-    /* Background colors - use standard CSS variables */
-    --diffs-dark-bg: hsl(var(--bg-panel)) !important;
-    --diffs-bg-context-override: hsl(var(--bg-panel)) !important;
-    --diffs-bg-separator-override: hsl(var(--bg-panel)) !important;
-    --diffs-bg-hover-override: hsl(0, 0%, 22%) !important;
-    
-    /* Addition colors - dark green */
-    --diffs-dark-addition-color: hsl(130, 50%, 50%) !important;
-    --diffs-bg-addition-override: hsl(130, 30%, 20%) !important;
-    --diffs-bg-addition-number-override: hsl(130, 30%, 18%) !important;
-    --diffs-bg-addition-hover-override: hsl(130, 30%, 25%) !important;
-    
-    /* Deletion colors - dark red */
-    --diffs-dark-deletion-color: hsl(12, 50%, 55%) !important;
-    --diffs-bg-deletion-override: hsl(12, 30%, 18%) !important;
-    --diffs-bg-deletion-number-override: hsl(12, 30%, 16%) !important;
-    --diffs-bg-deletion-hover-override: hsl(12, 30%, 23%) !important;
-    
-    /* Line numbers */
-    --diffs-fg-number-override: hsl(var(--text-low)) !important;
-  }
-`;
 
 interface PierreDiffCardProps {
   diff: Diff;
   expanded: boolean;
   onToggle: () => void;
+  onExpandedBodyReadyChange?: (ready: boolean) => void;
   workspaceId: string;
   className: string;
 }
 
-type ExtendedCommentAnnotation =
-  | CommentAnnotation
-  | { type: 'draft'; draft: ReviewDraft; widgetKey: string };
+const CHANGE_LABELS: Record<string, string> = {
+  added: 'Added',
+  deleted: 'Deleted',
+  renamed: 'Renamed',
+  copied: 'Copied',
+  permissionChange: 'Perm',
+};
 
-function mapSideToAnnotationSide(side: DiffSide): AnnotationSide {
-  return side === DiffSide.Old ? 'deletions' : 'additions';
-}
+const IS_MOBILE = isRealMobileDevice();
 
-function mapAnnotationSideToSplitSide(side: AnnotationSide): DiffSide {
-  return side === 'deletions' ? DiffSide.Old : DiffSide.New;
-}
-
-const NOOP = () => {};
-
-
-
-const PERF_DEBUG = true;
-function dcLog(label: string, ...args: unknown[]) {
-  if (!PERF_DEBUG) return;
-  console.log(`%c[DiffCard] ${label}`, 'color: #81c784', ...args);
-}
-function dcWarn(label: string, ...args: unknown[]) {
-  if (!PERF_DEBUG) return;
-  console.log(`[DiffCard] ${label}`, ...args);
-}
-
-const PierreDiffCardInner = function PierreDiffCard({
+function PierreDiffCardInner({
   diff,
   expanded,
   onToggle,
+  onExpandedBodyReadyChange,
   workspaceId,
   className = '',
 }: PierreDiffCardProps) {
-  const renderStartTime = performance.now();
-  const renderCountRef = useRef(0);
-  renderCountRef.current++;
-  const filePath_ = diff.newPath || diff.oldPath || 'unknown';
-
-  useEffect(() => {
-    const elapsed = performance.now() - renderStartTime;
-    if (elapsed > 16) {
-      dcWarn(
-        `SLOW render #${renderCountRef.current}`,
-        filePath_,
-        `${elapsed.toFixed(1)}ms`,
-        expanded ? 'expanded' : 'collapsed'
-      );
-    } else {
-      dcLog(
-        `render #${renderCountRef.current}`,
-        filePath_,
-        `${elapsed.toFixed(1)}ms`,
-        expanded ? 'expanded' : 'collapsed'
-      );
-    }
-  });
-
   const { t } = useTranslation('tasks');
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
-  const globalMode = useDiffViewMode();
-  const wrapText = useWrapTextDiff();
-  const ignoreWhitespace = useIgnoreWhitespaceDiff();
 
-  const { comments, drafts, setDraft, addComment } = useReview();
-  const showGitHubComments = useShowGitHubComments();
-  const getGitHubCommentsForFile = useGetGitHubCommentsForFile();
-
-  // File path logic
   const filePath = diff.newPath || diff.oldPath || 'unknown';
   const oldPath = diff.oldPath;
   const changeKind = diff.change;
+  const additions = diff.additions ?? 0;
+  const deletions = diff.deletions ?? 0;
+  const hasStats = additions > 0 || deletions > 0;
+  const changeLabel = changeKind ? (CHANGE_LABELS[changeKind] ?? null) : null;
 
-  // Markdown preview support
   const isMarkdownFile = useMemo(() => {
     if (diff.contentOmitted) return false;
     return filePath.endsWith('.md') || filePath.endsWith('.mdx');
@@ -289,259 +70,23 @@ const PierreDiffCardInner = function PierreDiffCard({
     return diff.newContent ?? '';
   }, [isMarkdownFile, diff]);
 
-  const openInEditor = useOpenInEditor(workspaceId);
-  const handleOpenInIde = useCallback(() => {
-    openInEditor({ filePath });
-  }, [openInEditor, filePath]);
-  const handleCopyFilePath = useCallback(() => {
-    void writeClipboardViaBridge(filePath);
-  }, [filePath]);
-
-  const fileDiffMetadata = useMemo(() => {
-    const t0 = performance.now();
-    const result = transformDiffToFileDiffMetadata(diff, { ignoreWhitespace });
-    const elapsed = performance.now() - t0;
-    if (elapsed > 5) dcWarn(`transformDiffToFileDiffMetadata ${filePath_} ${elapsed.toFixed(1)}ms`);
-    return result;
-  }, [diff, ignoreWhitespace]);
-
-  const additions = useMemo(() => {
-    return fileDiffMetadata.hunks.reduce((acc, hunk) => {
-      return (
-        acc +
-        hunk.hunkContent.reduce((count, content) => {
-          if (content.type === 'change') {
-            return count + (content as ChangeContent).additions;
-          }
-          return count;
-        }, 0)
-      );
-    }, 0);
-  }, [fileDiffMetadata]);
-
-  const deletions = useMemo(() => {
-    return fileDiffMetadata.hunks.reduce((acc, hunk) => {
-      return (
-        acc +
-        hunk.hunkContent.reduce((count, content) => {
-          if (content.type === 'change') {
-            return count + (content as ChangeContent).deletions;
-          }
-          return count;
-        }, 0)
-      );
-    }, 0);
-  }, [fileDiffMetadata]);
-
-  const hasStats = additions > 0 || deletions > 0;
-
   const FileIcon = getFileIcon(filePath, actualTheme);
+  const openInEditor = useOpenInEditor(workspaceId);
+  const [copied, setCopied] = useState(false);
 
-  // Change Label
-  const getChangeLabel = (kind?: string): string | null => {
-    switch (kind) {
-      case 'added':
-        return 'Added';
-      case 'deleted':
-        return 'Deleted';
-      case 'renamed':
-        return 'Renamed';
-      case 'copied':
-        return 'Copied';
-      case 'permissionChange':
-        return 'Perm';
-      default:
-        return null;
-    }
-  };
-  const changeLabel = getChangeLabel(changeKind);
-
-  const commentsForFile = useMemo(
-    () => comments.filter((c) => c.filePath === filePath),
-    [comments, filePath]
-  );
-
-  const githubCommentsForFile = useMemo(() => {
-    if (!showGitHubComments) return [];
-    return getGitHubCommentsForFile(filePath);
-  }, [showGitHubComments, getGitHubCommentsForFile, filePath]);
-
-  const totalCommentCount =
-    commentsForFile.length + githubCommentsForFile.length;
-
-  const annotations = useMemo(() => {
-    const t0 = performance.now();
-    const baseAnnotations = transformCommentsToAnnotations(
-      commentsForFile,
-      githubCommentsForFile,
-      filePath
-    ) as DiffLineAnnotation<ExtendedCommentAnnotation>[];
-
-    // 2. Add drafts
-    const draftAnnotations: DiffLineAnnotation<ExtendedCommentAnnotation>[] =
-      [];
-    Object.entries(drafts).forEach(([key, draft]) => {
-      if (!draft || draft.filePath !== filePath) return;
-
-      draftAnnotations.push({
-        side: mapSideToAnnotationSide(draft.side),
-        lineNumber: draft.lineNumber,
-        metadata: {
-          type: 'draft',
-          draft,
-          widgetKey: key,
-        },
-      });
-    });
-
-    const result = [...baseAnnotations, ...draftAnnotations];
-    const elapsed = performance.now() - t0;
-    if (elapsed > 2) dcWarn(`annotations ${filePath_} ${elapsed.toFixed(1)}ms count=${result.length}`);
-    return result;
-  }, [commentsForFile, githubCommentsForFile, filePath, drafts]);
-
-  const renderAnnotation = useCallback(
-    (annotation: DiffLineAnnotation<ExtendedCommentAnnotation>) => {
-      const { metadata } = annotation;
-
-      if (metadata.type === 'draft') {
-        return (
-          <CommentWidgetLine
-            draft={metadata.draft}
-            widgetKey={metadata.widgetKey}
-            onSave={NOOP}
-            onCancel={NOOP}
-          />
-        );
-      }
-
-      if (metadata.type === 'github') {
-        const githubComment = metadata.comment;
-        const handleCopyToUserComment = () => {
-          const codeLine = getCodeLineForComment(
-            diff,
-            githubComment.lineNumber,
-            githubComment.side
-          );
-          addComment({
-            filePath,
-            lineNumber: githubComment.lineNumber,
-            side: githubComment.side,
-            text: githubComment.body,
-            ...(codeLine !== undefined ? { codeLine } : {}),
-          });
-        };
-        return (
-          <GitHubCommentRenderer
-            comment={githubComment}
-            onCopyToUserComment={handleCopyToUserComment}
-          />
-        );
-      }
-
-      return <ReviewCommentRenderer comment={metadata.comment} />;
-    },
-    [filePath, addComment, diff]
-  );
-
-  // Handle line click to add comment
-  const handleLineClick = useCallback(
-    (props: { lineNumber: number; annotationSide: AnnotationSide }) => {
-      const { lineNumber, annotationSide } = props;
-      const splitSide = mapAnnotationSideToSplitSide(annotationSide);
-      const widgetKey = `${filePath}-${splitSide}-${lineNumber}`;
-
-      // Don't create a new draft if one already exists
-      if (drafts[widgetKey]) return;
-
-      const codeLine = getCodeLineForComment(diff, lineNumber, splitSide);
-
-      setDraft(widgetKey, {
-        filePath,
-        side: splitSide,
-        lineNumber,
-        text: '',
-        ...(codeLine !== undefined ? { codeLine } : {}),
-      });
-    },
-    [filePath, drafts, setDraft, diff]
-  );
-
-  const renderHoverUtility = useCallback(
-    (
-      getHoveredLine: () =>
-        | { lineNumber: number; side: AnnotationSide }
-        | undefined
-    ) => {
-      return (
-        <button
-          className="flex items-center justify-center size-icon-base rounded text-brand bg-brand/20 transition-transform hover:scale-110"
-          onClick={() => {
-            const line = getHoveredLine();
-            if (!line) return;
-
-            const { side, lineNumber } = line;
-            const splitSide = mapAnnotationSideToSplitSide(side);
-            const widgetKey = `${filePath}-${splitSide}-${lineNumber}`;
-
-            if (drafts[widgetKey]) return;
-
-            const codeLine = getCodeLineForComment(diff, lineNumber, splitSide);
-
-            setDraft(widgetKey, {
-              filePath,
-              side: splitSide,
-              lineNumber,
-              text: '',
-              ...(codeLine !== undefined ? { codeLine } : {}),
-            });
-          }}
-          title={t('common:comments.addReviewComment')}
-        >
-          <PlusIcon className="size-3.5" weight="bold" />
-        </button>
-      );
-    },
-    [filePath, drafts, setDraft, t, diff]
-  );
-
-  const fileDiffOptions = useMemo(
-    () => {
-    dcLog(`fileDiffOptions recompute ${filePath_} mode=${globalMode} theme=${actualTheme}`);
-    return {
-      diffStyle:
-        globalMode === 'split' ? ('split' as const) : ('unified' as const),
-      diffIndicators: 'classic' as const,
-      themeType: actualTheme,
-      overflow: wrapText ? ('wrap' as const) : ('scroll' as const),
-      hunkSeparators: 'line-info' as const,
-      disableFileHeader: true,
-      enableHoverUtility: true,
-      onLineClick: handleLineClick,
-      theme: { dark: 'github-dark', light: 'github-light' } as const,
-      unsafeCSS: PIERRE_DIFFS_THEME_CSS,
-    };
-    },
-    [globalMode, actualTheme, wrapText, handleLineClick]
-  );
-
-  const LARGE_DIFF_THRESHOLD = 1000;
-  const [forceExpanded, setForceExpanded] = useState(false);
-  const totalLines = additions + deletions;
-  const isLargeDiff = totalLines > LARGE_DIFF_THRESHOLD;
-  const shouldShowPlaceholder = expanded && isLargeDiff && !forceExpanded;
-
-
+  const handleToggle = useCallback(() => {
+    onToggle();
+  }, [onToggle]);
 
   return (
     <div className={cn('pb-base rounded-sm', className)}>
       <div
         className={cn(
-          'w-full flex items-center bg-primary px-base gap-base sticky top-0 z-10 border-b border-transparent',
+          'group/card w-full flex items-center bg-primary px-base gap-base sticky top-0 z-10 border-b border-transparent',
           'cursor-pointer min-h-10',
           expanded && 'rounded-t-sm'
         )}
-        onClick={onToggle}
+        onClick={handleToggle}
       >
         <span className="relative shrink-0">
           <FileIcon className="size-icon-base" />
@@ -566,14 +111,26 @@ const PierreDiffCardInner = function PierreDiffCard({
           >
             <DisplayTruncatedPath path={filePath} />
           </div>
-          <span onClick={(e) => e.stopPropagation()} className="shrink-0">
-            <CopyButton
-              onCopy={handleCopyFilePath}
-              disabled={false}
-              iconSize="size-icon-xs"
-              icon={CopyIcon}
-            />
-          </span>
+          <button
+            className={cn(
+              'shrink-0 flex items-center justify-center transition-colors opacity-0 group-hover/card:opacity-100 focus:opacity-100',
+              'text-low hover:text-normal',
+              copied && 'opacity-100'
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              void writeClipboardViaBridge(filePath);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
+            aria-label="Copy path"
+          >
+            {copied ? (
+              <CheckIcon className="size-icon-xs text-success" weight="bold" />
+            ) : (
+              <CopyIcon className="size-icon-xs" weight="bold" />
+            )}
+          </button>
         </div>
         {(changeKind === 'renamed' || changeKind === 'copied') && oldPath && (
           <span className="text-low text-sm shrink-0">
@@ -587,22 +144,6 @@ const PierreDiffCardInner = function PierreDiffCard({
             )}
             {additions > 0 && deletions > 0 && ' '}
             {deletions > 0 && <span className="text-error">-{deletions}</span>}
-          </span>
-        )}
-        {totalCommentCount > 0 && (
-          <span className="inline-flex items-center gap-half px-base py-0.5 text-xs rounded shrink-0">
-            {commentsForFile.length > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-accent">
-                <ChatCircleIcon className="size-icon-xs" weight="fill" />
-                {commentsForFile.length}
-              </span>
-            )}
-            {githubCommentsForFile.length > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-low">
-                <GithubLogoIcon className="size-icon-xs" weight="fill" />
-                {githubCommentsForFile.length}
-              </span>
-            )}
           </span>
         )}
         <div className="flex items-center gap-half shrink-0">
@@ -640,13 +181,17 @@ const PierreDiffCardInner = function PierreDiffCard({
               </Tooltip>
             </span>
           )}
-          {!isRealMobileDevice() && (
-            <span onClick={(e) => e.stopPropagation()}>
-              <OpenInIdeButton
-                onClick={handleOpenInIde}
-                className="size-icon-xs p-0"
-              />
-            </span>
+          {!IS_MOBILE && (
+            <button
+              className="opacity-0 group-hover/card:opacity-100 focus:opacity-100 transition-opacity hover:opacity-70 p-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                openInEditor({ filePath });
+              }}
+              aria-label="Open in IDE"
+            >
+              <IdeIcon editorType={null} className="h-4 w-4" />
+            </button>
           )}
           <CaretDownIcon
             className={cn(
@@ -657,56 +202,24 @@ const PierreDiffCardInner = function PierreDiffCard({
         </div>
       </div>
 
-      {expanded && (
-        <div className="bg-primary rounded-b-sm overflow-hidden">
-          {viewMode === 'preview' && isMarkdownFile ? (
+      {expanded &&
+        (viewMode === 'preview' && isMarkdownFile ? (
+          <div className="bg-primary rounded-b-sm overflow-hidden">
             <div className="p-base overflow-auto max-h-[80vh]">
               <MarkdownPreview content={markdownContent} theme={actualTheme} />
             </div>
-          ) : shouldShowPlaceholder ? (
-            <div className="p-base bg-warning/5 border-t border-warning/20">
-              <div className="flex items-center justify-between gap-base">
-                <div className="text-sm text-low">
-                  <span className="font-medium text-warning">
-                    {t('diff.largeDiff.title')}
-                  </span>
-                  <span className="ml-base">
-                    {t('diff.largeDiff.linesChanged', { count: totalLines })}
-                    <span className="text-success ml-base">
-                      +{additions.toLocaleString()}
-                    </span>
-                    <span className="text-error ml-half">
-                      -{deletions.toLocaleString()}
-                    </span>
-                  </span>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setForceExpanded(true);
-                  }}
-                  className="text-sm text-brand hover:text-brand-hover transition-colors"
-                >
-                  {t('diff.largeDiff.loadAnyway')}
-                </button>
-              </div>
-              <p className="text-xs text-low mt-half">
-                {t('diff.largeDiff.warning')}
-              </p>
-            </div>
-          ) : (
-            <FileDiff
-              fileDiff={fileDiffMetadata}
-              options={fileDiffOptions}
-              lineAnnotations={annotations}
-              renderAnnotation={renderAnnotation}
-              renderHoverUtility={renderHoverUtility}
-            />
-          )}
-        </div>
-      )}
+          </div>
+        ) : (
+          <DiffCardExpandedBody
+            diff={diff}
+            filePath={filePath}
+            additions={additions}
+            deletions={deletions}
+            onReadyChange={onExpandedBodyReadyChange}
+          />
+        ))}
     </div>
   );
-};
+}
 
 export const PierreDiffCard = React.memo(PierreDiffCardInner);

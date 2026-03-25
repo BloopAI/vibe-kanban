@@ -1,11 +1,15 @@
 import type { Diff } from 'shared/types';
+import {
+  getRawDiffLineCount,
+  LARGE_DIFF_PLACEHOLDER_HEIGHT,
+  shouldUseLargeDiffPlaceholder,
+} from '@/shared/lib/diffRenderMode';
 
 // Constants for height calculation
-const HEADER_HEIGHT = 48; // px - collapsed state
-const LINE_HEIGHT = 20; // px - approximate line height in diff view
+const HEADER_HEIGHT = 40; // px - collapsed state
+const LINE_HEIGHT = 18; // px - approximate line height in diff view
 const PADDING = 16; // px - top/bottom padding
 const SPACING = 8; // px - space between items (pb-base = 0.5rem)
-
 /**
  * Estimate the height of a diff item based on its content.
  * Used by virtuoso for better scroll position estimation.
@@ -15,10 +19,12 @@ export function estimateDiffHeight(diff: Diff, isExpanded: boolean): number {
     return HEADER_HEIGHT + SPACING;
   }
 
-  // For expanded diffs, estimate based on line count
-  const lineCount = (diff.additions ?? 0) + (diff.deletions ?? 0);
-  // Add some buffer for hunk headers, context lines, etc.
-  const estimatedLines = Math.max(lineCount * 1.2, 10);
+  if (shouldUseLargeDiffPlaceholder(diff, false)) {
+    return HEADER_HEIGHT + LARGE_DIFF_PLACEHOLDER_HEIGHT + SPACING;
+  }
+
+  const lineCount = getRawDiffLineCount(diff);
+  const estimatedLines = Math.max(lineCount, 10);
 
   return HEADER_HEIGHT + estimatedLines * LINE_HEIGHT + PADDING + SPACING;
 }

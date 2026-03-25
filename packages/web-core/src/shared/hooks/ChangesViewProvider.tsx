@@ -9,6 +9,7 @@ import {
   ChangesViewActionsContext,
   type ScrollToFileCallback,
 } from '@/shared/hooks/useChangesView';
+import { useFileInViewStore } from '@/shared/stores/useFileInViewStore';
 
 interface ChangesViewProviderProps {
   children: React.ReactNode;
@@ -20,12 +21,15 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
   const [selectedLineNumber, setSelectedLineNumber] = useState<number | null>(
     null
   );
-  const [fileInView, setFileInView] = useState<string | null>(null);
   const { setRightMainPanelMode } = useUiPreferencesStore();
 
   const scrollToFileCallbackRef = useRef<ScrollToFileCallback | null>(null);
   const diffPathsRef = useRef(diffPaths);
+  const selectedFilePathRef = useRef<string | null>(selectedFilePath);
+  const selectedLineNumberRef = useRef<number | null>(selectedLineNumber);
   diffPathsRef.current = diffPaths;
+  selectedFilePathRef.current = selectedFilePath;
+  selectedLineNumberRef.current = selectedLineNumber;
 
   const registerScrollToFile = useCallback(
     (callback: ScrollToFileCallback | null) => {
@@ -37,11 +41,15 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
   const selectFile = useCallback((path: string, lineNumber?: number) => {
     setSelectedFilePath(path);
     setSelectedLineNumber(lineNumber ?? null);
-    setFileInView(path);
+    useFileInViewStore.getState().setFileInView(path);
   }, []);
 
   const scrollToFile = useCallback(
     (path: string, lineNumber?: number) => {
+      setSelectedFilePath(path);
+      setSelectedLineNumber(lineNumber ?? null);
+      useFileInViewStore.getState().setFileInView(path);
+
       if (scrollToFileCallbackRef.current) {
         scrollToFileCallbackRef.current(path, lineNumber);
       } else {
@@ -83,10 +91,8 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
     () => ({
       selectedFilePath,
       selectedLineNumber,
-      fileInView,
       selectFile,
       scrollToFile,
-      setFileInView,
       viewFileInChanges,
       diffPaths,
       findMatchingDiffPath,
@@ -95,7 +101,6 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
     [
       selectedFilePath,
       selectedLineNumber,
-      fileInView,
       selectFile,
       scrollToFile,
       viewFileInChanges,

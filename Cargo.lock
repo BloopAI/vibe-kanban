@@ -9985,6 +9985,8 @@ version = "0.1.36"
 dependencies = [
  "arboard",
  "async-trait",
+ "objc2",
+ "objc2-foundation",
  "objc2-web-kit",
  "rustls",
  "serde_json",

@@ -8,7 +8,8 @@ import { sortDiffs } from '@/shared/lib/fileTreeUtils';
 import { useChangesView } from '@/shared/hooks/useChangesView';
 import { useDiffs } from '@/shared/stores/useWorkspaceDiffStore';
 import { useScrollSyncStateMachine } from '@/shared/hooks/useScrollSyncStateMachine';
-import { usePersistedExpanded } from '@/shared/stores/useUiPreferencesStore';
+import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
+import { useFileInViewStore } from '@/shared/stores/useFileInViewStore';
 import { preloadHighlighter } from '@pierre/diffs';
 import { PierreDiffCard } from './PierreDiffCard';
 import type { Diff, DiffChangeKind } from 'shared/types';
@@ -17,23 +18,10 @@ let highlighterPreloaded = false;
 function ensureHighlighterPreloaded() {
   if (highlighterPreloaded) return;
   highlighterPreloaded = true;
-  const t0 = performance.now();
   preloadHighlighter({
     themes: ['github-dark', 'github-light'],
     langs: [],
-  }).then(() => {
-    cpcLog(`highlighter preloaded in ${(performance.now() - t0).toFixed(0)}ms`);
   });
-}
-
-const PERF_DEBUG = true;
-function cpcLog(label: string, ...args: unknown[]) {
-  if (!PERF_DEBUG) return;
-  console.log(`%c[Container] ${label}`, 'color: #ffb74d', ...args);
-}
-function cpcWarn(label: string, ...args: unknown[]) {
-  if (!PERF_DEBUG) return;
-  console.log(`[Container] ${label}`, ...args);
 }
 
 /**
@@ -51,7 +39,7 @@ function scrollToLineInDiff(
   if (shadowRoot) {
     const lineEl = shadowRoot.querySelector(`[data-line="${lineNumber}"]`);
     if (lineEl instanceof HTMLElement) {
-      lineEl.scrollIntoView({ behavior: 'instant', block: 'center' });
+      lineEl.scrollIntoView({ behavior: 'instant', block: 'nearest' });
     }
   }
   onComplete?.();
@@ -69,6 +57,10 @@ const COLLAPSE_BY_CHANGE_TYPE: Record<DiffChangeKind, boolean> = {
 
 // Collapse large diffs (over 200 lines)
 const COLLAPSE_MAX_LINES = 200;
+const COLLAPSED_ROW_HEIGHT = 48;
+const REVEAL_ALIGNMENT_TOLERANCE = 2;
+const REQUIRED_STABLE_FRAMES = 3;
+const MAX_REVEAL_DURATION_MS = 2000;
 
 function shouldAutoCollapse(diff: Diff): boolean {
   const totalLines = (diff.additions ?? 0) + (diff.deletions ?? 0);
@@ -79,12 +71,10 @@ function shouldAutoCollapse(diff: Diff): boolean {
     return totalLines === 0 || totalLines > COLLAPSE_MAX_LINES;
   }
 
-  // Collapse based on change type for other types
   if (COLLAPSE_BY_CHANGE_TYPE[diff.change]) {
     return true;
   }
 
-  // Collapse large diffs
   if (totalLines > COLLAPSE_MAX_LINES) {
     return true;
   }
@@ -101,23 +91,31 @@ interface ChangesPanelContainerProps {
 const PersistedDiffItem = memo(function PersistedDiffItem({
   diff,
   initialExpanded,
+  onExpandedBodyReadyChange,
   workspaceId,
 }: {
   diff: Diff;
   initialExpanded: boolean;
+  onExpandedBodyReadyChange?: (path: string, ready: boolean) => void;
   workspaceId: string;
 }) {
   const path = diff.newPath || diff.oldPath || '';
-  const [expanded, toggle] = usePersistedExpanded(
-    `diff:${path}`,
-    initialExpanded
+  const key = `diff:${path}`;
+  const expanded = useUiPreferencesStore(
+    (s) => s.expanded[key] ?? initialExpanded
   );
+  const toggle = () => {
+    useUiPreferencesStore.getState().toggleExpanded(key, initialExpanded);
+  };
 
   return (
     <PierreDiffCard
       diff={diff}
       expanded={expanded}
       onToggle={toggle}
+      onExpandedBodyReadyChange={(ready) =>
+        onExpandedBodyReadyChange?.(path, ready)
+      }
       workspaceId={workspaceId}
       className=""
     />
@@ -130,15 +128,17 @@ export function ChangesPanelContainer({
 }: ChangesPanelContainerProps) {
   ensureHighlighterPreloaded();
   const diffs = useDiffs();
-  const {
-    selectedFilePath,
-    selectedLineNumber,
-    setFileInView,
-    registerScrollToFile,
-  } = useChangesView();
+  const { registerScrollToFile } = useChangesView();
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const changesPanelRef = useRef<ChangesPanelHandle>(null);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
+  const revealRequestIdRef = useRef(0);
+  const revealStartTimeRef = useRef<number>(0);
+  const expandedBodyReadyRef = useRef<Map<string, boolean>>(new Map());
+  const measuredHeightCacheRef = useRef<Map<string, number>>(new Map());
+  const handleScrollToFileRef = useRef<
+    (path: string, lineNumber?: number) => void
+  >(() => {});
   const visibleRangeRef = useRef<{ startIndex: number; endIndex: number }>({
     startIndex: 0,
     endIndex: 0,
@@ -146,11 +146,7 @@ export function ChangesPanelContainer({
   const [processedPaths] = useState(() => new Set<string>());
 
   const diffItems = useMemo(() => {
-    const t0 = performance.now();
     const sorted = sortDiffs(diffs);
-    const sortElapsed = performance.now() - t0;
-    if (sortElapsed > 5) cpcWarn(`sortDiffs ${sortElapsed.toFixed(1)}ms for ${diffs.length} diffs`);
-    cpcLog(`diffItems recompute: ${diffs.length} diffs, sort=${sortElapsed.toFixed(1)}ms`);
     return sorted.map((diff) => {
       const path = diff.newPath || diff.oldPath || '';
 
@@ -182,58 +178,25 @@ export function ChangesPanelContainer({
     [diffItems]
   );
 
-  const getTopFilePath = useCallback(
-    (range: { startIndex: number; endIndex: number }): string | null => {
-      const container = scrollContainerRef.current;
-      if (!container) {
-        return indexToPath(range.startIndex);
-      }
-
-      const containerTop = container.getBoundingClientRect().top;
-
-      let bestPath: string | null = null;
-      let bestTop = -Infinity;
-
-      for (let i = range.startIndex; i <= range.endIndex; i++) {
-        const path = indexToPath(i);
-        if (!path) continue;
-
-        const el = diffRefs.current.get(path);
-        if (!el) continue;
-
-        const rect = el.getBoundingClientRect();
-        const relativeTop = rect.top - containerTop;
-        const relativeBottom = rect.bottom - containerTop;
-
-        const spansContainerTop = relativeTop <= 0 && relativeBottom > 0;
-
-        if (spansContainerTop && relativeTop > bestTop) {
-          bestTop = relativeTop;
-          bestPath = path;
-        }
-      }
-
-      return bestPath ?? indexToPath(range.startIndex);
-    },
-    [indexToPath]
-  );
+  // Throttle fileInView writes to Zustand via rAF to avoid layout thrashing
+  const rafRef = useRef<number | null>(null);
+  const onFileInViewChanged = useCallback((path: string | null) => {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      useFileInViewStore.getState().setFileInView(path);
+    });
+  }, []);
 
   const {
-    fileInView: stateMachineFileInView,
     scrollToFile: stateMachineScrollToFile,
     onRangeChanged,
     onScrollComplete,
   } = useScrollSyncStateMachine({
     pathToIndex,
     indexToPath,
-    getTopFilePath,
+    onFileInViewChanged,
   });
-
-  useEffect(() => {
-    if (stateMachineFileInView !== null) {
-      setFileInView(stateMachineFileInView);
-    }
-  }, [stateMachineFileInView, setFileInView]);
 
   const handleRangeChanged = useCallback(
     (range: { startIndex: number; endIndex: number }) => {
@@ -243,68 +206,147 @@ export function ChangesPanelContainer({
     [onRangeChanged]
   );
 
+  const shouldSuppressSizeAdjustment = useCallback(() => {
+    return (
+      revealRequestIdRef.current > 0 &&
+      performance.now() - (revealStartTimeRef.current ?? 0) <
+        MAX_REVEAL_DURATION_MS
+    );
+  }, []);
+
   const handleScrollToFile = useCallback(
     (path: string, lineNumber?: number) => {
-      const index = stateMachineScrollToFile(path, lineNumber);
-      if (index === null) return;
+      const requestId = revealRequestIdRef.current + 1;
+      revealRequestIdRef.current = requestId;
+      revealStartTimeRef.current = performance.now();
 
-      changesPanelRef.current?.scrollToIndex(index, { align: 'start' });
+      const expandedKey = `diff:${path}`;
+      const expandedState = useUiPreferencesStore.getState().expanded;
+      if (!(expandedState[expandedKey] ?? false)) {
+        useUiPreferencesStore.getState().setExpanded(expandedKey, true);
+      }
 
-      let retries = 0;
-      const maxRetries = 3;
+      const targetIndex = stateMachineScrollToFile(path, lineNumber);
+      if (targetIndex === null) {
+        return;
+      }
+      const scrollIdx: number = targetIndex;
+      const revealStartTime = performance.now();
+      let stableFrames = 0;
 
-      function attemptComplete() {
+      const getRevealState = () => {
+        const scrollEl = scrollContainerRef.current;
+        const fileEl = diffRefs.current.get(path);
+        if (!scrollEl || !fileEl) return null;
+
+        const rect = fileEl.getBoundingClientRect();
+        const delta = rect.top - scrollEl.getBoundingClientRect().top;
+        const height = rect.height;
+
+        return { scrollEl, fileEl, delta, height };
+      };
+
+      const isExpandedInStore = () => {
+        return useUiPreferencesStore.getState().expanded[expandedKey] ?? false;
+      };
+
+      const alignTargetToTop = () => {
+        const revealState = getRevealState();
+        if (!revealState) return null;
+
+        if (Math.abs(revealState.delta) > REVEAL_ALIGNMENT_TOLERANCE) {
+          revealState.scrollEl.scrollTop += revealState.delta;
+          stableFrames = 0;
+        }
+
+        if (isExpandedInStore() && revealState.height <= COLLAPSED_ROW_HEIGHT) {
+          stableFrames = 0;
+        } else if (Math.abs(revealState.delta) <= REVEAL_ALIGNMENT_TOLERANCE) {
+          stableFrames += 1;
+        }
+
+        return revealState;
+      };
+
+      const isExpandedBodyReady = () => {
+        return expandedBodyReadyRef.current.get(path) ?? false;
+      };
+
+      changesPanelRef.current?.scrollToIndex(scrollIdx, { align: 'start' });
+
+      let attempts = 0;
+
+      function attemptReveal() {
         requestAnimationFrame(() => {
-          const fileEl = diffRefs.current.get(path);
-          if (fileEl) {
-            if (lineNumber) {
-              scrollToLineInDiff(fileEl, lineNumber, onScrollComplete);
-            } else {
-              onScrollComplete();
-            }
+          if (revealRequestIdRef.current !== requestId) {
             return;
           }
 
-          retries++;
-          if (retries < maxRetries) {
-            attemptComplete();
+          alignTargetToTop();
+
+          if (
+            getRevealState() &&
+            stableFrames >= REQUIRED_STABLE_FRAMES &&
+            isExpandedBodyReady()
+          ) {
+            requestAnimationFrame(() => {
+              if (revealRequestIdRef.current !== requestId) {
+                return;
+              }
+
+              if (lineNumber) {
+                requestAnimationFrame(() => {
+                  if (revealRequestIdRef.current !== requestId) {
+                    return;
+                  }
+
+                  const revealState = getRevealState();
+                  if (revealState) {
+                    scrollToLineInDiff(
+                      revealState.fileEl,
+                      lineNumber,
+                      onScrollComplete
+                    );
+                  } else {
+                    onScrollComplete();
+                  }
+                });
+              } else {
+                onScrollComplete();
+              }
+            });
+            return;
+          }
+
+          attempts++;
+          if (performance.now() - revealStartTime < MAX_REVEAL_DURATION_MS) {
+            attemptReveal();
           } else {
             onScrollComplete();
           }
         });
       }
 
-      attemptComplete();
+      attemptReveal();
     },
     [stateMachineScrollToFile, onScrollComplete]
   );
 
-  useEffect(() => {
-    registerScrollToFile(handleScrollToFile);
-    return () => registerScrollToFile(null);
-  }, [registerScrollToFile, handleScrollToFile]);
+  handleScrollToFileRef.current = handleScrollToFile;
+
+  const registeredScrollToFile = useCallback(
+    (path: string, lineNumber?: number) => {
+      handleScrollToFileRef.current(path, lineNumber);
+    },
+    []
+  );
 
   useEffect(() => {
-    if (!selectedFilePath) return;
-
-    const index = pathToIndex.get(selectedFilePath);
-    if (index === undefined) return;
-
-    const timeoutId = setTimeout(() => {
-      changesPanelRef.current?.scrollToIndex(index, { align: 'start' });
-
-      if (selectedLineNumber) {
-        requestAnimationFrame(() => {
-          const fileEl = diffRefs.current.get(selectedFilePath);
-          if (fileEl) {
-            scrollToLineInDiff(fileEl, selectedLineNumber);
-          }
-        });
-      }
-    }, 0);
-
-    return () => clearTimeout(timeoutId);
-  }, [selectedFilePath, selectedLineNumber, pathToIndex]);
+    registerScrollToFile(registeredScrollToFile);
+    return () => {
+      registerScrollToFile(null);
+    };
+  }, [registerScrollToFile, registeredScrollToFile]);
 
   const handleDiffRef = useCallback(
     (path: string, el: HTMLDivElement | null) => {
@@ -317,6 +359,21 @@ export function ChangesPanelContainer({
     []
   );
 
+  const handleExpandedBodyReadyChange = useCallback(
+    (path: string, ready: boolean) => {
+      expandedBodyReadyRef.current.set(path, ready);
+    },
+    []
+  );
+
+  const handleMeasuredHeight = useCallback((path: string, height: number) => {
+    measuredHeightCacheRef.current.set(path, height);
+  }, []);
+
+  const getMeasuredHeight = useCallback((path: string): number | undefined => {
+    return measuredHeightCacheRef.current.get(path);
+  }, []);
+
   const handleScrollerRef = useCallback((el: HTMLElement | Window | null) => {
     scrollContainerRef.current = el instanceof HTMLElement ? el : null;
   }, []);
@@ -326,10 +383,11 @@ export function ChangesPanelContainer({
       <PersistedDiffItem
         diff={diff}
         initialExpanded={initialExpanded ?? true}
+        onExpandedBodyReadyChange={handleExpandedBodyReadyChange}
         workspaceId={workspaceId}
       />
     ),
-    []
+    [handleExpandedBodyReadyChange]
   );
 
   return (
@@ -337,7 +395,15 @@ export function ChangesPanelContainer({
       ref={changesPanelRef}
       className={className}
       diffItems={diffItems}
+      getIsExpanded={(path, initialExpanded) =>
+        useUiPreferencesStore.getState().expanded[`diff:${path}`] ??
+        initialExpanded ??
+        true
+      }
       onDiffRef={handleDiffRef}
+      onMeasuredHeight={handleMeasuredHeight}
+      getMeasuredHeight={getMeasuredHeight}
+      shouldSuppressSizeAdjustment={shouldSuppressSizeAdjustment}
       onScrollerRef={handleScrollerRef}
       onRangeChanged={handleRangeChanged}
       renderDiffItem={renderDiffItem}
