@@ -9,40 +9,9 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use relay_control::signing::{RelaySigningService, RequestSignature};
+use relay_protocol::{RelayWsFrame, RelayWsMessageType};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-
-// ---------------------------------------------------------------------------
-// Public frame types
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum RelayWsMessageType {
-    Text,
-    Binary,
-    Ping,
-    Pong,
-    Close,
-}
-
-impl RelayWsMessageType {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Text => "text",
-            Self::Binary => "binary",
-            Self::Ping => "ping",
-            Self::Pong => "pong",
-            Self::Close => "close",
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct RelayWsFrame {
-    pub msg_type: RelayWsMessageType,
-    pub payload: Vec<u8>,
-}
 
 // ---------------------------------------------------------------------------
 // Signer — encodes and Ed25519-signs outgoing frames

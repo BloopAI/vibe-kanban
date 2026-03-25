@@ -1,0 +1,11 @@
+[package]
+name = "relay-protocol"
+version = "0.1.36"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0"
+axum = { workspace = true, features = ["ws"] }
+serde = { workspace = true, features = ["derive"] }
+ts-rs = { workspace = true }
+tokio-tungstenite = { version = "0.26" }

@@ -5,7 +5,6 @@ use tokio_yamux::Config as YamuxConfig;
 pub mod client;
 pub mod server;
 pub mod tls;
-pub mod ws_io;
 
 /// Shared yamux configuration for both client and server sides of the relay tunnel.
 ///

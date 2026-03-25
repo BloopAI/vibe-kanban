@@ -11,8 +11,9 @@ use hyper::{client::conn::http1 as client_http1, upgrade};
 use hyper_util::rt::TokioIo;
 use tokio::sync::Mutex;
 use tokio_yamux::{Control, Session};
+use ws_bridge::axum_ws_stream_io;
 
-use crate::{ws_io::axum_ws_stream_io, yamux_config};
+use crate::yamux_config;
 
 pub type SharedControl = Arc<Mutex<Control>>;
 

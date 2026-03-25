@@ -116,6 +116,7 @@ pub async fn sign_relay_response(
     Ok(Response::from_parts(parts, Body::from(body_bytes)))
 }
 
+#[allow(clippy::result_large_err)]
 fn extract_request_signature(request: &Request) -> Result<(RequestSignature, String), ApiError> {
     if let Some(result) = try_parse_signature_from_headers(request)? {
         return Ok(result);
@@ -128,6 +129,7 @@ fn extract_request_signature(request: &Request) -> Result<(RequestSignature, Str
     Err(ApiError::Unauthorized)
 }
 
+#[allow(clippy::result_large_err)]
 fn try_parse_signature_from_headers(
     request: &Request,
 ) -> Result<Option<(RequestSignature, String)>, ApiError> {
@@ -175,6 +177,7 @@ fn try_parse_signature_from_headers(
     )))
 }
 
+#[allow(clippy::result_large_err)]
 fn try_parse_signature_from_query(
     request: &Request,
 ) -> Result<Option<(RequestSignature, String)>, ApiError> {
@@ -253,6 +256,7 @@ fn try_parse_signature_from_query(
     )))
 }
 
+#[allow(clippy::result_large_err)]
 fn relay_path_and_query(request: &Request) -> Result<String, ApiError> {
     let Some(original_uri) = request.extensions().get::<OriginalUri>() else {
         tracing::warn!("Rejecting relay request without OriginalUri extension");

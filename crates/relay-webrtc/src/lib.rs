@@ -1,15 +1,17 @@
 pub mod client;
+pub mod error;
 pub mod fragment;
 pub mod host;
 pub mod peer;
 pub mod proxy;
 pub mod signaling;
 
-pub use client::{WebRtcClient, WebRtcWsStream, WsConnection, WsSender};
+pub use client::{WebRtcClient, WebRtcClientError, WsConnection, WsSender};
+pub use error::WebRtcError;
 pub use host::WebRtcHost;
 pub use proxy::{
-    DataChannelMessage, DataChannelRequest, DataChannelResponse, WsClose, WsError, WsFrame, WsOpen,
-    WsOpened,
+    DataChannelMessage, DataChannelRequest, DataChannelResponse, DataChannelWsStream, WsClose,
+    WsError, WsFrame, WsOpen, WsOpened,
 };
 pub use signaling::{IceCandidate, SdpAnswer, SdpOffer};
 

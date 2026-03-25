@@ -1,10 +1,11 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 use webrtc::ice_transport::ice_candidate::RTCIceCandidateInit;
 
 use crate::{
+    WebRtcError,
     peer::{self, PeerConfig, PeerHandle},
     signaling::{IceCandidate, SdpAnswer, SdpOffer},
 };
@@ -19,12 +20,12 @@ pub struct WebRtcHost {
 
 struct WebRtcHostInner {
     peers: HashMap<String, PeerHandle>,
-    local_backend_addr: String,
+    local_backend_addr: SocketAddr,
     shutdown: CancellationToken,
 }
 
 impl WebRtcHost {
-    pub fn new(local_backend_addr: String, shutdown: CancellationToken) -> Self {
+    pub fn new(local_backend_addr: SocketAddr, shutdown: CancellationToken) -> Self {
         Self {
             inner: Arc::new(Mutex::new(WebRtcHostInner {
                 peers: HashMap::new(),
@@ -37,28 +38,31 @@ impl WebRtcHost {
     /// Accept an SDP offer and return an SDP answer.
     ///
     /// Creates a new peer connection and spawns its event loop task.
-    pub async fn handle_offer(&self, offer: SdpOffer) -> anyhow::Result<SdpAnswer> {
+    pub async fn handle_offer(&self, offer: SdpOffer) -> Result<SdpAnswer, WebRtcError> {
         let (answer_sdp, peer_connection) = peer::accept_offer(&offer.sdp).await?;
+        let session_id = offer.session_id.clone();
 
-        let mut inner = self.inner.lock().await;
+        let (old_peer, peer_shutdown, local_backend_addr) = {
+            let mut inner = self.inner.lock().await;
+            let old_peer = inner.peers.remove(&session_id);
+            let peer_shutdown = inner.shutdown.child_token();
+            let local_backend_addr = inner.local_backend_addr;
+
+            let handle = PeerHandle {
+                peer_connection: peer_connection.clone(),
+                shutdown: peer_shutdown.clone(),
+            };
+            inner.peers.insert(session_id.clone(), handle);
+            (old_peer, peer_shutdown, local_backend_addr)
+        };
+
+        let inner_ref = Arc::clone(&self.inner);
 
         // Clean up any existing peer with the same session ID.
-        if let Some(old_peer) = inner.peers.remove(&offer.session_id) {
+        if let Some(old_peer) = old_peer {
             old_peer.shutdown.cancel();
             let _ = old_peer.peer_connection.close().await;
         }
-
-        let peer_shutdown = inner.shutdown.child_token();
-
-        let handle = PeerHandle {
-            peer_connection: peer_connection.clone(),
-            shutdown: peer_shutdown.clone(),
-        };
-        inner.peers.insert(offer.session_id.clone(), handle);
-
-        let local_backend_addr = inner.local_backend_addr.clone();
-        let session_id = offer.session_id.clone();
-        let inner_ref = Arc::clone(&self.inner);
 
         tokio::spawn(async move {
             let config = PeerConfig {
@@ -82,12 +86,17 @@ impl WebRtcHost {
     }
 
     /// Add a trickle ICE candidate for an active peer session.
-    pub async fn add_ice_candidate(&self, candidate: IceCandidate) -> anyhow::Result<()> {
-        let inner = self.inner.lock().await;
-
-        let peer = inner.peers.get(&candidate.session_id).ok_or_else(|| {
-            anyhow::anyhow!("No active peer for session {}", candidate.session_id)
-        })?;
+    pub async fn add_ice_candidate(&self, candidate: IceCandidate) -> Result<(), WebRtcError> {
+        let peer_connection = {
+            let inner = self.inner.lock().await;
+            inner
+                .peers
+                .get(&candidate.session_id)
+                .map(|peer| peer.peer_connection.clone())
+                .ok_or_else(|| WebRtcError::SessionNotFound {
+                    session_id: candidate.session_id.clone(),
+                })?
+        };
 
         let init = RTCIceCandidateInit {
             candidate: candidate.candidate,
@@ -96,15 +105,19 @@ impl WebRtcHost {
             ..Default::default()
         };
 
-        peer.peer_connection.add_ice_candidate(init).await?;
+        peer_connection.add_ice_candidate(init).await?;
 
         Ok(())
     }
 
     /// Shut down and remove a specific peer.
     pub async fn remove_peer(&self, session_id: &str) {
-        let mut inner = self.inner.lock().await;
-        if let Some(peer) = inner.peers.remove(session_id) {
+        let peer = {
+            let mut inner = self.inner.lock().await;
+            inner.peers.remove(session_id)
+        };
+
+        if let Some(peer) = peer {
             peer.shutdown.cancel();
             let _ = peer.peer_connection.close().await;
         }

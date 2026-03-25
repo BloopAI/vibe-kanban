@@ -8,10 +8,10 @@ api-types = { path = "../api-types" }
 db = { path = "../db" }
 executors = { path="../executors" }
 deployment = { path = "../deployment" }
-desktop-bridge = { path = "../desktop-bridge" }
 embedded-ssh = { path = "../embedded-ssh" }
 relay-control = { path = "../relay-control" }
 relay-hosts = { path = "../relay-hosts" }
+relay-webrtc = { path = "../relay-webrtc" }
 relay-types = { path = "../relay-types" }
 russh = "0.48"
 client-info = { path = "../client-info" }

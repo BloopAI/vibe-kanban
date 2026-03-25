@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 db = { path = "../db" }
-desktop-bridge = { path = "../desktop-bridge" }
 utils = { path = "../utils" }
 git = { path = "../git" }
 services = { path = "../services" }

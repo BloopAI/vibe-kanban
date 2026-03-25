@@ -27,6 +27,16 @@ function resolveHostId(
   );
 }
 
+function normalizeWebSocketUrl(pathOrUrl: string): string {
+  const url = new URL(pathOrUrl, window.location.href);
+  if (url.protocol === "http:") {
+    url.protocol = "ws:";
+  } else if (url.protocol === "https:") {
+    url.protocol = "wss:";
+  }
+  return url.toString();
+}
+
 export async function requestLocalApiViaWebRtc(
   pathOrUrl: string,
   requestInit: LocalApiRequestOptions = {},
@@ -96,7 +106,7 @@ export async function openLocalApiWebSocketViaWebRtc(
   const pathAndQuery = toPathAndQuery(pathOrUrl);
 
   if (!shouldRelayApiPath(pathAndQuery)) {
-    return new WebSocket(pathOrUrl);
+    return new WebSocket(normalizeWebSocketUrl(pathOrUrl));
   }
 
   const hostId = resolveHostId(options);
