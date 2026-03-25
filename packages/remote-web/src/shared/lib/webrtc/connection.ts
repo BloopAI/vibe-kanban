@@ -7,6 +7,7 @@ import type {
   WsError,
   SdpOffer,
   SdpAnswer,
+  ApiResponse,
 } from "shared/types";
 import { bytesToBase64 } from "@remote/shared/lib/relay/bytes";
 import { requestRelayHostApi } from "@remote/shared/lib/relayHostApi";
@@ -114,8 +115,18 @@ export class WebRtcConnection {
       );
     }
 
-    const answer: SdpAnswer = await response.json();
-    await pc.setRemoteDescription({ type: "answer", sdp: answer.sdp });
+    const answerResponse: ApiResponse<SdpAnswer> = await response.json();
+    if (!answerResponse.success || !answerResponse.data) {
+      pc.close();
+      throw new Error(
+        answerResponse.message ?? "WebRTC offer response missing SDP answer",
+      );
+    }
+
+    await pc.setRemoteDescription({
+      type: "answer",
+      sdp: answerResponse.data.sdp,
+    });
 
     const conn = new WebRtcConnection(pc, dc, callbacks);
     await conn.waitForOpen();
