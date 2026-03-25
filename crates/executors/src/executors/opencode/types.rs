@@ -7,7 +7,7 @@ use workspace_utils::approvals::{ApprovalStatus, QuestionStatus};
 /// JSON log events emitted by the OpenCode SDK executor.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum OpencodeExecutorEvent {
+pub(super) enum OpencodeExecutorEvent {
     StartupLog {
         message: String,
     },
@@ -428,7 +428,7 @@ pub(super) struct Config {
 }
 
 #[derive(Debug, Deserialize, Default)]
-pub struct ProviderModelInfo {
+pub(super) struct ProviderModelInfo {
     #[serde(default)]
     pub id: String,
     #[serde(default)]
@@ -442,13 +442,13 @@ pub struct ProviderModelInfo {
 }
 
 #[derive(Debug, Deserialize, Default)]
-pub struct ProviderModelLimit {
+pub(super) struct ProviderModelLimit {
     #[serde(default, deserialize_with = "deserialize_f64_as_u32")]
     pub context: u32,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ProviderInfo {
+pub(super) struct ProviderInfo {
     pub id: String,
     #[serde(default)]
     pub name: String,
@@ -457,7 +457,7 @@ pub struct ProviderInfo {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ProviderListResponse {
+pub(super) struct ProviderListResponse {
     pub all: Vec<ProviderInfo>,
     #[serde(default)]
     pub connected: Vec<String>,
