@@ -410,8 +410,8 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
           quote:
             'my-3 border-l-4 border-primary-foreground pl-4 text-muted-foreground',
           list: {
-            ul: 'my-1 list-disc list-inside',
-            ol: 'my-1 list-decimal list-inside',
+            ul: 'my-1 list-disc pl-6',
+            ol: 'my-1 list-decimal pl-6',
             listitem: '',
             nested: {
               // Hide the structural wrapper marker Lexical adds for nested items.
