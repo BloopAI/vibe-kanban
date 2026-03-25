@@ -278,26 +278,6 @@ impl GitService {
         Ok(())
     }
 
-    /// Ensure an existing repository has a main branch (for empty repos)
-    pub fn ensure_main_branch_exists(&self, repo_path: &Path) -> Result<(), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-
-        match repo.branches(None) {
-            Ok(branches) => {
-                if branches.count() == 0 {
-                    // No branches exist - create initial commit on main branch
-                    self.create_initial_commit(&repo)?;
-                }
-            }
-            Err(e) => {
-                return Err(GitServiceError::InvalidRepository(format!(
-                    "Failed to list branches: {e}"
-                )));
-            }
-        }
-        Ok(())
-    }
-
     fn create_initial_commit(&self, repo: &Repository) -> Result<(), GitServiceError> {
         let signature = self.signature_with_fallback(repo)?;
 
@@ -849,36 +829,6 @@ impl GitService {
     ) -> Result<String, GitServiceError> {
         let git = GitCli::new();
         Ok(git.merge_base(worktree_path, target_branch, task_branch)?)
-    }
-
-    /// Get the subject/summary line for a given commit OID
-    pub fn get_commit_subject(
-        &self,
-        repo_path: &Path,
-        commit_sha: &str,
-    ) -> Result<String, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let oid = git2::Oid::from_str(commit_sha)
-            .map_err(|_| GitServiceError::InvalidRepository("Invalid commit SHA".into()))?;
-        let commit = repo.find_commit(oid)?;
-        Ok(commit.summary().unwrap_or("(no subject)").to_string())
-    }
-
-    /// Compare two OIDs and return (ahead, behind) counts: how many commits
-    /// `from_oid` is ahead of and behind `to_oid`.
-    pub fn ahead_behind_commits_by_oid(
-        &self,
-        repo_path: &Path,
-        from_oid: &str,
-        to_oid: &str,
-    ) -> Result<(usize, usize), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let from = git2::Oid::from_str(from_oid)
-            .map_err(|_| GitServiceError::InvalidRepository("Invalid from OID".into()))?;
-        let to = git2::Oid::from_str(to_oid)
-            .map_err(|_| GitServiceError::InvalidRepository("Invalid to OID".into()))?;
-        let (ahead, behind) = repo.graph_ahead_behind(from, to)?;
-        Ok((ahead, behind))
     }
 
     /// Return the full worktree status including all entries
@@ -1452,19 +1402,6 @@ impl GitService {
         let git_cli = GitCli::new();
         git_cli
             .check_remote_branch_exists(repo_path, remote_url, branch_name)
-            .map_err(GitServiceError::from)
-    }
-
-    pub fn fetch_branch(
-        &self,
-        repo_path: &Path,
-        remote_url: &str,
-        branch_name: &str,
-    ) -> Result<(), GitServiceError> {
-        let git_cli = GitCli::new();
-        let refspec = format!("+refs/heads/{branch_name}:refs/heads/{branch_name}");
-        git_cli
-            .fetch_with_refspec(repo_path, remote_url, &refspec)
             .map_err(GitServiceError::from)
     }
 
