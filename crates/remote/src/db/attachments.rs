@@ -1,4 +1,4 @@
-use api_types::{Attachment, AttachmentWithBlob, Blob};
+use api_types::{Attachment, AttachmentWithBlob};
 use chrono::{DateTime, Utc};
 use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
@@ -311,39 +311,6 @@ impl AttachmentRepository {
         let record = sqlx::query_scalar!(
             r#"
             SELECT b.project_id
-            FROM attachments a
-            INNER JOIN blobs b ON b.id = a.blob_id
-            WHERE a.id = $1
-            "#,
-            attachment_id
-        )
-        .fetch_optional(pool)
-        .await?;
-
-        Ok(record)
-    }
-
-    /// Get the blob data for an attachment.
-    pub async fn get_blob(
-        pool: &PgPool,
-        attachment_id: Uuid,
-    ) -> Result<Option<Blob>, AttachmentError> {
-        let record = sqlx::query_as!(
-            Blob,
-            r#"
-            SELECT
-                b.id                  AS "id!: Uuid",
-                b.project_id          AS "project_id!: Uuid",
-                b.blob_path           AS "blob_path!",
-                b.thumbnail_blob_path AS "thumbnail_blob_path?",
-                b.original_name       AS "original_name!",
-                b.mime_type           AS "mime_type?",
-                b.size_bytes          AS "size_bytes!",
-                b.hash                AS "hash!",
-                b.width               AS "width?",
-                b.height              AS "height?",
-                b.created_at          AS "created_at!: DateTime<Utc>",
-                b.updated_at          AS "updated_at!: DateTime<Utc>"
             FROM attachments a
             INNER JOIN blobs b ON b.id = a.blob_id
             WHERE a.id = $1
