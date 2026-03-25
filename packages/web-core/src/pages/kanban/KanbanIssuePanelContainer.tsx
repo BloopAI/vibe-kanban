@@ -626,6 +626,7 @@ export function KanbanIssuePanelContainer({
 
     cancelDebouncedTitle();
     cancelDebouncedDescription();
+    cancelDebouncedIssueDraft();
     skipUnmountSaveRef.current = false;
 
     let nextCreateFormData: IssueFormData | null = null;
@@ -646,8 +647,7 @@ export function KanbanIssuePanelContainer({
           title: scratchDraft.title,
           description: scratchDraft.description ?? null,
           statusId: scratchDraft.status_id || createModeDefaults.statusId,
-          priority:
-            (scratchDraft.priority as IssuePriority | null) ?? null,
+          priority: (scratchDraft.priority as IssuePriority | null) ?? null,
           assigneeIds: scratchDraft.assignee_ids,
           tagIds: scratchDraft.tag_ids ?? createModeDefaults.tagIds,
           createDraftWorkspace:
@@ -682,6 +682,7 @@ export function KanbanIssuePanelContainer({
     selectedKanbanIssueId,
     cancelDebouncedTitle,
     cancelDebouncedDescription,
+    cancelDebouncedIssueDraft,
     createModeDefaults,
     issueComposerKey,
     isIssueDraftScratchLoading,
@@ -693,11 +694,15 @@ export function KanbanIssuePanelContainer({
   useEffect(() => {
     if (!kanbanCreateMode || !createFormData || !isCreateDraftDirty) return;
     debouncedSaveIssueDraft(createFormData);
+    return () => {
+      cancelDebouncedIssueDraft();
+    };
   }, [
     kanbanCreateMode,
     createFormData,
     isCreateDraftDirty,
     debouncedSaveIssueDraft,
+    cancelDebouncedIssueDraft,
   ]);
 
   // Flush pending draft save on unmount (e.g., navigation away).
