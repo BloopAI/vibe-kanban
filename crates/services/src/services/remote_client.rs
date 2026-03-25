@@ -282,11 +282,6 @@ impl RemoteClient {
             .map_err(|e| self.map_api_error(e))
     }
 
-    /// Returns the base URL for the client.
-    pub fn base_url(&self) -> &str {
-        self.base.as_str()
-    }
-
     /// Returns a valid access token for use-cases like maintaining a websocket connection.
     pub async fn access_token(&self) -> Result<String, RemoteClientError> {
         self.require_token().await

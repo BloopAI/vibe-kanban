@@ -52,7 +52,7 @@ impl PreviewProxyService {
         Self { http_client }
     }
 
-    pub fn http_client(&self) -> &Client {
+    pub(crate) fn http_client(&self) -> &Client {
         &self.http_client
     }
 }
