@@ -120,28 +120,6 @@ pub struct NormalizedEntry {
     pub metadata: Option<serde_json::Value>,
 }
 
-impl NormalizedEntry {
-    pub fn with_tool_status(&self, status: ToolStatus) -> Option<Self> {
-        if let NormalizedEntryType::ToolUse {
-            tool_name,
-            action_type,
-            ..
-        } = &self.entry_type
-        {
-            Some(Self {
-                entry_type: NormalizedEntryType::ToolUse {
-                    tool_name: tool_name.clone(),
-                    action_type: action_type.clone(),
-                    status,
-                },
-                ..self.clone()
-            })
-        } else {
-            None
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum ToolStatus {

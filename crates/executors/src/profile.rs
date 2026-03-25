@@ -206,21 +206,6 @@ impl ExecutorProfile {
         self.configurations.get(variant)
     }
 
-    /// Get the default configuration for this executor
-    pub fn get_default(&self) -> Option<&CodingAgent> {
-        self.configurations.get("DEFAULT")
-    }
-
-    /// Create a new executor profile with just a default configuration
-    pub fn new_with_default(default_config: CodingAgent) -> Self {
-        let mut configurations = HashMap::new();
-        configurations.insert("DEFAULT".to_string(), default_config);
-        Self {
-            recently_used_models: None,
-            configurations,
-        }
-    }
-
     /// Add or update a variant configuration
     pub fn set_variant(
         &mut self,
@@ -240,14 +225,6 @@ impl ExecutorProfile {
     /// Set the default configuration
     pub fn set_default(&mut self, config: CodingAgent) {
         self.configurations.insert("DEFAULT".to_string(), config);
-    }
-
-    /// Get all variant names (excluding "DEFAULT")
-    pub fn variant_names(&self) -> Vec<&String> {
-        self.configurations
-            .keys()
-            .filter(|k| *k != "DEFAULT")
-            .collect()
     }
 }
 
@@ -577,12 +554,5 @@ impl ExecutorConfigs {
         let selected = agents_with_info[0].0;
         tracing::info!("Recommended executor: {}", selected);
         Ok(ExecutorProfileId::new(selected))
-    }
-}
-
-pub fn to_default_variant(id: &ExecutorProfileId) -> ExecutorProfileId {
-    ExecutorProfileId {
-        executor: id.executor,
-        variant: None,
     }
 }

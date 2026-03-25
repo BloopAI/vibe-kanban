@@ -811,16 +811,6 @@ impl AcpEventParser {
     }
 }
 
-/// Result of parsing a line
-#[derive(Debug, Clone)]
-#[allow(clippy::large_enum_variant)]
-pub enum ParsedLine {
-    SessionId(String),
-    Event(AcpEvent),
-    Error(String),
-    Done,
-}
-
 impl TryFrom<SessionNotification> for AcpEvent {
     type Error = ();
 

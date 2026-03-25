@@ -5,8 +5,6 @@ use std::{
     str::FromStr,
 };
 
-use serde::{Deserialize, Serialize};
-
 use crate::executors::acp::AcpEvent;
 
 /// Manages session persistence and state for ACP interactions
@@ -140,15 +138,6 @@ impl SessionManager {
         Ok(())
     }
 
-    /// Delete a session
-    pub fn delete_session(&self, session_id: &str) -> Result<()> {
-        let path = self.session_file_path(session_id);
-        if path.exists() {
-            fs::remove_file(path)?;
-        }
-        Ok(())
-    }
-
     /// Generate a resume prompt from session history
     pub fn generate_resume_prompt(&self, session_id: &str, current_prompt: &str) -> Result<String> {
         let session_context = self.read_session_raw(session_id)?;
@@ -169,14 +158,4 @@ impl SessionManager {
             session_context, current_prompt
         ))
     }
-}
-
-/// Session metadata stored separately from events
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SessionMetadata {
-    pub session_id: String,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub updated_at: chrono::DateTime<chrono::Utc>,
-    pub parent_session: Option<String>,
-    pub tags: Vec<String>,
 }
