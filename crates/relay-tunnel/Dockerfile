@@ -25,6 +25,7 @@ COPY crates/services/Cargo.toml crates/services/Cargo.toml
 COPY crates/worktree-manager/Cargo.toml crates/worktree-manager/Cargo.toml
 COPY crates/workspace-manager/Cargo.toml crates/workspace-manager/Cargo.toml
 COPY crates/relay-control/Cargo.toml crates/relay-control/Cargo.toml
+COPY crates/relay-protocol/Cargo.toml crates/relay-protocol/Cargo.toml
 COPY crates/server-info/Cargo.toml crates/server-info/Cargo.toml
 COPY crates/utils/Cargo.toml crates/utils/Cargo.toml
 COPY crates/git/Cargo.toml crates/git/Cargo.toml
@@ -36,6 +37,7 @@ COPY crates/api-types crates/api-types
 COPY crates/relay-types crates/relay-types
 COPY crates/relay-tunnel-core crates/relay-tunnel-core
 COPY crates/relay-tunnel crates/relay-tunnel
+COPY crates/ws-bridge crates/ws-bridge
 
 RUN mkdir -p /app/bin
 
