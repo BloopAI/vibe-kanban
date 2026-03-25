@@ -291,19 +291,6 @@ impl MigrationState {
         Ok(())
     }
 
-    pub async fn reset_failed(pool: &SqlitePool) -> Result<u64, MigrationStateError> {
-        let result = sqlx::query!(
-            r#"UPDATE migration_state
-            SET status = 'pending',
-                error_message = NULL,
-                updated_at = datetime('now', 'subsec')
-            WHERE status = 'failed'"#
-        )
-        .execute(pool)
-        .await?;
-        Ok(result.rows_affected())
-    }
-
     pub async fn get_stats(pool: &SqlitePool) -> Result<MigrationStats, MigrationStateError> {
         let stats = sqlx::query_as!(
             MigrationStats,

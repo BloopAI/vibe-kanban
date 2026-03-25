@@ -510,11 +510,6 @@ impl ExecutionProcess {
         Ok(result.flatten())
     }
 
-    /// Get the parent Session for this execution process
-    pub async fn parent_session(&self, pool: &SqlitePool) -> Result<Option<Session>, sqlx::Error> {
-        Session::find_by_id(pool, self.session_id).await
-    }
-
     /// Get both the parent Workspace and Session for this execution process
     pub async fn parent_workspace_and_session(
         &self,
