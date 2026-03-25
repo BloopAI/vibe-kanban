@@ -256,17 +256,6 @@ impl Repo {
         .await
     }
 
-    pub async fn delete_orphaned(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
-        let result = sqlx::query!(
-            r#"DELETE FROM repos
-               WHERE id NOT IN (SELECT repo_id FROM project_repos)
-                 AND id NOT IN (SELECT repo_id FROM workspace_repos)"#
-        )
-        .execute(pool)
-        .await?;
-        Ok(result.rows_affected())
-    }
-
     pub async fn list_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Repo,
