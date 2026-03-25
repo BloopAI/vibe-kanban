@@ -228,6 +228,14 @@ impl russh::server::Handler for SshSessionHandler {
 
         let key_bytes: &[u8; 32] = ed25519_key.as_ref();
 
+        // Allow the local relay signing key used by desktop-bridge SSH config
+        // provisioning so local IDE launches don't depend on an active relay
+        // signing session cache entry.
+        if self.relay_signing.server_public_key().as_bytes() == key_bytes {
+            tracing::debug!("SSH auth accepted for local relay signing key");
+            return Ok(Auth::Accept);
+        }
+
         if self
             .relay_signing
             .has_active_session_with_key(key_bytes)
