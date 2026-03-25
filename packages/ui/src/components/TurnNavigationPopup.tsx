@@ -38,6 +38,7 @@ export function TurnNavigationPopup({
   const [activePatchKey, setActivePatchKey] = useState<string | null>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const lastNavigatedRef = useRef<string | null>(null);
 
   const clearCloseTimeout = useCallback(() => {
     if (closeTimeoutRef.current) {
@@ -56,7 +57,12 @@ export function TurnNavigationPopup({
   const handleTriggerEnter = useCallback(() => {
     if (turns.length === 0) return;
     clearCloseTimeout();
-    setActivePatchKey(getActiveTurnPatchKey?.() ?? null);
+    // Prefer the last navigated turn (scroll may still be in progress),
+    // falling back to viewport detection for manual scrolls.
+    const active =
+      lastNavigatedRef.current ?? getActiveTurnPatchKey?.() ?? null;
+    lastNavigatedRef.current = null;
+    setActivePatchKey(active);
     setOpen(true);
   }, [turns.length, clearCloseTimeout, getActiveTurnPatchKey]);
 
@@ -74,6 +80,7 @@ export function TurnNavigationPopup({
 
   const handleNavigate = useCallback(
     (patchKey: string) => {
+      lastNavigatedRef.current = patchKey;
       setOpen(false);
       onNavigateToTurn(patchKey);
     },

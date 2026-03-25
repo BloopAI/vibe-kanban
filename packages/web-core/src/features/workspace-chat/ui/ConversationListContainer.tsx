@@ -665,8 +665,15 @@ export const ConversationList = forwardRef<
         conversationVirtualizer.releaseBottomLock();
         programmaticScrollDeadlineRef.current = performance.now() + 1000;
 
+        // Initial scroll via scrollToAbsoluteIndex which handles both
+        // virtualized and unvirtualized (tail) rows correctly.
+        scrollToAbsoluteIndex(targetIndex, 'start', 'auto');
+
+        // Correction loop: after the virtualizer lays out the target
+        // row, its actual size may differ from the estimate, so we
+        // iteratively adjust until the row is at the container top.
         let attempts = 0;
-        const maxAttempts = 6;
+        const maxAttempts = 5;
 
         const correctScroll = () => {
           if (attempts >= maxAttempts) return;
@@ -678,12 +685,6 @@ export const ConversationList = forwardRef<
             `[data-row-index="${targetIndex}"]`
           );
           if (!node) {
-            if (attempts === 1) {
-              conversationVirtualizer.scrollToIndex(targetIndex, {
-                align: 'start',
-                behavior: 'auto',
-              });
-            }
             requestAnimationFrame(correctScroll);
             return;
           }
@@ -698,7 +699,7 @@ export const ConversationList = forwardRef<
           requestAnimationFrame(correctScroll);
         };
 
-        correctScroll();
+        requestAnimationFrame(correctScroll);
       },
       getVisibleUserMessagePatchKey: () => {
         const scrollEl = tanstackScrollRef.current;
