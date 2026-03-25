@@ -836,8 +836,33 @@ async fn parse_editor_path_response(
         response_body.extend_from_slice(&chunk);
     }
 
-    serde_json::from_slice::<RelayEditorPathResponse>(&response_body)
-        .map_err(|error| RelayApiError::Other(format!("failed to parse response body: {error}")))
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum EditorPathResponseBody {
+        Api(ApiResponse<RelayEditorPathResponse>),
+        Raw(RelayEditorPathResponse),
+    }
+
+    let parsed = serde_json::from_slice::<EditorPathResponseBody>(&response_body)
+        .map_err(|error| RelayApiError::Other(format!("failed to parse response body: {error}")))?;
+
+    match parsed {
+        EditorPathResponseBody::Raw(payload) => Ok(payload),
+        EditorPathResponseBody::Api(payload) => {
+            if !payload.is_success() {
+                return Err(RelayApiError::Other(
+                    payload
+                        .message()
+                        .unwrap_or("editor path request failed")
+                        .to_string(),
+                ));
+            }
+
+            payload.into_data().ok_or_else(|| {
+                RelayApiError::Other("editor path response missing workspace path".to_string())
+            })
+        }
+    }
 }
 
 async fn load_relay_host_credentials_map() -> HashMap<Uuid, RelayHostCredentials> {
