@@ -58,11 +58,11 @@ export async function requestLocalApiViaWebRtc(
   }
 
   const method = (requestInit.method ?? "GET").toUpperCase();
-  const headers: Record<string, string> = {};
+  const headers: Array<[string, string]> = [];
   if (requestInit.headers) {
     const h = new Headers(requestInit.headers);
     h.forEach((v, k) => {
-      headers[k] = v;
+      headers.push([k, v]);
     });
   }
 
@@ -130,8 +130,8 @@ function dataChannelResponseToResponse(dcResp: DataChannelResponse): Response {
     : null;
 
   const headers = new Headers();
-  for (const [k, v] of Object.entries(dcResp.headers)) {
-    if (v != null) headers.set(k, v);
+  for (const [k, v] of dcResp.headers) {
+    if (v != null) headers.append(k, v);
   }
   return new Response(body, {
     status: dcResp.status,

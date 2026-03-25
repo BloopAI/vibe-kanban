@@ -344,10 +344,10 @@ async fn proxy_request(
     match req_builder.send().await {
         Ok(response) => {
             let status = response.status().as_u16();
-            let mut headers = std::collections::HashMap::new();
+            let mut headers = Vec::new();
             for (key, value) in response.headers() {
                 if let Ok(v) = value.to_str() {
-                    headers.insert(key.to_string(), v.to_string());
+                    headers.push((key.to_string(), v.to_string()));
                 }
             }
 

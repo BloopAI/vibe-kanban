@@ -234,6 +234,7 @@ pub async fn shutdown_signal() {
 }
 
 pub async fn perform_cleanup_actions(deployment: &DeploymentImpl) {
+    deployment.shutdown_webrtc_host();
     deployment
         .container()
         .kill_all_running_processes()

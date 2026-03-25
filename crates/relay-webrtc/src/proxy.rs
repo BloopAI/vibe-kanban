@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     pin::Pin,
     task::{Context, Poll, ready},
 };
@@ -66,7 +65,7 @@ pub enum DataChannelMessage {
 }
 
 // ---------------------------------------------------------------------------
-// HTTP messages (unchanged payload shape)
+// HTTP messages
 // ---------------------------------------------------------------------------
 
 /// A request message sent over the data channel.
@@ -76,7 +75,7 @@ pub struct DataChannelRequest {
     pub method: String,
     pub path: String,
     #[serde(default)]
-    pub headers: HashMap<String, String>,
+    pub headers: Vec<(String, String)>,
     /// Base64-encoded request body, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub body_b64: Option<String>,
@@ -88,7 +87,7 @@ pub struct DataChannelResponse {
     pub id: Uuid,
     pub status: u16,
     #[serde(default)]
-    pub headers: HashMap<String, String>,
+    pub headers: Vec<(String, String)>,
     /// Base64-encoded response body, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub body_b64: Option<String>,
@@ -269,9 +268,7 @@ mod tests {
         let response = DataChannelResponse {
             id: Uuid::new_v4(),
             status: 200,
-            headers: [("content-type".into(), "application/octet-stream".into())]
-                .into_iter()
-                .collect(),
+            headers: vec![("content-type".into(), "application/octet-stream".into())],
             body_b64: Some(body_b64),
         };
         let msg = DataChannelMessage::HttpResponse(response);

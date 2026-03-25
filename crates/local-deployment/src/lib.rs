@@ -75,6 +75,7 @@ pub struct LocalDeployment {
     preview_proxy: PreviewProxyService,
     relay_hosts: Option<Arc<RelayHosts>>,
     webrtc_host: OnceLock<Arc<WebRtcHost>>,
+    webrtc_shutdown: CancellationToken,
     ssh_config: Arc<russh::server::Config>,
     pty: PtyService,
     pr_sync_notify: Arc<Notify>,
@@ -282,6 +283,7 @@ impl Deployment for LocalDeployment {
             preview_proxy,
             relay_hosts,
             webrtc_host: OnceLock::new(),
+            webrtc_shutdown: CancellationToken::new(),
             ssh_config,
             pty,
             pr_sync_notify,
@@ -381,9 +383,13 @@ impl LocalDeployment {
 
         Some(
             self.webrtc_host
-                .get_or_init(|| Arc::new(WebRtcHost::new(local_addr, CancellationToken::new())))
+                .get_or_init(|| Arc::new(WebRtcHost::new(local_addr, self.webrtc_shutdown.clone())))
                 .clone(),
         )
+    }
+
+    pub fn shutdown_webrtc_host(&self) {
+        self.webrtc_shutdown.cancel();
     }
 
     pub fn workspace_manager(&self) -> &WorkspaceManager {

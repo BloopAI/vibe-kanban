@@ -551,10 +551,10 @@ impl RelayHost {
             return None;
         }
 
-        let mut header_map = HashMap::new();
+        let mut header_map = Vec::new();
         for (key, value) in headers {
             if let Ok(v) = value.to_str() {
-                header_map.insert(key.to_string(), v.to_string());
+                header_map.push((key.to_string(), v.to_string()));
             }
         }
 
@@ -627,6 +627,32 @@ impl RelayHost {
         let webrtc = self.webrtc.clone();
 
         tokio::spawn(async move {
+            let webrtc_for_guard = webrtc.clone();
+            struct MarkFailedOnDrop {
+                host_id: Uuid,
+                cache: WebRtcConnectionCache,
+                completed: bool,
+            }
+
+            impl Drop for MarkFailedOnDrop {
+                fn drop(&mut self) {
+                    if self.completed {
+                        return;
+                    }
+                    let cache = self.cache.clone();
+                    let host_id = self.host_id;
+                    tokio::spawn(async move {
+                        cache.mark_failed(host_id).await;
+                    });
+                }
+            }
+
+            let mut mark_failed_on_drop = MarkFailedOnDrop {
+                host_id,
+                cache: webrtc_for_guard,
+                completed: false,
+            };
+
             match negotiate_webrtc(transport).await {
                 Ok(client)
                     if client
@@ -634,6 +660,7 @@ impl RelayHost {
                         .await =>
                 {
                     webrtc.insert(host_id, Arc::new(client)).await;
+                    mark_failed_on_drop.completed = true;
                     tracing::debug!(%host_id, "WebRTC direct connection established");
                 }
                 Ok(client) => {
@@ -643,10 +670,12 @@ impl RelayHost {
                     );
                     client.shutdown();
                     webrtc.mark_failed(host_id).await;
+                    mark_failed_on_drop.completed = true;
                 }
                 Err(e) => {
                     tracing::debug!(?e, %host_id, "WebRTC handshake failed (relay fallback active)");
                     webrtc.mark_failed(host_id).await;
+                    mark_failed_on_drop.completed = true;
                 }
             }
         });

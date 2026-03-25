@@ -140,7 +140,7 @@ export class WebRtcConnection {
   sendHttpRequest(
     method: string,
     path: string,
-    headers: Record<string, string>,
+    headers: Array<[string, string]>,
     body?: Uint8Array,
   ): Promise<DataChannelResponse> {
     if (!this.isConnected) {
