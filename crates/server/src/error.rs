@@ -291,6 +291,52 @@ fn remote_client_error(err: &RemoteClientError) -> ErrorInfo {
     }
 }
 
+fn git_service_error(err: &GitServiceError) -> ErrorInfo {
+    match err {
+        GitServiceError::MergeConflicts { message, .. } => {
+            ErrorInfo::conflict("GitServiceError", message.clone())
+        }
+        GitServiceError::RebaseInProgress => ErrorInfo::conflict(
+            "GitServiceError",
+            "A rebase is already in progress. Resolve conflicts or abort the rebase, then retry.",
+        ),
+        GitServiceError::BranchNotFound(branch) => ErrorInfo::not_found(
+            "GitServiceError",
+            format!(
+                "Branch '{}' not found. Try changing the target branch.",
+                branch
+            ),
+        ),
+        GitServiceError::BranchesDiverged(msg) => ErrorInfo::conflict(
+            "GitServiceError",
+            format!(
+                "{} Rebase onto the target branch first, then retry the merge.",
+                msg
+            ),
+        ),
+        GitServiceError::WorktreeDirty(branch, files) => ErrorInfo::conflict(
+            "GitServiceError",
+            format!(
+                "Branch '{}' has uncommitted changes ({}). Commit or revert them before retrying.",
+                branch, files
+            ),
+        ),
+        GitServiceError::GitCLI(git::GitCliError::AuthFailed(msg)) => ErrorInfo::with_status(
+            StatusCode::UNAUTHORIZED,
+            "GitServiceError",
+            format!(
+                "{}. Check your git credentials or SSH keys and try again.",
+                msg
+            ),
+        ),
+        _ => ErrorInfo::with_status(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "GitServiceError",
+            format!("Git operation failed: {}", err),
+        ),
+    }
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let info = match &self {
@@ -350,55 +396,7 @@ impl IntoResponse for ApiError {
             }
             ApiError::ExecutionProcess(_) => ErrorInfo::internal("ExecutionProcessError"),
 
-            ApiError::GitService(git::GitServiceError::MergeConflicts { message, .. }) => {
-                ErrorInfo::conflict("GitServiceError", message.clone())
-            }
-            ApiError::GitService(git::GitServiceError::RebaseInProgress) => ErrorInfo::conflict(
-                "GitServiceError",
-                "A rebase is already in progress. Resolve conflicts or abort the rebase, then retry.",
-            ),
-            ApiError::GitService(git::GitServiceError::BranchNotFound(branch)) => {
-                ErrorInfo::not_found(
-                    "GitServiceError",
-                    format!(
-                        "Branch '{}' not found. Try changing the target branch.",
-                        branch
-                    ),
-                )
-            }
-            ApiError::GitService(git::GitServiceError::BranchesDiverged(msg)) => {
-                ErrorInfo::conflict(
-                    "GitServiceError",
-                    format!(
-                        "{} Rebase onto the target branch first, then retry the merge.",
-                        msg
-                    ),
-                )
-            }
-            ApiError::GitService(git::GitServiceError::WorktreeDirty(branch, files)) => {
-                ErrorInfo::conflict(
-                    "GitServiceError",
-                    format!(
-                        "Branch '{}' has uncommitted changes ({}). Commit or revert them before retrying.",
-                        branch, files
-                    ),
-                )
-            }
-            ApiError::GitService(git::GitServiceError::GitCLI(git::GitCliError::AuthFailed(
-                msg,
-            ))) => ErrorInfo::with_status(
-                StatusCode::UNAUTHORIZED,
-                "GitServiceError",
-                format!(
-                    "{}. Check your git credentials or SSH keys and try again.",
-                    msg
-                ),
-            ),
-            ApiError::GitService(e) => ErrorInfo::with_status(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "GitServiceError",
-                format!("Git operation failed: {}", e),
-            ),
+            ApiError::GitService(e) => git_service_error(e),
             ApiError::GitHost(_) => ErrorInfo::internal("GitHostError"),
 
             ApiError::File(FileError::TooLarge(size, max)) => ErrorInfo::with_status(
@@ -466,7 +464,7 @@ impl IntoResponse for ApiError {
 
             ApiError::Deployment(_) => ErrorInfo::internal("DeploymentError"),
             ApiError::Container(err) => match err {
-                ContainerError::GitServiceError(_) => ErrorInfo::internal("ContainerError"),
+                ContainerError::GitServiceError(err) => git_service_error(err),
                 ContainerError::Workspace(WorkspaceError::WorkspaceNotFound) => {
                     ErrorInfo::not_found("ContainerError", "Workspace not found.")
                 }
@@ -483,6 +481,12 @@ impl IntoResponse for ApiError {
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "ContainerError",
                     format!("Executor error: {e}"),
+                ),
+                ContainerError::Worktree(WorktreeError::GitService(err)) => git_service_error(err),
+                ContainerError::Worktree(err) => ErrorInfo::with_status(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "WorktreeError",
+                    format!("Worktree operation failed: {}", err),
                 ),
                 _ => ErrorInfo::internal("ContainerError"),
             },
