@@ -647,12 +647,8 @@ export function KanbanIssuePanelContainer({
           description: scratchDraft.description ?? null,
           statusId: scratchDraft.status_id || createModeDefaults.statusId,
           priority:
-            (scratchDraft.priority as IssuePriority | null) ??
-            createModeDefaults.priority,
-          assigneeIds:
-            scratchDraft.assignee_ids.length > 0
-              ? scratchDraft.assignee_ids
-              : createModeDefaults.assigneeIds,
+            (scratchDraft.priority as IssuePriority | null) ?? null,
+          assigneeIds: scratchDraft.assignee_ids,
           tagIds: scratchDraft.tag_ids ?? createModeDefaults.tagIds,
           createDraftWorkspace:
             scratchDraft.create_draft_workspace ??
