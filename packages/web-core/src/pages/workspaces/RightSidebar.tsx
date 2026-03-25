@@ -6,7 +6,6 @@ import { PreviewControlsContainer } from './PreviewControlsContainer';
 import { GitPanelContainer } from './GitPanelContainer';
 import { TerminalPanelContainer } from '@/shared/components/TerminalPanelContainer';
 import { WorkspaceNotesContainer } from './WorkspaceNotesContainer';
-import { useChangesView } from '@/shared/hooks/useChangesView';
 import { useDiffs } from '@/shared/stores/useWorkspaceDiffStore';
 import { ArrowsOutSimpleIcon } from '@phosphor-icons/react';
 import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
@@ -16,7 +15,6 @@ import {
   PersistKey,
   RIGHT_MAIN_PANEL_MODES,
   type RightMainPanelMode,
-  useExpandedAll,
   usePersistedExpanded,
   useUiPreferencesStore,
 } from '@/shared/stores/useUiPreferencesStore';
@@ -46,9 +44,7 @@ export const RightSidebar = memo(function RightSidebar({
   repos,
 }: RightSidebarProps) {
   const { t } = useTranslation(['tasks', 'common']);
-  const { selectFile } = useChangesView();
   const diffs = useDiffs();
-  const { setExpanded } = useExpandedAll();
   const isTerminalVisible = useUiPreferencesStore((s) => s.isTerminalVisible);
   const { expandTerminal, isTerminalExpanded } = useLogsPanel();
 
@@ -138,10 +134,6 @@ export const RightSidebar = memo(function RightSidebar({
                 key={selectedWorkspace.id}
                 workspaceId={selectedWorkspace.id}
                 diffs={diffs}
-                onSelectFile={(path) => {
-                  selectFile(path);
-                  setExpanded(`diff:${path}`, true);
-                }}
                 className=""
               />
             ),
@@ -197,8 +189,6 @@ export const RightSidebar = memo(function RightSidebar({
     hasUpperContent,
     upperExpanded,
     expandTerminal,
-    selectFile,
-    setExpanded,
     t,
   ]);
 

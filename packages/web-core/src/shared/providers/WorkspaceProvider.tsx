@@ -96,7 +96,6 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
   const rafRef = useRef<number | null>(null);
   const batchCountRef = useRef(0);
-  const flushCountRef = useRef(0);
 
   const latestDiffDataRef = useRef({
     diffs,
@@ -130,13 +129,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     if (rafRef.current === null) {
       rafRef.current = requestAnimationFrame(() => {
         rafRef.current = null;
-        flushCountRef.current++;
-        const batched = batchCountRef.current;
         batchCountRef.current = 0;
-        console.log(
-          `%c[WorkspaceProvider] flush #${flushCountRef.current}: ${batched} batched updates, ${latestDiffDataRef.current.diffs.length} diffs`,
-          'color: #ce93d8'
-        );
         useWorkspaceDiffStore
           .getState()
           .setWorkspaceDiffData(latestDiffDataRef.current);
