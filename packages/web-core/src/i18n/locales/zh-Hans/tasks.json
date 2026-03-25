@@ -94,8 +94,8 @@
       "warning": "大型差异可能会降低浏览器速度。"
     },
     "markdownPreview": {
-      "showPreview": "Show markdown preview",
-      "showDiff": "Show code diff"
+      "showPreview": "显示 Markdown 预览",
+      "showDiff": "显示代码差异"
     }
   },
   "processes": {

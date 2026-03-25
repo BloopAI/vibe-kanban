@@ -115,8 +115,8 @@
       "warning": "大きな差分はブラウザを遅くする可能性があります。"
     },
     "markdownPreview": {
-      "showPreview": "Show markdown preview",
-      "showDiff": "Show code diff"
+      "showPreview": "マークダウンプレビューを表示",
+      "showDiff": "コードの差分を表示"
     }
   },
   "followUp": {

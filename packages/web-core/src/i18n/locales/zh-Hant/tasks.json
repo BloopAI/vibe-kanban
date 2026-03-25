@@ -94,8 +94,8 @@
       "warning": "大型差異可能會降低瀏覽器速度。"
     },
     "markdownPreview": {
-      "showPreview": "Show markdown preview",
-      "showDiff": "Show code diff"
+      "showPreview": "顯示 Markdown 預覽",
+      "showDiff": "顯示程式碼差異"
     }
   },
   "processes": {

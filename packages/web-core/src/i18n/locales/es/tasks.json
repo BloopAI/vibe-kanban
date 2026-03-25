@@ -115,8 +115,8 @@
       "warning": "Los diffs grandes pueden ralentizar tu navegador."
     },
     "markdownPreview": {
-      "showPreview": "Show markdown preview",
-      "showDiff": "Show code diff"
+      "showPreview": "Mostrar vista previa de markdown",
+      "showDiff": "Mostrar diff de código"
     }
   },
   "followUp": {

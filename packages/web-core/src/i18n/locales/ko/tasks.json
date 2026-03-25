@@ -115,8 +115,8 @@
       "warning": "큰 diff는 브라우저를 느리게 할 수 있습니다."
     },
     "markdownPreview": {
-      "showPreview": "Show markdown preview",
-      "showDiff": "Show code diff"
+      "showPreview": "마크다운 미리보기 표시",
+      "showDiff": "코드 diff 표시"
     }
   },
   "followUp": {
