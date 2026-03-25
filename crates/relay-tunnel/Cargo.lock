@@ -1687,7 +1687,7 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
 name = "relay-control"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "base64",
@@ -1697,6 +1697,17 @@ dependencies = [
  "tokio",
  "tokio-util",
  "uuid",
+]
+
+[[package]]
+name = "relay-protocol"
+version = "0.1.36"
+dependencies = [
+ "anyhow",
+ "axum",
+ "serde",
+ "tokio-tungstenite 0.26.2",
+ "ts-rs",
 ]
 
 [[package]]
@@ -1741,8 +1752,6 @@ version = "0.1.36"
 dependencies = [
  "anyhow",
  "axum",
- "bytes",
- "futures",
  "futures-util",
  "http",
  "hyper",
@@ -1753,6 +1762,7 @@ dependencies = [
  "tokio-util",
  "tokio-yamux",
  "tracing",
+ "ws-bridge",
 ]
 
 [[package]]
@@ -1768,20 +1778,22 @@ dependencies = [
 
 [[package]]
 name = "relay-ws"
-version = "0.1.35"
+version = "0.1.36"
 dependencies = [
  "anyhow",
  "axum",
  "base64",
  "ed25519-dalek",
  "futures-util",
+ "http",
  "relay-control",
+ "relay-protocol",
  "serde",
  "serde_json",
  "sha2",
+ "thiserror",
  "tokio",
  "tokio-tungstenite 0.26.2",
- "ts-rs",
  "uuid",
 ]
 
@@ -2567,6 +2579,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-sink",
+ "futures-util",
  "pin-project-lite",
  "tokio",
 ]
@@ -3350,6 +3363,20 @@ name = "writeable"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9edde0db4769d2dc68579893f2306b26c6ecfbe0ef499b013d731b7b9247e0b9"
+
+[[package]]
+name = "ws-bridge"
+version = "0.1.36"
+dependencies = [
+ "axum",
+ "bytes",
+ "futures",
+ "futures-util",
+ "http",
+ "thiserror",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
+]
 
 [[package]]
 name = "yoke"
