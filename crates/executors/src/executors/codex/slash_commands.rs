@@ -256,6 +256,7 @@ impl Codex {
                 Ok(message) => EventMsg::AgentMessage(AgentMessageEvent {
                     message,
                     phase: None,
+                    memory_citation: None,
                 }),
                 Err(message) => EventMsg::Error(ErrorEvent {
                     message,
@@ -319,6 +320,7 @@ pub async fn log_event_raw(log_writer: &LogWriter, message: String) -> Result<()
         EventMsg::AgentMessage(AgentMessageEvent {
             message,
             phase: None,
+            memory_citation: None,
         }),
     )
     .await

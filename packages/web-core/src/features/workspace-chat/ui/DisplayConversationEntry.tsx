@@ -192,6 +192,11 @@ function renderToolUseEntry(
 
   // Plan presentation - use ChatApprovalCard
   if (action_type.action === 'plan_presentation') {
+    // Codex can emit an initial empty plan placeholder before content arrives.
+    // Suppress empty cards to avoid duplicate-looking plan boxes.
+    if (!action_type.plan.trim()) {
+      return null;
+    }
     return (
       <PlanEntry
         plan={action_type.plan}
@@ -260,6 +265,11 @@ function renderToolUseEntry(
 
   // Generic tool pending approval - use plan-style card
   if (status.status === 'pending_approval') {
+    // Question approvals are rendered via askQuestionMode in SessionChatBoxContainer.
+    // Avoid showing a duplicate inline approval card in the conversation timeline.
+    if (action_type.action === 'ask_user_question') {
+      return null;
+    }
     return (
       <GenericToolApprovalEntry
         toolName={entryType.tool_name}

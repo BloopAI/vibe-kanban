@@ -11,16 +11,17 @@ use async_trait::async_trait;
 use codex_app_server_protocol::{
     ClientInfo, ClientNotification, ClientRequest, CommandExecutionApprovalDecision,
     CommandExecutionRequestApprovalResponse, ConfigBatchWriteParams, ConfigEdit, ConfigReadParams,
-    ConfigReadResponse, ConfigWriteResponse, FileChangeApprovalDecision,
-    FileChangeRequestApprovalResponse, GetAccountParams, GetAccountRateLimitsResponse,
-    GetAccountResponse, InitializeCapabilities, InitializeParams, InitializeResponse,
-    ItemCompletedNotification, JSONRPCError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse,
-    ListMcpServerStatusParams, ListMcpServerStatusResponse, RequestId, ReviewStartParams,
-    ReviewStartResponse, ReviewTarget, ServerRequest, ThreadCompactStartParams,
-    ThreadCompactStartResponse, ThreadForkParams, ThreadForkResponse, ThreadItem, ThreadReadParams,
-    ThreadReadResponse, ThreadStartParams, ThreadStartResponse, ToolRequestUserInputAnswer,
-    ToolRequestUserInputQuestion, ToolRequestUserInputResponse, TurnCompletedNotification,
-    TurnStartParams, TurnStartResponse, TurnStatus, UserInput,
+    ConfigReadResponse, ConfigWriteResponse, DynamicToolCallOutputContentItem,
+    DynamicToolCallResponse, FileChangeApprovalDecision, FileChangeRequestApprovalResponse,
+    GetAccountParams, GetAccountRateLimitsResponse, GetAccountResponse, InitializeCapabilities,
+    InitializeParams, InitializeResponse, ItemCompletedNotification, JSONRPCError,
+    JSONRPCNotification, JSONRPCRequest, JSONRPCResponse, ListMcpServerStatusParams,
+    ListMcpServerStatusResponse, RequestId, ReviewStartParams, ReviewStartResponse, ReviewTarget,
+    ServerRequest, ThreadCompactStartParams, ThreadCompactStartResponse, ThreadForkParams,
+    ThreadForkResponse, ThreadItem, ThreadReadParams, ThreadReadResponse, ThreadStartParams,
+    ThreadStartResponse, ToolRequestUserInputAnswer, ToolRequestUserInputQuestion,
+    ToolRequestUserInputResponse, TurnCompletedNotification, TurnStartParams, TurnStartResponse,
+    TurnStatus, UserInput,
 };
 use codex_protocol::config_types::{CollaborationMode, ModeKind, Settings};
 use futures::TryFutureExt;
@@ -417,8 +418,25 @@ impl AppServerClient {
                 send_server_response(peer, request_id, response).await?;
                 Ok(())
             }
-            ServerRequest::DynamicToolCall { .. }
-            | ServerRequest::ChatgptAuthTokensRefresh { .. }
+            ServerRequest::DynamicToolCall { request_id, params } => {
+                tracing::warn!(
+                    "received unsupported dynamic tool call: tool={} call_id={}",
+                    params.tool,
+                    params.call_id
+                );
+                let response = DynamicToolCallResponse {
+                    content_items: vec![DynamicToolCallOutputContentItem::InputText {
+                        text: format!(
+                            "Dynamic tool '{}' is not supported by this client.",
+                            params.tool
+                        ),
+                    }],
+                    success: false,
+                };
+                send_server_response(peer, request_id, response).await?;
+                Ok(())
+            }
+            ServerRequest::ChatgptAuthTokensRefresh { .. }
             | ServerRequest::McpServerElicitationRequest { .. }
             | ServerRequest::PermissionsRequestApproval { .. } => {
                 tracing::warn!("received unhandled v2 server request: {:?}", request);
