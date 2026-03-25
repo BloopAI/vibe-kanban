@@ -16,8 +16,6 @@ import {
   TrashIcon,
   PaperclipIcon,
   ImageIcon,
-  EyeIcon,
-  PencilSimpleIcon,
 } from '@phosphor-icons/react';
 import {
   IssueTagsRow,
@@ -452,46 +450,6 @@ export function KanbanIssuePanel({
                         </TooltipTrigger>
                         <TooltipContent>
                           {t('kanban.attachFileHint')}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                  {!isCreateMode && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setIsDescriptionEditing(!isDescriptionEditing);
-                            }}
-                            className={cn(
-                              'p-half rounded-sm transition-colors',
-                              'text-low hover:text-normal hover:bg-panel/50'
-                            )}
-                            title={
-                              isDescriptionEditing
-                                ? t('kanban.previewDescription', 'Preview')
-                                : t('kanban.editDescription', 'Edit')
-                            }
-                            aria-label={
-                              isDescriptionEditing
-                                ? t('kanban.previewDescription', 'Preview')
-                                : t('kanban.editDescription', 'Edit')
-                            }
-                          >
-                            {isDescriptionEditing ? (
-                              <EyeIcon className="size-icon-sm" />
-                            ) : (
-                              <PencilSimpleIcon className="size-icon-sm" />
-                            )}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {isDescriptionEditing
-                            ? t('kanban.previewDescription', 'Preview')
-                            : t('kanban.editDescription', 'Edit')}
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
