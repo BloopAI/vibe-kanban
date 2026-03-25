@@ -35,6 +35,7 @@ import { useOpenInEditor } from '@/shared/hooks/useOpenInEditor';
 import { OpenInIdeButton } from '@/shared/components/OpenInIdeButton';
 import { CopyButton } from '@/shared/components/CopyButton';
 import { writeClipboardViaBridge } from '@/shared/lib/clipboard';
+import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { stripLineEnding, splitLines } from '@/shared/lib/string';
 import { ReviewCommentRenderer } from './ReviewCommentRenderer';
 import { GitHubCommentRenderer } from './GitHubCommentRenderer';
@@ -76,6 +77,33 @@ const IS_MOBILE = isRealMobileDevice();
 const NOOP = () => {};
 
 const PIERRE_DIFFS_THEME_CSS = `
+  [data-diffs-header] {
+    background-color: hsl(var(--bg-primary)) !important;
+    min-height: 40px !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    cursor: pointer !important;
+    padding-inline: 12px !important;
+    border-radius: 4px 4px 0 0;
+  }
+
+  [data-diffs-header] [data-additions-count] {
+    color: hsl(var(--text-success, 160 77% 35%)) !important;
+  }
+
+  [data-diffs-header] [data-deletions-count] {
+    color: hsl(var(--text-error, 10 100% 40%)) !important;
+  }
+
+  [data-diffs-header] [data-change-icon] {
+    display: none !important;
+  }
+
+  [data-code] {
+    border-radius: 0 0 4px 4px !important;
+  }
+
   [data-separator="line-info"][data-separator-first] {
     margin-top: 4px;
   }
@@ -351,6 +379,16 @@ const DiffFileItem = memo(function DiffFileItem({
     [handleCopyFilePath, handleOpenInIde, expanded, handleToggle]
   );
 
+  const FileIcon = useMemo(
+    () => getFileIcon(filePath, actualTheme),
+    [filePath, actualTheme]
+  );
+
+  const renderHeaderPrefix = useCallback(
+    () => <FileIcon className="size-icon-base shrink-0" />,
+    [FileIcon]
+  );
+
   const renderAnnotation = useCallback(
     (annotation: DiffLineAnnotation<ExtendedCommentAnnotation>) => {
       const { metadata } = annotation;
@@ -428,12 +466,13 @@ const DiffFileItem = memo(function DiffFileItem({
   );
 
   return (
-    <div data-diff-path={filePath}>
+    <div data-diff-path={filePath} className="rounded-sm overflow-hidden">
       <FileDiff<ExtendedCommentAnnotation>
         fileDiff={fileDiffMetadata}
         options={options}
         lineAnnotations={annotations}
         renderAnnotation={annotations ? renderAnnotation : undefined}
+        renderHeaderPrefix={renderHeaderPrefix}
         renderHeaderMetadata={renderHeaderMetadata}
         renderHoverUtility={expanded ? renderHoverUtility : undefined}
       />
@@ -446,7 +485,7 @@ interface ChangesPanelContainerProps {
   workspaceId: string;
 }
 
-export function ChangesPanelContainer({
+export const ChangesPanelContainer = memo(function ChangesPanelContainer({
   className,
   workspaceId,
 }: ChangesPanelContainerProps) {
@@ -508,8 +547,9 @@ export function ChangesPanelContainer({
       highlighterOptions={HIGHLIGHTER_OPTIONS}
     >
       <Virtualizer
-        className={`w-full h-full overflow-auto bg-secondary px-base ${className}`}
-        contentClassName="flex flex-col"
+        className={`w-full h-full overflow-auto bg-secondary px-base pt-1 ${className}`}
+        contentClassName="flex flex-col gap-1"
+        style={{ contain: 'layout style paint' }}
       >
         {diffItems.map(({ diff, initialExpanded }) => {
           const path = diff.newPath || diff.oldPath || '';
@@ -525,4 +565,4 @@ export function ChangesPanelContainer({
       </Virtualizer>
     </WorkerPoolContextProvider>
   );
-}
+});
