@@ -1,6 +1,6 @@
 import type { Diff } from 'shared/types';
 
-export const LARGE_DIFF_THRESHOLD = 1000;
+export const LARGE_DIFF_THRESHOLD = 800;
 export const LARGE_DIFF_PLACEHOLDER_HEIGHT = 56;
 
 export function getRawDiffLineCount(
