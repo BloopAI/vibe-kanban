@@ -747,9 +747,8 @@ async fn handle_ws_proxy(
         ws_bridge::connect_upstream_ws(ws_url, ws_protocols.as_deref()).await?;
     tracing::debug!("Connected to dev server WebSocket");
 
-    ws_bridge::bridge_axum_ws(client_socket, dev_server_ws)
-        .await
-        .map_err(PreviewWsBridgeError::from)
+    ws_bridge::bridge_axum_ws(client_socket, dev_server_ws).await?;
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq)]
