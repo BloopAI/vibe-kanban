@@ -6,18 +6,18 @@ use uuid::Uuid;
 use crate::{AppState, auth::RequestContext};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct IdentityResponse {
+struct IdentityResponse {
     pub user_id: Uuid,
     pub username: Option<String>,
     pub email: String,
 }
 
-pub fn router() -> Router<AppState> {
+pub(super) fn router() -> Router<AppState> {
     Router::new().route("/identity", get(get_identity))
 }
 
 #[instrument(name = "identity.get_identity", skip(ctx), fields(user_id = %ctx.user.id))]
-pub async fn get_identity(Extension(ctx): Extension<RequestContext>) -> Json<IdentityResponse> {
+async fn get_identity(Extension(ctx): Extension<RequestContext>) -> Json<IdentityResponse> {
     let user = ctx.user;
     Json(IdentityResponse {
         user_id: user.id,

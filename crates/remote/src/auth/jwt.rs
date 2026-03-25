@@ -19,8 +19,8 @@ use uuid::Uuid;
 
 use crate::{auth::provider::ProviderTokenDetails, db::auth::AuthSession};
 
-pub const ACCESS_TOKEN_TTL_SECONDS: i64 = 120;
-pub const REFRESH_TOKEN_TTL_DAYS: i64 = 365;
+pub(super) const ACCESS_TOKEN_TTL_SECONDS: i64 = 120;
+pub(super) const REFRESH_TOKEN_TTL_DAYS: i64 = 365;
 const DEFAULT_JWT_LEEWAY_SECONDS: u64 = 60;
 
 #[derive(Debug, Error)]
@@ -46,7 +46,7 @@ pub enum JwtError {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AccessTokenClaims {
+pub(super) struct AccessTokenClaims {
     pub sub: Uuid,
     pub session_id: Uuid,
     pub iat: i64,
@@ -55,7 +55,7 @@ pub struct AccessTokenClaims {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RefreshTokenClaims {
+pub(super) struct RefreshTokenClaims {
     pub sub: Uuid,
     pub session_id: Uuid,
     pub jti: Uuid,

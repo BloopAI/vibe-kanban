@@ -20,12 +20,12 @@ use crate::{
     },
 };
 
-pub fn public_router() -> Router<AppState> {
+pub(super) fn public_router() -> Router<AppState> {
     Router::new().route("/tokens/refresh", post(refresh_token))
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum TokenRefreshError {
+pub(super) enum TokenRefreshError {
     #[error("invalid refresh token")]
     InvalidToken,
     #[error("session has been revoked")]
@@ -100,7 +100,7 @@ fn current_session_tokens_response(
     .into_response())
 }
 
-pub async fn refresh_token(
+async fn refresh_token(
     State(state): State<AppState>,
     Json(payload): Json<TokenRefreshRequest>,
 ) -> Result<Response, TokenRefreshError> {

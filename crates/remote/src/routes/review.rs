@@ -18,7 +18,7 @@ use crate::{
     r2::R2Error,
 };
 
-pub fn public_router() -> Router<AppState> {
+pub(super) fn public_router() -> Router<AppState> {
     Router::new()
         .route("/review/init", post(init_review_upload))
         .route("/review/start", post(start_review))
@@ -32,7 +32,7 @@ pub fn public_router() -> Router<AppState> {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct InitReviewRequest {
+struct InitReviewRequest {
     pub gh_pr_url: String,
     pub email: String,
     pub pr_title: String,
@@ -43,7 +43,7 @@ pub struct InitReviewRequest {
 }
 
 #[derive(Debug, Serialize)]
-pub struct InitReviewResponse {
+struct InitReviewResponse {
     pub review_id: Uuid,
     pub upload_url: String,
     pub object_key: String,
@@ -51,13 +51,13 @@ pub struct InitReviewResponse {
 }
 
 #[derive(Debug, Serialize)]
-pub struct ReviewMetadataResponse {
+struct ReviewMetadataResponse {
     pub gh_pr_url: String,
     pub pr_title: String,
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum ReviewError {
+pub(super) enum ReviewError {
     #[error("Review feature is disabled")]
     Disabled,
     #[error("R2 storage not configured")]
@@ -198,7 +198,7 @@ async fn check_rate_limit(repo: &ReviewRepository<'_>, ip: IpAddr) -> Result<(),
     Ok(())
 }
 
-pub async fn init_review_upload(
+async fn init_review_upload(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(payload): Json<InitReviewRequest>,
@@ -305,7 +305,7 @@ async fn proxy_post_to_worker(
 }
 
 /// POST /review/start - Start review processing on worker
-pub async fn start_review(
+async fn start_review(
     State(state): State<AppState>,
     Json(body): Json<serde_json::Value>,
 ) -> Result<Response, ReviewError> {
@@ -317,7 +317,7 @@ pub async fn start_review(
 }
 
 /// GET /review/:id/status - Get review status from worker
-pub async fn get_review_status(
+async fn get_review_status(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Response, ReviewError> {
@@ -332,7 +332,7 @@ pub async fn get_review_status(
 }
 
 /// GET /review/:id/metadata - Get PR metadata from database
-pub async fn get_review_metadata(
+async fn get_review_metadata(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Json<ReviewMetadataResponse>, ReviewError> {
@@ -348,7 +348,7 @@ pub async fn get_review_metadata(
 }
 
 /// GET /review/:id - Get complete review result from worker
-pub async fn get_review(
+async fn get_review(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Response, ReviewError> {
@@ -363,7 +363,7 @@ pub async fn get_review(
 }
 
 /// GET /review/:id/file/:file_hash - Get file content from worker
-pub async fn get_review_file(
+async fn get_review_file(
     State(state): State<AppState>,
     Path((id, file_hash)): Path<(String, String)>,
 ) -> Result<Response, ReviewError> {
@@ -378,7 +378,7 @@ pub async fn get_review_file(
 }
 
 /// GET /review/:id/diff - Get diff for review from worker
-pub async fn get_review_diff(
+async fn get_review_diff(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Response, ReviewError> {
@@ -394,7 +394,7 @@ pub async fn get_review_diff(
 
 /// POST /review/:id/success - Called by worker when review completes successfully
 /// Sends success notification email to the user, or posts PR comment for webhook reviews
-pub async fn review_success(
+async fn review_success(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, ReviewError> {
@@ -451,7 +451,7 @@ pub async fn review_success(
 
 /// POST /review/:id/failed - Called by worker when review fails
 /// Sends failure notification email to the user, or posts PR comment for webhook reviews
-pub async fn review_failed(
+async fn review_failed(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, ReviewError> {
