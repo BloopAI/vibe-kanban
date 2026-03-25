@@ -84,14 +84,6 @@ pub struct CreateExecutionProcess {
     pub run_reason: ExecutionProcessRunReason,
 }
 
-#[derive(Debug, Deserialize, TS)]
-#[allow(dead_code)]
-pub struct UpdateExecutionProcess {
-    pub status: Option<ExecutionProcessStatus>,
-    pub exit_code: Option<i64>,
-    pub completed_at: Option<DateTime<Utc>>,
-}
-
 #[derive(Debug)]
 pub struct ExecutionContext {
     pub execution_process: ExecutionProcess,

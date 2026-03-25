@@ -74,13 +74,6 @@ pub struct CreateFollowUpAttempt {
     pub prompt: String,
 }
 
-/// Context data for resume operations (simplified)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AttemptResumeContext {
-    pub execution_history: String,
-    pub cumulative_diffs: String,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkspaceContext {
     pub workspace: Workspace,
