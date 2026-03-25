@@ -84,11 +84,15 @@ export function TurnNavigationPopup({
   useLayoutEffect(() => {
     if (!open || !listRef.current) return;
     if (activePatchKey) {
-      const activeEl = listRef.current.querySelector(
+      const activeEl = listRef.current.querySelector<HTMLElement>(
         `[data-patch-key="${activePatchKey}"]`
       );
       if (activeEl) {
-        activeEl.scrollIntoView({ block: 'center' });
+        const list = listRef.current;
+        const elTop = activeEl.offsetTop;
+        const elHeight = activeEl.offsetHeight;
+        const listHeight = list.clientHeight;
+        list.scrollTop = elTop - listHeight / 2 + elHeight / 2;
         return;
       }
     }
