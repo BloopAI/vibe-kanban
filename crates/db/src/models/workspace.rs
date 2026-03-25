@@ -352,25 +352,6 @@ impl Workspace {
         Ok(())
     }
 
-    pub async fn resolve_container_ref(
-        pool: &SqlitePool,
-        container_ref: &str,
-    ) -> Result<ContainerInfo, sqlx::Error> {
-        let result = sqlx::query!(
-            r#"SELECT w.id as "workspace_id!: Uuid"
-               FROM workspaces w
-               WHERE w.container_ref = ?"#,
-            container_ref
-        )
-        .fetch_optional(pool)
-        .await?
-        .ok_or(sqlx::Error::RowNotFound)?;
-
-        Ok(ContainerInfo {
-            workspace_id: result.workspace_id,
-        })
-    }
-
     /// Find workspace by path using container-ref path containment.
     /// Used by clients that may open a repo subfolder rather than the workspace root.
     pub async fn resolve_container_ref_by_prefix(
@@ -617,13 +598,6 @@ impl Workspace {
     }
 
     /// Count total workspaces across all projects
-    pub async fn count_all(pool: &SqlitePool) -> Result<i64, WorkspaceError> {
-        sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM workspaces"#)
-            .fetch_one(pool)
-            .await
-            .map_err(WorkspaceError::Database)
-    }
-
     pub async fn find_by_id_with_status(
         pool: &SqlitePool,
         id: Uuid,

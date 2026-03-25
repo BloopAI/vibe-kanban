@@ -250,37 +250,6 @@ impl WorkspaceRepo {
         Ok(result.rows_affected())
     }
 
-    pub async fn find_unique_repos_for_task(
-        pool: &SqlitePool,
-        task_id: Uuid,
-    ) -> Result<Vec<Repo>, sqlx::Error> {
-        sqlx::query_as!(
-            Repo,
-            r#"SELECT DISTINCT r.id as "id!: Uuid",
-                      r.path,
-                      r.name,
-                      r.display_name,
-                      r.setup_script,
-                      r.cleanup_script,
-                      r.archive_script,
-                      r.copy_files,
-                      r.parallel_setup_script as "parallel_setup_script!: bool",
-                      r.dev_server_script,
-                      r.default_target_branch,
-                      r.default_working_dir,
-                      r.created_at as "created_at!: DateTime<Utc>",
-                      r.updated_at as "updated_at!: DateTime<Utc>"
-               FROM repos r
-               JOIN workspace_repos wr ON r.id = wr.repo_id
-               JOIN workspaces w ON wr.workspace_id = w.id
-               WHERE w.task_id = $1
-               ORDER BY r.display_name ASC"#,
-            task_id
-        )
-        .fetch_all(pool)
-        .await
-    }
-
     /// Find repos for a workspace with their copy_files configuration.
     pub async fn find_repos_with_copy_files(
         pool: &SqlitePool,
