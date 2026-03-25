@@ -89,6 +89,10 @@
       "linesChanged": "{{count}} lignes modifiées",
       "loadAnyway": "Charger le diff quand même",
       "warning": "Les gros diffs peuvent ralentir votre navigateur."
+    },
+    "markdownPreview": {
+      "showPreview": "Show markdown preview",
+      "showDiff": "Show code diff"
     }
   },
   "processes": {

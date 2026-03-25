@@ -92,6 +92,10 @@
       "linesChanged": "{{count}} 行已變更",
       "loadAnyway": "仍然載入差異",
       "warning": "大型差異可能會降低瀏覽器速度。"
+    },
+    "markdownPreview": {
+      "showPreview": "Show markdown preview",
+      "showDiff": "Show code diff"
     }
   },
   "processes": {
