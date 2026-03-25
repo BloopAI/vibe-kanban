@@ -2,6 +2,7 @@ import { useMemo, type ComponentPropsWithoutRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
+import rehypeRaw from 'rehype-raw';
 import { cn } from '@/shared/lib/utils';
 import { MermaidDiagram } from './MermaidDiagram';
 
@@ -12,7 +13,7 @@ interface MarkdownPreviewProps {
 }
 
 const remarkPlugins = [remarkGfm];
-const rehypePlugins = [rehypeHighlight];
+const rehypePlugins = [rehypeRaw, rehypeHighlight];
 
 export function MarkdownPreview({
   content,
