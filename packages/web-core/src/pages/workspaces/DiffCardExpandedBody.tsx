@@ -2,11 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PlusIcon } from '@phosphor-icons/react';
 import { FileDiff } from '@pierre/diffs/react';
-import type {
-  DiffLineAnnotation,
-  AnnotationSide,
-  ChangeContent,
-} from '@pierre/diffs';
+import type { DiffLineAnnotation, AnnotationSide } from '@pierre/diffs';
 import { DiffSide } from '@/shared/types/diff';
 import {
   transformDiffToFileDiffMetadata,
@@ -188,11 +184,42 @@ export function DiffCardExpandedBody({
     diff,
     forceExpanded
   );
+  const totalLines = additions + deletions;
 
   const commentsForFile = comments.filter((c) => c.filePath === filePath);
   const githubCommentsForFile = showGitHubComments
     ? getGitHubCommentsForFile(filePath)
     : [];
+
+  useEffect(() => {
+    if (shouldShowPlaceholder) {
+      onReadyChange?.(true);
+      return () => onReadyChange?.(false);
+    }
+
+    const frameId = requestAnimationFrame(() => {
+      const root = rootRef.current;
+      const container = root?.querySelector('diffs-container');
+      const shadowRoot = container?.shadowRoot ?? null;
+      const renderedLines = shadowRoot?.querySelectorAll('[data-line]') ?? null;
+
+      if (shadowRoot && (renderedLines?.length ?? 0) > 0) {
+        onReadyChange?.(true);
+      }
+    });
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      onReadyChange?.(false);
+    };
+  }, [
+    additions,
+    deletions,
+    filePath,
+    onReadyChange,
+    shouldShowPlaceholder,
+    totalLines,
+  ]);
 
   if (shouldShowPlaceholder) {
     return (
@@ -234,32 +261,6 @@ export function DiffCardExpandedBody({
   const fileDiffMetadata = transformDiffToFileDiffMetadata(diff, {
     ignoreWhitespace,
   });
-
-  const computedAdditions = fileDiffMetadata.hunks.reduce(
-    (acc, hunk) =>
-      acc +
-      hunk.hunkContent.reduce(
-        (count, content) =>
-          content.type === 'change'
-            ? count + (content as ChangeContent).additions
-            : count,
-        0
-      ),
-    0
-  );
-
-  const computedDeletions = fileDiffMetadata.hunks.reduce(
-    (acc, hunk) =>
-      acc +
-      hunk.hunkContent.reduce(
-        (count, content) =>
-          content.type === 'change'
-            ? count + (content as ChangeContent).deletions
-            : count,
-        0
-      ),
-    0
-  );
 
   const baseAnnotations = transformCommentsToAnnotations(
     commentsForFile,
@@ -383,38 +384,6 @@ export function DiffCardExpandedBody({
     theme: { dark: 'github-dark', light: 'github-light' } as const,
     unsafeCSS: PIERRE_DIFFS_THEME_CSS,
   };
-
-  const totalLines = computedAdditions + computedDeletions;
-
-  useEffect(() => {
-    if (shouldShowPlaceholder) {
-      onReadyChange?.(true);
-      return () => onReadyChange?.(false);
-    }
-
-    const frameId = requestAnimationFrame(() => {
-      const root = rootRef.current;
-      const container = root?.querySelector('diffs-container');
-      const shadowRoot = container?.shadowRoot ?? null;
-      const renderedLines = shadowRoot?.querySelectorAll('[data-line]') ?? null;
-
-      if (shadowRoot && (renderedLines?.length ?? 0) > 0) {
-        onReadyChange?.(true);
-      }
-    });
-
-    return () => {
-      cancelAnimationFrame(frameId);
-      onReadyChange?.(false);
-    };
-  }, [
-    additions,
-    deletions,
-    filePath,
-    onReadyChange,
-    shouldShowPlaceholder,
-    totalLines,
-  ]);
 
   return (
     <div ref={rootRef} className="bg-primary rounded-b-sm overflow-hidden">
