@@ -90,7 +90,7 @@ impl EditorConfig {
         }
     }
 
-    pub fn get_command(&self) -> CommandBuilder {
+    fn get_command(&self) -> CommandBuilder {
         let base_command = match &self.editor_type {
             EditorType::VsCode => "code",
             EditorType::VsCodeInsiders => "code-insiders",
