@@ -26,7 +26,7 @@ pub enum UpstreamWsConnectError {
     InvalidProtocolHeader(#[from] http::header::InvalidHeaderValue),
 }
 
-pub type UpstreamWebSocket =
+type UpstreamWebSocket =
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 
 /// Connect to an upstream websocket endpoint and optionally negotiate subprotocols.
@@ -57,7 +57,7 @@ pub async fn connect_upstream_ws(
 /// Like `tokio::io::copy_bidirectional` but operates on typed WS messages
 /// instead of raw bytes, preserving message types across the bridge via the
 /// provided conversion functions.
-pub async fn ws_copy_bidirectional<A, B, MA, MB, EA, EB>(
+async fn ws_copy_bidirectional<A, B, MA, MB, EA, EB>(
     a: A,
     b: B,
     a_to_b: fn(MA) -> MB,
@@ -103,13 +103,17 @@ where
 }
 
 /// Convenience axum websocket bridge into an upstream tungstenite socket.
-pub async fn bridge_axum_ws<C, E>(
-    client_socket: C,
-    upstream: UpstreamWebSocket,
+pub async fn bridge_axum_ws<A, B, EA, EB>(
+    client_socket: A,
+    upstream: B,
 ) -> Result<(), WsBridgeError>
 where
-    C: Stream<Item = Result<AxumWsMessage, E>> + Sink<AxumWsMessage, Error = E> + Unpin,
-    E: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
+    A: Stream<Item = Result<AxumWsMessage, EA>> + Sink<AxumWsMessage, Error = EA> + Unpin,
+    B: Stream<Item = Result<tungstenite::Message, EB>>
+        + Sink<tungstenite::Message, Error = EB>
+        + Unpin,
+    EA: Into<BridgeSourceError>,
+    EB: Into<BridgeSourceError>,
 {
     ws_copy_bidirectional(
         client_socket,

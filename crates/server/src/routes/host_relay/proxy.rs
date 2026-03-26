@@ -96,14 +96,7 @@ async fn forward_ws(
     }
     Ok(ws
         .on_upgrade(|socket| async move {
-            if let Err(error) = connection
-                .bridge(
-                    socket,
-                    ws_bridge::axum_to_tungstenite,
-                    ws_bridge::tungstenite_to_axum,
-                )
-                .await
-            {
+            if let Err(error) = connection.bridge(socket).await {
                 tracing::debug!(?error, "WS bridge closed with error");
             }
         })

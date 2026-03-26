@@ -1,11 +1,10 @@
-pub mod bridge;
-pub mod ws_io;
+mod bridge;
+mod ws_io;
 
 pub use bridge::{
-    UpstreamWebSocket, UpstreamWsConnectError, WsBridgeError, bridge_axum_ws,
-    bridge_tungstenite_ws, connect_upstream_ws, ws_copy_bidirectional,
+    UpstreamWsConnectError, WsBridgeError, bridge_axum_ws, bridge_tungstenite_ws,
+    connect_upstream_ws,
 };
 pub use ws_io::{
-    AxumWsStreamIo, TungsteniteWsStreamIo, WsIoReadMessage, WsMessageStreamIo, axum_to_tungstenite,
-    axum_ws_stream_io, tungstenite_to_axum, tungstenite_ws_stream_io,
+    AxumWsStreamIo, TungsteniteWsStreamIo, axum_ws_stream_io, tungstenite_ws_stream_io,
 };

@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 bytes = "1"
 chrono = { version = "0.4", features = ["serde"] }
+axum = { workspace = true, features = ["ws"] }
 ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
 futures-util = "0.3"
 http = "1"

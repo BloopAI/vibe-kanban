@@ -6592,6 +6592,7 @@ dependencies = [
 name = "relay-hosts"
 version = "0.1.36"
 dependencies = [
+ "axum",
  "base64 0.22.1",
  "bytes",
  "chrono",

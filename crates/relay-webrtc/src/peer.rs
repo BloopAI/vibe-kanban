@@ -15,7 +15,7 @@ use webrtc::{
         sdp::session_description::RTCSessionDescription,
     },
 };
-use ws_bridge::{connect_upstream_ws, ws_copy_bidirectional};
+use ws_bridge::{bridge_tungstenite_ws, connect_upstream_ws};
 
 use crate::{
     WebRtcError, fragment,
@@ -452,12 +452,7 @@ async fn run_ws_bridge(
         poll_sender: tokio_util::sync::PollSender::new(dc_tx.clone()),
     };
 
-    ws_copy_bidirectional(
-        ws_stream,
-        bridge,
-        std::convert::identity,
-        std::convert::identity,
-    )
-    .await
-    .map_err(WebRtcError::from)
+    bridge_tungstenite_ws(ws_stream, bridge)
+        .await
+        .map_err(WebRtcError::from)
 }
