@@ -488,6 +488,9 @@ impl IntoResponse for ApiError {
             },
             ApiError::Executor(_) => ErrorInfo::internal("ExecutorError"),
             ApiError::CommandBuilder(_) => ErrorInfo::internal("CommandBuildError"),
+            ApiError::Database(sqlx::Error::RowNotFound) => {
+                ErrorInfo::not_found("DatabaseError", "Resource not found.")
+            }
             ApiError::Database(_) => ErrorInfo::internal("DatabaseError"),
             ApiError::Worktree(_) => ErrorInfo::internal("WorktreeError"),
             ApiError::Config(_) => ErrorInfo::internal("ConfigError"),
@@ -616,6 +619,20 @@ impl From<RelayApiError> for ApiError {
     fn from(err: RelayApiError) -> Self {
         tracing::warn!(%err, "Relay transport failed");
         ApiError::BadGateway(err.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::{http::StatusCode, response::IntoResponse};
+
+    use super::ApiError;
+
+    #[test]
+    fn database_row_not_found_maps_to_not_found() {
+        let response = ApiError::Database(sqlx::Error::RowNotFound).into_response();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 }
 
