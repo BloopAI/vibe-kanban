@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { cn } from '@/shared/lib/utils';
 import { MermaidDiagram } from './MermaidDiagram';
 
@@ -13,7 +14,12 @@ interface MarkdownPreviewProps {
 }
 
 const remarkPlugins = [remarkGfm];
-const rehypePlugins = [rehypeRaw, rehypeHighlight];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rehypePlugins: any[] = [
+  rehypeRaw,
+  [rehypeSanitize, defaultSchema],
+  rehypeHighlight,
+];
 
 export function MarkdownPreview({
   content,

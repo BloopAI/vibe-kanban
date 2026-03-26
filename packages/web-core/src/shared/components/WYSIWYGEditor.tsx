@@ -15,7 +15,7 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { TRANSFORMERS, CODE, type Transformer } from '@lexical/markdown';
+import { TRANSFORMERS, type Transformer } from '@lexical/markdown';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { CodeBlockEscapePlugin } from '@vibe/ui/components/CodeBlockEscapePlugin';
 import { InlineCodeBoundaryPlugin } from '@vibe/ui/components/InlineCodeBoundaryPlugin';
@@ -465,7 +465,6 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         PR_COMMENT_TRANSFORMER,
         COMPONENT_INFO_EXPORT_TRANSFORMER,
         COMPONENT_INFO_TRANSFORMER,
-        CODE,
         ...TRANSFORMERS,
       ],
       [ATTACHMENT_TRANSFORMER, IMAGE_TRANSFORMER]
