@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
 import type { RepoAction } from '@vibe/ui/components/RepoCard';
 import type { IssuePriority } from 'shared/remote-types';
@@ -542,7 +542,6 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
       state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
     const isCurrentlyActive = wsState.rightMainPanelMode === mode;
     const isMobile = window.matchMedia('(max-width: 767px)').matches;
-
     set({
       workspacePanelStates: {
         ...state.workspacePanelStates,
@@ -563,30 +562,26 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
 
   setRightMainPanelMode: (mode, workspaceId) => {
     if (!workspaceId) return;
-    const applyUpdate = () => {
-      const state = get();
-      const wsState =
-        state.workspacePanelStates[workspaceId] ??
-        DEFAULT_WORKSPACE_PANEL_STATE;
-      const isMobile = window.matchMedia('(max-width: 767px)').matches;
-      set({
-        workspacePanelStates: {
-          ...state.workspacePanelStates,
-          [workspaceId]: {
-            ...wsState,
-            rightMainPanelMode: mode,
-          },
+    const state = get();
+    const wsState =
+      state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+    set({
+      workspacePanelStates: {
+        ...state.workspacePanelStates,
+        [workspaceId]: {
+          ...wsState,
+          rightMainPanelMode: mode,
         },
-        ...(mode !== null && {
-          isLeftSidebarVisible: isWideScreen()
-            ? state.isLeftSidebarVisible
-            : false,
-        }),
-        ...(isMobile &&
-          mode !== null && { mobileActiveTab: mode as MobileTab }),
-      });
-    };
-    startTransition(applyUpdate);
+      },
+      ...(mode !== null && {
+        isLeftSidebarVisible: isWideScreen()
+          ? state.isLeftSidebarVisible
+          : false,
+      }),
+      ...(isMobile &&
+        mode !== null && { mobileActiveTab: mode as MobileTab }),
+    });
   },
 
   setLeftSidebarVisible: (value) => set({ isLeftSidebarVisible: value }),

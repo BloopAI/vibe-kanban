@@ -104,8 +104,8 @@ const PIERRE_DIFFS_THEME_CSS = `
     content: '';
     position: absolute;
     top: -6px;
-    left: 0;
-    right: 0;
+    left: -4px;
+    right: -4px;
     height: 6px;
     background-color: hsl(var(--bg-secondary));
   }

@@ -185,6 +185,13 @@ export function WorkspacesLayout() {
       : { 'left-main': 50, 'right-main': 50 };
 
   const layoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (layoutTimerRef.current) clearTimeout(layoutTimerRef.current);
+    };
+  }, []);
+
   const onLayoutChange = useCallback(
     (layout: Layout) => {
       if (isLeftMainPanelVisible && rightMainPanelMode !== null) {
