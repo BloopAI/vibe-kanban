@@ -1,6 +1,11 @@
-import { memo, useEffect, useCallback, useState, useMemo } from 'react';
+import { memo, useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CaretDownIcon, CopyIcon, PlusIcon } from '@phosphor-icons/react';
+import {
+  CaretDownIcon,
+  CopyIcon,
+  GithubLogoIcon,
+  PlusIcon,
+} from '@phosphor-icons/react';
 import {
   FileDiff,
   Virtualizer,
@@ -86,14 +91,22 @@ const PIERRE_DIFFS_THEME_CSS = `
     cursor: pointer !important;
     padding-inline: 12px !important;
     border-radius: 4px 4px 0 0;
+    font-family: inherit !important;
+    font-size: 0.875rem !important;
+    line-height: 1.25rem !important;
+  }
+
+  [data-diffs-header] [data-title],
+  [data-diffs-header] [data-prev-name] {
+    font-family: inherit !important;
   }
 
   [data-diffs-header] [data-additions-count] {
-    color: hsl(var(--text-success, 160 77% 35%)) !important;
+    color: hsl(var(--text-success, 142 71% 45%)) !important;
   }
 
   [data-diffs-header] [data-deletions-count] {
-    color: hsl(var(--text-error, 10 100% 40%)) !important;
+    color: hsl(var(--text-error, 0 84% 60%)) !important;
   }
 
   [data-diffs-header] [data-change-icon] {
@@ -236,6 +249,25 @@ function scrollToLineInDiff(
   }
 }
 
+const fileDiffCache = new Map<
+  string,
+  { diff: Diff; ignoreWhitespace: boolean; result: ReturnType<typeof transformDiffToFileDiffMetadata> }
+>();
+
+function getCachedFileDiffMetadata(
+  diff: Diff,
+  ignoreWhitespace: boolean
+) {
+  const path = diff.newPath || diff.oldPath || '';
+  const cached = fileDiffCache.get(path);
+  if (cached && cached.diff === diff && cached.ignoreWhitespace === ignoreWhitespace) {
+    return cached.result;
+  }
+  const result = transformDiffToFileDiffMetadata(diff, { ignoreWhitespace });
+  fileDiffCache.set(path, { diff, ignoreWhitespace, result });
+  return result;
+}
+
 interface DiffFileItemProps {
   diff: Diff;
   initialExpanded: boolean;
@@ -262,13 +294,16 @@ const DiffFileItem = memo(function DiffFileItem({
   const ignoreWhitespace = useIgnoreWhitespaceDiff();
 
   const { comments, drafts, setDraft, addComment } = useReview();
+  const draftsRef = useRef(drafts);
+  draftsRef.current = drafts;
+
   const showGitHubComments = useShowGitHubComments();
   const getGitHubCommentsForFile = useGetGitHubCommentsForFile();
 
   const openInEditor = useOpenInEditor(workspaceId);
 
   const fileDiffMetadata = useMemo(
-    () => transformDiffToFileDiffMetadata(diff, { ignoreWhitespace }),
+    () => getCachedFileDiffMetadata(diff, ignoreWhitespace),
     [diff, ignoreWhitespace]
   );
 
@@ -309,7 +344,7 @@ const DiffFileItem = memo(function DiffFileItem({
       const { lineNumber, annotationSide } = props;
       const splitSide = mapAnnotationSideToSplitSide(annotationSide);
       const widgetKey = `${filePath}-${splitSide}-${lineNumber}`;
-      if (drafts[widgetKey]) return;
+      if (draftsRef.current[widgetKey]) return;
 
       const codeLine = getCodeLineForComment(diff, lineNumber, splitSide);
       setDraft(widgetKey, {
@@ -320,7 +355,7 @@ const DiffFileItem = memo(function DiffFileItem({
         ...(codeLine !== undefined ? { codeLine } : {}),
       });
     },
-    [filePath, drafts, diff, setDraft]
+    [filePath, diff, setDraft]
   );
 
   const options = useMemo(
@@ -352,6 +387,8 @@ const DiffFileItem = memo(function DiffFileItem({
     openInEditor({ filePath });
   }, [openInEditor, filePath]);
 
+  const githubCommentCount = githubCommentsForFile.length;
+
   const renderHeaderMetadata = useCallback(
     () => (
       <div
@@ -364,6 +401,12 @@ const DiffFileItem = memo(function DiffFileItem({
           iconSize="size-icon-xs"
           icon={CopyIcon}
         />
+        {githubCommentCount > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-xs text-low">
+            <GithubLogoIcon className="size-icon-xs" weight="fill" />
+            {githubCommentCount}
+          </span>
+        )}
         {!IS_MOBILE && (
           <OpenInIdeButton
             onClick={handleOpenInIde}
@@ -376,7 +419,7 @@ const DiffFileItem = memo(function DiffFileItem({
         />
       </div>
     ),
-    [handleCopyFilePath, handleOpenInIde, expanded, handleToggle]
+    [handleCopyFilePath, handleOpenInIde, expanded, handleToggle, githubCommentCount]
   );
 
   const FileIcon = useMemo(
@@ -446,7 +489,7 @@ const DiffFileItem = memo(function DiffFileItem({
           const { side, lineNumber } = line;
           const splitSide = mapAnnotationSideToSplitSide(side);
           const widgetKey = `${filePath}-${splitSide}-${lineNumber}`;
-          if (drafts[widgetKey]) return;
+          if (draftsRef.current[widgetKey]) return;
 
           const codeLine = getCodeLineForComment(diff, lineNumber, splitSide);
           setDraft(widgetKey, {
@@ -462,7 +505,7 @@ const DiffFileItem = memo(function DiffFileItem({
         <PlusIcon className="size-3.5" weight="bold" />
       </button>
     ),
-    [filePath, drafts, diff, setDraft, t]
+    [filePath, diff, setDraft, t]
   );
 
   return (

@@ -140,7 +140,6 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
-      useWorkspaceDiffStore.getState().clearWorkspaceDiffData();
     };
   }, [
     diffs,
@@ -155,6 +154,12 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     getFilesWithGitHubComments,
     getFirstCommentLineForFile,
   ]);
+
+  useEffect(() => {
+    return () => {
+      useWorkspaceDiffStore.getState().clearWorkspaceDiffData();
+    };
+  }, []);
 
   const isLoading = isLoadingList || isLoadingWorkspace;
 
