@@ -819,13 +819,13 @@ export type RelayWsMessageType = "text" | "binary" | "ping" | "pong" | "close";
 
 export type DataChannelMessage = { "type": "http_request" } & DataChannelRequest | { "type": "http_response" } & DataChannelResponse | { "type": "ws_open" } & WsOpen | { "type": "ws_opened" } & WsOpened | { "type": "ws_frame" } & WsFrame | { "type": "ws_close" } & WsClose | { "type": "ws_error" } & WsError;
 
-export type DataChannelRequest = { id: string, method: string, path: string, headers: { [key in string]?: string }, 
+export type DataChannelRequest = { id: string, method: string, path: string, headers: { [key in string]?: Array<string> }, 
 /**
  * Base64-encoded request body, if any.
  */
 body_b64?: string | null, };
 
-export type DataChannelResponse = { id: string, status: number, headers: { [key in string]?: string }, 
+export type DataChannelResponse = { id: string, status: number, headers: { [key in string]?: Array<string> }, 
 /**
  * Base64-encoded response body, if any.
  */

@@ -315,12 +315,14 @@ async fn proxy_request(
 
     let mut req_builder = http_client.request(method, &url);
 
-    for (key, value) in &request.headers {
+    for (key, values) in &request.headers {
         let k = key.to_ascii_lowercase();
         if k == "origin" || k == "host" || k == "x-vk-relayed" {
             continue;
         }
-        req_builder = req_builder.header(key.as_str(), value.as_str());
+        for value in values {
+            req_builder = req_builder.header(key.as_str(), value.as_str());
+        }
     }
 
     if let Some(body_b64) = &request.body_b64 {
@@ -344,10 +346,14 @@ async fn proxy_request(
     match req_builder.send().await {
         Ok(response) => {
             let status = response.status().as_u16();
-            let mut headers = std::collections::HashMap::new();
+            let mut headers: std::collections::HashMap<String, Vec<String>> =
+                std::collections::HashMap::new();
             for (key, value) in response.headers() {
                 if let Ok(v) = value.to_str() {
-                    headers.insert(key.to_string(), v.to_string());
+                    headers
+                        .entry(key.to_string())
+                        .or_default()
+                        .push(v.to_string());
                 }
             }
 

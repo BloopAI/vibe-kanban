@@ -551,10 +551,13 @@ impl RelayHost {
             return None;
         }
 
-        let mut header_map = HashMap::new();
+        let mut header_map: HashMap<String, Vec<String>> = HashMap::new();
         for (key, value) in headers {
             if let Ok(v) = value.to_str() {
-                header_map.insert(key.to_string(), v.to_string());
+                header_map
+                    .entry(key.to_string())
+                    .or_default()
+                    .push(v.to_string());
             }
         }
 
@@ -590,14 +593,16 @@ impl RelayHost {
                 let status =
                     StatusCode::from_u16(response.status).unwrap_or(StatusCode::BAD_GATEWAY);
                 let mut header_map = HeaderMap::new();
-                for (name, value) in response.headers {
+                for (name, values) in response.headers {
                     let Ok(name) = HeaderName::from_bytes(name.as_bytes()) else {
                         continue;
                     };
-                    let Ok(value) = HeaderValue::from_str(&value) else {
-                        continue;
-                    };
-                    header_map.append(name, value);
+                    for v in values {
+                        let Ok(value) = HeaderValue::from_str(&v) else {
+                            continue;
+                        };
+                        header_map.append(name.clone(), value);
+                    }
                 }
 
                 Some(ProxiedResponse {
@@ -625,8 +630,9 @@ impl RelayHost {
         }
 
         let webrtc = self.webrtc.clone();
+        let panic_webrtc = webrtc.clone();
 
-        tokio::spawn(async move {
+        let handle = tokio::spawn(async move {
             match negotiate_webrtc(transport).await {
                 Ok(client)
                     if client
@@ -648,6 +654,15 @@ impl RelayHost {
                     tracing::debug!(?e, %host_id, "WebRTC handshake failed (relay fallback active)");
                     webrtc.mark_failed(host_id).await;
                 }
+            }
+        });
+
+        // If the spawned task panics, ensure the cache transitions out of
+        // `Connecting` so future attempts are not permanently blocked.
+        tokio::spawn(async move {
+            if handle.await.is_err() {
+                tracing::warn!(%host_id, "WebRTC negotiation task panicked, marking as failed");
+                panic_webrtc.mark_failed(host_id).await;
             }
         });
     }

@@ -456,7 +456,7 @@ impl WebRtcClient {
         &self,
         method: &str,
         path: &str,
-        headers: HashMap<String, String>,
+        headers: HashMap<String, Vec<String>>,
         body: Option<Vec<u8>>,
     ) -> Result<DataChannelResponse, WebRtcClientError> {
         if !self.is_connected() {
