@@ -41,6 +41,8 @@ interface FileTreeProps {
   scrollContainerRef?: (el: HTMLDivElement | null) => void;
 }
 
+const FILE_NODE_STYLE = { contentVisibility: 'auto' as const, containIntrinsicSize: 'auto 26px' };
+
 export const FileTree = memo(function FileTree({
   nodes,
   collapsedPaths,
@@ -62,10 +64,9 @@ export const FileTree = memo(function FileTree({
   scrollContainerRef,
 }: FileTreeProps) {
   const { t } = useTranslation(['tasks', 'common']);
-  const fileNodeStyle = { contentVisibility: 'auto' as const, containIntrinsicSize: 'auto 26px' };
   const renderNodes = (nodeList: FileTreeViewNode[], depth = 0) => {
     return nodeList.map((node) => (
-      <div key={node.id} style={node.type === 'file' ? fileNodeStyle : undefined}>
+      <div key={node.id} style={node.type === 'file' ? FILE_NODE_STYLE : undefined}>
         <FileTreeNode
           node={node}
           depth={depth}

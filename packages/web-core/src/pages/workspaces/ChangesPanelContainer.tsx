@@ -720,6 +720,10 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
       (entries) => {
         for (const entry of entries) {
           if (!(entry.target instanceof HTMLElement)) continue;
+          if (!entry.target.isConnected) {
+            topBandCandidatesRef.current.delete(entry.target);
+            continue;
+          }
           if (entry.isIntersecting) {
             topBandCandidatesRef.current.add(entry.target);
           } else {

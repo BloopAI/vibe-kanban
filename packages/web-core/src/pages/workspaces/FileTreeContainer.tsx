@@ -77,7 +77,7 @@ export function FileTreeContainer({
     // Retry once after rAF — content-visibility reflow may shift positions
     const rafId = requestAnimationFrame(scrollNodeIntoView);
     return () => cancelAnimationFrame(rafId);
-  }, [activeFilePath, fileInView, selectedFilePath]);
+  }, [activeFilePath]);
 
   const fullTree = useMemo(() => buildFileTree(diffs), [diffs]);
 
