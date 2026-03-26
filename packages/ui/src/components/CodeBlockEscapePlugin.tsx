@@ -73,7 +73,7 @@ export function CodeBlockEscapePlugin() {
         paragraph.selectStart();
         return true;
       },
-      COMMAND_PRIORITY_NORMAL,
+      COMMAND_PRIORITY_NORMAL
     );
 
     const unregisterArrowDown = editor.registerCommand(
@@ -112,7 +112,7 @@ export function CodeBlockEscapePlugin() {
         paragraph.selectStart();
         return true;
       },
-      COMMAND_PRIORITY_NORMAL,
+      COMMAND_PRIORITY_NORMAL
     );
 
     return () => {

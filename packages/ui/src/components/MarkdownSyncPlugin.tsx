@@ -78,7 +78,7 @@ export function MarkdownSyncPlugin({
       if (!onChange) return;
 
       const markdown = editorState.read(() =>
-        $convertToMarkdownString(transformers),
+        $convertToMarkdownString(transformers)
       );
 
       if (markdown === lastSerializedRef.current) return;

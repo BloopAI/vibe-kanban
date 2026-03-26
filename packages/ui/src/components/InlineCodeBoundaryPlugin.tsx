@@ -71,7 +71,7 @@ export function InlineCodeBoundaryPlugin() {
         }
         return handled;
       },
-      COMMAND_PRIORITY_NORMAL,
+      COMMAND_PRIORITY_NORMAL
     );
 
     // Handle backtick key to exit code formatting
