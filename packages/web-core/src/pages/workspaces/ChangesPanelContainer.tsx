@@ -660,6 +660,7 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
     scrollFileToTop: (el: HTMLElement) => Promise<void>;
   } | null>(null);
   const topBandCandidatesRef = useRef<Set<HTMLElement>>(new Set());
+  const latestScrollRequestRef = useRef<number | null>(null);
 
   const itemsToRender =
     mountedCount >= diffItems.length
@@ -787,11 +788,14 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
 
         const requestId = beginProgrammaticScroll(path, lineNumber);
         if (requestId === null) return;
+        latestScrollRequestRef.current = requestId;
 
         void virtualizer
           .scrollFileToTop(fileContainer)
           .then(() => {
-            if (lineNumber) scrollToLineInDiff(wrapper, lineNumber);
+            if (lineNumber && latestScrollRequestRef.current === requestId) {
+              scrollToLineInDiff(wrapper, lineNumber);
+            }
           })
           .finally(() => {
             requestAnimationFrame(() => onScrollComplete(requestId));
