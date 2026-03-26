@@ -261,10 +261,33 @@ function scrollToLineInDiff(
   }
 }
 
-const fileDiffCache = new Map<
+const DIFF_CACHE_MAX = 200;
+
+class LruCache<K, V> {
+  private map = new Map<K, V>();
+  constructor(private max: number) {}
+  get(key: K): V | undefined {
+    const val = this.map.get(key);
+    if (val !== undefined) {
+      this.map.delete(key);
+      this.map.set(key, val);
+    }
+    return val;
+  }
+  set(key: K, val: V): void {
+    if (this.map.has(key)) this.map.delete(key);
+    else if (this.map.size >= this.max) {
+      this.map.delete(this.map.keys().next().value!);
+    }
+    this.map.set(key, val);
+  }
+  clear(): void { this.map.clear(); }
+}
+
+const fileDiffCache = new LruCache<
   string,
   { diff: Diff; ignoreWhitespace: boolean; result: ReturnType<typeof transformDiffToFileDiffMetadata> }
->();
+>(DIFF_CACHE_MAX);
 
 function getCachedFileDiffMetadata(
   diff: Diff,
@@ -399,7 +422,7 @@ const DiffFileItem = memo(function DiffFileItem({
     openInEditor({ filePath });
   }, [openInEditor, filePath]);
 
-  const githubCommentCount = githubCommentsForFile.length || 3; // TODO: remove || 3 mock
+  const githubCommentCount = githubCommentsForFile.length;
 
   const additions = diff.additions ?? 0;
   const deletions = diff.deletions ?? 0;
@@ -580,31 +603,40 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
     });
   }, [diffs, processedPaths]);
 
-  // Progressive mount: mount MOUNT_BATCH_SIZE items per rAF frame
   useEffect(() => {
     if (diffItems.length === 0) {
       setMountedCount(0);
       return;
     }
 
-    // Reset on new data (e.g., workspace switch)
-    setMountedCount(0);
-
-    let count = 0;
-    function mountNextBatch() {
-      count = Math.min(count + MOUNT_BATCH_SIZE, diffItems.length);
-      setMountedCount(count);
-      if (count < diffItems.length) {
-        rafRef.current = requestAnimationFrame(mountNextBatch);
-      } else {
-        rafRef.current = null;
-      }
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     }
 
-    // Start after first paint so panel shell renders immediately
+    setMountedCount((prev) => {
+      if (prev >= diffItems.length) return diffItems.length;
+      return prev;
+    });
+
+    let cancelled = false;
+    function mountNextBatch() {
+      if (cancelled) return;
+      setMountedCount((prev) => {
+        const next = Math.min(prev + MOUNT_BATCH_SIZE, diffItems.length);
+        if (next < diffItems.length) {
+          rafRef.current = requestAnimationFrame(mountNextBatch);
+        } else {
+          rafRef.current = null;
+        }
+        return next;
+      });
+    }
+
     rafRef.current = requestAnimationFrame(mountNextBatch);
 
     return () => {
+      cancelled = true;
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
