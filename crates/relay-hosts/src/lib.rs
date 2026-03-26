@@ -708,6 +708,7 @@ impl RelayHost {
                     host_id = %self.identity.host_id,
                     "WebRTC WS open failed, falling back to relay"
                 );
+                self.webrtc.remove(self.identity.host_id).await;
                 None
             }
         }
