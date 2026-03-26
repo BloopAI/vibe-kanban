@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { create } from 'zustand';
 import type { RepoAction } from '@vibe/ui/components/RepoCard';
 import type { IssuePriority } from 'shared/remote-types';
@@ -867,15 +867,21 @@ export function useExpandedAll() {
 // Hook for persisted file tree collapsed paths (per workspace)
 export function usePersistedCollapsedPaths(
   workspaceId: string | undefined
-): [Set<string>, (paths: Set<string>) => void] {
+): [Set<string>, (paths: Set<string> | ((prev: Set<string>) => Set<string>)) => void] {
   const key = workspaceId ? `file-tree:${workspaceId}` : '';
   const paths = useUiPreferencesStore((s) => s.collapsedPaths[key] ?? []);
   const setPaths = useUiPreferencesStore((s) => s.setCollapsedPaths);
 
   const pathSet = useMemo(() => new Set(paths), [paths]);
+  const pathSetRef = useRef(pathSet);
+  pathSetRef.current = pathSet;
+
   const setPathSet = useCallback(
-    (newPaths: Set<string>) => {
-      if (key) setPaths(key, [...newPaths]);
+    (newPaths: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+      if (!key) return;
+      const resolved =
+        typeof newPaths === 'function' ? newPaths(pathSetRef.current) : newPaths;
+      setPaths(key, [...resolved]);
     },
     [key, setPaths]
   );

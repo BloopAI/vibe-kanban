@@ -1,4 +1,4 @@
-import { forwardRef, type ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import {
   CaretDownIcon,
   CaretRightIcon,
@@ -34,8 +34,8 @@ interface FileTreeNodeProps {
   depth: number;
   isExpanded?: boolean;
   isSelected?: boolean;
-  onToggle?: () => void;
-  onSelect?: () => void;
+  onToggle?: (path: string) => void;
+  onSelect?: (path: string) => void;
   renderFileIcon?: (fileName: string) => ReactNode;
   /** GitHub comment count for this file */
   commentCount?: number;
@@ -43,21 +43,17 @@ interface FileTreeNodeProps {
   showCommentBadge?: boolean;
 }
 
-export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
-  function FileTreeNode(
-    {
-      node,
-      depth,
-      isExpanded = false,
-      isSelected = false,
-      onToggle,
-      onSelect,
-      renderFileIcon,
-      commentCount,
-      showCommentBadge,
-    },
-    ref
-  ) {
+export const FileTreeNode = memo(function FileTreeNode({
+  node,
+  depth,
+  isExpanded = false,
+  isSelected = false,
+  onToggle,
+  onSelect,
+  renderFileIcon,
+  commentCount,
+  showCommentBadge,
+}: FileTreeNodeProps) {
     const isFolder = node.type === 'folder';
     const isDeleted = node.changeKind === 'deleted';
     const isAdded = node.changeKind === 'added';
@@ -70,15 +66,14 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
 
     const handleClick = () => {
       if (isFolder && onToggle) {
-        onToggle();
+        onToggle(node.path);
       } else if (!isFolder && onSelect) {
-        onSelect();
+        onSelect(node.path);
       }
     };
 
     return (
       <div
-        ref={ref}
         className={cn(
           'flex items-center h-[26px] cursor-pointer text-low hover:bg-panel rounded',
           'relative select-none',
@@ -172,5 +167,4 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
         </div>
       </div>
     );
-  }
-);
+});

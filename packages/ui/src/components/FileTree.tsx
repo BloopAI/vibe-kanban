@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   GithubLogoIcon,
@@ -20,7 +20,6 @@ interface FileTreeProps {
   onToggleExpand: (path: string) => void;
   selectedPath?: string | null;
   onSelectFile?: (path: string) => void;
-  onNodeRef?: (path: string, el: HTMLDivElement | null) => void;
   renderFileIcon?: (fileName: string) => ReactNode;
   searchQuery: string;
   onSearchChange: (value: string) => void;
@@ -41,13 +40,12 @@ interface FileTreeProps {
   hasFilesWithComments?: boolean;
 }
 
-export function FileTree({
+export const FileTree = memo(function FileTree({
   nodes,
   collapsedPaths,
   onToggleExpand,
   selectedPath,
   onSelectFile,
-  onNodeRef,
   searchQuery,
   onSearchChange,
   isAllExpanded,
@@ -66,25 +64,14 @@ export function FileTree({
     return nodeList.map((node) => (
       <div key={node.id}>
         <FileTreeNode
-          ref={
-            node.type === 'file' && onNodeRef
-              ? (el) => onNodeRef(node.path, el)
-              : undefined
-          }
           node={node}
           depth={depth}
           isExpanded={!collapsedPaths.has(node.path)}
           isSelected={selectedPath === node.path}
-          onToggle={
-            node.type === 'folder' ? () => onToggleExpand(node.path) : undefined
-          }
-          onSelect={
-            node.type === 'file' && onSelectFile
-              ? () => onSelectFile(node.path)
-              : undefined
-          }
+          onToggle={node.type === 'folder' ? onToggleExpand : undefined}
+          onSelect={node.type === 'file' ? onSelectFile : undefined}
           renderFileIcon={renderFileIcon}
-          commentCount={getGitHubCommentCountForFile?.(node.path)}
+          commentCount={showGitHubComments ? getGitHubCommentCountForFile?.(node.path) : undefined}
           showCommentBadge={showGitHubComments}
         />
         {node.type === 'folder' &&
@@ -170,4 +157,4 @@ export function FileTree({
       </div>
     </div>
   );
-}
+});

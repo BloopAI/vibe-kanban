@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+
 import { FileTree } from '@vibe/ui/components/FileTree';
 import {
   buildFileTree,
@@ -39,8 +40,6 @@ export function FileTreeContainer({
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedPaths, setCollapsedPaths] =
     usePersistedCollapsedPaths(workspaceId);
-  const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-
   const showGitHubComments = useShowGitHubComments();
   const setShowGitHubComments = useSetShowGitHubComments();
   const getGitHubCommentCountForFile = useGetGitHubCommentCountForFile();
@@ -49,17 +48,6 @@ export function FileTreeContainer({
   const isGitHubCommentsLoading = useIsGitHubCommentsLoading();
 
   const { selectedFilePath, scrollToFile } = useChangesView();
-
-  const handleNodeRef = useCallback(
-    (path: string, el: HTMLDivElement | null) => {
-      if (el) {
-        nodeRefs.current.set(path, el);
-      } else {
-        nodeRefs.current.delete(path);
-      }
-    },
-    []
-  );
 
   // Build tree from diffs
   const fullTree = useMemo(() => buildFileTree(diffs), [diffs]);
@@ -91,15 +79,17 @@ export function FileTreeContainer({
 
   const handleToggleExpand = useCallback(
     (path: string) => {
-      const next = new Set(collapsedPaths);
-      if (next.has(path)) {
-        next.delete(path); // was collapsed, now expand
-      } else {
-        next.add(path); // was expanded, now collapse
-      }
-      setCollapsedPaths(next);
+      setCollapsedPaths((prev) => {
+        const next = new Set(prev);
+        if (next.has(path)) {
+          next.delete(path);
+        } else {
+          next.add(path);
+        }
+        return next;
+      });
     },
-    [collapsedPaths, setCollapsedPaths]
+    [setCollapsedPaths]
   );
 
   const handleToggleExpandAll = useCallback(() => {
@@ -181,7 +171,6 @@ export function FileTreeContainer({
       onToggleExpand={handleToggleExpand}
       selectedPath={selectedFilePath}
       onSelectFile={handleSelectFile}
-      onNodeRef={handleNodeRef}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       renderFileIcon={renderFileIcon}
