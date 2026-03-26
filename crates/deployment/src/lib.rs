@@ -31,6 +31,7 @@ use services::services::{
 use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::sync::RwLock;
+use tokio_util::sync::CancellationToken;
 use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
 use utils::sentry as sentry_utils;
 use worktree_manager::WorktreeError;
@@ -77,7 +78,7 @@ pub enum DeploymentError {
 
 #[async_trait]
 pub trait Deployment: Clone + Send + Sync + 'static {
-    async fn new() -> Result<Self, DeploymentError>;
+    async fn new(shutdown: CancellationToken) -> Result<Self, DeploymentError>;
 
     fn user_id(&self) -> &str;
 

@@ -97,13 +97,17 @@ impl ServerHandle {
 /// resolves to `::1` (IPv6) first — binding to `127.0.0.1` (IPv4) while
 /// the browser connects via `::1` causes "connection refused".
 pub async fn start() -> anyhow::Result<ServerHandle> {
-    start_with_bind("localhost:0", "localhost:0").await
+    start_with_bind("localhost:0", "localhost:0", CancellationToken::new()).await
 }
 
 /// Like [`start`], but lets the caller specify the bind addresses for the main
 /// server and the preview proxy (e.g. `"0.0.0.0:8080"`).
-pub async fn start_with_bind(main_addr: &str, proxy_addr: &str) -> anyhow::Result<ServerHandle> {
-    let deployment = initialize_deployment().await?;
+pub async fn start_with_bind(
+    main_addr: &str,
+    proxy_addr: &str,
+    shutdown_token: CancellationToken,
+) -> anyhow::Result<ServerHandle> {
+    let deployment = initialize_deployment(shutdown_token.clone()).await?;
 
     let listener = tokio::net::TcpListener::bind(main_addr).await?;
     let port = listener.local_addr()?.port();
@@ -117,7 +121,7 @@ pub async fn start_with_bind(main_addr: &str, proxy_addr: &str) -> anyhow::Resul
         port,
         proxy_port,
         deployment,
-        shutdown_token: CancellationToken::new(),
+        shutdown_token,
         main_listener: listener,
         proxy_listener,
     })
@@ -125,7 +129,9 @@ pub async fn start_with_bind(main_addr: &str, proxy_addr: &str) -> anyhow::Resul
 
 /// Initialize the deployment: create asset directory, run migrations, backfill data,
 /// and pre-warm caches. Shared between the standalone server and the Tauri app.
-pub async fn initialize_deployment() -> Result<DeploymentImpl, DeploymentError> {
+pub async fn initialize_deployment(
+    shutdown: CancellationToken,
+) -> Result<DeploymentImpl, DeploymentError> {
     // Create asset directory if it doesn't exist
     if !asset_dir().exists() {
         std::fs::create_dir_all(asset_dir()).map_err(|e| {
@@ -146,7 +152,7 @@ pub async fn initialize_deployment() -> Result<DeploymentImpl, DeploymentError> 
         tracing::info!("Database copy complete");
     }
 
-    let deployment = DeploymentImpl::new().await?;
+    let deployment = DeploymentImpl::new(shutdown).await?;
     migrate_legacy_attachment_directories(&deployment).await?;
     deployment.update_sentry_scope().await?;
     deployment

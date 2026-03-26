@@ -74,6 +74,7 @@ pub struct LocalDeployment {
     remote_info: RemoteInfo,
     preview_proxy: PreviewProxyService,
     relay_hosts: Option<Arc<RelayHosts>>,
+    shutdown: CancellationToken,
     webrtc_host: OnceLock<Arc<WebRtcHost>>,
     ssh_config: Arc<russh::server::Config>,
     pty: PtyService,
@@ -88,7 +89,7 @@ struct PendingHandoff {
 
 #[async_trait]
 impl Deployment for LocalDeployment {
-    async fn new() -> Result<Self, DeploymentError> {
+    async fn new(shutdown: CancellationToken) -> Result<Self, DeploymentError> {
         // Run one-time process logs migration from DB to filesystem
         services::services::execution_process::migrate_execution_logs_to_files()
             .await
@@ -240,7 +241,13 @@ impl Deployment for LocalDeployment {
         let pty = PtyService::new();
         let relay_hosts = match remote_client.clone().ok() {
             Some(remote_client) => Some(Arc::new(
-                RelayHosts::load(remote_client, remote_info.clone(), relay_signing.clone()).await,
+                RelayHosts::load(
+                    remote_client,
+                    remote_info.clone(),
+                    relay_signing.clone(),
+                    shutdown.child_token(),
+                )
+                .await,
             )),
             None => None,
         };
@@ -281,6 +288,7 @@ impl Deployment for LocalDeployment {
             remote_info,
             preview_proxy,
             relay_hosts,
+            shutdown,
             webrtc_host: OnceLock::new(),
             ssh_config,
             pty,
@@ -381,7 +389,7 @@ impl LocalDeployment {
 
         Some(
             self.webrtc_host
-                .get_or_init(|| Arc::new(WebRtcHost::new(local_addr, CancellationToken::new())))
+                .get_or_init(|| Arc::new(WebRtcHost::new(local_addr, self.shutdown.child_token())))
                 .clone(),
         )
     }

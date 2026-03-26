@@ -6,6 +6,7 @@ use std::{
 
 use relay_webrtc::WebRtcClient;
 use tokio::sync::RwLock;
+use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 /// How long to wait before retrying a failed WebRTC handshake.
@@ -22,12 +23,31 @@ enum WebRtcConnectionState {
 }
 
 /// Cache of active WebRTC direct connections keyed by host ID.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub(crate) struct WebRtcConnectionCache {
     hosts: Arc<RwLock<HashMap<Uuid, WebRtcConnectionState>>>,
+    shutdown: CancellationToken,
+}
+
+impl Default for WebRtcConnectionCache {
+    fn default() -> Self {
+        Self::new(CancellationToken::new())
+    }
 }
 
 impl WebRtcConnectionCache {
+    pub fn new(shutdown: CancellationToken) -> Self {
+        Self {
+            hosts: Arc::new(RwLock::new(HashMap::new())),
+            shutdown,
+        }
+    }
+
+    /// Return a child cancellation token for a new WebRTC client connection.
+    pub fn child_token(&self) -> CancellationToken {
+        self.shutdown.child_token()
+    }
+
     pub async fn get(&self, host_id: Uuid) -> Option<Arc<WebRtcClient>> {
         match self.hosts.read().await.get(&host_id) {
             Some(WebRtcConnectionState::Connected(client)) => Some(client.clone()),

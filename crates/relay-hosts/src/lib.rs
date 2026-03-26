@@ -353,6 +353,7 @@ impl RelayHosts {
         remote_client: RemoteClient,
         remote_info: RemoteInfo,
         relay_signing: RelaySigningService,
+        shutdown: CancellationToken,
     ) -> Self {
         Self {
             repository: RelayHostRepository::load().await,
@@ -363,7 +364,7 @@ impl RelayHosts {
                 relay_signing,
                 tunnel_manager: TunnelManager::default(),
             },
-            webrtc: WebRtcConnectionCache::default(),
+            webrtc: WebRtcConnectionCache::new(shutdown),
         }
     }
 
@@ -631,9 +632,10 @@ impl RelayHost {
 
         let webrtc = self.webrtc.clone();
         let panic_webrtc = webrtc.clone();
+        let shutdown = self.webrtc.child_token();
 
         let handle = tokio::spawn(async move {
-            match negotiate_webrtc(transport).await {
+            match negotiate_webrtc(transport, shutdown).await {
                 Ok(client)
                     if client
                         .wait_until_connected(std::time::Duration::from_secs(5))
@@ -782,6 +784,7 @@ impl RelayHost {
 /// relay sessions are created and no shared session cache is touched.
 async fn negotiate_webrtc(
     mut transport: RelayHostTransport,
+    shutdown: CancellationToken,
 ) -> Result<WebRtcClient, NegotiateWebRtcError> {
     let session_id = Uuid::new_v4().to_string();
     let webrtc_offer = WebRtcClient::create_offer(session_id).await?;
@@ -816,7 +819,6 @@ async fn negotiate_webrtc(
         ))
     })?;
 
-    let shutdown = CancellationToken::new();
     let client = WebRtcClient::connect(webrtc_offer, &answer.sdp, shutdown).await?;
     Ok(client)
 }

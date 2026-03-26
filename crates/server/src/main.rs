@@ -67,7 +67,9 @@ async fn main() -> Result<(), VibeKanbanError> {
         tracing::info!("Database copy complete");
     }
 
-    let deployment = DeploymentImpl::new().await?;
+    let shutdown_token = CancellationToken::new();
+
+    let deployment = DeploymentImpl::new(shutdown_token.clone()).await?;
     deployment.update_sentry_scope().await?;
     deployment
         .container()
@@ -121,8 +123,6 @@ async fn main() -> Result<(), VibeKanbanError> {
     if let Err(e) = write_port_file_with_proxy(actual_main_port, Some(actual_proxy_port)).await {
         tracing::warn!("Failed to write port file: {}", e);
     }
-
-    let shutdown_token = CancellationToken::new();
 
     tracing::info!(
         "Main server on :{}, Preview proxy on :{}",
