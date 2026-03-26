@@ -579,8 +579,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
           ? state.isLeftSidebarVisible
           : false,
       }),
-      ...(isMobile &&
-        mode !== null && { mobileActiveTab: mode as MobileTab }),
+      ...(isMobile && mode !== null && { mobileActiveTab: mode as MobileTab }),
     });
   },
 
@@ -867,7 +866,10 @@ export function useExpandedAll() {
 // Hook for persisted file tree collapsed paths (per workspace)
 export function usePersistedCollapsedPaths(
   workspaceId: string | undefined
-): [Set<string>, (paths: Set<string> | ((prev: Set<string>) => Set<string>)) => void] {
+): [
+  Set<string>,
+  (paths: Set<string> | ((prev: Set<string>) => Set<string>)) => void,
+] {
   const key = workspaceId ? `file-tree:${workspaceId}` : '';
   const paths = useUiPreferencesStore((s) => s.collapsedPaths[key] ?? []);
   const setPaths = useUiPreferencesStore((s) => s.setCollapsedPaths);
@@ -880,7 +882,9 @@ export function usePersistedCollapsedPaths(
     (newPaths: Set<string> | ((prev: Set<string>) => Set<string>)) => {
       if (!key) return;
       const resolved =
-        typeof newPaths === 'function' ? newPaths(pathSetRef.current) : newPaths;
+        typeof newPaths === 'function'
+          ? newPaths(pathSetRef.current)
+          : newPaths;
       setPaths(key, [...resolved]);
     },
     [key, setPaths]

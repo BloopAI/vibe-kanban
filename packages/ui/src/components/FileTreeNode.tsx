@@ -74,6 +74,7 @@ export const FileTreeNode = memo(function FileTreeNode({
 
     return (
       <div
+        data-tree-path={node.path}
         className={cn(
           'flex items-center h-[26px] cursor-pointer text-low hover:bg-panel rounded',
           'relative select-none',

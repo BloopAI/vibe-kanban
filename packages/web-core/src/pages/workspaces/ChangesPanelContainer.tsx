@@ -15,6 +15,8 @@ import type { DiffLineAnnotation, AnnotationSide } from '@pierre/diffs';
 import WorkerUrl from '@pierre/diffs/worker/worker.js?worker&url';
 import { sortDiffs } from '@/shared/lib/fileTreeUtils';
 import { useChangesView } from '@/shared/hooks/useChangesView';
+import { useScrollSyncStateMachine } from '@/shared/hooks/useScrollSyncStateMachine';
+import { useFileInViewStore } from '@/shared/stores/useFileInViewStore';
 import {
   useDiffs,
   useShowGitHubComments,
@@ -247,10 +249,7 @@ function getCodeLineForComment(
   return getLineContent(content, lineNumber);
 }
 
-function scrollToLineInDiff(
-  fileEl: HTMLElement,
-  lineNumber: number
-): void {
+function scrollToLineInDiff(fileEl: HTMLElement, lineNumber: number): void {
   const container = fileEl.querySelector('diffs-container');
   const shadowRoot = container?.shadowRoot ?? null;
   if (shadowRoot) {
@@ -281,21 +280,28 @@ class LruCache<K, V> {
     }
     this.map.set(key, val);
   }
-  clear(): void { this.map.clear(); }
+  clear(): void {
+    this.map.clear();
+  }
 }
 
 const fileDiffCache = new LruCache<
   string,
-  { diff: Diff; ignoreWhitespace: boolean; result: ReturnType<typeof transformDiffToFileDiffMetadata> }
+  {
+    diff: Diff;
+    ignoreWhitespace: boolean;
+    result: ReturnType<typeof transformDiffToFileDiffMetadata>;
+  }
 >(DIFF_CACHE_MAX);
 
-function getCachedFileDiffMetadata(
-  diff: Diff,
-  ignoreWhitespace: boolean
-) {
+function getCachedFileDiffMetadata(diff: Diff, ignoreWhitespace: boolean) {
   const path = diff.newPath || diff.oldPath || '';
   const cached = fileDiffCache.get(path);
-  if (cached && cached.diff === diff && cached.ignoreWhitespace === ignoreWhitespace) {
+  if (
+    cached &&
+    cached.diff === diff &&
+    cached.ignoreWhitespace === ignoreWhitespace
+  ) {
     return cached.result;
   }
   const result = transformDiffToFileDiffMetadata(diff, { ignoreWhitespace });
@@ -444,9 +450,7 @@ const DiffFileItem = memo(function DiffFileItem({
             {additions > 0 && (
               <span className="text-success">+{additions}</span>
             )}
-            {deletions > 0 && (
-              <span className="text-error">-{deletions}</span>
-            )}
+            {deletions > 0 && <span className="text-error">-{deletions}</span>}
           </span>
         )}
         {githubCommentCount > 0 && (
@@ -467,7 +471,15 @@ const DiffFileItem = memo(function DiffFileItem({
         />
       </div>
     ),
-    [handleCopyFilePath, handleOpenInIde, expanded, handleToggle, githubCommentCount, additions, deletions]
+    [
+      handleCopyFilePath,
+      handleOpenInIde,
+      expanded,
+      handleToggle,
+      githubCommentCount,
+      additions,
+      deletions,
+    ]
   );
 
   const FileIcon = useMemo(
@@ -644,7 +656,108 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
     };
   }, [diffItems]);
 
-  const virtualizerRef = useRef<{ scrollFileToTop: (el: HTMLElement) => Promise<void> } | null>(null);
+  const virtualizerRef = useRef<{
+    scrollFileToTop: (el: HTMLElement) => Promise<void>;
+  } | null>(null);
+  const topBandCandidatesRef = useRef<Set<HTMLElement>>(new Set());
+
+  const itemsToRender =
+    mountedCount >= diffItems.length
+      ? diffItems
+      : diffItems.slice(0, mountedCount);
+
+  const orderedPaths = useMemo(
+    () => diffItems.map(({ diff }) => diff.newPath || diff.oldPath || ''),
+    [diffItems]
+  );
+
+  const pathToIndex = useMemo(
+    () => new Map(orderedPaths.map((p, i) => [p, i])),
+    [orderedPaths]
+  );
+
+  const indexToPath = useCallback(
+    (index: number) => orderedPaths[index] ?? null,
+    [orderedPaths]
+  );
+
+  const handleFileInViewChanged = useCallback((path: string | null) => {
+    useFileInViewStore.getState().setFileInView(path);
+  }, []);
+
+  const {
+    scrollToFile: beginProgrammaticScroll,
+    onRangeChanged: updateFileInViewFromRange,
+    onScrollComplete,
+  } = useScrollSyncStateMachine({
+    pathToIndex,
+    indexToPath,
+    onFileInViewChanged: handleFileInViewChanged,
+  });
+
+  useEffect(() => {
+    if (itemsToRender.length === 0) return;
+
+    const firstWrapper = document.querySelector('[data-diff-path]');
+    const scrollRoot =
+      firstWrapper instanceof HTMLElement
+        ? firstWrapper.closest('.overflow-auto')
+        : null;
+
+    if (!(scrollRoot instanceof HTMLElement)) return;
+
+    topBandCandidatesRef.current.clear();
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!(entry.target instanceof HTMLElement)) continue;
+          if (entry.isIntersecting) {
+            topBandCandidatesRef.current.add(entry.target);
+          } else {
+            topBandCandidatesRef.current.delete(entry.target);
+          }
+        }
+
+        let topPath: string | null = null;
+        let minDist = Infinity;
+        const rootTop = scrollRoot.getBoundingClientRect().top;
+
+        for (const el of topBandCandidatesRef.current) {
+          if (!el.isConnected) {
+            topBandCandidatesRef.current.delete(el);
+            continue;
+          }
+          const dist = Math.abs(el.getBoundingClientRect().top - rootTop);
+          if (dist < minDist) {
+            minDist = dist;
+            topPath = el.dataset.diffPath ?? null;
+          }
+        }
+
+        if (topPath) {
+          const idx = pathToIndex.get(topPath);
+          if (idx !== undefined) {
+            updateFileInViewFromRange({ startIndex: idx, endIndex: idx });
+          }
+        }
+      },
+      {
+        root: scrollRoot,
+        rootMargin: '0px 0px -90% 0px',
+        threshold: 0,
+      }
+    );
+
+    scrollRoot
+      .querySelectorAll<HTMLElement>('[data-diff-path]')
+      .forEach((el) => observer.observe(el));
+
+    return () => {
+      topBandCandidatesRef.current.clear();
+      observer.disconnect();
+    };
+  }, [itemsToRender.length, pathToIndex, updateFileInViewFromRange]);
 
   const handleScrollToFile = useCallback(
     (path: string, lineNumber?: number) => {
@@ -670,14 +783,22 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
         if (!(fileContainer instanceof HTMLElement)) return;
 
         const virtualizer = virtualizerRef.current;
-        if (virtualizer) {
-          void virtualizer.scrollFileToTop(fileContainer).then(() => {
+        if (!virtualizer) return;
+
+        const requestId = beginProgrammaticScroll(path, lineNumber);
+        if (requestId === null) return;
+
+        void virtualizer
+          .scrollFileToTop(fileContainer)
+          .then(() => {
             if (lineNumber) scrollToLineInDiff(wrapper, lineNumber);
+          })
+          .finally(() => {
+            requestAnimationFrame(() => onScrollComplete(requestId));
           });
-        }
       });
     },
-    [diffItems.length]
+    [diffItems.length, beginProgrammaticScroll, onScrollComplete]
   );
 
   useEffect(() => {
@@ -687,17 +808,13 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
     };
   }, [registerScrollToFile, handleScrollToFile]);
 
-  const itemsToRender = mountedCount >= diffItems.length
-    ? diffItems
-    : diffItems.slice(0, mountedCount);
-
   return (
     <WorkerPoolContextProvider
       poolOptions={POOL_OPTIONS}
       highlighterOptions={HIGHLIGHTER_OPTIONS}
     >
       <Virtualizer
-        {...{ ref: virtualizerRef } as Record<string, unknown>}
+        {...({ ref: virtualizerRef } as Record<string, unknown>)}
         className={`w-full h-full overflow-auto bg-secondary px-base pt-1 ${className}`}
         contentClassName="flex flex-col gap-1"
         style={{ contain: 'layout style paint' }}

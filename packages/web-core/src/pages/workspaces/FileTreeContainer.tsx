@@ -9,6 +9,7 @@ import {
   sortDiffs,
 } from '@/shared/lib/fileTreeUtils';
 import { usePersistedCollapsedPaths } from '@/shared/stores/useUiPreferencesStore';
+import { useFileInView } from '@/shared/stores/useFileInViewStore';
 import {
   useShowGitHubComments,
   useSetShowGitHubComments,
@@ -48,8 +49,36 @@ export function FileTreeContainer({
   const isGitHubCommentsLoading = useIsGitHubCommentsLoading();
 
   const { selectedFilePath, scrollToFile } = useChangesView();
+  const fileInView = useFileInView();
+  const activeFilePath = fileInView ?? selectedFilePath;
+  const treeScrollRef = useRef<HTMLDivElement | null>(null);
+  const treeScrollCallbackRef = useCallback((el: HTMLDivElement | null) => {
+    treeScrollRef.current = el;
+  }, []);
 
-  // Build tree from diffs
+  useEffect(() => {
+    if (!activeFilePath || !treeScrollRef.current) return;
+    const container = treeScrollRef.current;
+    const selector = `[data-tree-path="${CSS.escape(activeFilePath)}"]`;
+    const node = container.querySelector(selector);
+    if (!(node instanceof HTMLElement)) return;
+
+    const scrollNodeIntoView = () => {
+      const cRect = container.getBoundingClientRect();
+      const nRect = node.getBoundingClientRect();
+      if (nRect.top < cRect.top) {
+        container.scrollTop += nRect.top - cRect.top - 4;
+      } else if (nRect.bottom > cRect.bottom) {
+        container.scrollTop += nRect.bottom - cRect.bottom + 4;
+      }
+    };
+
+    scrollNodeIntoView();
+    // Retry once after rAF — content-visibility reflow may shift positions
+    const rafId = requestAnimationFrame(scrollNodeIntoView);
+    return () => cancelAnimationFrame(rafId);
+  }, [activeFilePath, fileInView, selectedFilePath]);
+
   const fullTree = useMemo(() => buildFileTree(diffs), [diffs]);
 
   // Get all folder paths for expand all functionality
@@ -130,8 +159,8 @@ export function FileTreeContainer({
     (direction: 'prev' | 'next') => {
       if (filesWithComments.length === 0) return;
 
-      const currentIndex = selectedFilePath
-        ? filesWithComments.indexOf(selectedFilePath)
+      const currentIndex = activeFilePath
+        ? filesWithComments.indexOf(activeFilePath)
         : -1;
       let nextIndex: number;
 
@@ -150,7 +179,7 @@ export function FileTreeContainer({
     },
     [
       filesWithComments,
-      selectedFilePath,
+      activeFilePath,
       getFirstCommentLineForFile,
       scrollToFile,
     ]
@@ -169,7 +198,7 @@ export function FileTreeContainer({
       nodes={filteredTree}
       collapsedPaths={collapsedPaths}
       onToggleExpand={handleToggleExpand}
-      selectedPath={selectedFilePath}
+      selectedPath={activeFilePath}
       onSelectFile={handleSelectFile}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
@@ -177,6 +206,7 @@ export function FileTreeContainer({
       isAllExpanded={isAllExpanded}
       onToggleExpandAll={handleToggleExpandAll}
       className={className}
+      scrollContainerRef={treeScrollCallbackRef}
       showGitHubComments={showGitHubComments}
       onToggleGitHubComments={setShowGitHubComments}
       getGitHubCommentCountForFile={getGitHubCommentCountForFile}

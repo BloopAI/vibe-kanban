@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 
 /**
  * State machine for managing bidirectional scroll sync between file tree and diff view.
@@ -48,27 +48,10 @@ export interface ScrollSyncResult {
   fileInView: string | null;
   /** Current scroll target (set during programmatic-scroll state) */
   scrollTarget: ScrollTarget | null;
-  /**
-   * Trigger a programmatic scroll to a file.
-   * Sets state to 'programmatic-scroll' and returns the target index.
-   * Returns null if path not found in pathToIndex map.
-   */
   scrollToFile: (path: string, lineNumber?: number) => number | null;
-  /**
-   * Call when user initiates a scroll (e.g., wheel event, touch).
-   * Transitions to 'user-scrolling' state if currently idle.
-   */
   onUserScroll: () => void;
-  /**
-   * Call when virtuoso's rangeChanged fires.
-   * Updates fileInView only when in 'idle' or 'user-scrolling' state.
-   */
   onRangeChanged: (range: { startIndex: number; endIndex: number }) => void;
-  /**
-   * Call when programmatic scroll animation completes.
-   * Transitions from 'programmatic-scroll' to 'sync-cooldown'.
-   */
-  onScrollComplete: () => void;
+  onScrollComplete: (requestId?: number) => void;
 }
 
 const DEFAULT_DEBOUNCE_DELAY = 300;
@@ -89,14 +72,30 @@ export function useScrollSyncStateMachine(
   const stateRef = useRef<SyncState>('idle');
   const scrollTargetRef = useRef<ScrollTarget | null>(null);
   const fileInViewRef = useRef<string | null>(null);
+  const scrollRequestIdRef = useRef(0);
+  const mountedRef = useRef(true);
 
   // Timer refs for cleanup
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Keep callback ref fresh without re-renders
+  // Keep refs fresh without re-renders
   const onFileInViewChangedRef = useRef(onFileInViewChanged);
   onFileInViewChangedRef.current = onFileInViewChanged;
+  const pathToIndexRef = useRef(pathToIndex);
+  pathToIndexRef.current = pathToIndex;
+  const indexToPathRef = useRef(indexToPath);
+  indexToPathRef.current = indexToPath;
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
+    };
+  }, []);
 
   const clearTimers = useCallback(() => {
     if (debounceTimerRef.current) {
@@ -115,23 +114,17 @@ export function useScrollSyncStateMachine(
    */
   const scrollToFile = useCallback(
     (path: string, lineNumber?: number): number | null => {
-      const index = pathToIndex.get(path);
-      if (index === undefined) {
-        return null;
-      }
+      const index = pathToIndexRef.current.get(path);
+      if (index === undefined) return null;
 
-      // Clear any pending timers
       clearTimers();
-
-      // Set scroll target
+      scrollRequestIdRef.current++;
       scrollTargetRef.current = { path, lineNumber, index };
-
-      // Transition to programmatic-scroll state (ref only, no re-render)
       stateRef.current = 'programmatic-scroll';
 
-      return index;
+      return scrollRequestIdRef.current;
     },
-    [pathToIndex, clearTimers]
+    [clearTimers]
   );
 
   /**
@@ -169,9 +162,9 @@ export function useScrollSyncStateMachine(
    */
   const onRangeChanged = useCallback(
     (range: { startIndex: number; endIndex: number }) => {
+      if (!mountedRef.current) return;
       const currentState = stateRef.current;
 
-      // Only update fileInView during idle or user-scrolling
       if (
         currentState === 'programmatic-scroll' ||
         currentState === 'sync-cooldown'
@@ -179,55 +172,50 @@ export function useScrollSyncStateMachine(
         return;
       }
 
-      // Use index-based lookup (no DOM measurement)
-      const path = indexToPath(range.startIndex);
+      const path = indexToPathRef.current(range.startIndex);
       if (path !== null && fileInViewRef.current !== path) {
         fileInViewRef.current = path;
         onFileInViewChangedRef.current?.(path);
       }
 
-      // If user is scrolling, reset the debounce timer
       if (currentState === 'user-scrolling') {
         if (debounceTimerRef.current) {
           clearTimeout(debounceTimerRef.current);
         }
         debounceTimerRef.current = setTimeout(() => {
           debounceTimerRef.current = null;
-          if (stateRef.current === 'user-scrolling') {
+          if (mountedRef.current && stateRef.current === 'user-scrolling') {
             stateRef.current = 'idle';
           }
         }, debounceDelay);
       }
     },
-    [indexToPath, debounceDelay]
+    [debounceDelay]
   );
 
   /**
    * Handle programmatic scroll completion.
    * Transition: programmatic-scroll → sync-cooldown → idle
    */
-  const onScrollComplete = useCallback(() => {
-    const currentState = stateRef.current;
+  const onScrollComplete = useCallback(
+    (requestId?: number) => {
+      if (!mountedRef.current) return;
+      if (stateRef.current !== 'programmatic-scroll') return;
+      if (requestId !== undefined && requestId !== scrollRequestIdRef.current)
+        return;
 
-    // Only handle if we're in programmatic-scroll state
-    if (currentState !== 'programmatic-scroll') {
-      return;
-    }
+      scrollTargetRef.current = null;
+      stateRef.current = 'sync-cooldown';
 
-    // Clear scroll target
-    scrollTargetRef.current = null;
-
-    // Transition to cooldown (ref only, no re-render)
-    stateRef.current = 'sync-cooldown';
-
-    // Set up cooldown timer to return to idle
-    cooldownTimerRef.current = setTimeout(() => {
-      cooldownTimerRef.current = null;
-      if (stateRef.current === 'sync-cooldown') {
-        stateRef.current = 'idle';
-      }
-    }, cooldownDelay);
-  }, [cooldownDelay]);
+      cooldownTimerRef.current = setTimeout(() => {
+        cooldownTimerRef.current = null;
+        if (mountedRef.current && stateRef.current === 'sync-cooldown') {
+          stateRef.current = 'idle';
+        }
+      }, cooldownDelay);
+    },
+    [cooldownDelay]
+  );
 
   return {
     state: stateRef.current,

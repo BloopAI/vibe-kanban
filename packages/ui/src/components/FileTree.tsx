@@ -38,6 +38,7 @@ interface FileTreeProps {
   onNavigateComments?: (direction: 'prev' | 'next') => void;
   /** Whether there are files with GitHub comments to navigate */
   hasFilesWithComments?: boolean;
+  scrollContainerRef?: (el: HTMLDivElement | null) => void;
 }
 
 export const FileTree = memo(function FileTree({
@@ -58,11 +59,13 @@ export const FileTree = memo(function FileTree({
   onNavigateComments,
   hasFilesWithComments,
   renderFileIcon,
+  scrollContainerRef,
 }: FileTreeProps) {
   const { t } = useTranslation(['tasks', 'common']);
+  const fileNodeStyle = { contentVisibility: 'auto' as const, containIntrinsicSize: 'auto 26px' };
   const renderNodes = (nodeList: FileTreeViewNode[], depth = 0) => {
     return nodeList.map((node) => (
-      <div key={node.id} style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 26px' }}>
+      <div key={node.id} style={node.type === 'file' ? fileNodeStyle : undefined}>
         <FileTreeNode
           node={node}
           depth={depth}
@@ -146,7 +149,7 @@ export const FileTree = memo(function FileTree({
           )}
         </div>
       </div>
-      <div className="p-base flex-1 min-h-0 overflow-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent" style={{ contain: 'layout style paint' }}>
+      <div ref={scrollContainerRef} className="p-base flex-1 min-h-0 overflow-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent" style={{ contain: 'layout style paint' }}>
         {nodes.length > 0 ? (
           renderNodes(nodes)
         ) : (
