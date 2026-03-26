@@ -389,13 +389,14 @@ export function PierreDiffCard({
           <GitHubCommentRenderer
             comment={githubComment}
             onCopyToUserComment={handleCopyToUserComment}
+            theme={actualTheme}
           />
         );
       }
 
       return <ReviewCommentRenderer comment={metadata.comment} />;
     },
-    [filePath, addComment, diff]
+    [filePath, addComment, diff, actualTheme]
   );
 
   // Handle line click to add comment
