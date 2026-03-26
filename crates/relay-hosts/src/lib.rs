@@ -23,6 +23,7 @@ mod tunnel_manager;
 mod webrtc_cache;
 use tunnel_manager::TunnelManager;
 use webrtc_cache::WebRtcConnectionCache;
+use ws_bridge::{WsBridgeError, tungstenite_ws_stream_io, ws_copy_bidirectional};
 
 #[derive(Debug, Clone, Default)]
 struct RelaySessionCacheEntry {
@@ -264,14 +265,14 @@ impl ProxiedWsConnection {
         client_socket: C,
         client_to_upstream: fn(MC) -> tokio_tungstenite::tungstenite::Message,
         upstream_to_client: fn(tokio_tungstenite::tungstenite::Message) -> MC,
-    ) -> Result<(), ws_bridge::WsBridgeError>
+    ) -> Result<(), WsBridgeError>
     where
         C: Stream<Item = Result<MC, EC>> + Sink<MC, Error = EC> + Unpin,
         EC: std::error::Error + Send + Sync + 'static,
     {
         match self.upstream {
             UpstreamWs::Relay(socket) => {
-                ws_bridge::ws_copy_bidirectional(
+                ws_copy_bidirectional(
                     client_socket,
                     *socket,
                     client_to_upstream,
@@ -280,7 +281,7 @@ impl ProxiedWsConnection {
                 .await?;
             }
             UpstreamWs::WebRtc(stream) => {
-                ws_bridge::ws_copy_bidirectional(
+                ws_copy_bidirectional(
                     stream,
                     client_socket,
                     upstream_to_client,
@@ -296,11 +297,11 @@ impl ProxiedWsConnection {
     pub async fn bridge_tcp(self, mut tcp_stream: tokio::net::TcpStream) -> Result<(), io::Error> {
         match self.upstream {
             UpstreamWs::Relay(socket) => {
-                let mut ws_io = ws_bridge::tungstenite_ws_stream_io(*socket);
+                let mut ws_io = tungstenite_ws_stream_io(*socket);
                 tokio::io::copy_bidirectional(&mut tcp_stream, &mut ws_io).await?;
             }
             UpstreamWs::WebRtc(stream) => {
-                let mut ws_io = ws_bridge::tungstenite_ws_stream_io(stream);
+                let mut ws_io = tungstenite_ws_stream_io(stream);
                 tokio::io::copy_bidirectional(&mut tcp_stream, &mut ws_io).await?;
             }
         }

@@ -17,6 +17,7 @@ use axum::{
 };
 use reqwest::Client;
 use uuid::Uuid;
+use ws_bridge::{UpstreamWsConnectError, WsBridgeError, bridge_axum_ws, connect_upstream_ws};
 
 use crate::proxy_common::{
     build_local_upstream_url, extract_ws_protocols, normalized_proxy_path,
@@ -68,9 +69,9 @@ struct PreviewTarget {
 #[derive(Debug, thiserror::Error)]
 enum PreviewWsBridgeError {
     #[error(transparent)]
-    Connect(#[from] ws_bridge::UpstreamWsConnectError),
+    Connect(#[from] UpstreamWsConnectError),
     #[error(transparent)]
-    Bridge(#[from] ws_bridge::WsBridgeError),
+    Bridge(#[from] WsBridgeError),
 }
 
 /// Headers that should be stripped from the proxied response.
@@ -744,10 +745,10 @@ async fn handle_ws_proxy(
     tracing::debug!("Connecting to dev server WebSocket: {}", ws_url);
 
     let (dev_server_ws, _selected_protocol) =
-        ws_bridge::connect_upstream_ws(ws_url, ws_protocols.as_deref()).await?;
+        connect_upstream_ws(ws_url, ws_protocols.as_deref()).await?;
     tracing::debug!("Connected to dev server WebSocket");
 
-    ws_bridge::bridge_axum_ws(client_socket, dev_server_ws).await?;
+    bridge_axum_ws(client_socket, dev_server_ws).await?;
     Ok(())
 }
 

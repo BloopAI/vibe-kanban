@@ -8,6 +8,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use utils::http_headers::is_hop_by_hop_header;
+use ws_bridge::{bridge_axum_ws, connect_upstream_ws};
 
 use crate::{
     PreviewProxyService,
@@ -91,7 +92,7 @@ async fn forward_ws(
     let protocols = extract_ws_protocols(request.headers());
 
     let (upstream_ws, selected_protocol) =
-        match ws_bridge::connect_upstream_ws(ws_url, protocols.as_deref()).await {
+        match connect_upstream_ws(ws_url, protocols.as_deref()).await {
             Ok(value) => value,
             Err(error) => {
                 tracing::debug!(?error, "Failed to connect preview upstream WebSocket");
@@ -105,7 +106,7 @@ async fn forward_ws(
     }
 
     ws.on_upgrade(move |client_socket| async move {
-        if let Err(error) = ws_bridge::bridge_axum_ws(client_socket, upstream_ws).await {
+        if let Err(error) = bridge_axum_ws(client_socket, upstream_ws).await {
             tracing::debug!(?error, "Preview upstream WS bridge closed with error");
         }
     })

@@ -15,6 +15,7 @@ use webrtc::{
         sdp::session_description::RTCSessionDescription,
     },
 };
+use ws_bridge::{connect_upstream_ws, ws_copy_bidirectional};
 
 use crate::{
     WebRtcError, fragment,
@@ -433,7 +434,7 @@ async fn run_ws_bridge(
     let conn_id = ws_open.conn_id;
     let url = format!("ws://{}{}", local_backend_addr, ws_open.path);
     let (ws_stream, selected_protocol) =
-        ws_bridge::connect_upstream_ws(url, ws_open.protocols.as_deref()).await?;
+        connect_upstream_ws(url, ws_open.protocols.as_deref()).await?;
 
     let opened_msg = DataChannelMessage::WsOpened(WsOpened {
         conn_id,
@@ -451,7 +452,7 @@ async fn run_ws_bridge(
         poll_sender: tokio_util::sync::PollSender::new(dc_tx.clone()),
     };
 
-    ws_bridge::ws_copy_bidirectional(
+    ws_copy_bidirectional(
         ws_stream,
         bridge,
         std::convert::identity,
