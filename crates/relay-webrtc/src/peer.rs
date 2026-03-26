@@ -252,9 +252,12 @@ pub async fn run_peer(
     // Writer task: drains dc_send_rx, fragments, and writes to the data channel.
     let writer_shutdown = disconnect_token.clone();
     tokio::spawn(async move {
-        let dc = match dc_ready_rx.await {
-            Ok(dc) => dc,
-            Err(_) => return,
+        let dc = tokio::select! {
+            result = dc_ready_rx => match result {
+                Ok(dc) => dc,
+                Err(_) => return,
+            },
+            _ = writer_shutdown.cancelled() => return,
         };
         let mut dc_send_rx = dc_send_rx;
         loop {
