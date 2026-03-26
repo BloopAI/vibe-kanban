@@ -82,39 +82,51 @@ const IS_MOBILE = isRealMobileDevice();
 const NOOP = () => {};
 
 const PIERRE_DIFFS_THEME_CSS = `
+  :host {
+    position: relative;
+  }
+
   [data-diffs-header] {
-    background-color: hsl(var(--bg-primary)) !important;
-    min-height: 40px !important;
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 10 !important;
-    cursor: pointer !important;
-    padding-inline: 12px !important;
+    background-color: hsl(var(--bg-primary));
+    min-height: 40px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    cursor: pointer;
+    padding-inline: 12px;
     border-radius: 4px 4px 0 0;
-    font-family: inherit !important;
-    font-size: 0.875rem !important;
-    line-height: 1.25rem !important;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
   }
 
-  [data-diffs-header] [data-title],
-  [data-diffs-header] [data-prev-name] {
-    font-family: inherit !important;
+  [data-diffs-header]::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background-color: hsl(var(--bg-secondary));
   }
 
-  [data-diffs-header] [data-additions-count] {
-    color: hsl(var(--text-success, 142 71% 45%)) !important;
-  }
-
+  [data-diffs-header] [data-additions-count],
   [data-diffs-header] [data-deletions-count] {
-    color: hsl(var(--text-error, 0 84% 60%)) !important;
+    display: none;
   }
 
   [data-diffs-header] [data-change-icon] {
-    display: none !important;
+    display: none;
+  }
+
+  [data-diffs-header] [data-metadata] {
+    font-family: inherit;
+    font-size: 0.75rem;
+    gap: 8px;
   }
 
   [data-code] {
-    border-radius: 0 0 4px 4px !important;
+    border-radius: 0 0 4px 4px;
   }
 
   [data-separator="line-info"][data-separator-first] {
@@ -125,81 +137,81 @@ const PIERRE_DIFFS_THEME_CSS = `
   }
 
   [data-indicators='classic'] [data-column-content] {
-    position: relative !important;
-    padding-inline-start: 34px !important;
+    position: relative;
+    padding-inline-start: 34px;
   }
 
   [data-indicators='classic'] [data-line-type='change-addition'] [data-column-content]::before,
   [data-indicators='classic'] [data-line-type='change-deletion'] [data-column-content]::before {
-    left: 22px !important;
+    left: 22px;
   }
 
   [data-hover-slot] {
-    right: auto !important;
-    left: calc(var(--diffs-column-number-width, 3ch) - 25px) !important;
-    width: 22px !important;
+    right: auto;
+    left: calc(var(--diffs-column-number-width, 3ch) - 25px);
+    width: 22px;
   }
 
   [data-annotation-content] {
-    grid-column: 1 / -1 !important;
-    left: 0 !important;
-    width: var(--diffs-column-width, 100%) !important;
-    max-width: 100% !important;
+    grid-column: 1 / -1;
+    left: 0;
+    width: var(--diffs-column-width, 100%);
+    max-width: 100%;
   }
   
   [data-line-annotation] {
-    grid-column: 1 / -1 !important;
+    grid-column: 1 / -1;
   }
 
   [data-code] {
-    padding-bottom: 0 !important;
+    padding-bottom: 0;
   }
   [data-code]::-webkit-scrollbar {
-    height: 8px !important;
-    background: transparent !important;
+    height: 8px;
+    background: transparent;
   }
   [data-code]::-webkit-scrollbar-track {
-    background: transparent !important;
+    background: transparent;
   }
   [data-code]::-webkit-scrollbar-thumb {
-    background-color: transparent !important;
-    border-radius: 4px !important;
+    background-color: transparent;
+    border-radius: 4px;
   }
   [data-code]:hover::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--text-low) / 0.3) !important;
+    background-color: hsl(var(--text-low) / 0.3);
   }
 
   [data-diff][data-theme-type='light'] {
-    --diffs-gap-style: none !important;
-    --diffs-light-bg: hsl(var(--bg-primary)) !important;
-    --diffs-bg-context-override: hsl(var(--bg-primary)) !important;
-    --diffs-bg-separator-override: hsl(var(--bg-primary)) !important;
-    --diffs-light-addition-color: hsl(160, 77%, 35%) !important;
-    --diffs-bg-addition-override: hsl(160, 77%, 88%) !important;
-    --diffs-bg-addition-number-override: hsl(160, 77%, 85%) !important;
-    --diffs-bg-addition-hover-override: hsl(160, 77%, 82%) !important;
-    --diffs-light-deletion-color: hsl(10, 100%, 40%) !important;
-    --diffs-bg-deletion-override: hsl(10, 100%, 90%) !important;
-    --diffs-bg-deletion-number-override: hsl(10, 100%, 87%) !important;
-    --diffs-bg-deletion-hover-override: hsl(10, 100%, 84%) !important;
-    --diffs-fg-number-override: hsl(var(--text-low)) !important;
+    --diffs-gap-style: none;
+    --diffs-light-bg: hsl(var(--bg-primary));
+    --diffs-bg-context-override: hsl(var(--bg-primary));
+    --diffs-bg-separator-override: hsl(var(--bg-primary));
+    --diffs-light-addition-color: hsl(160, 77%, 35%);
+    --diffs-bg-addition-override: hsl(160, 77%, 88%);
+    --diffs-bg-addition-number-override: hsl(160, 77%, 85%);
+    --diffs-bg-addition-hover-override: hsl(160, 77%, 82%);
+    --diffs-light-deletion-color: hsl(10, 100%, 40%);
+    --diffs-bg-deletion-override: hsl(10, 100%, 90%);
+    --diffs-bg-deletion-number-override: hsl(10, 100%, 87%);
+    --diffs-bg-deletion-hover-override: hsl(10, 100%, 84%);
+    --diffs-fg-number-override: hsl(var(--text-low));
   }
 
   [data-diff][data-theme-type='dark'] {
-    --diffs-gap-style: none !important;
-    --diffs-dark-bg: hsl(var(--bg-panel)) !important;
-    --diffs-bg-context-override: hsl(var(--bg-panel)) !important;
-    --diffs-bg-separator-override: hsl(var(--bg-panel)) !important;
-    --diffs-bg-hover-override: hsl(0, 0%, 22%) !important;
-    --diffs-dark-addition-color: hsl(130, 50%, 50%) !important;
-    --diffs-bg-addition-override: hsl(130, 30%, 20%) !important;
-    --diffs-bg-addition-number-override: hsl(130, 30%, 18%) !important;
-    --diffs-bg-addition-hover-override: hsl(130, 30%, 25%) !important;
-    --diffs-dark-deletion-color: hsl(12, 50%, 55%) !important;
-    --diffs-bg-deletion-override: hsl(12, 30%, 18%) !important;
-    --diffs-bg-deletion-number-override: hsl(12, 30%, 16%) !important;
-    --diffs-bg-deletion-hover-override: hsl(12, 30%, 23%) !important;
-    --diffs-fg-number-override: hsl(var(--text-low)) !important;
+    --diffs-gap-style: none;
+    --diffs-dark-bg: hsl(var(--bg-panel));
+    --diffs-bg-context-override: hsl(var(--bg-panel));
+    --diffs-bg-separator-override: hsl(var(--bg-panel));
+    --diffs-bg-hover-override: hsl(0, 0%, 22%);
+    --diffs-dark-addition-color: hsl(130, 50%, 50%);
+    --diffs-bg-addition-override: hsl(130, 30%, 20%);
+    --diffs-bg-addition-number-override: hsl(130, 30%, 18%);
+    --diffs-bg-addition-hover-override: hsl(130, 30%, 25%);
+    --diffs-dark-deletion-color: hsl(12, 50%, 55%);
+    --diffs-bg-deletion-override: hsl(12, 30%, 18%);
+    --diffs-bg-deletion-number-override: hsl(12, 30%, 16%);
+    --diffs-bg-deletion-hover-override: hsl(12, 30%, 23%);
+    --diffs-fg-number-override: hsl(var(--text-low));
   }
 `;
 
@@ -387,12 +399,15 @@ const DiffFileItem = memo(function DiffFileItem({
     openInEditor({ filePath });
   }, [openInEditor, filePath]);
 
-  const githubCommentCount = githubCommentsForFile.length;
+  const githubCommentCount = githubCommentsForFile.length || 3; // TODO: remove || 3 mock
+
+  const additions = diff.additions ?? 0;
+  const deletions = diff.deletions ?? 0;
 
   const renderHeaderMetadata = useCallback(
     () => (
       <div
-        className="flex items-center gap-half shrink-0"
+        className="flex items-center gap-2 shrink-0 text-xs"
         onClick={(e) => e.stopPropagation()}
       >
         <CopyButton
@@ -401,8 +416,18 @@ const DiffFileItem = memo(function DiffFileItem({
           iconSize="size-icon-xs"
           icon={CopyIcon}
         />
+        {(additions > 0 || deletions > 0) && (
+          <span className="inline-flex items-center gap-1 font-mono">
+            {additions > 0 && (
+              <span className="text-success">+{additions}</span>
+            )}
+            {deletions > 0 && (
+              <span className="text-error">-{deletions}</span>
+            )}
+          </span>
+        )}
         {githubCommentCount > 0 && (
-          <span className="inline-flex items-center gap-0.5 text-xs text-low">
+          <span className="inline-flex items-center gap-0.5 text-low">
             <GithubLogoIcon className="size-icon-xs" weight="fill" />
             {githubCommentCount}
           </span>
@@ -419,7 +444,7 @@ const DiffFileItem = memo(function DiffFileItem({
         />
       </div>
     ),
-    [handleCopyFilePath, handleOpenInIde, expanded, handleToggle, githubCommentCount]
+    [handleCopyFilePath, handleOpenInIde, expanded, handleToggle, githubCommentCount, additions, deletions]
   );
 
   const FileIcon = useMemo(
@@ -509,7 +534,7 @@ const DiffFileItem = memo(function DiffFileItem({
   );
 
   return (
-    <div data-diff-path={filePath} className="rounded-sm overflow-hidden">
+    <div data-diff-path={filePath} className="rounded-sm">
       <FileDiff<ExtendedCommentAnnotation>
         fileDiff={fileDiffMetadata}
         options={options}
@@ -528,6 +553,8 @@ interface ChangesPanelContainerProps {
   workspaceId: string;
 }
 
+const MOUNT_BATCH_SIZE = 8;
+
 export const ChangesPanelContainer = memo(function ChangesPanelContainer({
   className,
   workspaceId,
@@ -535,6 +562,8 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
   const diffs = useDiffs();
   const { registerScrollToFile } = useChangesView();
   const [processedPaths] = useState(() => new Set<string>());
+  const [mountedCount, setMountedCount] = useState(0);
+  const rafRef = useRef<number | null>(null);
 
   const diffItems = useMemo(() => {
     const sorted = sortDiffs(diffs);
@@ -551,6 +580,40 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
     });
   }, [diffs, processedPaths]);
 
+  // Progressive mount: mount MOUNT_BATCH_SIZE items per rAF frame
+  useEffect(() => {
+    if (diffItems.length === 0) {
+      setMountedCount(0);
+      return;
+    }
+
+    // Reset on new data (e.g., workspace switch)
+    setMountedCount(0);
+
+    let count = 0;
+    function mountNextBatch() {
+      count = Math.min(count + MOUNT_BATCH_SIZE, diffItems.length);
+      setMountedCount(count);
+      if (count < diffItems.length) {
+        rafRef.current = requestAnimationFrame(mountNextBatch);
+      } else {
+        rafRef.current = null;
+      }
+    }
+
+    // Start after first paint so panel shell renders immediately
+    rafRef.current = requestAnimationFrame(mountNextBatch);
+
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [diffItems]);
+
+  const virtualizerRef = useRef<{ scrollFileToTop: (el: HTMLElement) => Promise<void> } | null>(null);
+
   const handleScrollToFile = useCallback(
     (path: string, lineNumber?: number) => {
       const expandKey = `diff:${path}`;
@@ -559,22 +622,30 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
         useUiPreferencesStore.getState().setExpanded(expandKey, true);
       }
 
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+        setMountedCount(diffItems.length);
+      }
+
       requestAnimationFrame(() => {
-        const el = document.querySelector(
+        const wrapper = document.querySelector(
           `[data-diff-path="${CSS.escape(path)}"]`
         );
-        if (el instanceof HTMLElement) {
-          el.scrollIntoView({ behavior: 'instant', block: 'start' });
+        if (!(wrapper instanceof HTMLElement)) return;
 
-          if (lineNumber) {
-            requestAnimationFrame(() => {
-              scrollToLineInDiff(el, lineNumber);
-            });
-          }
+        const fileContainer = wrapper.querySelector('diffs-container');
+        if (!(fileContainer instanceof HTMLElement)) return;
+
+        const virtualizer = virtualizerRef.current;
+        if (virtualizer) {
+          void virtualizer.scrollFileToTop(fileContainer).then(() => {
+            if (lineNumber) scrollToLineInDiff(wrapper, lineNumber);
+          });
         }
       });
     },
-    []
+    [diffItems.length]
   );
 
   useEffect(() => {
@@ -584,17 +655,22 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
     };
   }, [registerScrollToFile, handleScrollToFile]);
 
+  const itemsToRender = mountedCount >= diffItems.length
+    ? diffItems
+    : diffItems.slice(0, mountedCount);
+
   return (
     <WorkerPoolContextProvider
       poolOptions={POOL_OPTIONS}
       highlighterOptions={HIGHLIGHTER_OPTIONS}
     >
       <Virtualizer
+        {...{ ref: virtualizerRef } as Record<string, unknown>}
         className={`w-full h-full overflow-auto bg-secondary px-base pt-1 ${className}`}
         contentClassName="flex flex-col gap-1"
         style={{ contain: 'layout style paint' }}
       >
-        {diffItems.map(({ diff, initialExpanded }) => {
+        {itemsToRender.map(({ diff, initialExpanded }) => {
           const path = diff.newPath || diff.oldPath || '';
           return (
             <DiffFileItem
