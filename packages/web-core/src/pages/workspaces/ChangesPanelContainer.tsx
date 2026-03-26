@@ -696,8 +696,15 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
     onFileInViewChanged: handleFileInViewChanged,
   });
 
+  const pathToIndexRef = useRef(pathToIndex);
+  pathToIndexRef.current = pathToIndex;
+  const updateFIVRef = useRef(updateFileInViewFromRange);
+  updateFIVRef.current = updateFileInViewFromRange;
+
+  const hasItems = itemsToRender.length > 0;
+
   useEffect(() => {
-    if (itemsToRender.length === 0) return;
+    if (!hasItems) return;
 
     const firstWrapper = document.querySelector('[data-diff-path]');
     const scrollRoot =
@@ -709,7 +716,7 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
 
     topBandCandidatesRef.current.clear();
 
-    const observer = new IntersectionObserver(
+    const intersectionObs = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (!(entry.target instanceof HTMLElement)) continue;
@@ -737,9 +744,9 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
         }
 
         if (topPath) {
-          const idx = pathToIndex.get(topPath);
+          const idx = pathToIndexRef.current.get(topPath);
           if (idx !== undefined) {
-            updateFileInViewFromRange({ startIndex: idx, endIndex: idx });
+            updateFIVRef.current({ startIndex: idx, endIndex: idx });
           }
         }
       },
@@ -752,13 +759,29 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
 
     scrollRoot
       .querySelectorAll<HTMLElement>('[data-diff-path]')
-      .forEach((el) => observer.observe(el));
+      .forEach((el) => intersectionObs.observe(el));
+
+    const mutationObs = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (!(node instanceof HTMLElement)) continue;
+          if (node.dataset.diffPath !== undefined) {
+            intersectionObs.observe(node);
+          }
+          node
+            .querySelectorAll<HTMLElement>('[data-diff-path]')
+            .forEach((child) => intersectionObs.observe(child));
+        }
+      }
+    });
+    mutationObs.observe(scrollRoot, { childList: true, subtree: true });
 
     return () => {
       topBandCandidatesRef.current.clear();
-      observer.disconnect();
+      intersectionObs.disconnect();
+      mutationObs.disconnect();
     };
-  }, [itemsToRender.length, pathToIndex, updateFileInViewFromRange]);
+  }, [hasItems]);
 
   const handleScrollToFile = useCallback(
     (path: string, lineNumber?: number) => {
@@ -774,21 +797,30 @@ export const ChangesPanelContainer = memo(function ChangesPanelContainer({
         setMountedCount(diffItems.length);
       }
 
+      const requestId = beginProgrammaticScroll(path, lineNumber);
+      if (requestId === null) return;
+      latestScrollRequestRef.current = requestId;
+
       requestAnimationFrame(() => {
         const wrapper = document.querySelector(
           `[data-diff-path="${CSS.escape(path)}"]`
         );
-        if (!(wrapper instanceof HTMLElement)) return;
+        if (!(wrapper instanceof HTMLElement)) {
+          onScrollComplete(requestId);
+          return;
+        }
 
         const fileContainer = wrapper.querySelector('diffs-container');
-        if (!(fileContainer instanceof HTMLElement)) return;
+        if (!(fileContainer instanceof HTMLElement)) {
+          onScrollComplete(requestId);
+          return;
+        }
 
         const virtualizer = virtualizerRef.current;
-        if (!virtualizer) return;
-
-        const requestId = beginProgrammaticScroll(path, lineNumber);
-        if (requestId === null) return;
-        latestScrollRequestRef.current = requestId;
+        if (!virtualizer) {
+          onScrollComplete(requestId);
+          return;
+        }
 
         void virtualizer
           .scrollFileToTop(fileContainer)
