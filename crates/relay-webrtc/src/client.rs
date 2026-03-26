@@ -454,6 +454,9 @@ impl WebRtcClient {
     const HTTP_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
     /// Send an HTTP request over the data channel and wait for the response.
+    ///
+    /// On connection-level errors (timeout, channel closed) the client
+    /// automatically marks itself as disconnected so the cache skips it.
     pub async fn send_request(
         &self,
         method: &str,
@@ -464,7 +467,39 @@ impl WebRtcClient {
         if !self.is_connected() {
             return Err(WebRtcClientError::NotConnected);
         }
+        let result = self.do_send_request(method, path, headers, body).await;
+        if result.is_err() {
+            self.disconnect();
+        }
+        result
+    }
 
+    /// Open a WebSocket connection to the remote host over the data channel.
+    ///
+    /// On connection-level errors (timeout, channel closed) the client
+    /// automatically marks itself as disconnected so the cache skips it.
+    pub async fn open_ws(
+        &self,
+        path: &str,
+        protocols: Option<&str>,
+    ) -> Result<WsConnection, WebRtcClientError> {
+        if !self.is_connected() {
+            return Err(WebRtcClientError::NotConnected);
+        }
+        let result = self.do_open_ws(path, protocols).await;
+        if result.is_err() {
+            self.disconnect();
+        }
+        result
+    }
+
+    async fn do_send_request(
+        &self,
+        method: &str,
+        path: &str,
+        headers: HashMap<String, Vec<String>>,
+        body: Option<Vec<u8>>,
+    ) -> Result<DataChannelResponse, WebRtcClientError> {
         let request_id = Uuid::new_v4();
 
         let body_b64 = body.map(|b| {
@@ -505,16 +540,11 @@ impl WebRtcClient {
             .map_err(|_| WebRtcClientError::ResponseChannelDropped)?
     }
 
-    /// Open a WebSocket connection to the remote host over the data channel.
-    pub async fn open_ws(
+    async fn do_open_ws(
         &self,
         path: &str,
         protocols: Option<&str>,
     ) -> Result<WsConnection, WebRtcClientError> {
-        if !self.is_connected() {
-            return Err(WebRtcClientError::NotConnected);
-        }
-
         let conn_id = Uuid::new_v4();
 
         let ws_open = WsOpen {
@@ -570,9 +600,16 @@ impl WebRtcClient {
         self.is_connected()
     }
 
+    /// Mark this connection as disconnected. Subsequent calls to
+    /// `is_connected()` will return false. Does not block.
+    fn disconnect(&self) {
+        self.connected.store(false, Ordering::Relaxed);
+        self.shutdown.cancel();
+    }
+
     /// Shut down the WebRTC connection, closing the peer connection.
     pub async fn shutdown(&self) {
-        self.shutdown.cancel();
+        self.disconnect();
         let _ = self.peer_connection.close().await;
     }
 }

@@ -9,7 +9,7 @@ pub use relay_client::RelayApiError;
 use relay_client::{RelayApiClient, RelayHostIdentity, RelayHostTransport};
 use relay_control::signing::RelaySigningService;
 use relay_types::{PairRelayHostRequest, RelayAuthState, RelayPairedHost, RemoteSession};
-use relay_webrtc::{DataChannelWsStream, WebRtcClient};
+use relay_webrtc::{DataChannelResponse, DataChannelWsStream, WebRtcClient};
 use relay_ws::SignedTungsteniteSocket;
 use remote_info::RemoteInfo;
 use serde::{Deserialize, Serialize};
@@ -491,7 +491,8 @@ impl RelayHost {
     }
 
     /// Try to proxy through an active WebRTC data channel. Returns `None`
-    /// if there's no active connection or the request fails.
+    /// if there's no active connection or the request fails. On failure the
+    /// client marks itself as disconnected so the cache skips it next time.
     async fn try_webrtc_proxy(
         &self,
         method: &Method,
@@ -500,10 +501,6 @@ impl RelayHost {
         body: &[u8],
     ) -> Option<ProxiedResponse> {
         let client = self.webrtc.get(self.identity.host_id).await?;
-        if !client.is_connected() {
-            self.webrtc.remove(self.identity.host_id).await;
-            return None;
-        }
 
         let mut header_map: HashMap<String, Vec<String>> = HashMap::new();
         for (key, value) in headers {
@@ -521,56 +518,12 @@ impl RelayHost {
             Some(body.to_vec())
         };
 
-        match client
+        let response = client
             .send_request(method.as_ref(), target_path, header_map, body_vec)
             .await
-        {
-            Ok(response) => {
-                let body = if let Some(body_b64) = &response.body_b64 {
-                    use base64::Engine as _;
-                    match base64::engine::general_purpose::STANDARD.decode(body_b64) {
-                        Ok(bytes) => bytes,
-                        Err(e) => {
-                            tracing::debug!(
-                                ?e,
-                                host_id = %self.identity.host_id,
-                                "Invalid WebRTC HTTP response body encoding, falling back to relay"
-                            );
-                            self.webrtc.remove(self.identity.host_id).await;
-                            return None;
-                        }
-                    }
-                } else {
-                    Vec::new()
-                };
+            .ok()?;
 
-                let status =
-                    StatusCode::from_u16(response.status).unwrap_or(StatusCode::BAD_GATEWAY);
-                let mut header_map = HeaderMap::new();
-                for (name, values) in response.headers {
-                    let Ok(name) = HeaderName::from_bytes(name.as_bytes()) else {
-                        continue;
-                    };
-                    for v in values {
-                        let Ok(value) = HeaderValue::from_str(&v) else {
-                            continue;
-                        };
-                        header_map.append(name.clone(), value);
-                    }
-                }
-
-                Some(ProxiedResponse {
-                    status,
-                    headers: header_map,
-                    body: Box::pin(stream::once(async move { Ok(Bytes::from(body)) })),
-                })
-            }
-            Err(e) => {
-                tracing::debug!(?e, host_id = %self.identity.host_id, "WebRTC request failed, falling back to relay");
-                self.webrtc.remove(self.identity.host_id).await;
-                None
-            }
-        }
+        decode_webrtc_http_response(response)
     }
 
     /// Kick off a background WebRTC handshake if we don't already have a
@@ -642,29 +595,12 @@ impl RelayHost {
         protocols: Option<&str>,
     ) -> Option<ProxiedWsConnection> {
         let client = self.webrtc.get(self.identity.host_id).await?;
-        if !client.is_connected() {
-            self.webrtc.remove(self.identity.host_id).await;
-            return None;
-        }
-
-        match client.open_ws(target_path, protocols).await {
-            Ok(ws_connection) => {
-                let selected_protocol = ws_connection.selected_protocol.clone();
-                Some(ProxiedWsConnection {
-                    selected_protocol,
-                    upstream: UpstreamWs::WebRtc(ws_connection.into_ws_stream()),
-                })
-            }
-            Err(e) => {
-                tracing::debug!(
-                    ?e,
-                    host_id = %self.identity.host_id,
-                    "WebRTC WS open failed, falling back to relay"
-                );
-                self.webrtc.remove(self.identity.host_id).await;
-                None
-            }
-        }
+        let ws = client.open_ws(target_path, protocols).await.ok()?;
+        let selected_protocol = ws.selected_protocol.clone();
+        Some(ProxiedWsConnection {
+            selected_protocol,
+            upstream: UpstreamWs::WebRtc(ws.into_ws_stream()),
+        })
     }
 
     pub async fn get_or_create_ssh_tunnel(&self) -> std::io::Result<u16> {
@@ -673,6 +609,38 @@ impl RelayHost {
             .get_or_create_ssh_tunnel(self.clone())
             .await
     }
+}
+
+/// Decode a WebRTC data channel HTTP response into a `ProxiedResponse`.
+fn decode_webrtc_http_response(response: DataChannelResponse) -> Option<ProxiedResponse> {
+    let body = if let Some(body_b64) = &response.body_b64 {
+        use base64::Engine as _;
+        base64::engine::general_purpose::STANDARD
+            .decode(body_b64)
+            .ok()?
+    } else {
+        Vec::new()
+    };
+
+    let status = StatusCode::from_u16(response.status).unwrap_or(StatusCode::BAD_GATEWAY);
+    let mut headers = HeaderMap::new();
+    for (name, values) in response.headers {
+        let Ok(name) = HeaderName::from_bytes(name.as_bytes()) else {
+            continue;
+        };
+        for v in values {
+            let Ok(value) = HeaderValue::from_str(&v) else {
+                continue;
+            };
+            headers.append(name.clone(), value);
+        }
+    }
+
+    Some(ProxiedResponse {
+        status,
+        headers,
+        body: Box::pin(stream::once(async move { Ok(Bytes::from(body)) })),
+    })
 }
 
 /// Negotiate a WebRTC data channel with the remote host via the relay.

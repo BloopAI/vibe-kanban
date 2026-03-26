@@ -23,6 +23,11 @@ enum WebRtcConnectionState {
 }
 
 /// Cache of active WebRTC direct connections keyed by host ID.
+///
+/// Callers use [`get`] to obtain a connected client. If the client fails
+/// during use, it marks itself as disconnected (via `WebRtcClient::disconnect`),
+/// and subsequent `get` calls will skip it. [`start_connecting`] replaces
+/// disconnected entries when a new handshake attempt starts.
 #[derive(Clone)]
 pub(crate) struct WebRtcConnectionCache {
     hosts: Arc<RwLock<HashMap<Uuid, WebRtcConnectionState>>>,
@@ -48,9 +53,12 @@ impl WebRtcConnectionCache {
         self.shutdown.child_token()
     }
 
+    /// Return the active client for a host, if connected.
     pub async fn get(&self, host_id: Uuid) -> Option<Arc<WebRtcClient>> {
         match self.hosts.read().await.get(&host_id) {
-            Some(WebRtcConnectionState::Connected(client)) => Some(client.clone()),
+            Some(WebRtcConnectionState::Connected(client)) if client.is_connected() => {
+                Some(client.clone())
+            }
             _ => None,
         }
     }
@@ -62,6 +70,7 @@ impl WebRtcConnectionCache {
             .insert(host_id, WebRtcConnectionState::Connected(client));
     }
 
+    /// Unconditionally remove a host's connection (used by `remove_host`).
     pub async fn remove(&self, host_id: Uuid) {
         if let Some(WebRtcConnectionState::Connected(client)) =
             self.hosts.write().await.remove(&host_id)
@@ -72,7 +81,7 @@ impl WebRtcConnectionCache {
 
     /// Try to mark a host as "connecting". Returns false if already connected
     /// or a handshake is already in progress. A previous failure is retried
-    /// once the cooldown has elapsed.
+    /// once the cooldown has elapsed; a disconnected client is replaced.
     pub async fn start_connecting(&self, host_id: Uuid) -> bool {
         use std::collections::hash_map::Entry;
         let mut hosts = self.hosts.write().await;
