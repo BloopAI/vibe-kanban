@@ -14,8 +14,7 @@ use git::GitServiceError;
 use git_host::GitHostError;
 use local_deployment::pty::PtyError;
 use relay_hosts::{
-    OpenRemoteEditorError, RelayApiError, RelayConnectionError, RelayHostLookupError,
-    RelayPairingClientError,
+    RelayApiError, RelayConnectionError, RelayHostLookupError, RelayPairingClientError,
 };
 use relay_webrtc::WebRtcError;
 use services::services::{
@@ -634,18 +633,6 @@ impl From<RelayApiError> for ApiError {
     fn from(err: RelayApiError) -> Self {
         tracing::warn!(%err, "Relay transport failed");
         ApiError::BadGateway(err.to_string())
-    }
-}
-
-impl From<OpenRemoteEditorError> for ApiError {
-    fn from(err: OpenRemoteEditorError) -> Self {
-        match err {
-            OpenRemoteEditorError::Connection(err) => err.into(),
-            OpenRemoteEditorError::CreateTunnel(ref detail) => {
-                tracing::warn!(%detail, "Failed to create SSH tunnel");
-                ApiError::BadGateway(err.to_string())
-            }
-        }
     }
 }
 

@@ -310,20 +310,6 @@ impl ProxiedWsConnection {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum OpenRemoteEditorError {
-    #[error(transparent)]
-    Connection(#[from] RelayConnectionError),
-    #[error("Failed to create SSH tunnel: {0}")]
-    CreateTunnel(std::io::Error),
-}
-
-impl From<RelayApiError> for OpenRemoteEditorError {
-    fn from(err: RelayApiError) -> Self {
-        Self::Connection(err.into())
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
 pub enum RelayPairingClientError {
     #[error("Remote relay API is not configured")]
     NotConfigured,
@@ -335,17 +321,6 @@ pub enum RelayPairingClientError {
     StoreSerialization(serde_json::Error),
     #[error("Failed to persist relay host credentials: {0}")]
     Store(std::io::Error),
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct RelayEditorPathResponse {
-    workspace_path: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct WorkspaceEditorSetup {
-    pub workspace_path: String,
-    pub local_port: u16,
 }
 
 impl RelayHosts {
@@ -714,68 +689,11 @@ impl RelayHost {
         }
     }
 
-    pub async fn prepare_workspace_editor(
-        &self,
-        workspace_id: Uuid,
-        file_path: Option<&str>,
-    ) -> Result<WorkspaceEditorSetup, OpenRemoteEditorError> {
-        let editor_path_api_path = build_workspace_editor_path_api_path(workspace_id, file_path);
-        let editor_path = self.resolve_editor_path(&editor_path_api_path).await?;
-        let local_port = self.create_ssh_tunnel_port().await?;
-
-        Ok(WorkspaceEditorSetup {
-            workspace_path: editor_path.workspace_path,
-            local_port,
-        })
-    }
-
-    async fn resolve_editor_path(
-        &self,
-        editor_path_api_path: &str,
-    ) -> Result<RelayEditorPathResponse, OpenRemoteEditorError> {
-        if let Some(path) = self
-            .try_webrtc_resolve_editor_path(editor_path_api_path)
-            .await
-        {
-            return Ok(path);
-        }
-
-        let response = self
-            .send_http_via_relay(&Method::GET, editor_path_api_path, &HeaderMap::new(), &[])
-            .await
-            .map_err(OpenRemoteEditorError::from)?;
-        parse_editor_path_response(response)
-            .await
-            .map_err(OpenRemoteEditorError::from)
-    }
-
-    /// Resolve editor path via WebRTC HTTP. Returns None when WebRTC is not
-    /// available or the response is invalid.
-    async fn try_webrtc_resolve_editor_path(
-        &self,
-        editor_path_api_path: &str,
-    ) -> Option<RelayEditorPathResponse> {
-        let response = self
-            .try_webrtc_proxy(&Method::GET, editor_path_api_path, &HeaderMap::new(), &[])
-            .await?;
-        match parse_editor_path_response(response).await {
-            Ok(path) => Some(path),
-            Err(error) => {
-                tracing::debug!(
-                    ?error,
-                    "WebRTC editor path request invalid, falling back to relay"
-                );
-                None
-            }
-        }
-    }
-
-    async fn create_ssh_tunnel_port(&self) -> Result<u16, OpenRemoteEditorError> {
+    pub async fn get_or_create_ssh_tunnel(&self) -> std::io::Result<u16> {
         self.runtime
             .tunnel_manager
             .get_or_create_ssh_tunnel(self.clone())
             .await
-            .map_err(OpenRemoteEditorError::CreateTunnel)
     }
 }
 
@@ -822,53 +740,6 @@ async fn negotiate_webrtc(
 
     let client = WebRtcClient::connect(webrtc_offer, &answer.sdp, shutdown).await?;
     Ok(client)
-}
-
-fn build_workspace_editor_path_api_path(workspace_id: Uuid, file_path: Option<&str>) -> String {
-    let base = format!("/api/workspaces/{workspace_id}/integration/editor/path");
-    let Some(file_path) = file_path.filter(|value| !value.is_empty()) else {
-        return base;
-    };
-
-    let query = url::form_urlencoded::Serializer::new(String::new())
-        .append_pair("file_path", file_path)
-        .finish();
-    format!("{base}?{query}")
-}
-
-async fn parse_editor_path_response(
-    mut response: ProxiedResponse,
-) -> Result<RelayEditorPathResponse, RelayApiError> {
-    if response.status != StatusCode::OK {
-        return Err(RelayApiError::Other(format!(
-            "editor path request failed with status {}",
-            response.status
-        )));
-    }
-
-    let mut response_body = Vec::new();
-    while let Some(chunk) = response.body.next().await {
-        let chunk = chunk.map_err(|error| {
-            RelayApiError::Other(format!("failed to read response body: {error}"))
-        })?;
-        response_body.extend_from_slice(&chunk);
-    }
-
-    let payload = serde_json::from_slice::<ApiResponse<RelayEditorPathResponse>>(&response_body)
-        .map_err(|error| RelayApiError::Other(format!("failed to parse response body: {error}")))?;
-
-    if !payload.is_success() {
-        return Err(RelayApiError::Other(
-            payload
-                .message()
-                .unwrap_or("editor path request failed")
-                .to_string(),
-        ));
-    }
-
-    payload.into_data().ok_or_else(|| {
-        RelayApiError::Other("editor path response missing workspace path".to_string())
-    })
 }
 
 async fn load_relay_host_credentials_map() -> HashMap<Uuid, RelayHostCredentials> {
