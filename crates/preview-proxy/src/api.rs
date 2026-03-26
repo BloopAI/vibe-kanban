@@ -72,7 +72,7 @@ async fn forward_http(
     let response = match req_builder.send().await {
         Ok(response) => response,
         Err(error) => {
-            tracing::warn!(?error, %target_url, "Failed to call preview upstream");
+            tracing::debug!(?error, %target_url, "Failed to call preview upstream");
             return (StatusCode::BAD_GATEWAY, "Preview upstream unavailable").into_response();
         }
     };
@@ -94,7 +94,7 @@ async fn forward_ws(
         match ws_bridge::connect_upstream_ws(ws_url, protocols.as_deref()).await {
             Ok(value) => value,
             Err(error) => {
-                tracing::warn!(?error, "Failed to connect preview upstream WebSocket");
+                tracing::debug!(?error, "Failed to connect preview upstream WebSocket");
                 return (StatusCode::BAD_GATEWAY, "Preview WebSocket unavailable").into_response();
             }
         };

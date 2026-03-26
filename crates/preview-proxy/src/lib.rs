@@ -526,7 +526,7 @@ async fn http_proxy_handler(
     let response = match req_builder.send().await {
         Ok(response) => response,
         Err(error) => {
-            tracing::error!("Failed to proxy request to {}: {}", target_url, error);
+            tracing::debug!("Failed to proxy request to {}: {}", target_url, error);
             return (
                 StatusCode::BAD_GATEWAY,
                 format!("Dev server unreachable: {}", error),
