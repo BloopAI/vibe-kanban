@@ -6,9 +6,10 @@ use uuid::Uuid;
 
 use crate::RelayHost;
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct TunnelManager {
     tunnels: Arc<Mutex<HashMap<Uuid, ActiveTunnel>>>,
+    shutdown: CancellationToken,
 }
 
 struct ActiveTunnel {
@@ -18,6 +19,13 @@ struct ActiveTunnel {
 }
 
 impl TunnelManager {
+    pub fn new(shutdown: CancellationToken) -> Self {
+        Self {
+            tunnels: Arc::new(Mutex::new(HashMap::new())),
+            shutdown,
+        }
+    }
+
     pub async fn get_or_create_ssh_tunnel(&self, relay_host: RelayHost) -> std::io::Result<u16> {
         let host_id = relay_host.identity.host_id;
 
@@ -33,7 +41,7 @@ impl TunnelManager {
         let listener = TcpListener::bind("127.0.0.1:0").await?;
         let local_port = listener.local_addr()?.port();
         let tunnel_id = Uuid::new_v4();
-        let cancel = CancellationToken::new();
+        let cancel = self.shutdown.child_token();
 
         {
             let mut tunnels = self.tunnels.lock().await;
@@ -68,6 +76,13 @@ impl TunnelManager {
         });
 
         Ok(local_port)
+    }
+
+    pub async fn cancel_tunnel(&self, host_id: Uuid) {
+        let mut tunnels = self.tunnels.lock().await;
+        if let Some(tunnel) = tunnels.remove(&host_id) {
+            tunnel.cancel.cancel();
+        }
     }
 }
 

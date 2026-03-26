@@ -337,7 +337,7 @@ impl RelayHosts {
                 remote_client,
                 remote_info,
                 relay_signing,
-                tunnel_manager: TunnelManager::default(),
+                tunnel_manager: TunnelManager::new(shutdown.clone()),
             },
             webrtc: WebRtcConnectionCache::new(shutdown),
         }
@@ -405,6 +405,7 @@ impl RelayHosts {
         if removed {
             self.sessions.clear(host_id).await;
             self.webrtc.remove(host_id).await;
+            self.runtime.tunnel_manager.cancel_tunnel(host_id).await;
         }
         Ok(removed)
     }
