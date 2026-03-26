@@ -62,7 +62,7 @@ export const FileTree = memo(function FileTree({
   const { t } = useTranslation(['tasks', 'common']);
   const renderNodes = (nodeList: FileTreeViewNode[], depth = 0) => {
     return nodeList.map((node) => (
-      <div key={node.id}>
+      <div key={node.id} style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 26px' }}>
         <FileTreeNode
           node={node}
           depth={depth}
@@ -146,7 +146,7 @@ export const FileTree = memo(function FileTree({
           )}
         </div>
       </div>
-      <div className="p-base flex-1 min-h-0 overflow-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent">
+      <div className="p-base flex-1 min-h-0 overflow-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent" style={{ contain: 'layout style paint' }}>
         {nodes.length > 0 ? (
           renderNodes(nodes)
         ) : (
