@@ -90,12 +90,15 @@ export function CodeBlockEscapePlugin() {
           : anchorNode.getParent();
         if (!$isCodeNode(codeNode)) return false;
 
-        const lastChild = codeNode.getLastChild();
+        const children = codeNode.getChildren();
+        const lastChild = children[children.length - 1];
         if (!lastChild) return false;
 
         const isAtEnd =
-          anchorNode.is(lastChild) &&
-          selection.anchor.offset === lastChild.getTextContentSize();
+          ($isCodeNode(anchorNode) &&
+            selection.anchor.offset === children.length) ||
+          (anchorNode.is(lastChild) &&
+            selection.anchor.offset === lastChild.getTextContentSize());
 
         if (!isAtEnd) return false;
 
