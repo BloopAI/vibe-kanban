@@ -48,4 +48,9 @@ impl<T, E> ApiResponse<T, E> {
     pub fn message(&self) -> Option<&str> {
         self.message.as_deref()
     }
+
+    /// Consumes the response, returning the data payload if present.
+    pub fn into_data(self) -> Option<T> {
+        self.data
+    }
 }
