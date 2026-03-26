@@ -649,7 +649,7 @@ impl RelayHost {
                         %host_id,
                         "WebRTC data channel did not open before timeout"
                     );
-                    client.shutdown();
+                    client.shutdown().await;
                     webrtc.mark_failed(host_id).await;
                 }
                 Err(e) => {

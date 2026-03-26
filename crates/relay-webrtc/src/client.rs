@@ -183,6 +183,7 @@ pub struct WebRtcClient {
     connected: Arc<AtomicBool>,
     connected_notify: Arc<Notify>,
     shutdown: CancellationToken,
+    peer_connection: Arc<RTCPeerConnection>,
 }
 
 impl WebRtcClient {
@@ -445,6 +446,7 @@ impl WebRtcClient {
             connected,
             connected_notify,
             shutdown: disconnect_token,
+            peer_connection,
         })
     }
 
@@ -540,8 +542,9 @@ impl WebRtcClient {
                 WebRtcClientError::CommandQueueClosed { command }
             })?;
 
-        result_rx
+        tokio::time::timeout(Self::HTTP_REQUEST_TIMEOUT, result_rx)
             .await
+            .map_err(|_| WebRtcClientError::TimedOut)?
             .map_err(|_| WebRtcClientError::ResponseChannelDropped)?
     }
 
@@ -556,15 +559,21 @@ impl WebRtcClient {
             return true;
         }
 
-        tokio::time::timeout(timeout, self.connected_notify.notified())
-            .await
-            .is_ok()
-            && self.is_connected()
+        // Create the Notified future before re-checking, so we don't miss a
+        // notification that fires between the check and the await.
+        let notified = self.connected_notify.notified();
+        if self.is_connected() {
+            return true;
+        }
+
+        let _ = tokio::time::timeout(timeout, notified).await;
+        self.is_connected()
     }
 
-    /// Shut down the WebRTC connection.
-    pub fn shutdown(&self) {
+    /// Shut down the WebRTC connection, closing the peer connection.
+    pub async fn shutdown(&self) {
         self.shutdown.cancel();
+        let _ = self.peer_connection.close().await;
     }
 }
 

@@ -66,7 +66,7 @@ impl WebRtcConnectionCache {
         if let Some(WebRtcConnectionState::Connected(client)) =
             self.hosts.write().await.remove(&host_id)
         {
-            client.shutdown();
+            client.shutdown().await;
         }
     }
 
@@ -79,6 +79,10 @@ impl WebRtcConnectionCache {
         match hosts.entry(host_id) {
             Entry::Occupied(mut e) => match e.get() {
                 WebRtcConnectionState::Failed(at) if at.elapsed() >= FAILED_RETRY_COOLDOWN => {
+                    e.insert(WebRtcConnectionState::Connecting);
+                    true
+                }
+                WebRtcConnectionState::Connected(client) if !client.is_connected() => {
                     e.insert(WebRtcConnectionState::Connecting);
                     true
                 }

@@ -6,7 +6,7 @@ pub mod peer;
 pub mod proxy;
 pub mod signaling;
 
-pub use client::{WebRtcClient, WebRtcClientError, WsConnection, WsSender};
+pub use client::{WebRtcClient, WebRtcClientError, WsConnection};
 pub use error::WebRtcError;
 pub use host::WebRtcHost;
 pub use proxy::{

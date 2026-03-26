@@ -109,23 +109,4 @@ impl WebRtcHost {
 
         Ok(())
     }
-
-    /// Shut down and remove a specific peer.
-    pub async fn remove_peer(&self, session_id: &str) {
-        let peer = {
-            let mut inner = self.inner.lock().await;
-            inner.peers.remove(session_id)
-        };
-
-        if let Some(peer) = peer {
-            peer.shutdown.cancel();
-            let _ = peer.peer_connection.close().await;
-        }
-    }
-
-    /// Number of active peer connections.
-    pub async fn peer_count(&self) -> usize {
-        let inner = self.inner.lock().await;
-        inner.peers.len()
-    }
 }
