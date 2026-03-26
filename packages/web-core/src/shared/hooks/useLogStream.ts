@@ -108,14 +108,9 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
           };
 
           ws.onerror = () => {
-            // Ignore errors from stale WebSocket connections
-            if (
-              cancelled ||
-              currentProcessIdRef.current !== capturedProcessId
-            ) {
-              return;
-            }
-            setError('Connection failed');
+            // Don't set error here — onclose always fires after onerror
+            // and handles retry logic. Setting error eagerly hides logs
+            // that were already received.
           };
 
           ws.onclose = (event) => {
@@ -133,6 +128,8 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
               if (next <= 6) {
                 const delay = Math.min(1500, 250 * 2 ** (next - 1));
                 retryTimerRef.current = setTimeout(() => open(), delay);
+              } else {
+                setError('Connection failed');
               }
             }
           };
@@ -140,12 +137,13 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
           if (cancelled || currentProcessIdRef.current !== capturedProcessId) {
             return;
           }
-          setError('Connection failed');
           const next = retryCountRef.current + 1;
           retryCountRef.current = next;
           if (next <= 6) {
             const delay = Math.min(1500, 250 * 2 ** (next - 1));
             retryTimerRef.current = setTimeout(() => open(), delay);
+          } else {
+            setError('Connection failed');
           }
         }
       })();
