@@ -127,6 +127,9 @@ async fn handle_raw_logs_ws(
             }
         }
     }
+    // Send a proper close frame so the client sees code 1000 (normal closure)
+    // instead of an abnormal TCP drop that triggers reconnection attempts.
+    let _ = socket.close().await;
     Ok(())
 }
 
@@ -184,6 +187,7 @@ async fn handle_normalized_logs_ws(
             }
         }
     }
+    let _ = socket.close().await;
     Ok(())
 }
 
