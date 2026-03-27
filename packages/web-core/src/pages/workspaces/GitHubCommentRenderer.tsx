@@ -59,7 +59,7 @@ export const GitHubCommentRenderer = memo(function GitHubCommentRenderer({
       <MarkdownPreview
         content={comment.body}
         theme={theme}
-        className="text-sm break-words [&_p:last-child]:mb-0"
+        className="text-sm [text-wrap:wrap] [overflow-wrap:anywhere] break-words [&_p]:mb-1 [&_ul]:mb-1 [&_ol]:mb-1 [&_blockquote]:mb-1 [&_pre]:mb-1 [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_p:last-child]:mb-0"
       />
     </CommentCard>
   );
