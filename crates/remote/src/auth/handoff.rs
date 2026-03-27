@@ -387,9 +387,17 @@ impl OAuthHandoffService {
             Some(AuthorizationStatus::Error) => Ok(PollResult::Error(
                 record.error_code.unwrap_or_else(|| "unknown".to_string()),
             )),
-            Some(AuthorizationStatus::Redeemed) => Err(HandoffError::Authorization(
-                OAuthHandoffError::AlreadyRedeemed,
-            )),
+            Some(AuthorizationStatus::Redeemed) => {
+                // The handoff was already redeemed (likely by this same poll flow
+                // whose HTTP response was lost). Re-verify and re-generate tokens
+                // so the caller can still complete login.
+                let provided_challenge = hash_sha256_hex(app_verifier);
+                if provided_challenge != record.app_challenge {
+                    return Err(HandoffError::Failed("invalid_app_verifier".into()));
+                }
+                let result = self.complete_authorized_handoff(&record, &repo).await?;
+                Ok(PollResult::Complete(result))
+            }
             _ => Err(HandoffError::Failed("invalid_state".into())),
         }
     }
