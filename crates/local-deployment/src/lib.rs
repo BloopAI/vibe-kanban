@@ -81,10 +81,13 @@ pub struct LocalDeployment {
     pr_sync_notify: Arc<Notify>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct PendingHandoff {
     provider: String,
     app_verifier: String,
+    /// Handle for the background poll task (desktop flow).
+    /// Aborted when the handoff is taken or replaced.
+    poll_task: Option<tokio::task::JoinHandle<()>>,
 }
 
 #[async_trait]
@@ -456,22 +459,33 @@ impl LocalDeployment {
         handoff_id: Uuid,
         provider: String,
         app_verifier: String,
+        poll_task: Option<tokio::task::JoinHandle<()>>,
     ) {
-        self.oauth_handoffs.write().await.insert(
+        let mut handoffs = self.oauth_handoffs.write().await;
+        // Abort any existing poll task for this handoff (e.g. user retried).
+        if let Some(old) = handoffs.remove(&handoff_id) {
+            if let Some(handle) = old.poll_task {
+                handle.abort();
+            }
+        }
+        handoffs.insert(
             handoff_id,
             PendingHandoff {
                 provider,
                 app_verifier,
+                poll_task,
             },
         );
     }
 
     pub async fn take_oauth_handoff(&self, handoff_id: &Uuid) -> Option<(String, String)> {
-        self.oauth_handoffs
-            .write()
-            .await
-            .remove(handoff_id)
-            .map(|state| (state.provider, state.app_verifier))
+        let removed = self.oauth_handoffs.write().await.remove(handoff_id);
+        removed.map(|state| {
+            if let Some(handle) = state.poll_task {
+                handle.abort();
+            }
+            (state.provider, state.app_verifier)
+        })
     }
 
     pub fn pty(&self) -> &PtyService {

@@ -145,19 +145,27 @@ async fn handoff_init(
 
     let response = client.handoff_init(&request).await?;
 
-    deployment
-        .store_oauth_handoff(response.handoff_id, payload.provider, app_verifier.clone())
-        .await;
-
     // For desktop, spawn a background task that polls the remote server
     // until the OAuth flow completes, then finalizes login automatically.
-    if payload.desktop {
+    let poll_task = if payload.desktop {
         let handoff_id = response.handoff_id;
         let deployment_clone = deployment.clone();
-        tokio::spawn(async move {
-            poll_for_login(deployment_clone, handoff_id, app_verifier).await;
-        });
-    }
+        let verifier = app_verifier.clone();
+        Some(tokio::spawn(async move {
+            poll_for_login(deployment_clone, handoff_id, verifier).await;
+        }))
+    } else {
+        None
+    };
+
+    deployment
+        .store_oauth_handoff(
+            response.handoff_id,
+            payload.provider,
+            app_verifier,
+            poll_task,
+        )
+        .await;
 
     Ok(ResponseJson(ApiResponse::success(
         HandoffInitResponseBody {
