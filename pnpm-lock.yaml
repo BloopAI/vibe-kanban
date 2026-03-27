@@ -5,9 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@pierre/diffs@1.1.6':
+  '@pierre/diffs@1.1.4':
     hash: 3b027916da397786106600ebb33b5c5e47cb57d2f03840500a882a8d96dacb8d
-    path: patches/@pierre__diffs@1.1.6.patch
+    path: patches/@pierre__diffs@1.1.4.patch
 
 importers:
 
@@ -98,8 +98,8 @@ importers:
         specifier: ^2.1.10
         version: 2.1.10(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@pierre/diffs':
-        specifier: ^1.1.6
-        version: 1.1.6(patch_hash=3b027916da397786106600ebb33b5c5e47cb57d2f03840500a882a8d96dacb8d)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 1.1.4
+        version: 1.1.4(patch_hash=3b027916da397786106600ebb33b5c5e47cb57d2f03840500a882a8d96dacb8d)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-accordion':
         specifier: ^1.2.1
         version: 1.2.12(@types/react-dom@18.3.7(@types/react@18.3.23))(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -493,8 +493,8 @@ importers:
         specifier: ^2.1.10
         version: 2.1.10(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@pierre/diffs':
-        specifier: ^1.1.6
-        version: 1.1.6(patch_hash=3b027916da397786106600ebb33b5c5e47cb57d2f03840500a882a8d96dacb8d)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 1.1.4
+        version: 1.1.4(patch_hash=3b027916da397786106600ebb33b5c5e47cb57d2f03840500a882a8d96dacb8d)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-accordion':
         specifier: ^1.2.1
         version: 1.2.12(@types/react-dom@18.3.7(@types/react@18.3.23))(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -659,8 +659,8 @@ importers:
         specifier: ^2.1.10
         version: 2.1.10(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@pierre/diffs':
-        specifier: ^1.1.6
-        version: 1.1.6(patch_hash=3b027916da397786106600ebb33b5c5e47cb57d2f03840500a882a8d96dacb8d)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 1.1.4
+        version: 1.1.4(patch_hash=3b027916da397786106600ebb33b5c5e47cb57d2f03840500a882a8d96dacb8d)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-accordion':
         specifier: ^1.2.1
         version: 1.2.12(@types/react-dom@18.3.7(@types/react@18.3.23))(@types/react@18.3.23)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1593,8 +1593,8 @@ packages:
       react: '>= 16.8'
       react-dom: '>= 16.8'
 
-  '@pierre/diffs@1.1.6':
-    resolution: {integrity: sha512-LgnbJNlc0fF9IbNVlbJ+DTg/Rl4l6FIendV7b68s1c9+RH639bp/osi9FtFpMXut8oXyzTDqM3X9GJG8+gkf2Q==}
+  '@pierre/diffs@1.1.4':
+    resolution: {integrity: sha512-qkLr0ZNhWQuYUozIhOo6Zxm4JhtwLyRXXarwLNDksgSqMcVf8QTtLVm8/TViwdxzrwNPoIEt/FDJpFWYkZjhhg==}
     peerDependencies:
       react: ^18.3.1 || ^19.0.0
       react-dom: ^18.3.1 || ^19.0.0
@@ -5975,7 +5975,7 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@pierre/diffs@1.1.6(patch_hash=3b027916da397786106600ebb33b5c5e47cb57d2f03840500a882a8d96dacb8d)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@pierre/diffs@1.1.4(patch_hash=3b027916da397786106600ebb33b5c5e47cb57d2f03840500a882a8d96dacb8d)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@pierre/theme': 0.0.22
       '@shikijs/transformers': 3.21.0

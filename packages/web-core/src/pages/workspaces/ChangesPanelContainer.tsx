@@ -512,6 +512,7 @@ const DiffFileItem = memo(function DiffFileItem({
         return (
           <GitHubCommentRenderer
             comment={githubComment}
+            theme={actualTheme}
             onCopyToUserComment={() => {
               const codeLine = getCodeLineForComment(
                 diff,

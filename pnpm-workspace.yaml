@@ -7,4 +7,4 @@ onlyBuiltDependencies:
   - esbuild
 
 patchedDependencies:
-  '@pierre/diffs@1.1.6': patches/@pierre__diffs@1.1.6.patch
+  '@pierre/diffs@1.1.4': patches/@pierre__diffs@1.1.4.patch
