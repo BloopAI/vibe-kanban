@@ -493,6 +493,12 @@ enum UpdateMode {
     Set,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum NormalizeMode {
+    Live,
+    Historical,
+}
+
 fn normalize_file_changes(
     worktree_path: &str,
     changes: &HashMap<PathBuf, CodexProtoFileChange>,
@@ -585,6 +591,21 @@ fn normalize_codex_stderr_logs(
 pub fn normalize_logs(
     msg_store: Arc<MsgStore>,
     worktree_path: &Path,
+) -> Vec<tokio::task::JoinHandle<()>> {
+    normalize_logs_with_mode(msg_store, worktree_path, NormalizeMode::Live)
+}
+
+pub fn normalize_logs_historical(
+    msg_store: Arc<MsgStore>,
+    worktree_path: &Path,
+) -> Vec<tokio::task::JoinHandle<()>> {
+    normalize_logs_with_mode(msg_store, worktree_path, NormalizeMode::Historical)
+}
+
+fn normalize_logs_with_mode(
+    msg_store: Arc<MsgStore>,
+    worktree_path: &Path,
+    mode: NormalizeMode,
 ) -> Vec<tokio::task::JoinHandle<()>> {
     let entry_index = EntryIndexProvider::start_from(&msg_store);
     let h1 = normalize_codex_stderr_logs(msg_store.clone(), entry_index.clone());
@@ -875,23 +896,7 @@ pub fn normalize_logs(
                     chunk,
                 }) => {
                     if let Some(command_state) = state.commands.get_mut(&call_id) {
-                        let chunk = String::from_utf8_lossy(&chunk);
-                        if chunk.is_empty() {
-                            continue;
-                        }
-                        match stream {
-                            ExecOutputStream::Stdout => command_state.stdout.push_str(&chunk),
-                            ExecOutputStream::Stderr => command_state.stderr.push_str(&chunk),
-                        }
-                        let Some(index) = command_state.index else {
-                            tracing::error!("missing entry index for existing command state");
-                            continue;
-                        };
-                        replace_normalized_entry(
-                            &msg_store,
-                            index,
-                            command_state.to_normalized_entry(),
-                        );
+                        update_command_output(command_state, stream, &chunk, mode, &msg_store);
                     }
                 }
                 EventMsg::ExecCommandEnd(ExecCommandEndEvent {
@@ -1496,9 +1501,51 @@ pub fn normalize_logs(
                 | EventMsg::HookStarted(..) => {}
             }
         }
+
+        if mode == NormalizeMode::Historical {
+            flush_historical_command_entries(&mut state, &msg_store);
+        }
     });
 
     vec![h1, h2]
+}
+
+fn update_command_output(
+    command_state: &mut CommandState,
+    stream: ExecOutputStream,
+    chunk: &[u8],
+    mode: NormalizeMode,
+    msg_store: &Arc<MsgStore>,
+) {
+    let chunk = String::from_utf8_lossy(chunk);
+    if chunk.is_empty() {
+        return;
+    }
+
+    match stream {
+        ExecOutputStream::Stdout => command_state.stdout.push_str(&chunk),
+        ExecOutputStream::Stderr => command_state.stderr.push_str(&chunk),
+    }
+
+    if mode == NormalizeMode::Historical {
+        return;
+    }
+
+    let Some(index) = command_state.index else {
+        tracing::error!("missing entry index for existing command state");
+        return;
+    };
+    replace_normalized_entry(msg_store, index, command_state.to_normalized_entry());
+}
+
+fn flush_historical_command_entries(state: &mut LogState, msg_store: &Arc<MsgStore>) {
+    for command_state in state.commands.values() {
+        let Some(index) = command_state.index else {
+            tracing::error!("missing entry index for existing command state");
+            continue;
+        };
+        replace_normalized_entry(msg_store, index, command_state.to_normalized_entry());
+    }
 }
 
 fn handle_jsonrpc_response(
@@ -1763,5 +1810,200 @@ impl ToNormalizedEntryOpt for Approval {
                 metadata: None,
             }),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use workspace_utils::{log_msg::LogMsg, msg_store::MsgStore};
+
+    use super::*;
+    use crate::logs::utils::{EntryIndexProvider, patch::extract_normalized_entry_from_patch};
+
+    fn command_state(index: usize) -> CommandState {
+        CommandState {
+            index: Some(index),
+            command: "printf hi".to_string(),
+            stdout: String::new(),
+            stderr: String::new(),
+            formatted_output: None,
+            status: ToolStatus::Created,
+            exit_code: None,
+            awaiting_approval: false,
+            call_id: "call-1".to_string(),
+        }
+    }
+
+    fn normalized_entries(store: &MsgStore) -> Vec<NormalizedEntry> {
+        store
+            .get_history()
+            .into_iter()
+            .filter_map(|msg| match msg {
+                LogMsg::JsonPatch(patch) => {
+                    extract_normalized_entry_from_patch(&patch).map(|(_, entry)| entry)
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn command_output(entry: &NormalizedEntry) -> Option<String> {
+        match &entry.entry_type {
+            NormalizedEntryType::ToolUse {
+                action_type: ActionType::CommandRun { result, .. },
+                ..
+            } => result.as_ref().and_then(|result| result.output.clone()),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn live_command_output_deltas_replace_command_entry_each_time() {
+        let store = Arc::new(MsgStore::new());
+        let mut command = command_state(0);
+
+        update_command_output(
+            &mut command,
+            ExecOutputStream::Stdout,
+            b"hello ",
+            NormalizeMode::Live,
+            &store,
+        );
+        update_command_output(
+            &mut command,
+            ExecOutputStream::Stdout,
+            b"world",
+            NormalizeMode::Live,
+            &store,
+        );
+
+        let entries = normalized_entries(&store);
+        assert_eq!(entries.len(), 2);
+        let output = entries
+            .last()
+            .and_then(command_output)
+            .expect("latest command output");
+        assert_eq!(output, "stdout:\nhello world");
+    }
+
+    #[test]
+    fn historical_command_output_deltas_flush_once_at_end() {
+        let store = Arc::new(MsgStore::new());
+        let mut state = LogState::new(EntryIndexProvider::start_from(&store));
+        state
+            .commands
+            .insert("call-1".to_string(), command_state(0));
+
+        let command = state.commands.get_mut("call-1").expect("command state");
+        update_command_output(
+            command,
+            ExecOutputStream::Stdout,
+            b"hello ",
+            NormalizeMode::Historical,
+            &store,
+        );
+        update_command_output(
+            command,
+            ExecOutputStream::Stdout,
+            b"world",
+            NormalizeMode::Historical,
+            &store,
+        );
+
+        assert!(store.get_history().is_empty());
+
+        flush_historical_command_entries(&mut state, &store);
+
+        let entries = normalized_entries(&store);
+        assert_eq!(entries.len(), 1);
+        let output = entries
+            .last()
+            .and_then(command_output)
+            .expect("latest command output");
+        assert_eq!(output, "stdout:\nhello world");
+    }
+
+    #[test]
+    fn live_and_historical_command_modes_match_final_entry() {
+        let live_store = Arc::new(MsgStore::new());
+        let historical_store = Arc::new(MsgStore::new());
+
+        let mut live_command = command_state(0);
+        let mut historical_command = command_state(0);
+
+        let live_index = add_normalized_entry(
+            &live_store,
+            &EntryIndexProvider::start_from(&live_store),
+            live_command.to_normalized_entry(),
+        );
+        live_command.index = Some(live_index);
+
+        let historical_index = add_normalized_entry(
+            &historical_store,
+            &EntryIndexProvider::start_from(&historical_store),
+            historical_command.to_normalized_entry(),
+        );
+        historical_command.index = Some(historical_index);
+
+        for (stream, chunk) in [
+            (ExecOutputStream::Stdout, b"hello ".as_slice()),
+            (ExecOutputStream::Stderr, b"warning".as_slice()),
+            (ExecOutputStream::Stdout, b"world".as_slice()),
+        ] {
+            update_command_output(
+                &mut live_command,
+                stream.clone(),
+                chunk,
+                NormalizeMode::Live,
+                &live_store,
+            );
+            update_command_output(
+                &mut historical_command,
+                stream,
+                chunk,
+                NormalizeMode::Historical,
+                &historical_store,
+            );
+        }
+
+        live_command.formatted_output = None;
+        live_command.exit_code = Some(1);
+        live_command.awaiting_approval = false;
+        live_command.status = ToolStatus::Failed;
+        replace_normalized_entry(
+            &live_store,
+            live_command.index.expect("live index"),
+            live_command.to_normalized_entry(),
+        );
+
+        historical_command.formatted_output = None;
+        historical_command.exit_code = Some(1);
+        historical_command.awaiting_approval = false;
+        historical_command.status = ToolStatus::Failed;
+        replace_normalized_entry(
+            &historical_store,
+            historical_command.index.expect("historical index"),
+            historical_command.to_normalized_entry(),
+        );
+
+        let live_entry = normalized_entries(&live_store)
+            .last()
+            .cloned()
+            .expect("live final entry");
+        let historical_entry = normalized_entries(&historical_store)
+            .last()
+            .cloned()
+            .expect("historical final entry");
+
+        assert_eq!(
+            serde_json::to_value(&live_entry).expect("serialize live entry"),
+            serde_json::to_value(&historical_entry).expect("serialize historical entry")
+        );
+        assert_eq!(
+            command_output(&historical_entry).as_deref(),
+            Some("stdout:\nhello world\n\nstderr:\nwarning")
+        );
     }
 }

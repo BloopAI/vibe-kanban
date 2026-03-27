@@ -254,6 +254,14 @@ impl StandardCodingAgentExecutor for Codex {
         normalize_logs(msg_store, worktree_path)
     }
 
+    fn normalize_logs_historical(
+        &self,
+        msg_store: Arc<MsgStore>,
+        worktree_path: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
+        normalize_logs::normalize_logs_historical(msg_store, worktree_path)
+    }
+
     fn default_mcp_config_path(&self) -> Option<PathBuf> {
         codex_home().map(|home| home.join("config.toml"))
     }
