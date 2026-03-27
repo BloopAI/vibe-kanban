@@ -50,8 +50,6 @@ export const ExecutionProcessesProvider: React.FC<{
       isConnected,
       error,
     });
-    return () =>
-      useExecutionProcessesStore.getState().clearExecutionProcessesData();
   }, [
     executionProcesses,
     executionProcessesById,
@@ -63,6 +61,12 @@ export const ExecutionProcessesProvider: React.FC<{
     isConnected,
     error,
   ]);
+
+  useEffect(() => {
+    return () => {
+      useExecutionProcessesStore.getState().clearExecutionProcessesData();
+    };
+  }, []);
 
   return <>{children}</>;
 };
