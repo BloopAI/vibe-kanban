@@ -1,7 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
-import { SUPPORTED_I18N_CODES, uiLanguageToI18nCode } from './languages';
+import { SUPPORTED_I18N_CODES, uiLanguageToI18nCode, updateDocumentDirection } from './languages';
 
 // Import translation files
 import enCommon from './locales/en/common.json';
@@ -139,17 +139,21 @@ export const updateLanguageFromConfig = (configLanguage: string) => {
     // Use browser detection
     const detected = i18n.services.languageDetector?.detect();
     const detectedLang = Array.isArray(detected) ? detected[0] : detected;
-    i18n.changeLanguage(detectedLang || 'en');
+    const lang = detectedLang || 'en';
+    i18n.changeLanguage(lang);
+    updateDocumentDirection(lang);
   } else {
     // Use explicit language selection with proper mapping
     const langCode = uiLanguageToI18nCode(configLanguage);
     if (langCode) {
       i18n.changeLanguage(langCode);
+      updateDocumentDirection(langCode);
     } else {
       console.warn(
         `Unknown UI language: ${configLanguage}, falling back to 'en'`
       );
       i18n.changeLanguage('en');
+      updateDocumentDirection('en');
     }
   }
 };
