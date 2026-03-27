@@ -95,4 +95,5 @@ export function isRtlLanguage(langCode: string): boolean {
  */
 export function updateDocumentDirection(langCode: string): void {
   document.documentElement.dir = isRtlLanguage(langCode) ? 'rtl' : 'ltr';
+  document.documentElement.lang = langCode;
 }

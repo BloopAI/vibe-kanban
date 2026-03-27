@@ -1,7 +1,11 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
-import { SUPPORTED_I18N_CODES, uiLanguageToI18nCode, updateDocumentDirection } from './languages';
+import {
+  SUPPORTED_I18N_CODES,
+  uiLanguageToI18nCode,
+  updateDocumentDirection,
+} from './languages';
 
 // Import translation files
 import enCommon from './locales/en/common.json';
@@ -39,6 +43,11 @@ import zhHantSettings from './locales/zh-Hant/settings.json';
 import zhHantProjects from './locales/zh-Hant/projects.json';
 import zhHantTasks from './locales/zh-Hant/tasks.json';
 import zhHantOrganization from './locales/zh-Hant/organization.json';
+import heCommon from './locales/he/common.json';
+import heSettings from './locales/he/settings.json';
+import heProjects from './locales/he/projects.json';
+import heTasks from './locales/he/tasks.json';
+import heOrganization from './locales/he/organization.json';
 
 const resources = {
   en: {
@@ -89,6 +98,13 @@ const resources = {
     projects: zhHantProjects,
     tasks: zhHantTasks,
     organization: zhHantOrganization,
+  },
+  he: {
+    common: heCommon,
+    settings: heSettings,
+    projects: heProjects,
+    tasks: heTasks,
+    organization: heOrganization,
   },
 };
 
