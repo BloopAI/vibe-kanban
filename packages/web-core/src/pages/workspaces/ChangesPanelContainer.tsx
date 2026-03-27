@@ -12,7 +12,8 @@ import {
   WorkerPoolContextProvider,
 } from '@pierre/diffs/react';
 import type { DiffLineAnnotation, AnnotationSide } from '@pierre/diffs';
-import WorkerUrl from '@pierre/diffs/worker/worker.js?worker&url';
+const WorkerUrl = new URL('@pierre/diffs/worker/worker.js', import.meta.url)
+  .href;
 import { sortDiffs } from '@/shared/lib/fileTreeUtils';
 import { useChangesView } from '@/shared/hooks/useChangesView';
 import { useScrollSyncStateMachine } from '@/shared/hooks/useScrollSyncStateMachine';
@@ -533,7 +534,7 @@ const DiffFileItem = memo(function DiffFileItem({
 
       return <ReviewCommentRenderer comment={metadata.comment} />;
     },
-    [diff, filePath, addComment]
+    [diff, filePath, addComment, actualTheme]
   );
 
   const renderHoverUtility = useCallback(
