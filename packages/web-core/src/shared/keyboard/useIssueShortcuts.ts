@@ -109,7 +109,7 @@ export function useIssueShortcuts() {
   // Track when a sequence prefix key (i) is pressed so standalone keys
   // like `x` don't fire during a sequence like `i>x`.
   const sequencePendingRef = useRef(false);
-  const sequenceTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const sequenceTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   useHotkeys(
     'i',
     () => {

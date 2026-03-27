@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import pkg from "./package.json";
 
@@ -38,7 +39,7 @@ function executorSchemasPlugin(): Plugin {
         entries.push(`  "${key}": ${varName}`);
       });
 
-      return `
+      return { code: `
 ${imports.join("\n")}
 
 export const schemas = {
@@ -46,7 +47,7 @@ ${entries.join(",\n")}
 };
 
 export default schemas;
-`;
+`, moduleType: 'js' as const };
     },
   };
 }
@@ -61,24 +62,23 @@ export default defineConfig({
       target: "react",
       autoCodeSplitting: false,
     }),
-    react({
-      babel: {
-        plugins: [
-          [
-            "babel-plugin-react-compiler",
-            {
-              target: "18",
-              sources: [
-                path.resolve(__dirname, "src"),
-                path.resolve(__dirname, "../web-core/src"),
-              ],
-              environment: {
-                enableResetCacheOnSourceFileChanges: true,
-              },
+    react(),
+    babel({
+      plugins: [
+        [
+          "babel-plugin-react-compiler",
+          {
+            target: "19",
+            sources: [
+              path.resolve(__dirname, "src"),
+              path.resolve(__dirname, "../web-core/src"),
+            ],
+            environment: {
+              enableResetCacheOnSourceFileChanges: true,
             },
-          ],
+          },
         ],
-      },
+      ],
     }),
     executorSchemasPlugin(),
   ],

@@ -56,7 +56,7 @@ interface SearchableTagDropdownProps {
   onCancelCreate: () => void;
 
   // Ref for color picker container (for focus management)
-  colorPickerRef: RefObject<HTMLDivElement>;
+  colorPickerRef: RefObject<HTMLDivElement | null>;
 
   contentClassName?: string;
   disabled?: boolean;
@@ -100,7 +100,7 @@ export function SearchableTagDropdown({
       >
         {isCreating ? (
           // Color picker step
-          <div
+          (<div
             ref={colorPickerRef}
             className="p-base space-y-base outline-none"
             tabIndex={-1}
@@ -134,10 +134,10 @@ export function SearchableTagDropdown({
                 {t('buttons.create')}
               </button>
             </div>
-          </div>
+          </div>)
         ) : (
           // Search and tag list
-          <>
+          (<>
             <DropdownMenuSearchInput
               placeholder={t('kanban.searchTags')}
               value={searchTerm}
@@ -153,7 +153,7 @@ export function SearchableTagDropdown({
               <>
                 {filteredTags.length > 0 && (
                   <Virtuoso
-                    ref={virtuosoRef as React.RefObject<VirtuosoHandle>}
+                    ref={virtuosoRef as React.RefObject<VirtuosoHandle | null>}
                     style={{ height: Math.min(filteredTags.length * 36, 200) }}
                     totalCount={filteredTags.length}
                     computeItemKey={(idx) =>
@@ -210,7 +210,7 @@ export function SearchableTagDropdown({
                 )}
               </>
             )}
-          </>
+          </>)
         )}
       </DropdownMenuContent>
     </DropdownMenu>

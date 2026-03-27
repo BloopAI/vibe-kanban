@@ -128,7 +128,7 @@ export interface KanbanIssuePanelProps {
   descriptionSaveStatus?: 'idle' | 'saved';
 
   // Ref for title input (created in container)
-  titleInputRef: RefObject<HTMLTextAreaElement>;
+  titleInputRef: RefObject<HTMLTextAreaElement | null>;
 
   // Copy link callback (edit mode only)
   onCopyLink?: () => void;

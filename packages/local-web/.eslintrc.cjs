@@ -134,6 +134,10 @@ module.exports = {
     ],
     '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/switch-exhaustiveness-check': 'error',
+    'react-hooks/set-state-in-effect': 'off',
+    'react-hooks/static-components': 'off',
+    'react-hooks/refs': 'off',
+    'react-hooks/incompatible-library': 'off',
     // Enforce typesafe modal pattern
     'no-restricted-imports': [
       'error',

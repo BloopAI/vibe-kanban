@@ -238,7 +238,7 @@ function toRepoItem(repo: RepoLike): RepoItem {
 function EditorRefPlugin({
   editorRef,
 }: {
-  editorRef: React.MutableRefObject<LexicalEditor | null>;
+  editorRef: React.RefObject<LexicalEditor | null>;
 }) {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {

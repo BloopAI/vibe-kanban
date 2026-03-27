@@ -47,7 +47,7 @@ interface PreviewBrowserProps {
   url?: string;
   autoDetectedUrl?: string;
   urlInputValue: string;
-  urlInputRef: RefObject<HTMLInputElement>;
+  urlInputRef: RefObject<HTMLInputElement | null>;
   isUsingOverride?: boolean;
   onUrlInputChange: (value: string) => void;
   onUrlSubmit: () => void;
@@ -70,14 +70,14 @@ interface PreviewBrowserProps {
     direction: 'right' | 'bottom' | 'corner'
   ) => (e: MouseEvent | TouchEvent) => void;
   isResizing: boolean;
-  containerRef: RefObject<HTMLDivElement>;
+  containerRef: RefObject<HTMLDivElement | null>;
   repos: PreviewBrowserRepo[];
   handleEditDevScript: () => void;
   handleFixDevScript?: () => void;
   hasFailedDevServer?: boolean;
   mobileScale: number;
   className?: string;
-  iframeRef: RefObject<HTMLIFrameElement>;
+  iframeRef: RefObject<HTMLIFrameElement | null>;
   navigation: PreviewNavigationState | null;
   onNavigateBack: () => void;
   onNavigateForward: () => void;
@@ -231,7 +231,7 @@ export function PreviewBrowser({
             </>
           ) : isMobile ? (
             /* Mobile: URL collapsed mode — globe, refresh, open-in-tab, start/stop */
-            <>
+            (<>
               <IconButtonGroup>
                 <IconButtonGroupItem
                   icon={GlobeIcon}
@@ -241,7 +241,6 @@ export function PreviewBrowser({
                   title="Show URL"
                 />
               </IconButtonGroup>
-
               <IconButtonGroup>
                 <IconButtonGroupItem
                   icon={ArrowClockwiseIcon}
@@ -258,9 +257,7 @@ export function PreviewBrowser({
                   title={t('preview.toolbar.openInTab')}
                 />
               </IconButtonGroup>
-
               <div className="flex-1" />
-
               <IconButtonGroup>
                 <IconButtonGroupItem
                   icon={
@@ -294,10 +291,10 @@ export function PreviewBrowser({
                   }
                 />
               </IconButtonGroup>
-            </>
+            </>)
           ) : (
             /* Desktop: Full toolbar */
-            <>
+            (<>
               {/* Navigation (Back/Forward) */}
               <PreviewNavigation
                 navigation={navigation}
@@ -305,7 +302,6 @@ export function PreviewBrowser({
                 onForward={onNavigateForward}
                 disabled={!isServerRunning}
               />
-
               {/* Inspect Mode & DevTools */}
               <IconButtonGroup>
                 <IconButtonGroupItem
@@ -325,7 +321,6 @@ export function PreviewBrowser({
                   title={t('preview.toolbar.toggleDevTools')}
                 />
               </IconButtonGroup>
-
               {/* URL Input */}
               <div
                 className={cn(
@@ -356,7 +351,6 @@ export function PreviewBrowser({
                   )}
                 />
               </div>
-
               {/* URL Actions */}
               <IconButtonGroup>
                 <IconButtonGroupItem
@@ -397,7 +391,6 @@ export function PreviewBrowser({
                   title={t('preview.toolbar.refresh')}
                 />
               </IconButtonGroup>
-
               {/* Screen Size Toggle */}
               <IconButtonGroup>
                 <IconButtonGroupItem
@@ -425,7 +418,6 @@ export function PreviewBrowser({
                   title={t('preview.toolbar.responsiveView')}
                 />
               </IconButtonGroup>
-
               {/* Dimensions display for responsive mode */}
               {screenSize === 'responsive' && (
                 <span className="text-xs text-low font-mono whitespace-nowrap">
@@ -433,7 +425,6 @@ export function PreviewBrowser({
                   {Math.round(localDimensions.height)}
                 </span>
               )}
-
               {/* Start/Stop Button */}
               <IconButtonGroup>
                 <IconButtonGroupItem
@@ -468,11 +459,10 @@ export function PreviewBrowser({
                   }
                 />
               </IconButtonGroup>
-            </>
+            </>)
           )}
         </div>
       </div>
-
       {/* Content area */}
       <div
         ref={containerRef}
@@ -490,7 +480,7 @@ export function PreviewBrowser({
           >
             {screenSize === 'mobile' ? (
               // Phone frame for mobile mode - scales down to fit container
-              <div
+              (<div
                 className="bg-primary rounded-[2rem] p-3 shadow-xl origin-center"
                 style={{
                   transform:
@@ -511,10 +501,10 @@ export function PreviewBrowser({
                     onLoad={onIframeLoad}
                   />
                 </div>
-              </div>
+              </div>)
             ) : (
               // Desktop and responsive modes
-              <div
+              (<div
                 className={cn(
                   'rounded-sm border overflow-hidden relative',
                   screenSize === 'responsive' && 'shadow-lg'
@@ -533,7 +523,6 @@ export function PreviewBrowser({
                   referrerPolicy="no-referrer"
                   onLoad={onIframeLoad}
                 />
-
                 {/* Resize handles for responsive mode */}
                 {screenSize === 'responsive' && (
                   <>
@@ -557,7 +546,7 @@ export function PreviewBrowser({
                     />
                   </>
                 )}
-              </div>
+              </div>)
             )}
           </div>
         ) : (
