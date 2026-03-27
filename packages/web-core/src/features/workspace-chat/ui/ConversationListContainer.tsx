@@ -8,7 +8,12 @@ import {
   useState,
   type MouseEvent,
 } from 'react';
-import { CaretDownIcon, CaretUpIcon, SpinnerIcon } from '@phosphor-icons/react';
+import {
+  CaretDownIcon,
+  CaretUpIcon,
+  SpinnerIcon,
+  XIcon,
+} from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -653,9 +658,15 @@ export const ConversationList = forwardRef<
   }, [currentMatchIdx, matchRowIndices.length]);
 
   useEffect(() => {
+    if (hasActiveStreamingTurn) return;
     if (currentMatchRowIndex === null) return;
     scrollToAbsoluteIndex(currentMatchRowIndex, 'center', 'smooth');
-  }, [currentMatchRowIndex, scrollToAbsoluteIndex]);
+  }, [
+    currentMatchRowIndex,
+    hasActiveStreamingTurn,
+    scrollToAbsoluteIndex,
+    searchQuery,
+  ]);
 
   const handleNextMatch = useCallback(() => {
     if (matchRowIndices.length === 0) return;
@@ -703,8 +714,8 @@ export const ConversationList = forwardRef<
         <div
           className={
             isCurrentMatch
-              ? 'rounded-sm ring-1 ring-brand/70 bg-brand/8'
-              : 'rounded-sm ring-1 ring-brand/30 bg-brand/4'
+              ? 'border-l-2 border-brand/70 bg-brand/8'
+              : 'border-l-2 border-brand/40 bg-brand/4'
           }
         >
           {content}
@@ -1056,6 +1067,14 @@ export const ConversationList = forwardRef<
                 title="Next match (Enter)"
               >
                 <CaretDownIcon className="size-icon-sm" weight="bold" />
+              </button>
+              <button
+                type="button"
+                onClick={closeSearch}
+                className="p-1 text-low hover:text-normal"
+                title="Close search (Escape)"
+              >
+                <XIcon className="size-icon-sm" weight="bold" />
               </button>
             </>
           </div>
