@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
 };
 
@@ -350,6 +350,25 @@ impl GitService {
             .into_iter()
             .map(|e| Self::status_entry_to_diff(&repo, &base_tree, e))
             .collect())
+    }
+
+    /// Returns file paths that differ from base commit, without loading content.
+    /// Much cheaper than `get_diffs` — skips content loading (`status_entry_to_diff`),
+    /// only runs git name-status commands to get the file list.
+    pub fn get_diff_file_paths(
+        &self,
+        worktree_path: &Path,
+        base_commit: &Commit,
+    ) -> Result<HashSet<String>, GitServiceError> {
+        let git = GitCli::new();
+        let entries = git
+            .diff_status(
+                worktree_path,
+                base_commit,
+                cli::StatusDiffOptions { path_filter: None },
+            )
+            .map_err(|e| GitServiceError::InvalidRepository(format!("git diff failed: {e}")))?;
+        Ok(entries.into_iter().map(|e| e.path).collect())
     }
 
     /// Extract file path from a Diff (for indexing and ConversationPatch)
@@ -780,6 +799,24 @@ impl GitService {
         }
 
         Ok(())
+    }
+
+    /// Get the HEAD commit OID for a repo/worktree. Returns None if HEAD is unborn.
+    pub fn get_head_commit(&self, repo_path: &Path) -> Option<Commit> {
+        let repo = self.open_repo(repo_path).ok()?;
+        let head = repo.head().ok()?;
+        head.target().map(Commit::new)
+    }
+
+    /// Returns true if HEAD's first parent is `expected_parent_oid` (i.e., HEAD is a simple commit on top of it).
+    pub fn is_head_child_of(&self, repo_path: &Path, expected_parent_oid: git2::Oid) -> bool {
+        let check = || -> Option<bool> {
+            let repo = self.open_repo(repo_path).ok()?;
+            let oid = repo.head().ok()?.target()?;
+            let parent = repo.find_commit(oid).ok()?.parent(0).ok()?;
+            Some(parent.id() == expected_parent_oid)
+        };
+        check().unwrap_or(false)
     }
 
     /// Get current HEAD information including branch name and commit OID
