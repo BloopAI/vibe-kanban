@@ -1,0 +1,561 @@
+{
+  "editorNames": {
+    "custom": "מותאם אישית"
+  },
+  "buttons": {
+    "save": "שמור",
+    "cancel": "ביטול",
+    "send": "שלח",
+    "delete": "מחק",
+    "edit": "ערוך",
+    "create": "צור",
+    "continue": "המשך",
+    "reset": "אפס",
+    "manage": "נהל",
+    "connect": "התחבר",
+    "disconnect": "נתק",
+    "close": "סגור",
+    "replay": "הפעל שוב",
+    "discard": "בטל",
+    "addItem": "הוסף פריט",
+    "reply": "השב",
+    "retry": "נסה שוב",
+    "add": "הוסף"
+  },
+  "form": {
+    "notSpecified": "לא צוין",
+    "selectOption": "בחר אפשרות..."
+  },
+  "states": {
+    "loading": "טוען..."
+  },
+  "ok": "אישור",
+  "error": "שגיאה",
+  "errors": {
+    "generic": "אירעה שגיאה בלתי צפויה"
+  },
+  "language": {
+    "browserDefault": "ברירת מחדל של הדפדפן"
+  },
+  "conversation": {
+    "plan": "תוכנית",
+    "output": "פלט",
+    "deniedByUser": "{{toolName}} נדחה על ידי המשתמש",
+    "tool": "כלי",
+    "thinking": "חושב",
+    "toolSummary": {
+      "read": "קרא {{path}}",
+      "searched": "חיפש \"{{query}}\"",
+      "fetched": "אחזר {{url}}",
+      "ranCommand": "הריץ פקודה",
+      "createdTask": "יצר משימה: {{description}}",
+      "todoOperation": "{{operation}} פריטים לביצוע"
+    },
+    "subagent": {
+      "defaultType": "תת-סוכן"
+    },
+    "loadingEarlierMessages": "טוען הודעות קודמות"
+  },
+  "folderPicker": {
+    "legend": "לחץ על שמות תיקיות לניווט • השתמש בלחצני הפעולה לבחירה",
+    "manualPathLabel": "הזן נתיב ידנית:",
+    "go": "עבור",
+    "searchLabel": "חפש בספרייה הנוכחית:",
+    "selectCurrent": "בחר נוכחי",
+    "gitRepo": "מאגר git",
+    "selectPath": "בחר נתיב"
+  },
+  "branchSelector": {
+    "placeholder": "בחר ענף",
+    "searchPlaceholder": "חפש ענפים...",
+    "empty": "לא נמצאו ענפים",
+    "badges": {
+      "current": "נוכחי",
+      "remote": "מרוחק"
+    },
+    "currentDisabled": "לא ניתן לבחור את הענף הנוכחי"
+  },
+  "orgSwitcher": {
+    "organizations": "ארגונים",
+    "createOrganization": "צור ארגון",
+    "orgSettings": "הגדרות ארגון"
+  },
+  "personal": "אישי",
+  "signIn": "היכנס",
+  "signOut": "התנתק",
+  "oauth": {
+    "title": "היכנס ל-Vibe Kanban",
+    "description": "היכנס כדי להצטרף לארגונים ולשתף משימות עם הצוות שלך",
+    "continueWithGitHub": "המשך עם GitHub",
+    "continueWithGoogle": "המשך עם Google",
+    "waitingTitle": "השלם אימות",
+    "waitingDescription": "נפתח חלון קופץ לאימות",
+    "waitingForAuth": "ממתין לאימות...",
+    "popupInstructions": "אם חלון הקופץ לא נפתח, אנא בדוק את הגדרות חוסם הקופצים שלך.",
+    "back": "חזרה",
+    "successTitle": "האימות הצליח!",
+    "welcomeBack": "ברוך שובך, {{name}}",
+    "errorTitle": "האימות נכשל",
+    "errorDescription": "אירעה בעיה באימות החשבון שלך",
+    "tryAgain": "נסה שוב"
+  },
+  "onboardingSignIn": {
+    "subtitle": "היכנס כדי להמשיך",
+    "signedInAs": "מחובר כ-{{name}}.",
+    "moreOptions": "אפשרויות נוספות",
+    "featureHeader": "תכונה",
+    "signedInHeader": "מחובר",
+    "skipSignInHeader": "ללא כניסה",
+    "yes": "כן",
+    "no": "לא"
+  },
+  "toolbar": {
+    "sortBy": "מיין לפי",
+    "groupBy": "קבץ לפי"
+  },
+  "sorting": {
+    "ascending": "עולה",
+    "descending": "יורד"
+  },
+  "grouping": {
+    "date": "תאריך",
+    "assignee": "מוקצה ל",
+    "label": "תווית"
+  },
+  "workspaces": {
+    "title": "סביבות עבודה",
+    "searchPlaceholder": "חפש...",
+    "active": "פעיל",
+    "archived": "בארכיון",
+    "loading": "טוען...",
+    "notFound": "סביבת עבודה לא נמצאה",
+    "selectToStart": "בחר סביבת עבודה כדי להתחיל",
+    "draft": "טיוטה",
+    "viewArchive": "הצג ארכיון",
+    "backToActive": "חזרה לפעיל",
+    "noArchived": "אין סביבות עבודה בארכיון",
+    "noWorkspaces": "אין סביבות עבודה",
+    "newWorkspace": "סביבת עבודה חדשה",
+    "needsAttention": "דורש תשומת לב",
+    "idle": "סרק",
+    "running": "פועל",
+    "pin": "נעץ",
+    "unpin": "בטל נעיצה",
+    "archive": "העבר לארכיון",
+    "more": "פעולות נוספות",
+    "rename": {
+      "title": "שנה שם לסביבת עבודה",
+      "description": "הזן שם חדש עבור סביבת עבודה זו.",
+      "nameLabel": "שם",
+      "placeholder": "הזן שם לסביבת עבודה",
+      "action": "שנה שם",
+      "renaming": "משנה שם..."
+    },
+    "unlinkFromIssue": "נתק מפריט",
+    "deleteWorkspace": "מחק סביבת עבודה",
+    "unlink": "נתק",
+    "delete": "מחק",
+    "unlinkConfirmMessage": "האם אתה בטוח שברצונך לנתק סביבת עבודה זו מהפריט? סביבת העבודה תישאר קיימת אך לא תהיה עוד משויכת לפריט זה.",
+    "deleteConfirmMessage": "האם אתה בטוח שברצונך למחוק סביבת עבודה זו? פעולה זו תנתק אותה מהפריט ותמחק את סביבת העבודה המקומית. פעולה זו אינה ניתנת לביטול.",
+    "unlinkError": "ניתוק סביבת העבודה נכשל",
+    "deleteError": "מחיקת סביבת העבודה נכשלה",
+    "linkError": "קישור סביבת העבודה נכשל",
+    "filesChanged": "{{count}} קבצים",
+    "deleteDialog": {
+      "title": "מחק סביבת עבודה",
+      "description": "האם אתה בטוח שברצונך למחוק סביבת עבודה זו? פעולה זו אינה ניתנת לביטול.",
+      "deleteBranchLabel": "מחק ענף",
+      "cannotDeleteOpenPr": "לא ניתן למחוק ענף בזמן שה-PR פתוח",
+      "unlinkFromIssueLabel": "נתק גם מהפריט"
+    }
+  },
+  "fileTree": {
+    "searchPlaceholder": "חפש קבצים...",
+    "noResults": "לא נמצאו קבצים תואמים",
+    "title": "קבצים",
+    "showGitHubComments": "הצג הערות GitHub",
+    "hideGitHubComments": "הסתר הערות GitHub",
+    "prevGitHubComment": "קובץ קודם עם הערות",
+    "nextGitHubComment": "קובץ הבא עם הערות"
+  },
+  "sections": {
+    "changes": "שינויים",
+    "repositories": "מאגרים",
+    "addRepositories": "הוסף מאגרים",
+    "project": "פרויקט",
+    "processes": "תהליכים",
+    "devServer": "שרת פיתוח",
+    "advanced": "מתקדם",
+    "workingBranch": "ענף עבודה",
+    "recent": "אחרון",
+    "other": "אחר",
+    "devServerPreview": "תצוגה מקדימה של שרת פיתוח",
+    "terminal": "טרמינל",
+    "notes": "הערות"
+  },
+  "notes": {
+    "placeholder": "הוסף הערות על סביבת עבודה זו...",
+    "selectWorkspace": "בחר סביבת עבודה לצפייה בהערות"
+  },
+  "actions": {
+    "copyPath": "העתק נתיב",
+    "cancel": "ביטול",
+    "saveChanges": "שמור שינויים",
+    "copied": "הועתק",
+    "collapse": "כווץ"
+  },
+  "comments": {
+    "addReviewComment": "הוסף הערת סקירה",
+    "addPlaceholder": "הוסף הערה...",
+    "editPlaceholder": "ערוך הערה...",
+    "copyToReview": "העתק לסקירה"
+  },
+  "confirm": {
+    "defaultConfirm": "אשר",
+    "defaultCancel": "ביטול"
+  },
+  "dialogs": {
+    "selectGitRepository": "בחר מאגר Git",
+    "chooseExistingRepo": "בחר מאגר קיים ממערכת הקבצים שלך"
+  },
+  "empty": {
+    "noChanges": "אין שינויים להצגה"
+  },
+  "commandBar": {
+    "noResults": "לא נמצאו תוצאות.",
+    "back": "חזרה",
+    "defaultPlaceholder": "הקלד פקודה או חיפוש...",
+    "selectBranch": "בחר ענף",
+    "selectBranchFor": "בחר ענף עבור {{repoName}}"
+  },
+  "workspacesGuide": {
+    "welcome": {
+      "title": "ברוך הבא",
+      "content": "ברוך הבא לדף סביבות העבודה. תצוגה אחת של כל סביבות העבודה בכל הפרויקטים שלך, והדרך המהירה ביותר לסקור עבודה מהסוכנים שלך. שתף משוב בכל עת דרך הסמל בסרגל הניווט."
+    },
+    "commandBar": {
+      "title": "שורת פקודות",
+      "content": "שורת הפקודות היא הצומת המרכזי לניווט. פתח אותה עם CMD+K לחיפוש וגישה לכל פעולה זמינה בסביבת עבודה."
+    },
+    "contextBar": {
+      "title": "שורת הקשר",
+      "content": "שורת ההקשר מאפשרת לך לעבור במהירות בין חלוניות. גרור אותה לכל מקום שמתאים לך."
+    },
+    "sidebar": {
+      "title": "סרגל צד של סביבת עבודה",
+      "content": "ראה את מצב כל סביבות העבודה שלך במבט אחד. התראות מדגישות אילו מהן דורשות תשומת לב. העבר סביבות עבודה ממוזגות לארכיון כדי לשמור על סרגל הצד מסודר."
+    },
+    "multiRepo": {
+      "title": "תמיכה במרובה מאגרים",
+      "content": "הוסף מאגרים מרובים לסביבת עבודה אחת. עיין בקוד ממאגר אחד בזמן עבודה באחר, או יישם שינויים במספר מאגרים בו-זמנית."
+    },
+    "sessions": {
+      "title": "סשנים מרובים",
+      "content": "צור סשני שיחה מרובים עם הסוכן בתוך סביבת עבודה אחת, כולל סשנים עם סוכנים שונים. זה מסייע לך לעקוף מגבלות שיחה או להפעיל סוכני סקירה בשרשורים נפרדים."
+    },
+    "preview": {
+      "title": "תצוגה מקדימה של שינויים",
+      "content": "צפה בתוצאות עבודתך בדפדפן מובנה מבלי לעבור הקשר. בדוק על שולחן עבודה, מובייל וגדלי תצוגה מותאמים אישית."
+    },
+    "diffs": {
+      "title": "Diffs והערות",
+      "content": "לוח ה-diffs המעוצב מחדש כולל עץ קבצים של השינויים שלך. הגב ישירות על diffs כדי לתת משוב לסוכן, וצפה בהערות GitHub כאשר סביבת העבודה שלך מקושרת ל-PR."
+    },
+    "classicUi": {
+      "title": "חזרה לממשק הקלאסי",
+      "content": "לחץ על סמל היציאה בצד שמאל של סרגל הניווט כדי לחזור ללוח הקנבן הקלאסי. כדי להשבית את הממשק החדש לחלוטין, עדכן את האפשרות \"הפעל בטא של סביבות עבודה\" תחת \"תכונות בטא\" בהגדרות."
+    }
+  },
+  "logs": {
+    "searchLogs": "חפש לוגים",
+    "selectProcessToView": "בחר תהליך לצפייה בלוגים"
+  },
+  "processes": {
+    "noProcesses": "אין תהליכים",
+    "terminal": "טרמינל"
+  },
+  "search": {
+    "matchCount": "{{current}} מתוך {{total}}",
+    "noMatches": "אין התאמות"
+  },
+  "contextUsage": {
+    "label": "שימוש בהקשר",
+    "emptyTooltip": "שימוש בהקשר יופיע לאחר התשובה הבאה",
+    "tooltip": "הקשר: {{percentage}}% · {{used}} / {{total}} טוקנים",
+    "ariaLabel": "שימוש בהקשר: {{percentage}}%"
+  },
+  "shortcuts": {
+    "title": "קיצורי מקלדת",
+    "inWorkspace": "(בסביבת עבודה)",
+    "sequentialHint": "קיצורים רציפים: לחץ את המקש הראשון, ואז את השני תוך 500 אלפיות שנייה.",
+    "configurableHint": "ניתן לתצורה בהגדרות ← כללי ← קלט הודעות",
+    "groups": {
+      "quickActions": "פעולות מהירות",
+      "navigation": "ניווט",
+      "modifiers": "מחווני שינוי",
+      "goTo": "עבור אל (G ...)",
+      "workspace": "סביבת עבודה (W ...)",
+      "view": "תצוגה (V ...)",
+      "issues": "פריטים (I ...)",
+      "git": "Git (X ...)",
+      "yank": "העתק (Y ...)",
+      "toggle": "הפעל/כבה (T ...)",
+      "run": "הרץ (R ...)"
+    },
+    "actions": {
+      "showHelp": "הצג עזרה זו",
+      "closeCancel": "סגור/בטל",
+      "createNewTask": "צור משימה חדשה",
+      "deleteSelected": "מחק נבחר",
+      "focusSearch": "התמקד בחיפוש",
+      "moveDown": "הזז למטה",
+      "moveUp": "הזז למעלה",
+      "moveLeft": "הזז שמאלה",
+      "moveRight": "הזז ימינה",
+      "openCommandBar": "פתח שורת פקודות",
+      "formatInlineCode": "עצב קוד מוטבע",
+      "sendMessage": "שלח הודעה",
+      "settings": "עבור להגדרות",
+      "new-workspace": "עבור לסביבת עבודה חדשה",
+      "duplicate-workspace": "שכפל סביבת עבודה",
+      "rename-workspace": "שנה שם לסביבת עבודה",
+      "pin-workspace": "נעץ/בטל נעיצת סביבת עבודה",
+      "archive-workspace": "העבר סביבת עבודה לארכיון",
+      "delete-workspace": "מחק סביבת עבודה",
+      "toggle-changes-mode": "הפעל/כבה לוח שינויים",
+      "toggle-logs-mode": "הפעל/כבה לוח לוגים",
+      "toggle-preview-mode": "הפעל/כבה לוח תצוגה מקדימה",
+      "toggle-left-sidebar": "הפעל/כבה סרגל צד שמאלי",
+      "toggle-left-main-panel": "הפעל/כבה לוח צ'אט",
+      "create-issue": "צור פריט",
+      "change-issue-status": "שנה סטטוס",
+      "change-issue-priority": "שנה עדיפות",
+      "change-assignees": "שנה מוקצים",
+      "make-sub-issue-of": "הפוך לתת-פריט של",
+      "add-sub-issue": "הוסף תת-פריט",
+      "remove-parent-issue": "הסר הורה",
+      "link-workspace": "קשר סביבת עבודה",
+      "duplicate-issue": "שכפל פריט",
+      "delete-issue": "מחק פריט",
+      "git-create-pr": "צור Pull Request",
+      "git-merge": "מזג ענף",
+      "git-rebase": "בצע rebase לענף",
+      "git-push": "דחף שינויים",
+      "copy-path": "העתק נתיב",
+      "copy-raw-logs": "העתק לוגים גולמיים",
+      "toggle-dev-server": "הפעל/כבה שרת פיתוח",
+      "toggle-wrap-lines": "הפעל/כבה גלישת שורות",
+      "run-setup-script": "הרץ סקריפט הגדרה",
+      "run-cleanup-script": "הרץ סקריפט ניקוי",
+      "run-archive-script": "הרץ סקריפט ארכיון"
+    }
+  },
+  "typeahead": {
+    "tags": "תגיות",
+    "files": "קבצים",
+    "commands": "פקודות",
+    "chooseRepo": "בחר מאגר",
+    "selectedRepo": "מאגר נבחר: {{repoName}}",
+    "missingRepo": "המאגר שנבחר אינו זמין יותר.",
+    "noTagsOrFiles": "לא נמצאו תגיות או קבצים",
+    "createTag": "צור תגית חדשה",
+    "noCommands": "אין פקודות זמינות עבור סוכן זה."
+  },
+  "kanban": {
+    "noVisibleStatuses": "כל הסטטוסים מוסתרים. השתמש בהגדרות התצוגה או עבור לכרטיסייה אחרת לצפייה בפריטים.",
+    "noProjectFound": "לא נמצא פרויקט",
+    "unassigned": "לא מוקצה",
+    "noTagsAvailable": "אין תגיות זמינות",
+    "createNewIssue": "צור פריט חדש",
+    "searchTags": "חפש תגיות...",
+    "selectColorFor": "בחר צבע עבור",
+    "createTag": "צור",
+    "noPrCreated": "לא נוצר PR",
+    "noCommentsYet": "אין הערות עדיין",
+    "createdBy": "נוצר על ידי",
+    "comments": "הערות",
+    "enterCommentPlaceholder": "הזן את ההערה שלך כאן...",
+    "attachFile": "צרף קובץ",
+    "attachFileHint": "צרף קבצים (מקסימום 20MB כל אחד)",
+    "dropFilesHere": "גרור קבצים לכאן",
+    "fileDropHint": "כל סוג קובץ עד 20MB",
+    "unknownUser": "משתמש לא ידוע",
+    "deletedUser": "משתמש שנמחק",
+    "replyQuotePrefix": "כתב:",
+    "moreActions": "פעולות נוספות",
+    "closePanel": "סגור לוח",
+    "copyLink": "העתק קישור",
+    "issueTitlePlaceholder": "כותרת פריט...",
+    "issueDescriptionPlaceholder": "הזן כאן תיאור משימה...",
+    "createDraftWorkspaceImmediately": "צור סביבת עבודה כטיוטה מיד",
+    "createDraftWorkspaceDescription": "לאחר יצירת הפריט, פתח את טופס יצירת סביבת העבודה עם פרטי הפריט מלאים מראש",
+    "createIssue": "צור פריט",
+    "newIssue": "פריט חדש",
+    "previewCodeBlock": "[בלוק קוד]",
+    "previewImage": "[תמונה]",
+    "previewImageWithName": "[תמונה: {{name}}]",
+    "previewFile": "[קובץ]",
+    "previewFileWithName": "[קובץ: {{name}}]",
+    "imageAttachmentNameFallback": "קובץ מצורף",
+    "removeImage": "הסר תמונה",
+    "maxFilesAtOnce": "מקסימום {{count}} קבצים בו-זמנית",
+    "fileExceedsLimit": "הקובץ {{filename}} עולה על מגבלת 20MB",
+    "unknownError": "שגיאה לא ידועה",
+    "failedToUploadFile": "העלאת {{filename}} נכשלה: {{message}}",
+    "downloadAttachment": "הורד קובץ מצורף",
+    "subIssues": "תת-פריטים",
+    "noSubIssues": "אין תת-פריטים",
+    "markIndependentIssue": "סמן כפריט עצמאי",
+    "parentIssue": "הורה",
+    "subIssueIndicator": "↳",
+    "viewTabs": {
+      "active": "פעיל",
+      "all": "הכול"
+    },
+    "loginRequired": {
+      "title": "נדרשת כניסה",
+      "description": "אנא היכנס לצפייה בפרויקט זה.",
+      "action": "היכנס"
+    },
+    "team": "צוות",
+    "personal": "אישי",
+    "searchPlaceholder": "חפש פריטים...",
+    "filters": "סינון",
+    "clearFilters": "נקה סינון",
+    "filtersDescription": "כוון סינון ומיון לתצוגת לוח זה.",
+    "filterByTag": "סנן לפי תגית",
+    "filterByPriority": "סנן לפי עדיפות",
+    "tags": "תגיות",
+    "sortBy": "מיין",
+    "workspaceSidebar": {
+      "sortDialogTitle": "מיין סביבות עבודה",
+      "sortDialogDescription": "בחר כיצד סביבות העבודה מסודרות בסרגל הצד.",
+      "sortByLabel": "מיין לפי",
+      "sortOrderLabel": "סדר מיון",
+      "sortUpdatedAt": "עודכן ב",
+      "sortCreatedAt": "נוצר ב",
+      "filterDialogTitle": "סנן סביבות עבודה",
+      "filterDialogDescription": "צמצם סביבות עבודה לפי פרויקט ומצב PR.",
+      "projectFilterLabel": "פרויקט",
+      "prFilterLabel": "PR",
+      "prFilterAll": "הכול",
+      "prFilterHasPr": "עם PR",
+      "prFilterNoPr": "ללא PR",
+      "noProject": "ללא פרויקט",
+      "sortButtonTitle": "מיין סביבות עבודה",
+      "filterButtonTitle": "סנן סביבות עבודה"
+    },
+    "sortAscending": "עולה",
+    "sortDescending": "יורד",
+    "assignee": "מוקצה ל",
+    "self": "אני",
+    "priority": "עדיפות",
+    "subIssuesFilterLabel": "תת-פריטים",
+    "workspacesFilterLabel": "סביבות עבודה",
+    "selectAssignees": "בחר מוקצים...",
+    "relationships": "קשרים",
+    "noRelationships": "אין קשרים",
+    "openProjectsGuide": "מדריך פרויקטים",
+    "editProjectSettings": "ערוך הגדרות פרויקט",
+    "linkWorkspace": "קשר סביבת עבודה...",
+    "createNewWorkspace": "צור סביבת עבודה חדשה",
+    "workspaces": "סביבות עבודה",
+    "showingWorkspaces": "מציג {{count}} מתוך {{total}}",
+    "changeColor": "שנה צבע",
+    "editName": "ערוך שם",
+    "deleteStatus": "מחק סטטוס",
+    "cannotDeleteWithIssues": "העבר פריטים תחילה",
+    "lastVisibleStatus": "לפחות סטטוס אחד חייב להיות גלוי",
+    "showStatus": "הצג סטטוס",
+    "hideStatus": "הסתר סטטוס",
+    "newStatus": "סטטוס חדש",
+    "visibleColumns": "עמודות גלויות",
+    "dragToRearrange": "גרור לסידור מחדש",
+    "addColumn": "הוסף עמודה",
+    "projectsGuide": {
+      "intro": {
+        "title": "ברוך הבא",
+        "content": "ברוך הבא ל-Vibe Kanban. השתמש בסעיפי העזרה בלוח זה ללמוד כיצד דברים עובדים, ולאחר מכן צור את הפריט הראשון שלך. ניתן לפתוח מחדש את דו-שיח העזרה זה או לתת משוב בכל עת מסרגל הניווט."
+      },
+      "welcome": {
+        "title": "פרויקטים",
+        "content": "דף הפרויקט הוא המקום שבו אתה מנהל פריטים. ניתן לצפות בפריטים שלך כלוח קנבן, או כרשימה, ולסנן לפי סטטוס, תגית, מוקצה ועוד."
+      },
+      "issues": {
+        "title": "פריטים",
+        "content": "כל פריט מייצג תכונה או בעיה לפתרון. לפריטים יש סטטוסים, עדיפויות, מוקצים, תגיות, קשרים, הערות, תת-פריטים ועוד."
+      },
+      "workspaces": {
+        "title": "סביבות עבודה",
+        "content": "כדי להתחיל לעבוד על פריט, צור סביבת עבודה. לפריט אחד יכולות להיות מספר סביבות עבודה. פריטים מתארים את העבודה שצריך לבצע, סביבות עבודה הן המקום שבו העבודה מתבצעת."
+      },
+      "organizations": {
+        "title": "הזמן את הצוות שלך",
+        "content": "יצרנו אוטומטית ארגון אישי ופרויקט ראשוני כדי שתוכל להתחיל בקלות עם Vibe Kanban. ניתן גם ליצור ארגונים חדשים ולהזמין את הצוות שלך לשתף פעולה."
+      }
+    }
+  },
+  "createMode": {
+    "headings": {
+      "repoStep": "על אילו מאגרים ברצונך לעבוד?",
+      "chatStep": "על מה ברצונך לעבוד?"
+    },
+    "repoPicker": {
+      "actions": {
+        "recent": "אחרון",
+        "browse": "עיין",
+        "create": "צור"
+      },
+      "setupHintTitle": "סקריפטי הגדרה",
+      "setupHint": "טיפ: הגדר סקריפטי הגדרה עבור מאגר זה בהגדרות ← מאגרים",
+      "setupHintDismiss": "סגור",
+      "setupHintLink": "הגדר בהגדרות"
+    }
+  },
+  "modelSelector": {
+    "preset": "ערכה מוגדרת מראש",
+    "custom": "מותאם אישית",
+    "permissions": "הרשאות",
+    "permissionAuto": "אוטומטי",
+    "permissionAsk": "שאל",
+    "permissionPlan": "תכנן",
+    "agent": "סוכן",
+    "default": "ברירת מחדל",
+    "model": "מודל"
+  },
+  "crashScreen": {
+    "title": "משהו השתבש",
+    "description": "האפליקציה נתקלה בשגיאה בלתי צפויה.",
+    "reload": "טען מחדש",
+    "showDetails": "הצג פרטים",
+    "hideDetails": "הסתר פרטים"
+  },
+  "syncError": {
+    "networkErrors": "שגיאות רשת",
+    "streamsAffected": "{{count}} זרם מושפע",
+    "streamsAffected_other": "{{count}} זרמים מושפעים",
+    "status": "(סטטוס {{status}})",
+    "refreshPage": "רענן דף",
+    "remoteAuthUnavailable": "אימות מרחוק אינו זמין זמנית. חלק מהתכונות המרוחקות עשויות שלא לפעול עד שישוחזר."
+  },
+  "migration": {
+    "allProjectsMigrated": "כל הפרויקטים שלך כבר הועברו לענן.",
+    "continueToProjects": "המשך לפרויקטים"
+  },
+  "appBar": {
+    "kanban": {
+      "tooltip": "היכנס לצפייה בפרויקטים",
+      "title": "לוחות קנבן",
+      "description": "היכנס כדי לארגן את סוכני הקידוד שלך עם לוחות קנבן.",
+      "migrateOldProjects": "העבר פרויקטים ישנים"
+    }
+  },
+  "askQuestion": {
+    "title": "הסוכן שואל שאלה",
+    "selectMultiple": "בחר מספר",
+    "confirmSelection": "אשר בחירה",
+    "submitting": "שולח תשובות...",
+    "answeredCount": "ענה על שאלה אחת",
+    "answeredCount_other": "ענה על {{count}} שאלות"
+  }
+}
