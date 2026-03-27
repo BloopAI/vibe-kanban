@@ -145,27 +145,19 @@ async fn handoff_init(
 
     let response = client.handoff_init(&request).await?;
 
+    let cancelled = deployment
+        .store_oauth_handoff(response.handoff_id, payload.provider, app_verifier.clone())
+        .await;
+
     // For desktop, spawn a background task that polls the remote server
     // until the OAuth flow completes, then finalizes login automatically.
-    let poll_task = if payload.desktop {
+    if payload.desktop {
         let handoff_id = response.handoff_id;
         let deployment_clone = deployment.clone();
-        let verifier = app_verifier.clone();
-        Some(tokio::spawn(async move {
-            poll_for_login(deployment_clone, handoff_id, verifier).await;
-        }))
-    } else {
-        None
-    };
-
-    deployment
-        .store_oauth_handoff(
-            response.handoff_id,
-            payload.provider,
-            app_verifier,
-            poll_task,
-        )
-        .await;
+        tokio::spawn(async move {
+            poll_for_login(deployment_clone, handoff_id, app_verifier, cancelled).await;
+        });
+    }
 
     Ok(ResponseJson(ApiResponse::success(
         HandoffInitResponseBody {
@@ -452,7 +444,17 @@ async fn finalize_login(
 }
 
 /// Background task that polls the remote server for OAuth completion (desktop flow).
-async fn poll_for_login(deployment: DeploymentImpl, handoff_id: Uuid, app_verifier: String) {
+///
+/// Uses a cooperative `cancelled` flag instead of `JoinHandle::abort()` so that
+/// `finalize_login` is never interrupted mid-execution by a concurrent retry.
+async fn poll_for_login(
+    deployment: DeploymentImpl,
+    handoff_id: Uuid,
+    app_verifier: String,
+    cancelled: std::sync::Arc<std::sync::atomic::AtomicBool>,
+) {
+    use std::sync::atomic::Ordering;
+
     let client = match deployment.remote_client() {
         Ok(c) => c,
         Err(_) => return,
@@ -467,14 +469,17 @@ async fn poll_for_login(deployment: DeploymentImpl, handoff_id: Uuid, app_verifi
     for _ in 0..150 {
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
+        if cancelled.load(Ordering::Relaxed) {
+            tracing::debug!(%handoff_id, "desktop login poll cancelled");
+            return;
+        }
+
         match client.handoff_poll(&request).await {
             Ok(HandoffPollResponse::Pending) => continue,
             Ok(HandoffPollResponse::Complete {
                 access_token,
                 refresh_token,
             }) => {
-                // Finalize login BEFORE cleaning up the handoff entry,
-                // because take_oauth_handoff aborts this task's own JoinHandle.
                 if let Err(e) = finalize_login(
                     &deployment,
                     Credentials {
