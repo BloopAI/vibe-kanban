@@ -27,11 +27,7 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
 
   const scrollToFileCallbackRef = useRef<ScrollToFileCallback | null>(null);
   const diffPathsRef = useRef(diffPaths);
-  const selectedFilePathRef = useRef<string | null>(selectedFilePath);
-  const selectedLineNumberRef = useRef<number | null>(selectedLineNumber);
   diffPathsRef.current = diffPaths;
-  selectedFilePathRef.current = selectedFilePath;
-  selectedLineNumberRef.current = selectedLineNumber;
 
   const registerScrollToFile = useCallback(
     (callback: ScrollToFileCallback | null) => {
