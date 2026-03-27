@@ -120,10 +120,13 @@ fn main() {
                 // Dev mode: frontend dev server (Vite) and backend are started
                 // externally. Use WebviewUrl::External so that macOS WKWebView
                 // renders with the same content scaling as the production build.
-                tracing::info!("Running in dev mode — using external frontend/backend servers");
+                let frontend_port =
+                    std::env::var("FRONTEND_PORT").unwrap_or_else(|_| "3000".to_string());
+                let dev_url = format!("http://localhost:{frontend_port}");
+                tracing::info!("Running in dev mode — using external frontend/backend servers (devUrl={dev_url})");
                 let window = create_window(
                     app,
-                    tauri::WebviewUrl::External("http://localhost:3000".parse().unwrap()),
+                    tauri::WebviewUrl::External(dev_url.parse().unwrap()),
                 )?;
                 #[cfg(target_os = "macos")]
                 disable_pinch_zoom(&window);
