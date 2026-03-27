@@ -432,6 +432,9 @@ type State = {
   setCreateDraftWorkspaceByDefault: (value: boolean) => void;
 };
 
+/** Stable empty array ref for selectors — avoids React 19 getSnapshot infinite loop */
+const EMPTY_COLLAPSED_PATHS: string[] = [];
+
 export const useUiPreferencesStore = create<State>()((set, get) => ({
   // UI preferences state
   repoActions: {},
@@ -871,7 +874,9 @@ export function usePersistedCollapsedPaths(
   (paths: Set<string> | ((prev: Set<string>) => Set<string>)) => void,
 ] {
   const key = workspaceId ? `file-tree:${workspaceId}` : '';
-  const paths = useUiPreferencesStore((s) => s.collapsedPaths[key] ?? []);
+  const paths = useUiPreferencesStore(
+    (s) => s.collapsedPaths[key] ?? EMPTY_COLLAPSED_PATHS
+  );
   const setPaths = useUiPreferencesStore((s) => s.setCollapsedPaths);
 
   const pathSet = useMemo(() => new Set(paths), [paths]);

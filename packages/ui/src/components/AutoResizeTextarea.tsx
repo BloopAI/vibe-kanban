@@ -82,7 +82,7 @@ export const AutoResizeTextarea = React.forwardRef<
   }, [resizeToContent]);
 
   const handleInput = React.useCallback(
-    (event: React.FormEvent<HTMLTextAreaElement>) => {
+    (event: React.InputEvent<HTMLTextAreaElement>) => {
       resizeToContent();
       onInput?.(event);
     },

@@ -11,7 +11,7 @@ interface WorkspacesMainProps {
   workspaceWithSession: WorkspacesMainWorkspace | undefined;
   isLoading: boolean;
   showLoadingOverlay?: boolean;
-  containerRef: RefObject<HTMLElement>;
+  containerRef: RefObject<HTMLElement | null>;
   conversationContent?: ReactNode;
   chatBoxContent: ReactNode;
   contextBarContent?: ReactNode;

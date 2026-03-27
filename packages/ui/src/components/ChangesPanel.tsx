@@ -1,4 +1,4 @@
-import type { ForwardedRef, ReactNode, RefAttributes } from 'react';
+import type { ForwardedRef, ReactNode, RefAttributes, JSX } from 'react';
 import {
   forwardRef,
   useCallback,
@@ -206,7 +206,7 @@ const ChangesPanelInner = <TDiff extends ChangesPanelDiff>(
   const scrollerRefCallback = useCallback(
     (node: HTMLDivElement | null) => {
       (
-        scrollContainerRef as React.MutableRefObject<HTMLDivElement | null>
+        scrollContainerRef as React.RefObject<HTMLDivElement | null>
       ).current = node;
       onScrollerRef?.(node);
     },

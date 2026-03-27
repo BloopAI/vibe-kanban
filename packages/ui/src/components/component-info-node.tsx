@@ -11,6 +11,8 @@ import {
   type GeneratedDecoratorNode,
 } from './create-decorator-node';
 
+import type { JSX } from "react";
+
 /**
  * Data model for a detected UI component.
  * Serialized as JSON inside a ```vk-component fenced code block.

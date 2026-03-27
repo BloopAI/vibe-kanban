@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { useShallow } from 'zustand/shallow';
 import { useScratch } from '@/shared/hooks/useScratch';
 import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 import {
@@ -172,7 +173,7 @@ export function useUiPreferencesScratch() {
   const isApplyingServerDataRef = useRef(false);
 
   // Get current store state
-  const storeState = useUiPreferencesStore((state) => ({
+  const storeState = useUiPreferencesStore(useShallow((state) => ({
     repoActions: state.repoActions,
     expanded: state.expanded,
     contextBarPosition: state.contextBarPosition,
@@ -188,7 +189,7 @@ export function useUiPreferencesScratch() {
     selectedOrgId: state.selectedOrgId,
     selectedProjectId: state.selectedProjectId,
     createDraftWorkspaceByDefault: state.createDraftWorkspaceByDefault,
-  }));
+  })));
 
   // Extract scratch data
   const payload = scratch?.payload as ScratchPayload | undefined;

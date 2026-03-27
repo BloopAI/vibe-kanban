@@ -2,6 +2,7 @@
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { createLogger, defineConfig, Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import path from "path";
 import fs from "fs";
@@ -73,7 +74,7 @@ ${entries.join(',\n')}
 
 export default schemas;
 `;
-      return code;
+      return { code, moduleType: 'js' as const };
     },
   };
 }
@@ -89,24 +90,23 @@ export default defineConfig({
       target: "react",
       autoCodeSplitting: false,
     }),
-    react({
-      babel: {
-        plugins: [
-          [
-            'babel-plugin-react-compiler',
-            {
-              target: '18',
-              sources: [
-                path.resolve(__dirname, 'src'),
-                path.resolve(__dirname, '../web-core/src'),
-              ],
-              environment: {
-                enableResetCacheOnSourceFileChanges: true,
-              },
+    react(),
+    babel({
+      plugins: [
+        [
+          'babel-plugin-react-compiler',
+          {
+            target: '19',
+            sources: [
+              path.resolve(__dirname, 'src'),
+              path.resolve(__dirname, '../web-core/src'),
+            ],
+            environment: {
+              enableResetCacheOnSourceFileChanges: true,
             },
-          ],
+          },
         ],
-      },
+      ],
     }),
     sentryVitePlugin({ org: 'bloop-ai', project: 'vibe-kanban' }),
     executorSchemasPlugin(),
