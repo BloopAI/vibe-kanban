@@ -81,7 +81,7 @@ export function getLanguageOptions(browserDefaultLabel: string) {
 /**
  * Language codes that use right-to-left text direction.
  */
-const RTL_LANGUAGE_CODES = ['he', 'ar', 'fa', 'ur'];
+const RTL_LANGUAGE_CODES = ['he'];
 
 /**
  * Returns true if the given i18n language code uses RTL text direction.
