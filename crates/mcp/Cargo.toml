@@ -29,4 +29,5 @@ sentry = { version = "0.46.2", default-features = false, features = ["anyhow", "
 reqwest = { workspace = true }
 rustls = { workspace = true }
 regex = "1"
+url = "2.5"
 thiserror = { workspace = true }

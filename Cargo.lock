@@ -4691,6 +4691,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "url",
  "utils",
  "uuid",
 ]
@@ -7885,6 +7886,7 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "chrono",
+ "clap",
  "db",
  "deployment",
  "desktop-bridge",
