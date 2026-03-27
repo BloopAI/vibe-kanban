@@ -184,10 +184,25 @@ export function WorkspacesLayout() {
         }
       : { 'left-main': 50, 'right-main': 50 };
 
-  const onLayoutChange = (layout: Layout) => {
-    if (isLeftMainPanelVisible && rightMainPanelMode !== null)
-      setRightMainPanelSize(layout['right-main']);
-  };
+  const layoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (layoutTimerRef.current) clearTimeout(layoutTimerRef.current);
+    };
+  }, []);
+
+  const onLayoutChange = useCallback(
+    (layout: Layout) => {
+      if (isLeftMainPanelVisible && rightMainPanelMode !== null) {
+        if (layoutTimerRef.current) clearTimeout(layoutTimerRef.current);
+        layoutTimerRef.current = setTimeout(() => {
+          setRightMainPanelSize(layout['right-main']);
+        }, 150);
+      }
+    },
+    [isLeftMainPanelVisible, rightMainPanelMode, setRightMainPanelSize]
+  );
 
   // ── Mobile layout ──────────────────────────────────────────────────
   // Uses `hidden` CSS class (NOT conditional rendering) to preserve

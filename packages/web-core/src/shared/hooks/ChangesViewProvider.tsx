@@ -21,7 +21,9 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
   const [selectedLineNumber, setSelectedLineNumber] = useState<number | null>(
     null
   );
-  const { setRightMainPanelMode } = useUiPreferencesStore();
+  const setRightMainPanelMode = useUiPreferencesStore(
+    (s) => s.setRightMainPanelMode
+  );
 
   const scrollToFileCallbackRef = useRef<ScrollToFileCallback | null>(null);
   const diffPathsRef = useRef(diffPaths);
