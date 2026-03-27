@@ -151,14 +151,13 @@ const OAuthDialogImpl = create<OAuthDialogProps>(({ initialProvider }) => {
     (provider: OAuthProvider) => {
       setState({ type: 'waiting', provider });
 
-      // Get the current window location as return_to.
-      // When running inside Tauri the OAuth flow opens in the system browser,
-      // so we tag the callback URL so the server knows not to auto-close the tab.
+      // For desktop (Tauri), the backend overrides returnTo to a remote-hosted
+      // success page and polls for completion. For web, the browser is redirected
+      // back to localhost after OAuth.
       const isTauri = '__TAURI_INTERNALS__' in window;
-      const returnTo = `${window.location.origin}/api/auth/handoff/complete${isTauri ? '?source=desktop' : ''}`;
+      const returnTo = `${window.location.origin}/api/auth/handoff/complete`;
 
-      // Initialize handoff flow
-      initHandoff.mutate({ provider, returnTo });
+      initHandoff.mutate({ provider, returnTo, desktop: isTauri || undefined });
     },
     [initHandoff]
   );

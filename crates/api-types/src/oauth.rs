@@ -92,3 +92,22 @@ pub struct StatusResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub degraded: Option<bool>,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct HandoffPollRequest {
+    pub handoff_id: Uuid,
+    pub app_verifier: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(tag = "status", rename_all = "lowercase")]
+pub enum HandoffPollResponse {
+    Pending,
+    Complete {
+        access_token: String,
+        refresh_token: String,
+    },
+    Error {
+        error: String,
+    },
+}

@@ -1255,11 +1255,12 @@ export const oauthApi = {
 
   handoffInit: async (
     provider: string,
-    returnTo: string
+    returnTo: string,
+    desktop?: boolean
   ): Promise<{ handoff_id: string; authorize_url: string }> => {
     const response = await makeRequest('/api/auth/handoff/init', {
       method: 'POST',
-      body: JSON.stringify({ provider, return_to: returnTo }),
+      body: JSON.stringify({ provider, return_to: returnTo, desktop }),
     });
     return handleApiResponse<{ handoff_id: string; authorize_url: string }>(
       response
