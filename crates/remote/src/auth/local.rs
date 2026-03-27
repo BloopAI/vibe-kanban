@@ -16,10 +16,10 @@ use crate::{
     },
 };
 
-pub const LOCAL_AUTH_PROVIDER: &str = "local";
+pub(super) const LOCAL_AUTH_PROVIDER: &str = "local";
 
 #[derive(Debug, thiserror::Error)]
-pub enum LocalAuthError {
+pub(crate) enum LocalAuthError {
     #[error("not found")]
     Disabled,
     #[error("invalid credentials")]
@@ -28,18 +28,18 @@ pub enum LocalAuthError {
     Internal,
 }
 
-pub fn auth_methods_response(state: &AppState) -> AuthMethodsResponse {
+pub(crate) fn auth_methods_response(state: &AppState) -> AuthMethodsResponse {
     AuthMethodsResponse {
         local_auth_enabled: state.config().auth.local().is_some(),
         oauth_providers: state.providers().names(),
     }
 }
 
-pub fn is_local_provider(provider: &str) -> bool {
+pub(crate) fn is_local_provider(provider: &str) -> bool {
     provider == LOCAL_AUTH_PROVIDER
 }
 
-pub async fn login(
+pub(crate) async fn login(
     state: &AppState,
     payload: &LocalLoginRequest,
 ) -> Result<LocalLoginResponse, LocalAuthError> {

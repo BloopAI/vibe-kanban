@@ -53,13 +53,6 @@ pub struct PullRequestInfo {
     pub merge_commit_sha: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
-pub enum MergeType {
-    Direct,
-    Pr,
-}
-
 /// Row type for direct merges only (PR data now lives in pull_requests).
 struct DirectMergeRow {
     id: Uuid,

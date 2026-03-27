@@ -89,17 +89,6 @@ impl ConversationPatch {
         from_value(json!([patch_entry])).unwrap()
     }
 
-    /// Create an ADD patch for a new diff at the given index
-    pub fn replace_diff(entry_index: String, diff: Diff) -> Patch {
-        let patch_entry = PatchEntry {
-            op: PatchOperation::Replace,
-            path: format!("/entries/{entry_index}"),
-            value: PatchType::Diff(diff),
-        };
-
-        from_value(json!([patch_entry])).unwrap()
-    }
-
     /// Create a REMOVE patch for removing a diff
     pub fn remove_diff(entry_index: String) -> Patch {
         from_value(json!([{

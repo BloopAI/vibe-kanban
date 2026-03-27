@@ -18,10 +18,10 @@ mod billing {
     use axum::Router;
 
     use crate::AppState;
-    pub fn public_router() -> Router<AppState> {
+    pub(super) fn public_router() -> Router<AppState> {
         Router::new()
     }
-    pub fn protected_router() -> Router<AppState> {
+    pub(super) fn protected_router() -> Router<AppState> {
         Router::new()
     }
 }

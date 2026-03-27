@@ -11,7 +11,7 @@ use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 
 use crate::{DeploymentImpl, middleware::signed_ws::SignedWsUpgrade};
 
-pub fn api_router() -> Router<DeploymentImpl> {
+pub(super) fn api_router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/preview/{target_port}", any(proxy_preview_request_no_tail))
         .route("/preview/{target_port}/{*tail}", any(proxy_preview_request))

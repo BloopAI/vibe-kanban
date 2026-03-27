@@ -30,7 +30,7 @@ use crate::{
 /// issues. This endpoint is retained for backward compatibility with older
 /// clients that still send the old request shape.
 #[derive(Debug, Deserialize)]
-pub struct CreatePullRequestRequest {
+struct CreatePullRequestRequest {
     pub url: String,
     pub number: i32,
     pub status: PullRequestStatus,
@@ -43,14 +43,14 @@ pub struct CreatePullRequestRequest {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct UpdatePullRequestRequest {
+struct UpdatePullRequestRequest {
     pub url: String,
     pub status: Option<PullRequestStatus>,
     pub merged_at: Option<Option<DateTime<Utc>>>,
     pub merge_commit_sha: Option<Option<String>>,
 }
 
-pub fn router() -> Router<AppState> {
+pub(super) fn router() -> Router<AppState> {
     Router::new().route(
         "/pull_requests",
         get(list_pull_requests)

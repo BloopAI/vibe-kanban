@@ -8,7 +8,7 @@ use crate::types::ProviderKind;
 /// - GitHub.com: `https://github.com/owner/repo` or `git@github.com:owner/repo.git`
 /// - GitHub Enterprise: URLs containing `github.` (e.g., `https://github.company.com/owner/repo`)
 /// - Azure DevOps: `https://dev.azure.com/org/project/_git/repo` or legacy `https://org.visualstudio.com/...`
-pub fn detect_provider_from_url(url: &str) -> ProviderKind {
+pub(crate) fn detect_provider_from_url(url: &str) -> ProviderKind {
     let url_lower = url.to_lowercase();
 
     if url_lower.contains("github.com") {

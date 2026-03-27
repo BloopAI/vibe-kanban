@@ -2,10 +2,10 @@ use axum::extract::ws::WebSocket;
 use relay_tunnel_core::ws_io::{axum_to_tungstenite, tungstenite_to_axum, ws_copy_bidirectional};
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 
-pub type UpstreamWebSocket =
+pub(crate) type UpstreamWebSocket =
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 
-pub async fn connect_upstream_ws(
+pub(crate) async fn connect_upstream_ws(
     ws_url: String,
     protocols: Option<&str>,
 ) -> anyhow::Result<(UpstreamWebSocket, Option<String>)> {
@@ -29,7 +29,7 @@ pub async fn connect_upstream_ws(
     Ok((upstream_ws, selected_protocol))
 }
 
-pub async fn bridge_ws(
+pub(crate) async fn bridge_ws(
     upstream: UpstreamWebSocket,
     client_socket: WebSocket,
 ) -> anyhow::Result<()> {

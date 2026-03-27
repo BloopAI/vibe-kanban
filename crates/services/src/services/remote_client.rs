@@ -59,7 +59,7 @@ impl RemoteClientError {
     }
 
     /// Returns true if the error is transient and should be retried.
-    pub fn should_retry(&self) -> bool {
+    fn should_retry(&self) -> bool {
         match self {
             Self::Transport(_) | Self::Timeout => true,
             Self::Http { status, .. } => (500..=599).contains(status),
@@ -67,7 +67,7 @@ impl RemoteClientError {
         }
     }
 
-    pub fn is_definitive_auth_failure(&self) -> bool {
+    fn is_definitive_auth_failure(&self) -> bool {
         match self {
             Self::Auth => true,
             Self::Api(code) => code.is_definitive_auth_failure(),
@@ -280,11 +280,6 @@ impl RemoteClient {
         self.post_public("/v1/tokens/refresh", Some(&request))
             .await
             .map_err(|e| self.map_api_error(e))
-    }
-
-    /// Returns the base URL for the client.
-    pub fn base_url(&self) -> &str {
-        self.base.as_str()
     }
 
     /// Returns a valid access token for use-cases like maintaining a websocket connection.

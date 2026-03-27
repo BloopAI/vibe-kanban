@@ -106,15 +106,6 @@ impl MigrationService {
         })
     }
 
-    pub async fn resume_migration(
-        &self,
-        organization_id: Uuid,
-        project_ids: HashSet<Uuid>,
-    ) -> Result<MigrationReport, MigrationError> {
-        MigrationState::reset_failed(&self.sqlite_pool).await?;
-        self.run_migration(organization_id, project_ids).await
-    }
-
     async fn migrate_projects(
         &self,
         organization_id: Uuid,

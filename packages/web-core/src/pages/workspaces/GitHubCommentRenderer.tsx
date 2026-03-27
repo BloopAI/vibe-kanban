@@ -8,15 +8,18 @@ import {
 import { CommentCard } from '@vibe/ui/components/CommentCard';
 import { formatRelativeTime } from '@/shared/lib/date';
 import type { NormalizedGitHubComment } from '@/shared/hooks/useWorkspaceContext';
+import { MarkdownPreview } from '@/shared/components/MarkdownPreview';
 
 interface GitHubCommentRendererProps {
   comment: NormalizedGitHubComment;
   onCopyToUserComment: () => void;
+  theme: 'light' | 'dark';
 }
 
 export const GitHubCommentRenderer = memo(function GitHubCommentRenderer({
   comment,
   onCopyToUserComment,
+  theme,
 }: GitHubCommentRendererProps) {
   const { t } = useTranslation('common');
 
@@ -53,9 +56,11 @@ export const GitHubCommentRenderer = memo(function GitHubCommentRenderer({
 
   return (
     <CommentCard variant="github" header={header}>
-      <div className="text-sm text-normal whitespace-pre-wrap break-words">
-        {comment.body}
-      </div>
+      <MarkdownPreview
+        content={comment.body}
+        theme={theme}
+        className="text-sm [text-wrap:wrap] [overflow-wrap:anywhere] break-words [&_p]:mb-1 [&_ul]:mb-1 [&_ol]:mb-1 [&_blockquote]:mb-1 [&_pre]:mb-1 [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_p:last-child]:mb-0"
+      />
     </CommentCard>
   );
 });

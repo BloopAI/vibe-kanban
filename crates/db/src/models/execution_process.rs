@@ -84,14 +84,6 @@ pub struct CreateExecutionProcess {
     pub run_reason: ExecutionProcessRunReason,
 }
 
-#[derive(Debug, Deserialize, TS)]
-#[allow(dead_code)]
-pub struct UpdateExecutionProcess {
-    pub status: Option<ExecutionProcessStatus>,
-    pub exit_code: Option<i64>,
-    pub completed_at: Option<DateTime<Utc>>,
-}
-
 #[derive(Debug)]
 pub struct ExecutionContext {
     pub execution_process: ExecutionProcess,
@@ -350,35 +342,6 @@ impl ExecutionProcess {
     }
 
     /// Find latest execution process by session and run reason
-    pub async fn find_latest_by_session_and_run_reason(
-        pool: &SqlitePool,
-        session_id: Uuid,
-        run_reason: &ExecutionProcessRunReason,
-    ) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            ExecutionProcess,
-            r#"SELECT
-                    ep.id as "id!: Uuid",
-                    ep.session_id as "session_id!: Uuid",
-                    ep.run_reason as "run_reason!: ExecutionProcessRunReason",
-                    ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
-                    ep.status as "status!: ExecutionProcessStatus",
-                    ep.exit_code,
-                    ep.dropped as "dropped!: bool",
-                    ep.started_at as "started_at!: DateTime<Utc>",
-                    ep.completed_at as "completed_at?: DateTime<Utc>",
-                    ep.created_at as "created_at!: DateTime<Utc>",
-                    ep.updated_at as "updated_at!: DateTime<Utc>"
-               FROM execution_processes ep
-               WHERE ep.session_id = ? AND ep.run_reason = ? AND ep.dropped = FALSE
-               ORDER BY ep.created_at DESC LIMIT 1"#,
-            session_id,
-            run_reason
-        )
-        .fetch_optional(pool)
-        .await
-    }
-
     /// Find latest execution process by workspace and run reason (across all sessions)
     pub async fn find_latest_by_workspace_and_run_reason(
         pool: &SqlitePool,
@@ -545,11 +508,6 @@ impl ExecutionProcess {
         .fetch_optional(pool)
         .await?;
         Ok(result.flatten())
-    }
-
-    /// Get the parent Session for this execution process
-    pub async fn parent_session(&self, pool: &SqlitePool) -> Result<Option<Session>, sqlx::Error> {
-        Session::find_by_id(pool, self.session_id).await
     }
 
     /// Get both the parent Workspace and Session for this execution process

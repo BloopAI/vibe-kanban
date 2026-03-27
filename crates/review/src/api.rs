@@ -6,17 +6,17 @@ use uuid::Uuid;
 use crate::error::ReviewError;
 
 /// API client for the review service
-pub struct ReviewApiClient {
+pub(crate) struct ReviewApiClient {
     client: Client,
     base_url: String,
 }
 
 /// Response from POST /review/init
 #[derive(Debug, Deserialize)]
-pub struct InitResponse {
-    pub review_id: Uuid,
-    pub upload_url: String,
-    pub object_key: String,
+pub(crate) struct InitResponse {
+    pub(crate) review_id: Uuid,
+    pub(crate) upload_url: String,
+    pub(crate) object_key: String,
 }
 
 /// Request body for POST /review/init
@@ -30,29 +30,29 @@ struct InitRequest {
 /// Request body for POST /review/start
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct StartRequest {
-    pub id: String,
-    pub title: String,
-    pub description: String,
-    pub org: String,
-    pub repo: String,
-    pub codebase_url: String,
-    pub base_commit: String,
+pub(crate) struct StartRequest {
+    pub(crate) id: String,
+    pub(crate) title: String,
+    pub(crate) description: String,
+    pub(crate) org: String,
+    pub(crate) repo: String,
+    pub(crate) codebase_url: String,
+    pub(crate) base_commit: String,
 }
 
 /// Response from GET /review/{id}/status
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct StatusResponse {
-    pub status: ReviewStatus,
-    pub progress: Option<String>,
-    pub error: Option<String>,
+pub(crate) struct StatusResponse {
+    pub(crate) status: ReviewStatus,
+    pub(crate) progress: Option<String>,
+    pub(crate) error: Option<String>,
 }
 
 /// Possible review statuses
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum ReviewStatus {
+pub(crate) enum ReviewStatus {
     Queued,
     Extracting,
     Running,
@@ -74,7 +74,7 @@ impl std::fmt::Display for ReviewStatus {
 
 impl ReviewApiClient {
     /// Create a new API client
-    pub fn new(base_url: String) -> Self {
+    pub(crate) fn new(base_url: String) -> Self {
         Self {
             client: Client::new(),
             base_url,
@@ -82,7 +82,7 @@ impl ReviewApiClient {
     }
 
     /// Initialize a review upload and get a presigned URL
-    pub async fn init(
+    pub(crate) async fn init(
         &self,
         pr_url: &str,
         email: &str,
@@ -123,7 +123,11 @@ impl ReviewApiClient {
     }
 
     /// Upload the tarball to the presigned URL
-    pub async fn upload(&self, upload_url: &str, payload: Vec<u8>) -> Result<(), ReviewError> {
+    pub(crate) async fn upload(
+        &self,
+        upload_url: &str,
+        payload: Vec<u8>,
+    ) -> Result<(), ReviewError> {
         debug!("PUT {} ({} bytes)", upload_url, payload.len());
 
         let response = self
@@ -148,7 +152,7 @@ impl ReviewApiClient {
     }
 
     /// Start the review process
-    pub async fn start(&self, request: StartRequest) -> Result<(), ReviewError> {
+    pub(crate) async fn start(&self, request: StartRequest) -> Result<(), ReviewError> {
         let url = format!("{}/v1/review/start", self.base_url);
         debug!("POST {url}");
 
@@ -173,7 +177,7 @@ impl ReviewApiClient {
     }
 
     /// Poll the review status
-    pub async fn poll_status(&self, review_id: &str) -> Result<StatusResponse, ReviewError> {
+    pub(crate) async fn poll_status(&self, review_id: &str) -> Result<StatusResponse, ReviewError> {
         let url = format!("{}/v1/review/{}/status", self.base_url, review_id);
         debug!("GET {url}");
 
@@ -202,7 +206,7 @@ impl ReviewApiClient {
     }
 
     /// Get the review URL for a given review ID
-    pub fn review_url(&self, review_id: &str) -> String {
+    pub(crate) fn review_url(&self, review_id: &str) -> String {
         format!("{}/review/{}", self.base_url, review_id)
     }
 }

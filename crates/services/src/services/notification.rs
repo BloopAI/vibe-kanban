@@ -76,16 +76,6 @@ impl NotificationService {
         }
     }
 
-    pub fn new_with_notifier(
-        config: Arc<RwLock<Config>>,
-        push_notifier: Arc<dyn PushNotifier>,
-    ) -> Self {
-        Self {
-            config,
-            push_notifier,
-        }
-    }
-
     /// Send both sound and push notifications if enabled.
     /// `workspace_id` is forwarded to the push notifier so Tauri can emit a
     /// navigation event when the notification is clicked.

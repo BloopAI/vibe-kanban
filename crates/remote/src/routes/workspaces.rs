@@ -23,7 +23,7 @@ use crate::{
 };
 
 #[derive(Debug, Deserialize)]
-pub struct CreateWorkspaceRequest {
+struct CreateWorkspaceRequest {
     pub project_id: Uuid,
     pub local_workspace_id: Option<Uuid>,
     pub issue_id: Option<Uuid>,
@@ -34,7 +34,7 @@ pub struct CreateWorkspaceRequest {
     pub lines_removed: Option<i32>,
 }
 
-pub fn router() -> Router<AppState> {
+pub(super) fn router() -> Router<AppState> {
     Router::new()
         .route(
             "/workspaces",

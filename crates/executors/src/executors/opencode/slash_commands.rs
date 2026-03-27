@@ -24,7 +24,7 @@ use crate::executors::{
 
 /// OpenCode slash command with known variants and custom fallback.
 #[derive(Debug, Clone)]
-pub enum OpencodeSlashCommand {
+pub(super) enum OpencodeSlashCommand {
     Compact,
     Commands,
     Models {
@@ -42,17 +42,17 @@ pub enum OpencodeSlashCommand {
 
 impl OpencodeSlashCommand {
     /// Parse a prompt string into a slash command.
-    pub fn parse(prompt: &str) -> Option<Self> {
+    pub(super) fn parse(prompt: &str) -> Option<Self> {
         parse_slash_command(prompt)
     }
 
     /// Returns true if this command requires an existing session.
-    pub fn requires_existing_session(&self) -> bool {
+    pub(super) fn requires_existing_session(&self) -> bool {
         matches!(self, Self::Compact)
     }
 
     /// Returns true if this command should fork the session.
-    pub fn should_fork_session(&self) -> bool {
+    pub(super) fn should_fork_session(&self) -> bool {
         true
     }
 }
@@ -77,7 +77,7 @@ impl<'a> From<SlashCommandCall<'a>> for OpencodeSlashCommand {
 }
 
 /// Build the list of hardcoded slash commands for discovery.
-pub fn hardcoded_slash_commands() -> Vec<SlashCommandDescription> {
+pub(super) fn hardcoded_slash_commands() -> Vec<SlashCommandDescription> {
     vec![
         SlashCommandDescription {
             name: "compact".to_string(),
@@ -333,7 +333,7 @@ async fn log_result_and_done(log_writer: &LogWriter, message: String) -> Result<
 }
 
 /// Execute a slash command using the OpenCode SDK.
-pub async fn execute(
+pub(super) async fn execute(
     config: RunConfig,
     command: OpencodeSlashCommand,
     log_writer: LogWriter,

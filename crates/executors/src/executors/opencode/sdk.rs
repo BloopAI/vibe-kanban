@@ -31,29 +31,35 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub struct LogWriter {
+pub(super) struct LogWriter {
     writer: Arc<AsyncMutex<BufWriter<Box<dyn AsyncWrite + Send + Unpin>>>>,
 }
 
 impl LogWriter {
-    pub fn new(writer: impl AsyncWrite + Send + Unpin + 'static) -> Self {
+    pub(super) fn new(writer: impl AsyncWrite + Send + Unpin + 'static) -> Self {
         Self {
             writer: Arc::new(AsyncMutex::new(BufWriter::new(Box::new(writer)))),
         }
     }
 
-    pub async fn log_event(&self, event: &OpencodeExecutorEvent) -> Result<(), ExecutorError> {
+    pub(super) async fn log_event(
+        &self,
+        event: &OpencodeExecutorEvent,
+    ) -> Result<(), ExecutorError> {
         let raw =
             serde_json::to_string(event).map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
         self.log_raw(&raw).await
     }
 
-    pub async fn log_error(&self, message: String) -> Result<(), ExecutorError> {
+    pub(super) async fn log_error(&self, message: String) -> Result<(), ExecutorError> {
         self.log_event(&OpencodeExecutorEvent::Error { message })
             .await
     }
 
-    pub async fn log_slash_command_result(&self, message: String) -> Result<(), ExecutorError> {
+    pub(super) async fn log_slash_command_result(
+        &self,
+        message: String,
+    ) -> Result<(), ExecutorError> {
         self.log_event(&OpencodeExecutorEvent::SlashCommandResult { message })
             .await
     }
@@ -71,7 +77,7 @@ impl LogWriter {
 }
 
 #[derive(Clone)]
-pub struct RunConfig {
+pub(super) struct RunConfig {
     pub base_url: String,
     pub directory: String,
     pub prompt: String,
@@ -91,7 +97,7 @@ pub struct RunConfig {
 }
 
 /// Generate a cryptographically secure random password for OpenCode server auth.
-pub fn generate_server_password() -> String {
+pub(super) fn generate_server_password() -> String {
     rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(32)
@@ -112,7 +118,7 @@ struct SessionResponse {
 
 /// Information about a discovered command.
 #[derive(Debug, Deserialize, Clone)]
-pub struct CommandInfo {
+pub(super) struct CommandInfo {
     pub name: String,
     #[serde(default)]
     pub description: Option<String>,
@@ -120,7 +126,7 @@ pub struct CommandInfo {
 
 /// Information about an agent.
 #[derive(Debug, Deserialize, Clone)]
-pub struct AgentInfo {
+pub(super) struct AgentInfo {
     pub name: String,
     #[serde(default)]
     pub description: Option<String>,
@@ -128,7 +134,7 @@ pub struct AgentInfo {
 
 /// Configuration response from the server.
 #[derive(Debug, Deserialize)]
-pub struct ConfigResponse {
+pub(super) struct ConfigResponse {
     #[serde(default)]
     pub model: Option<String>,
     #[serde(default)]
@@ -137,14 +143,14 @@ pub struct ConfigResponse {
 
 /// Provider configuration response.
 #[derive(Debug, Deserialize)]
-pub struct ConfigProvidersResponse {
+pub(super) struct ConfigProvidersResponse {
     pub providers: Vec<ProviderInfo>,
     pub default: HashMap<String, String>,
 }
 
 /// LSP server status.
 #[derive(Debug, Deserialize, Clone)]
-pub struct LspStatus {
+pub(super) struct LspStatus {
     pub name: String,
     pub root: String,
     pub status: String,
@@ -152,7 +158,7 @@ pub struct LspStatus {
 
 /// Formatter status.
 #[derive(Debug, Deserialize, Clone)]
-pub struct FormatterStatus {
+pub(super) struct FormatterStatus {
     pub name: String,
     pub extensions: Vec<String>,
     pub enabled: bool,
@@ -170,7 +176,7 @@ struct PromptRequest {
 }
 
 #[derive(Debug, Serialize, Clone)]
-pub struct ModelSpec {
+pub(super) struct ModelSpec {
     #[serde(rename = "providerID")]
     pub provider_id: String,
     #[serde(rename = "modelID")]
@@ -184,7 +190,7 @@ struct TextPartInput {
 }
 
 #[derive(Debug, Clone)]
-pub enum ControlEvent {
+pub(super) enum ControlEvent {
     Idle,
     AuthRequired { message: String },
     SessionError { message: String },
@@ -231,7 +237,7 @@ impl PendingApprovals {
     }
 }
 
-pub async fn run_session(
+pub(super) async fn run_session(
     config: RunConfig,
     log_writer: LogWriter,
     cancel: CancellationToken,
@@ -241,7 +247,7 @@ pub async fn run_session(
     run_session_inner(config, log_writer, client, cancel).await
 }
 
-pub async fn run_slash_command(
+pub(super) async fn run_slash_command(
     config: RunConfig,
     log_writer: LogWriter,
     command: slash_commands::OpencodeSlashCommand,
@@ -405,7 +411,7 @@ fn build_default_headers(directory: &str, password: &str) -> HeaderMap {
 
 /// Build HTTP client with OpenCode authentication headers.
 /// Uses Basic Auth: "opencode:{password}" base64 encoded.
-pub fn build_authenticated_client(
+pub(super) fn build_authenticated_client(
     directory: &str,
     password: &str,
 ) -> Result<reqwest::Client, ExecutorError> {
@@ -439,7 +445,7 @@ fn append_session_error(session_error: &mut Option<String>, message: String) {
     }
 }
 
-pub async fn run_request_with_control<F>(
+pub(super) async fn run_request_with_control<F>(
     mut request_fut: F,
     control_rx: &mut mpsc::UnboundedReceiver<ControlEvent>,
     pending_approvals: &PendingApprovals,
@@ -510,7 +516,7 @@ where
     Ok(())
 }
 
-pub async fn wait_for_health(
+pub(super) async fn wait_for_health(
     client: &reqwest::Client,
     base_url: &str,
 ) -> Result<(), ExecutorError> {
@@ -548,7 +554,7 @@ pub async fn wait_for_health(
     }
 }
 
-pub async fn create_session(
+pub(super) async fn create_session(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -575,7 +581,7 @@ pub async fn create_session(
     Ok(session.id)
 }
 
-pub async fn fork_session(
+pub(super) async fn fork_session(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -691,7 +697,7 @@ struct SessionCommandRequest {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn session_command(
+pub(super) async fn session_command(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -769,7 +775,7 @@ struct SummarizeRequest {
     auto: bool,
 }
 
-pub async fn session_summarize(
+pub(super) async fn session_summarize(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -802,7 +808,7 @@ pub async fn session_summarize(
     Ok(())
 }
 
-pub async fn list_commands(
+pub(super) async fn list_commands(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -823,7 +829,7 @@ pub async fn list_commands(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-pub async fn list_agents(
+pub(super) async fn list_agents(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -844,7 +850,7 @@ pub async fn list_agents(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-pub async fn config_get(
+pub(super) async fn config_get(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -865,7 +871,7 @@ pub async fn config_get(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-pub async fn list_config_providers(
+pub(super) async fn list_config_providers(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -886,7 +892,7 @@ pub async fn list_config_providers(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-pub async fn list_providers(
+pub(super) async fn list_providers(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -907,7 +913,7 @@ pub async fn list_providers(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-pub async fn mcp_status(
+pub(super) async fn mcp_status(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -928,7 +934,7 @@ pub async fn mcp_status(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-pub async fn lsp_status(
+pub(super) async fn lsp_status(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -949,7 +955,7 @@ pub async fn lsp_status(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-pub async fn formatter_status(
+pub(super) async fn formatter_status(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -981,7 +987,7 @@ async fn build_response_error(resp: reqwest::Response, context: &str) -> Executo
     )))
 }
 
-pub async fn send_abort(
+pub(super) async fn send_abort(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -1025,7 +1031,7 @@ fn parse_model_strict(model: &str) -> Option<ModelSpec> {
     })
 }
 
-pub async fn resolve_compaction_model(
+pub(super) async fn resolve_compaction_model(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -1067,7 +1073,7 @@ pub async fn resolve_compaction_model(
     )))
 }
 
-pub async fn connect_event_stream(
+pub(super) async fn connect_event_stream(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -1101,7 +1107,7 @@ pub async fn connect_event_stream(
     Ok(resp)
 }
 
-pub struct EventListenerConfig {
+pub(super) struct EventListenerConfig {
     pub client: reqwest::Client,
     pub base_url: String,
     pub directory: String,
@@ -1115,7 +1121,10 @@ pub struct EventListenerConfig {
     pub cancel: CancellationToken,
 }
 
-pub async fn spawn_event_listener(config: EventListenerConfig, initial_resp: reqwest::Response) {
+pub(super) async fn spawn_event_listener(
+    config: EventListenerConfig,
+    initial_resp: reqwest::Response,
+) {
     let EventListenerConfig {
         client,
         base_url,

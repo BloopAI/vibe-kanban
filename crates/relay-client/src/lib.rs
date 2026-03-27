@@ -76,11 +76,11 @@ impl RelayApiClient {
         })
     }
 
-    pub fn base_url(&self) -> &str {
+    fn base_url(&self) -> &str {
         &self.base_url
     }
 
-    pub fn signing(&self) -> &RelaySigningService {
+    fn signing(&self) -> &RelaySigningService {
         &self.signing
     }
 
@@ -92,7 +92,7 @@ impl RelayApiClient {
             .bearer_auth(&self.access_token)
     }
 
-    pub async fn create_session(&self, host_id: Uuid) -> Result<RemoteSession, RelayApiError> {
+    async fn create_session(&self, host_id: Uuid) -> Result<RemoteSession, RelayApiError> {
         let url = format!("{}/v1/relay/create/{host_id}", self.base_url);
         let response = self
             .authenticated_post(url)
@@ -107,7 +107,7 @@ impl RelayApiClient {
         })
     }
 
-    pub async fn post_session_api<TPayload, TData>(
+    async fn post_session_api<TPayload, TData>(
         &self,
         remote_session: &RemoteSession,
         path: &str,
@@ -131,7 +131,7 @@ impl RelayApiClient {
         Ok(response_json.data)
     }
 
-    pub async fn refresh_signing_session(
+    async fn refresh_signing_session(
         &self,
         remote_session: &RemoteSession,
         client_id: Uuid,
@@ -301,7 +301,7 @@ impl RelayHostTransport {
         &self.auth_state
     }
 
-    pub fn relay_base_url(&self) -> &str {
+    fn relay_base_url(&self) -> &str {
         self.api_client.base_url()
     }
 
@@ -564,7 +564,7 @@ impl RelayHostTransport {
     }
 }
 
-pub fn relay_session_url(base_url: &str, host_id: Uuid, session_id: Uuid) -> String {
+fn relay_session_url(base_url: &str, host_id: Uuid, session_id: Uuid) -> String {
     format!(
         "{}/v1/relay/h/{host_id}/s/{session_id}",
         base_url.trim_end_matches('/')

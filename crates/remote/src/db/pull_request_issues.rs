@@ -58,27 +58,6 @@ impl PullRequestIssueRepository {
         Ok(records)
     }
 
-    pub async fn list_by_pull_request(
-        pool: &PgPool,
-        pull_request_id: Uuid,
-    ) -> Result<Vec<PullRequestIssue>, PullRequestIssueError> {
-        let records = sqlx::query_as!(
-            PullRequestIssue,
-            r#"
-            SELECT
-                id              AS "id!: Uuid",
-                pull_request_id AS "pull_request_id!: Uuid",
-                issue_id        AS "issue_id!: Uuid"
-            FROM pull_request_issues
-            WHERE pull_request_id = $1
-            "#,
-            pull_request_id
-        )
-        .fetch_all(pool)
-        .await?;
-        Ok(records)
-    }
-
     pub async fn list_by_project(
         pool: &PgPool,
         project_id: Uuid,

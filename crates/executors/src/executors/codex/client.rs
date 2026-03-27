@@ -150,14 +150,6 @@ impl AppServerClient {
         self.send_request(request, "thread/fork").await
     }
 
-    pub async fn turn_start(
-        &self,
-        thread_id: String,
-        input: Vec<UserInput>,
-    ) -> Result<TurnStartResponse, ExecutorError> {
-        self.turn_start_with_mode(thread_id, input, None).await
-    }
-
     pub async fn turn_start_with_mode(
         &self,
         thread_id: String,

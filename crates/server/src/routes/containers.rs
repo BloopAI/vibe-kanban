@@ -16,11 +16,11 @@ use uuid::Uuid;
 use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Serialize)]
-pub struct ContainerInfo {
+struct ContainerInfo {
     pub attempt_id: Uuid,
 }
 
-pub async fn get_container_info(
+async fn get_container_info(
     Query(query): Query<ContainerQuery>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ContainerInfo>>, ApiError> {
@@ -34,7 +34,7 @@ pub async fn get_container_info(
     })))
 }
 
-pub async fn get_context(
+async fn get_context(
     State(deployment): State<DeploymentImpl>,
     Query(payload): Query<ContainerQuery>,
 ) -> Result<ResponseJson<ApiResponse<WorkspaceContext>>, ApiError> {
@@ -47,7 +47,7 @@ pub async fn get_context(
     Ok(ResponseJson(ApiResponse::success(ctx)))
 }
 
-pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
+pub(super) fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
         // NOTE: /containers/info is required by the VSCode extension (vibe-kanban-vscode)
         // to auto-detect workspaces. It maps workspace_id to attempt_id for compatibility.

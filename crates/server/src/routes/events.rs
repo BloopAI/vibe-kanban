@@ -12,7 +12,7 @@ use futures_util::TryStreamExt;
 
 use crate::DeploymentImpl;
 
-pub async fn events(
+async fn events(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<Sse<impl futures_util::Stream<Item = Result<Event, BoxError>>>, axum::http::StatusCode>
 {
@@ -21,7 +21,7 @@ pub async fn events(
     Ok(Sse::new(stream.map_err(|e| -> BoxError { e.into() })).keep_alive(KeepAlive::default()))
 }
 
-pub fn router(_: &DeploymentImpl) -> Router<DeploymentImpl> {
+pub(super) fn router(_: &DeploymentImpl) -> Router<DeploymentImpl> {
     let events_router = Router::new().route("/", get(events));
 
     Router::new().nest("/events", events_router)

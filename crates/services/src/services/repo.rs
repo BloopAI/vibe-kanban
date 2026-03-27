@@ -41,7 +41,7 @@ impl RepoService {
         Self
     }
 
-    pub fn validate_git_repo_path(&self, path: &Path) -> Result<()> {
+    fn validate_git_repo_path(&self, path: &Path) -> Result<()> {
         if !path.exists() {
             return Err(RepoError::PathNotFound(path.to_path_buf()));
         }

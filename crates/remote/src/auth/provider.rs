@@ -13,7 +13,7 @@ use url::Url;
 const USER_AGENT: &str = "VibeKanbanRemote/1.0";
 
 const TOKEN_EXPIRATION_LEEWAY_SECONDS: i64 = 20;
-pub const VALIDATE_TOKEN_MAX_RETRIES: u32 = 3;
+pub(super) const VALIDATE_TOKEN_MAX_RETRIES: u32 = 3;
 const RETRY_INTERVAL_SECONDS: u64 = 2;
 
 #[derive(Debug, Clone)]
@@ -105,14 +105,14 @@ impl ProviderRegistry {
     }
 }
 
-pub struct GitHubOAuthProvider {
+pub(crate) struct GitHubOAuthProvider {
     client: Client,
     client_id: String,
     client_secret: SecretString,
 }
 
 impl GitHubOAuthProvider {
-    pub fn new(client_id: String, client_secret: SecretString) -> Result<Self> {
+    pub(crate) fn new(client_id: String, client_secret: SecretString) -> Result<Self> {
         let client = Client::builder().user_agent(USER_AGENT).build()?;
         Ok(Self {
             client,
@@ -366,14 +366,14 @@ impl AuthorizationProvider for GitHubOAuthProvider {
     }
 }
 
-pub struct GoogleOAuthProvider {
+pub(crate) struct GoogleOAuthProvider {
     client: Client,
     client_id: String,
     client_secret: SecretString,
 }
 
 impl GoogleOAuthProvider {
-    pub fn new(client_id: String, client_secret: SecretString) -> Result<Self> {
+    pub(crate) fn new(client_id: String, client_secret: SecretString) -> Result<Self> {
         let client = Client::builder().user_agent(USER_AGENT).build()?;
         Ok(Self {
             client,

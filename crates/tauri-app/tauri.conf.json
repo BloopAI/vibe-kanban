@@ -20,6 +20,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "macOS": {
+      "bundleName": "Vibe Kanban"
+    },
     "windows": {},
     "icon": [
       "icons/32x32.png",
