@@ -595,7 +595,25 @@ impl RelayHost {
         protocols: Option<&str>,
     ) -> Option<ProxiedWsConnection> {
         let client = self.webrtc.get(self.identity.host_id).await?;
-        let ws = client.open_ws(target_path, protocols).await.ok()?;
+        let ws = match client.open_ws(target_path, protocols).await {
+            Ok(Ok(conn)) => conn,
+            Ok(Err(reason)) => {
+                tracing::debug!(
+                    host_id = %self.identity.host_id,
+                    %reason,
+                    "Remote host WS open failed, falling back to relay"
+                );
+                return None;
+            }
+            Err(e) => {
+                tracing::debug!(
+                    ?e,
+                    host_id = %self.identity.host_id,
+                    "WebRTC WS transport error, falling back to relay"
+                );
+                return None;
+            }
+        };
         let selected_protocol = ws.selected_protocol.clone();
         Some(ProxiedWsConnection {
             selected_protocol,
@@ -615,9 +633,16 @@ impl RelayHost {
 fn decode_webrtc_http_response(response: DataChannelResponse) -> Option<ProxiedResponse> {
     let body = if let Some(body_b64) = &response.body_b64 {
         use base64::Engine as _;
-        base64::engine::general_purpose::STANDARD
-            .decode(body_b64)
-            .ok()?
+        match base64::engine::general_purpose::STANDARD.decode(body_b64) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                tracing::debug!(
+                    ?e,
+                    "Invalid WebRTC HTTP response body encoding, falling back to relay"
+                );
+                return None;
+            }
+        }
     } else {
         Vec::new()
     };

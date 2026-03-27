@@ -22,12 +22,6 @@ enum WebRtcConnectionState {
     Failed(Instant),
 }
 
-/// Cache of active WebRTC direct connections keyed by host ID.
-///
-/// Callers use [`get`] to obtain a connected client. If the client fails
-/// during use, it marks itself as disconnected (via `WebRtcClient::disconnect`),
-/// and subsequent `get` calls will skip it. [`start_connecting`] replaces
-/// disconnected entries when a new handshake attempt starts.
 #[derive(Clone)]
 pub(crate) struct WebRtcConnectionCache {
     hosts: Arc<RwLock<HashMap<Uuid, WebRtcConnectionState>>>,
@@ -48,12 +42,10 @@ impl WebRtcConnectionCache {
         }
     }
 
-    /// Return a child cancellation token for a new WebRTC client connection.
     pub fn child_token(&self) -> CancellationToken {
         self.shutdown.child_token()
     }
 
-    /// Return the active client for a host, if connected.
     pub async fn get(&self, host_id: Uuid) -> Option<Arc<WebRtcClient>> {
         match self.hosts.read().await.get(&host_id) {
             Some(WebRtcConnectionState::Connected(client)) if client.is_connected() => {
@@ -70,7 +62,6 @@ impl WebRtcConnectionCache {
             .insert(host_id, WebRtcConnectionState::Connected(client));
     }
 
-    /// Unconditionally remove a host's connection (used by `remove_host`).
     pub async fn remove(&self, host_id: Uuid) {
         if let Some(WebRtcConnectionState::Connected(client)) =
             self.hosts.write().await.remove(&host_id)

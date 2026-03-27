@@ -58,13 +58,19 @@ pub enum WebRtcClientError {
     NoLocalDescription,
     #[error("Data-channel write failed: {0}")]
     DataChannelWriteFailed(String),
-    #[error("WS open failed: {0}")]
-    WsOpenFailed(String),
 }
 
 type PendingHttpMap =
     HashMap<Uuid, oneshot::Sender<Result<DataChannelResponse, WebRtcClientError>>>;
-type PendingWsOpenMap = HashMap<Uuid, oneshot::Sender<Result<WsConnection, WebRtcClientError>>>;
+/// Result of a WebSocket open attempt over the data channel.
+///
+/// `Ok` means the remote host successfully connected to its local backend.
+/// `Err` carries the error string the peer reported via `WsError` — this is
+/// **not** a data-channel transport failure (the message arrived over a
+/// working channel), just an application-level rejection.
+pub type WsOpenResult = Result<WsConnection, String>;
+
+type PendingWsOpenMap = HashMap<Uuid, oneshot::Sender<Result<WsOpenResult, WebRtcClientError>>>;
 
 // ---------------------------------------------------------------------------
 // Internal command types
@@ -78,7 +84,7 @@ struct PendingHttpRequest {
 
 struct PendingWsOpen {
     data: Vec<u8>,
-    result_tx: oneshot::Sender<Result<WsConnection, WebRtcClientError>>,
+    result_tx: oneshot::Sender<Result<WsOpenResult, WebRtcClientError>>,
     conn_id: Uuid,
 }
 
@@ -377,7 +383,7 @@ impl WebRtcClient {
                                 selected_protocol: opened.selected_protocol,
                                 frame_rx,
                             };
-                            let _ = result_tx.send(Ok(conn));
+                            let _ = result_tx.send(Ok(Ok(conn)));
                         }
                     }
 
@@ -405,7 +411,7 @@ impl WebRtcClient {
                     DataChannelMessage::WsError(err) => {
                         let mut pending = pending_ws_open_dispatch.lock().await;
                         if let Some(result_tx) = pending.remove(&err.conn_id) {
-                            let _ = result_tx.send(Err(WebRtcClientError::WsOpenFailed(err.error)));
+                            let _ = result_tx.send(Ok(Err(err.error)));
                         }
                         ws_frame_senders_dispatch.lock().await.remove(&err.conn_id);
                     }
@@ -476,13 +482,15 @@ impl WebRtcClient {
 
     /// Open a WebSocket connection to the remote host over the data channel.
     ///
-    /// On connection-level errors (timeout, channel closed) the client
-    /// automatically marks itself as disconnected so the cache skips it.
+    /// Returns `Ok(Ok(conn))` on success, `Ok(Err(reason))` if the remote
+    /// host reported an error (e.g. its local backend rejected the WS — the
+    /// data channel itself is fine), or `Err(...)` on transport failure
+    /// (timeout, channel closed), which also marks the client as disconnected.
     pub async fn open_ws(
         &self,
         path: &str,
         protocols: Option<&str>,
-    ) -> Result<WsConnection, WebRtcClientError> {
+    ) -> Result<WsOpenResult, WebRtcClientError> {
         if !self.is_connected() {
             return Err(WebRtcClientError::NotConnected);
         }
@@ -544,7 +552,7 @@ impl WebRtcClient {
         &self,
         path: &str,
         protocols: Option<&str>,
-    ) -> Result<WsConnection, WebRtcClientError> {
+    ) -> Result<WsOpenResult, WebRtcClientError> {
         let conn_id = Uuid::new_v4();
 
         let ws_open = WsOpen {
@@ -656,7 +664,7 @@ async fn handle_command(
             if let Err(e) = write_to_dc(dc, ws.data).await
                 && let Some(result_tx) = pending_ws_open.lock().await.remove(&conn_id)
             {
-                let _ = result_tx.send(Err(e));
+                let _ = result_tx.send(Err(e)); // transport error
             }
         }
     }
