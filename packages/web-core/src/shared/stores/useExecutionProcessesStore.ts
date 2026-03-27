@@ -70,17 +70,8 @@ export const useExecutionProcessesStore = create<ExecutionProcessesState>()(
 export const useExecutionProcessesAll = () =>
   useExecutionProcessesStore((s) => s.executionProcessesAll);
 
-export const useExecutionProcessesByIdAll = () =>
-  useExecutionProcessesStore((s) => s.executionProcessesByIdAll);
-
-export const useIsAttemptRunningAll = () =>
-  useExecutionProcessesStore((s) => s.isAttemptRunningAll);
-
 export const useExecutionProcessesVisible = () =>
   useExecutionProcessesStore((s) => s.executionProcessesVisible);
-
-export const useExecutionProcessesByIdVisible = () =>
-  useExecutionProcessesStore((s) => s.executionProcessesByIdVisible);
 
 export const useIsAttemptRunningVisible = () =>
   useExecutionProcessesStore((s) => s.isAttemptRunningVisible);
