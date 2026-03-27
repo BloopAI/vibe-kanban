@@ -487,9 +487,14 @@ async fn poll_for_login(deployment: DeploymentImpl, handoff_id: Uuid, app_verifi
                 deployment.take_oauth_handoff(&handoff_id).await;
                 return;
             }
-            Err(e) => {
+            Err(e) if e.is_transient() => {
                 tracing::debug!(?e, "desktop handoff poll request failed, retrying");
                 continue;
+            }
+            Err(e) => {
+                tracing::warn!(?e, "desktop handoff poll hit permanent error");
+                deployment.take_oauth_handoff(&handoff_id).await;
+                return;
             }
         }
     }
