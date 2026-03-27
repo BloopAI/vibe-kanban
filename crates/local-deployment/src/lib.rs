@@ -462,11 +462,13 @@ impl LocalDeployment {
         poll_task: Option<tokio::task::JoinHandle<()>>,
     ) {
         let mut handoffs = self.oauth_handoffs.write().await;
-        // Abort any existing poll task for this handoff (e.g. user retried).
-        if let Some(old) = handoffs.remove(&handoff_id)
-            && let Some(handle) = old.poll_task
-        {
-            handle.abort();
+        // Abort all existing poll tasks — a new handoff_init means the user
+        // retried, and each retry generates a fresh handoff_id, so we can't
+        // look up the old entry by the new ID.
+        for (_, old) in handoffs.drain() {
+            if let Some(handle) = old.poll_task {
+                handle.abort();
+            }
         }
         handoffs.insert(
             handoff_id,
