@@ -86,17 +86,7 @@
   },
   "diff": {
     "filesChanged_one": "{{count}} 個檔案已變更",
-    "filesChanged_other": "{{count}} 個檔案已變更",
-    "largeDiff": {
-      "title": "大型檔案",
-      "linesChanged": "{{count}} 行已變更",
-      "loadAnyway": "仍然載入差異",
-      "warning": "大型差異可能會降低瀏覽器速度。"
-    },
-    "markdownPreview": {
-      "showPreview": "顯示 Markdown 預覽",
-      "showDiff": "顯示程式碼差異"
-    }
+    "filesChanged_other": "{{count}} 個檔案已變更"
   },
   "processes": {
     "noLogsAvailable": "沒有可用的日誌",

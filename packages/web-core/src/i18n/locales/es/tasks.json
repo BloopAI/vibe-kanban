@@ -109,17 +109,7 @@
   },
   "diff": {
     "filesChanged_one": "{{count}} file changed",
-    "filesChanged_other": "{{count}} files changed",
-    "largeDiff": {
-      "title": "Archivo grande",
-      "linesChanged": "{{count}} líneas cambiadas",
-      "loadAnyway": "Cargar diff de todos modos",
-      "warning": "Los diffs grandes pueden ralentizar tu navegador."
-    },
-    "markdownPreview": {
-      "showPreview": "Mostrar vista previa de markdown",
-      "showDiff": "Mostrar diff de código"
-    }
+    "filesChanged_other": "{{count}} files changed"
   },
   "followUp": {
     "queuedMessage": "Mensaje en cola - se ejecutará cuando finalice la ejecución actual"

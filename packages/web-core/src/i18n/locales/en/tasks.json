@@ -83,17 +83,7 @@
   },
   "diff": {
     "filesChanged_one": "{{count}} file changed",
-    "filesChanged_other": "{{count}} files changed",
-    "largeDiff": {
-      "title": "Large file",
-      "linesChanged": "{{count}} lines changed",
-      "loadAnyway": "Load diff anyway",
-      "warning": "Large diffs may slow down your browser."
-    },
-    "markdownPreview": {
-      "showPreview": "Show markdown preview",
-      "showDiff": "Show code diff"
-    }
+    "filesChanged_other": "{{count}} files changed"
   },
   "processes": {
     "noLogsAvailable": "No logs available",

@@ -109,17 +109,7 @@
   },
   "diff": {
     "filesChanged_one": "{{count}} file changed",
-    "filesChanged_other": "{{count}} files changed",
-    "largeDiff": {
-      "title": "大きなファイル",
-      "linesChanged": "{{count}} 行が変更されました",
-      "loadAnyway": "差分を読み込む",
-      "warning": "大きな差分はブラウザを遅くする可能性があります。"
-    },
-    "markdownPreview": {
-      "showPreview": "マークダウンプレビューを表示",
-      "showDiff": "コードの差分を表示"
-    }
+    "filesChanged_other": "{{count}} files changed"
   },
   "followUp": {
     "queuedMessage": "メッセージがキューに追加されました - 現在の実行が完了すると実行されます"

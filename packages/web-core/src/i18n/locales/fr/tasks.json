@@ -83,17 +83,7 @@
   },
   "diff": {
     "filesChanged_one": "{{count}} fichier modifié",
-    "filesChanged_other": "{{count}} fichiers modifiés",
-    "largeDiff": {
-      "title": "Fichier volumineux",
-      "linesChanged": "{{count}} lignes modifiées",
-      "loadAnyway": "Charger le diff quand même",
-      "warning": "Les gros diffs peuvent ralentir votre navigateur."
-    },
-    "markdownPreview": {
-      "showPreview": "Afficher l'aperçu markdown",
-      "showDiff": "Afficher le diff du code"
-    }
+    "filesChanged_other": "{{count}} fichiers modifiés"
   },
   "processes": {
     "noLogsAvailable": "Aucun log disponible",
