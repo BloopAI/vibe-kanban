@@ -177,7 +177,6 @@ struct DiffStreamManager {
     last_head_commit: Option<Commit>,
     reconcile_cycle: u8,
     base_lookup_error_logged: bool,
-    suppress_fs_events: bool,
     needs_post_reset_discovery: bool,
     pending_reset_since: Option<tokio::time::Instant>,
 }
@@ -221,7 +220,6 @@ impl DiffStreamManager {
             last_head_commit: None,
             reconcile_cycle: 0,
             base_lookup_error_logged: false,
-            suppress_fs_events: false,
             needs_post_reset_discovery: false,
             pending_reset_since: None,
         }
@@ -273,9 +271,6 @@ impl DiffStreamManager {
             match event {
                 DiffEvent::Filesystem(res) => match res {
                     Ok(events) => {
-                        if self.suppress_fs_events {
-                            continue;
-                        }
                         if let Err(e) = self.handle_fs_events(events, &canonical_worktree).await {
                             tracing::warn!(
                                 "FS event processing failed, reconcile will catch up: {e}"
@@ -321,7 +316,6 @@ impl DiffStreamManager {
     }
 
     async fn reset_stream(&mut self) -> Result<(), DiffStreamError> {
-        self.suppress_fs_events = true;
         self.needs_post_reset_discovery = true;
         self.pending_reset_since = None;
         self.cumulative.store(0, Ordering::Relaxed);
@@ -430,7 +424,6 @@ impl DiffStreamManager {
         }
         // Non-commit (checkout/reset/rebase) — debounce reset to batch rapid HEAD changes
         self.pending_reset_since = Some(tokio::time::Instant::now());
-        self.suppress_fs_events = true;
         Ok(())
     }
 
@@ -556,7 +549,6 @@ impl DiffStreamManager {
             || self.reconcile_cycle.is_multiple_of(6);
 
         if stat_changed.is_empty() && !run_discovery {
-            self.suppress_fs_events = false;
             return Ok(());
         }
 
@@ -601,7 +593,6 @@ impl DiffStreamManager {
             self.rediff_paths(&paths_to_diff).await?;
         }
 
-        self.suppress_fs_events = false;
         Ok(())
     }
 
