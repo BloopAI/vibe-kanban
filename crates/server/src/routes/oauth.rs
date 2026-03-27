@@ -473,9 +473,8 @@ async fn poll_for_login(deployment: DeploymentImpl, handoff_id: Uuid, app_verifi
                 access_token,
                 refresh_token,
             }) => {
-                // Clean up the stored handoff.
-                deployment.take_oauth_handoff(&handoff_id).await;
-
+                // Finalize login BEFORE cleaning up the handoff entry,
+                // because take_oauth_handoff aborts this task's own JoinHandle.
                 if let Err(e) = finalize_login(
                     &deployment,
                     Credentials {
@@ -488,6 +487,7 @@ async fn poll_for_login(deployment: DeploymentImpl, handoff_id: Uuid, app_verifi
                 {
                     tracing::error!(?e, "failed to finalize login from desktop poll");
                 }
+                deployment.take_oauth_handoff(&handoff_id).await;
                 return;
             }
             Ok(HandoffPollResponse::Error { error }) => {
