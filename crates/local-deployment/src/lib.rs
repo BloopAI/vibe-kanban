@@ -463,10 +463,10 @@ impl LocalDeployment {
     ) {
         let mut handoffs = self.oauth_handoffs.write().await;
         // Abort any existing poll task for this handoff (e.g. user retried).
-        if let Some(old) = handoffs.remove(&handoff_id) {
-            if let Some(handle) = old.poll_task {
-                handle.abort();
-            }
+        if let Some(old) = handoffs.remove(&handoff_id)
+            && let Some(handle) = old.poll_task
+        {
+            handle.abort();
         }
         handoffs.insert(
             handoff_id,
