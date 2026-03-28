@@ -151,25 +151,30 @@ if (import.meta.env.DEV) {
 
 // Function to update language from config
 export const updateLanguageFromConfig = (configLanguage: string) => {
+  const applyLanguage = (language: string) => {
+    i18n.changeLanguage(language).then(() => {
+      const resolvedLanguage =
+        i18n.resolvedLanguage ?? i18n.language ?? language;
+      updateDocumentDirection(resolvedLanguage);
+    });
+  };
+
   if (configLanguage === 'BROWSER') {
     // Use browser detection
     const detected = i18n.services.languageDetector?.detect();
     const detectedLang = Array.isArray(detected) ? detected[0] : detected;
     const lang = detectedLang || 'en';
-    i18n.changeLanguage(lang);
-    updateDocumentDirection(lang);
+    applyLanguage(lang);
   } else {
     // Use explicit language selection with proper mapping
     const langCode = uiLanguageToI18nCode(configLanguage);
     if (langCode) {
-      i18n.changeLanguage(langCode);
-      updateDocumentDirection(langCode);
+      applyLanguage(langCode);
     } else {
       console.warn(
         `Unknown UI language: ${configLanguage}, falling back to 'en'`
       );
-      i18n.changeLanguage('en');
-      updateDocumentDirection('en');
+      applyLanguage('en');
     }
   }
 };
