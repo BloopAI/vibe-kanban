@@ -264,7 +264,13 @@ export function PierreDiffCard({
         acc +
         hunk.hunkContent.reduce((count, content) => {
           if (content.type === 'change') {
-            return count + (content as ChangeContent).additions.length;
+            const additionsValue = (content as ChangeContent).additions;
+            return (
+              count +
+              (Array.isArray(additionsValue)
+                ? additionsValue.length
+                : additionsValue)
+            );
           }
           return count;
         }, 0)
@@ -278,7 +284,13 @@ export function PierreDiffCard({
         acc +
         hunk.hunkContent.reduce((count, content) => {
           if (content.type === 'change') {
-            return count + (content as ChangeContent).deletions.length;
+            const deletionsValue = (content as ChangeContent).deletions;
+            return (
+              count +
+              (Array.isArray(deletionsValue)
+                ? deletionsValue.length
+                : deletionsValue)
+            );
           }
           return count;
         }, 0)
@@ -385,13 +397,14 @@ export function PierreDiffCard({
           <GitHubCommentRenderer
             comment={githubComment}
             onCopyToUserComment={handleCopyToUserComment}
+            theme={actualTheme}
           />
         );
       }
 
       return <ReviewCommentRenderer comment={metadata.comment} />;
     },
-    [filePath, addComment, diff]
+    [filePath, addComment, diff, actualTheme]
   );
 
   // Handle line click to add comment

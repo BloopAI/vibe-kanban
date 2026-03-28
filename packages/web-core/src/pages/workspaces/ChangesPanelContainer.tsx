@@ -122,10 +122,6 @@ export function ChangesPanelContainer({
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const changesPanelRef = useRef<ChangesPanelHandle>(null);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
-  const visibleRangeRef = useRef<{ startIndex: number; endIndex: number }>({
-    startIndex: 0,
-    endIndex: 0,
-  });
   const [processedPaths] = useState(() => new Set<string>());
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -273,93 +269,18 @@ export function ChangesPanelContainer({
     [diffItems]
   );
 
-  const getTopFilePath = useCallback(
-    (range: { startIndex: number; endIndex: number }): string | null => {
-      const container = scrollContainerRef.current;
-      if (!container) {
-        return indexToPath(range.startIndex);
-      }
-
-      const containerTop = container.getBoundingClientRect().top;
-
-      let bestPath: string | null = null;
-      let bestTop = -Infinity;
-
-      for (let i = range.startIndex; i <= range.endIndex; i++) {
-        const path = indexToPath(i);
-        if (!path) continue;
-
-        const el = diffRefs.current.get(path);
-        if (!el) continue;
-
-        const rect = el.getBoundingClientRect();
-        const relativeTop = rect.top - containerTop;
-        const relativeBottom = rect.bottom - containerTop;
-
-        const spansContainerTop = relativeTop <= 0 && relativeBottom > 0;
-
-        if (spansContainerTop && relativeTop > bestTop) {
-          bestTop = relativeTop;
-          bestPath = path;
-        }
-      }
-
-      return bestPath ?? indexToPath(range.startIndex);
-    },
-    [indexToPath]
-  );
-
   const {
-    state: syncState,
-    fileInView: stateMachineFileInView,
     scrollToFile: stateMachineScrollToFile,
     onRangeChanged,
     onScrollComplete,
   } = useScrollSyncStateMachine({
     pathToIndex,
     indexToPath,
-    getTopFilePath,
+    onFileInViewChanged: setFileInView,
   });
-
-  // Keep a ref to syncState for the scroll listener (avoids stale closure)
-  const syncStateRef = useRef(syncState);
-  syncStateRef.current = syncState;
-
-  useEffect(() => {
-    if (stateMachineFileInView !== null) {
-      setFileInView(stateMachineFileInView);
-    }
-  }, [stateMachineFileInView, setFileInView]);
-
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      const currentState = syncStateRef.current;
-      if (
-        currentState === 'programmatic-scroll' ||
-        currentState === 'sync-cooldown'
-      ) {
-        return;
-      }
-
-      const range = visibleRangeRef.current;
-      const topPath = getTopFilePath(range);
-      if (topPath !== null) {
-        setFileInView(topPath);
-      }
-    };
-
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      container.removeEventListener('scroll', handleScroll);
-    };
-  }, [getTopFilePath, setFileInView]);
 
   const handleRangeChanged = useCallback(
     (range: { startIndex: number; endIndex: number }) => {
-      visibleRangeRef.current = range;
       onRangeChanged(range);
     },
     [onRangeChanged]

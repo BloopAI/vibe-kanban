@@ -101,6 +101,9 @@ export interface ConversationListHandle {
   scrollToPreviousUserMessage: () => void;
   scrollToBottom: (behavior?: 'auto' | 'smooth') => void;
   adjustScrollBy: (delta: number) => void;
+  scrollToEntryByPatchKey: (patchKey: string) => void;
+  getVisibleUserMessagePatchKey: () => string | null;
+  getScrollElement: () => HTMLDivElement | null;
 }
 
 const ALWAYS_UNVIRTUALIZED_TAIL_ROWS = 8;
@@ -894,8 +897,54 @@ export const ConversationList = forwardRef<
         if (!scrollElement) return;
         scrollElement.scrollTop += delta;
       },
+      scrollToEntryByPatchKey: (patchKey) => {
+        const targetIndex = conversationRows.findIndex(
+          (row) => row.entry.patchKey === patchKey
+        );
+        if (targetIndex < 0) return;
+        scrollToAbsoluteIndex(targetIndex, 'start', 'smooth');
+      },
+      getVisibleUserMessagePatchKey: () => {
+        const scrollEl = tanstackScrollRef.current;
+        if (!scrollEl || conversationRows.length === 0) return null;
+
+        const containerTop = scrollEl.getBoundingClientRect().top;
+        const rowNodes = Array.from(
+          scrollEl.querySelectorAll<HTMLElement>('[data-row-index]')
+        );
+
+        let firstVisibleIndex = 0;
+        for (const node of rowNodes) {
+          const rect = node.getBoundingClientRect();
+          if (rect.bottom <= containerTop + 1) continue;
+          const indexAttr = node.dataset.rowIndex;
+          if (!indexAttr) continue;
+          const parsedIndex = Number.parseInt(indexAttr, 10);
+          if (!Number.isFinite(parsedIndex)) continue;
+          firstVisibleIndex = parsedIndex;
+          break;
+        }
+
+        for (
+          let index = firstVisibleIndex;
+          index < conversationRows.length;
+          index += 1
+        ) {
+          const row = conversationRows[index];
+          if (!row?.isUserMessage) continue;
+          return row.entry.patchKey;
+        }
+
+        return null;
+      },
+      getScrollElement: () => tanstackScrollRef.current,
     }),
-    [conversationVirtualizer, scrollToPreviousUserMessage]
+    [
+      conversationRows,
+      conversationVirtualizer,
+      scrollToAbsoluteIndex,
+      scrollToPreviousUserMessage,
+    ]
   );
 
   const showLoader = loading && conversationRows.length === 0;
