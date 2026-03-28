@@ -30,8 +30,7 @@ function Toolbar({ children, className, ...props }: ToolbarProps) {
   );
 }
 
-interface ToolbarIconButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ToolbarIconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon: Icon;
 }
 
