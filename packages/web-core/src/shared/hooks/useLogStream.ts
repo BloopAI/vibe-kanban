@@ -16,6 +16,8 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
   const retryCountRef = useRef<number>(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isIntentionallyClosed = useRef<boolean>(false);
+  // Prevent reconnection after the server signals the stream is done
+  const finishedRef = useRef<boolean>(false);
   // Track current processId to prevent stale WebSocket messages from contaminating logs
   const currentProcessIdRef = useRef<string>(processId);
 
@@ -32,8 +34,14 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
     // Clear logs when process changes
     setLogs([]);
     setError(null);
+    finishedRef.current = false;
 
     const open = () => {
+      // Don't reconnect if the stream already signalled finished
+      if (finishedRef.current) {
+        return;
+      }
+
       // Capture processId at the time of opening the WebSocket
       const capturedProcessId = processId;
       void (async () => {
@@ -50,6 +58,12 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
           wsRef.current = ws;
           isIntentionallyClosed.current = false;
 
+          // Track whether this is a reconnect so we can replace (not append)
+          // logs on the first incoming message to avoid duplicates from
+          // the server replaying history.
+          const isReconnect = retryCountRef.current > 0;
+          let pendingReplace = isReconnect;
+
           ws.onopen = () => {
             // Ignore if processId has changed since WebSocket was opened
             if (
@@ -60,9 +74,10 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
               return;
             }
             setError(null);
-            // Reset logs on new connection since server replays history
-            setLogs([]);
             retryCountRef.current = 0;
+            // Don't clear logs here — on reconnect the server replays
+            // history, and clearing eagerly causes a flash if the
+            // connection drops again before data arrives.
           };
 
           const addLogEntry = (entry: LogEntry) => {
@@ -73,7 +88,14 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
             ) {
               return;
             }
-            setLogs((prev) => [...prev, entry]);
+            if (pendingReplace) {
+              // First entry after reconnect: replace old logs to avoid
+              // duplicates from the history replay.
+              pendingReplace = false;
+              setLogs([entry]);
+            } else {
+              setLogs((prev) => [...prev, entry]);
+            }
           };
 
           // Handle WebSocket messages
@@ -99,6 +121,7 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
                   }
                 });
               } else if (data.finished === true) {
+                finishedRef.current = true;
                 isIntentionallyClosed.current = true;
                 ws.close();
               }
@@ -108,14 +131,9 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
           };
 
           ws.onerror = () => {
-            // Ignore errors from stale WebSocket connections
-            if (
-              cancelled ||
-              currentProcessIdRef.current !== capturedProcessId
-            ) {
-              return;
-            }
-            setError('Connection failed');
+            // Don't set error here — onclose always fires after onerror
+            // and handles retry logic. Setting error eagerly hides logs
+            // that were already received.
           };
 
           ws.onclose = (event) => {
@@ -133,6 +151,8 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
               if (next <= 6) {
                 const delay = Math.min(1500, 250 * 2 ** (next - 1));
                 retryTimerRef.current = setTimeout(() => open(), delay);
+              } else {
+                setError('Connection failed');
               }
             }
           };
@@ -140,12 +160,13 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
           if (cancelled || currentProcessIdRef.current !== capturedProcessId) {
             return;
           }
-          setError('Connection failed');
           const next = retryCountRef.current + 1;
           retryCountRef.current = next;
           if (next <= 6) {
             const delay = Math.min(1500, 250 * 2 ** (next - 1));
             retryTimerRef.current = setTimeout(() => open(), delay);
+          } else {
+            setError('Connection failed');
           }
         }
       })();

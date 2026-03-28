@@ -46,6 +46,7 @@ import {
   ProhibitIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
+import { useWorkspaceDiffStore } from '@/shared/stores/useWorkspaceDiffStore';
 import {
   useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
@@ -706,7 +707,7 @@ export const Actions = {
   ToggleAllDiffs: {
     id: 'toggle-all-diffs',
     label: () => {
-      const { diffPaths } = useDiffViewStore.getState();
+      const diffPaths = Array.from(useWorkspaceDiffStore.getState().diffPaths);
       const { expanded } = useUiPreferencesStore.getState();
       const keys = diffPaths.map((p) => `diff:${p}`);
       const isAllExpanded =
@@ -723,7 +724,7 @@ export const Actions = {
     getTooltip: (ctx) =>
       ctx.isAllDiffsExpanded ? 'Collapse all diffs' : 'Expand all diffs',
     execute: () => {
-      const { diffPaths } = useDiffViewStore.getState();
+      const diffPaths = Array.from(useWorkspaceDiffStore.getState().diffPaths);
       const { expanded, setExpandedAll } = useUiPreferencesStore.getState();
       const keys = diffPaths.map((p) => `diff:${p}`);
       const isAllExpanded =

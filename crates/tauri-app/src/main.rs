@@ -108,6 +108,14 @@ fn main() {
             read_clipboard_text
         ]);
 
+    // Unlock WKWebView's native refresh rate on macOS ProMotion / high-Hz displays.
+    // On macOS 13–15 WKWebView caps rAF at 60fps; this plugin disables that cap
+    // via WebKit's private _features API. No-op on macOS 26+ (cap removed by Apple).
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.plugin(tauri_plugin_macos_fps::init());
+    }
+
     // Only register the updater plugin in release builds — dev builds have a
     // placeholder endpoint that fails config deserialization.
     if !cfg!(debug_assertions) {
@@ -120,13 +128,19 @@ fn main() {
                 // Dev mode: frontend dev server (Vite) and backend are started
                 // externally. Use WebviewUrl::External so that macOS WKWebView
                 // renders with the same content scaling as the production build.
-                tracing::info!("Running in dev mode — using external frontend/backend servers");
+                let frontend_port =
+                    std::env::var("FRONTEND_PORT").unwrap_or_else(|_| "3000".to_string());
+                let dev_url = format!("http://localhost:{frontend_port}");
+                tracing::info!("Running in dev mode — using external frontend/backend servers (devUrl={dev_url})");
                 let window = create_window(
                     app,
-                    tauri::WebviewUrl::External("http://localhost:3000".parse().unwrap()),
+                    tauri::WebviewUrl::External(dev_url.parse().unwrap()),
                 )?;
                 #[cfg(target_os = "macos")]
-                disable_pinch_zoom(&window);
+                {
+                    disable_pinch_zoom(&window);
+                    optimize_webview_performance(&window);
+                }
                 let _ = window;
             } else {
                 // Production: start the Axum server first, then open the window
@@ -154,7 +168,10 @@ fn main() {
                                 match create_window(&create_handle, webview_url) {
                                     Ok(window) => {
                                         #[cfg(target_os = "macos")]
-                                        disable_pinch_zoom(&window);
+                                        {
+                                            disable_pinch_zoom(&window);
+                                            optimize_webview_performance(&window);
+                                        }
                                         let _ = window;
                                     }
                                     Err(e) => tracing::error!("Failed to create window: {e}"),
@@ -253,6 +270,50 @@ fn disable_pinch_zoom(window: &tauri::WebviewWindow) {
     let _ = window.with_webview(|webview| unsafe {
         let wk: &objc2_web_kit::WKWebView = &*webview.inner().cast();
         wk.setAllowsMagnification(false);
+    });
+}
+
+/// Enable GPU-accelerated compositing and drawing in WKWebView.
+///
+/// Embedded WKWebView may not have the same GPU acceleration defaults as Safari,
+/// contributing to the observed performance gap (Chrome > Safari > Tauri).
+/// Sets private WebKit preferences via NSKeyValueCoding (setValue:forKey:)
+/// using the same raw msg_send pattern as tauri-plugin-macos-fps.
+#[cfg(target_os = "macos")]
+fn optimize_webview_performance(window: &tauri::WebviewWindow) {
+    use objc2::{
+        msg_send,
+        runtime::{AnyClass, AnyObject, Bool},
+    };
+
+    let _ = window.with_webview(|webview| unsafe {
+        let wk: &objc2_web_kit::WKWebView = &*webview.inner().cast();
+
+        let config: *mut AnyObject = msg_send![wk, configuration];
+        if config.is_null() {
+            tracing::warn!("WebView optimization: WKWebViewConfiguration is null");
+            return;
+        }
+        let prefs: *mut AnyObject = msg_send![config, preferences];
+        if prefs.is_null() {
+            tracing::warn!("WebView optimization: WKPreferences is null");
+            return;
+        }
+
+        let ns_num_cls = match AnyClass::get(c"NSNumber") {
+            Some(cls) => cls,
+            None => return,
+        };
+        let yes: *mut AnyObject = msg_send![ns_num_cls, numberWithBool: Bool::new(true)];
+
+        for key_str in ["acceleratedCompositingEnabled", "acceleratedDrawingEnabled"] {
+            let key = objc2_foundation::NSString::from_str(key_str);
+            let _: () = msg_send![prefs, setValue: yes, forKey: &*key];
+        }
+
+        tracing::info!(
+            "WebView: GPU acceleration enabled (acceleratedCompositingEnabled + acceleratedDrawingEnabled)"
+        );
     });
 }
 

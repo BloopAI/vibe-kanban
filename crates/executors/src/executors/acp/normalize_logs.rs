@@ -779,7 +779,7 @@ struct AcpEventParser;
 
 impl AcpEventParser {
     /// Parse a line that may contain an ACP event
-    pub fn parse_line(line: &str) -> Option<AcpEvent> {
+    fn parse_line(line: &str) -> Option<AcpEvent> {
         let trimmed = line.trim();
 
         if let Ok(acp_event) = serde_json::from_str::<AcpEvent>(trimmed) {
@@ -792,7 +792,7 @@ impl AcpEventParser {
     }
 
     /// Parse command from tool title (for execute tools)
-    pub fn parse_execute_command(tc: &PartialToolCallData) -> String {
+    fn parse_execute_command(tc: &PartialToolCallData) -> String {
         if let Some(command) = tc.raw_input.as_ref().and_then(|value| {
             value
                 .as_object()
@@ -809,16 +809,6 @@ impl AcpEventParser {
             title.trim().to_string()
         }
     }
-}
-
-/// Result of parsing a line
-#[derive(Debug, Clone)]
-#[allow(clippy::large_enum_variant)]
-pub enum ParsedLine {
-    SessionId(String),
-    Event(AcpEvent),
-    Error(String),
-    Done,
 }
 
 impl TryFrom<SessionNotification> for AcpEvent {

@@ -13,7 +13,9 @@ members = [
     "crates/worktree-manager",
     "crates/workspace-manager",
     "crates/relay-control",
+    "crates/relay-protocol",
     "crates/relay-ws",
+    "crates/ws-bridge",
     "crates/relay-hosts",
     "crates/client-info",
     "crates/remote-info",
@@ -28,6 +30,7 @@ members = [
     "crates/tauri-app",
     "crates/preview-proxy",
     "crates/relay-tunnel-core",
+    "crates/relay-webrtc",
 ]
 exclude = ["crates/remote", "crates/relay-tunnel"]
 

@@ -21,7 +21,7 @@ use crate::DesktopBridgeError;
 ///
 /// Writes the OpenSSH PEM private key to `~/.vk-ssh/keys/{hash}` and returns
 /// the path and the host alias (`vk-{host_id}`).
-pub fn provision_ssh_key(
+pub(crate) fn provision_ssh_key(
     signing: &RelaySigningService,
     host_id: &str,
 ) -> Result<(PathBuf, String), DesktopBridgeError> {
@@ -63,7 +63,7 @@ pub fn provision_ssh_key(
 /// Write (or update) an SSH config entry for the given host alias.
 ///
 /// The config is written to `~/.vk-ssh/config` and points at the local tunnel port.
-pub fn update_ssh_config(
+pub(crate) fn update_ssh_config(
     alias: &str,
     port: u16,
     key_path: &std::path::Path,
@@ -86,7 +86,7 @@ pub fn update_ssh_config(
 }
 
 /// Ensure `~/.ssh/config` includes our `~/.vk-ssh/config`.
-pub fn ensure_ssh_include() -> Result<(), DesktopBridgeError> {
+pub(crate) fn ensure_ssh_include() -> Result<(), DesktopBridgeError> {
     let ssh_dir = dirs::home_dir()
         .ok_or(DesktopBridgeError::NoHomeDirectory)?
         .join(".ssh");

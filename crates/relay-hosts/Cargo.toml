@@ -1,13 +1,14 @@
 [package]
 name = "relay-hosts"
-version = "0.1.36"
+version = "0.1.37"
 edition = "2024"
 
 [dependencies]
-anyhow = { workspace = true }
+bytes = "1"
 chrono = { version = "0.4", features = ["serde"] }
-desktop-bridge = { path = "../desktop-bridge" }
+axum = { workspace = true, features = ["ws"] }
 ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
+futures-util = "0.3"
 http = "1"
 relay-client = { path = "../relay-client" }
 relay-ws = { path = "../relay-ws" }
@@ -20,8 +21,13 @@ serde_json = { workspace = true }
 services = { path = "../services" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tokio-tungstenite = "0.26"
 tracing = { workspace = true }
 trusted-key-auth = { path = "../trusted-key-auth" }
 url = "2.5"
 utils = { path = "../utils" }
 uuid = { version = "1.0", features = ["v4", "serde"] }
+relay-webrtc = { path = "../relay-webrtc" }
+ws-bridge = { path = "../ws-bridge" }
+tokio-util = { version = "0.7", features = ["rt"] }
+base64 = "0.22"

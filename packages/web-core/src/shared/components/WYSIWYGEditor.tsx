@@ -2,7 +2,6 @@ import {
   useMemo,
   useState,
   useCallback,
-  useContext,
   memo,
   forwardRef,
   useImperativeHandle,
@@ -15,14 +14,10 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import {
-  TRANSFORMERS,
-  TEXT_FORMAT_TRANSFORMERS,
-  CODE,
-  type Transformer,
-} from '@lexical/markdown';
-import { MarkdownInsertPlugin } from '@vibe/ui/components/MarkdownInsertPlugin';
-import { MarkdownListContinuePlugin } from '@vibe/ui/components/MarkdownListContinuePlugin';
+import { TRANSFORMERS, type Transformer } from '@lexical/markdown';
+import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
+import { CodeBlockEscapePlugin } from '@vibe/ui/components/CodeBlockEscapePlugin';
+import { InlineCodeBoundaryPlugin } from '@vibe/ui/components/InlineCodeBoundaryPlugin';
 import {
   PrCommentNode,
   PR_COMMENT_TRANSFORMER,
@@ -71,7 +66,7 @@ import { TableNode, TableRowNode, TableCellNode } from '@lexical/table';
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { type EditorState, type LexicalEditor } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { WorkspaceDiffContext } from '@/shared/hooks/useWorkspaceContext';
+import { useDiffPaths } from '@/shared/stores/useWorkspaceDiffStore';
 import { useSlashCommands } from '@/shared/hooks/useExecutorDiscovery';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { cn } from '@/shared/lib/utils';
@@ -302,11 +297,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
 
     // Copy button state
     const [copied, setCopied] = useState(false);
-    const diffContext = useContext(WorkspaceDiffContext);
-    const diffPaths = useMemo(
-      () => diffContext?.diffPaths ?? new Set<string>(),
-      [diffContext?.diffPaths]
-    );
+    const diffPaths = useDiffPaths();
     const preferredRepoId = useUiPreferencesStore(
       (state) => state.fileSearchRepoId
     );
@@ -414,8 +405,8 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
           quote:
             'my-3 border-l-4 border-primary-foreground pl-4 text-muted-foreground',
           list: {
-            ul: 'my-1 list-disc list-inside',
-            ol: 'my-1 list-decimal list-inside',
+            ul: 'my-1 list-disc pl-6',
+            ol: 'my-1 list-decimal pl-6',
             listitem: '',
             nested: {
               // Hide the structural wrapper marker Lexical adds for nested items.
@@ -458,24 +449,9 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       [AttachmentNode, ImageNode]
     );
 
-    // Edit mode: custom elements + text format transformers (so asterisks
-    // aren't escaped during $convertToMarkdownString and preview can parse them).
-    // CODE is excluded so triple-backtick fences stay as raw text.
-    const editTransformers: Transformer[] = useMemo(
-      () => [
-        IMAGE_TRANSFORMER,
-        ATTACHMENT_TRANSFORMER,
-        PR_COMMENT_EXPORT_TRANSFORMER,
-        PR_COMMENT_TRANSFORMER,
-        COMPONENT_INFO_EXPORT_TRANSFORMER,
-        COMPONENT_INFO_TRANSFORMER,
-        ...TEXT_FORMAT_TRANSFORMERS,
-      ],
-      [ATTACHMENT_TRANSFORMER, IMAGE_TRANSFORMER]
-    );
-
-    // Display mode: full markdown rendering
-    const displayTransformers: Transformer[] = useMemo(
+    // Full markdown transformers for both edit and display modes.
+    // Custom element transformers come first for matching precedence.
+    const allTransformers: Transformer[] = useMemo(
       () => [
         TABLE_TRANSFORMER,
         IMAGE_TRANSFORMER,
@@ -484,19 +460,10 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         PR_COMMENT_TRANSFORMER,
         COMPONENT_INFO_EXPORT_TRANSFORMER,
         COMPONENT_INFO_TRANSFORMER,
-        CODE,
         ...TRANSFORMERS,
       ],
       [ATTACHMENT_TRANSFORMER, IMAGE_TRANSFORMER]
     );
-
-    // Use display transformers for read-only, edit transformers for editing
-    const activeTransformers = disabled
-      ? displayTransformers
-      : editTransformers;
-
-    // Preview toggle state (only used in edit mode with static toolbar)
-    const [isPreviewMode, setIsPreviewMode] = useState(false);
 
     // Memoized handlers for ContentEditable to prevent re-renders
     const handlePaste = useCallback(
@@ -544,21 +511,6 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
 
     const editorContent = (
       <div className="wysiwyg text-base relative">
-        {/* Preview: render a read-only editor with full markdown rendering */}
-        {!disabled && isPreviewMode && (
-          <div className={cn(className)}>
-            <WYSIWYGEditor
-              value={value}
-              disabled
-              hideActions
-              className={className}
-              workspaceId={workspaceId}
-              sessionId={sessionId}
-              localAttachments={localAttachments}
-            />
-          </div>
-        )}
-
         <EditorWorkspaceContext.Provider value={workspaceId}>
           <SessionContext.Provider value={sessionId}>
             <LocalAttachmentsContext.Provider value={localAttachments ?? []}>
@@ -569,25 +521,11 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                   onChange={onChange}
                   onEditorStateChange={onEditorStateChange}
                   editable={!disabled}
-                  transformers={activeTransformers}
-                  preserveMarkdownSyntax={!disabled}
+                  transformers={allTransformers}
                 />
-                {!disabled && !isPreviewMode && !showStaticToolbar && (
-                  <ToolbarPlugin />
-                )}
+                {!disabled && !showStaticToolbar && <ToolbarPlugin />}
 
-                <div
-                  className="relative"
-                  style={
-                    !disabled && isPreviewMode
-                      ? {
-                          position: 'absolute',
-                          opacity: 0,
-                          pointerEvents: 'none',
-                        }
-                      : undefined
-                  }
-                >
+                <div className="relative">
                   <RichTextPlugin
                     contentEditable={
                       <ContentEditable
@@ -607,17 +545,12 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                   <StaticToolbarPlugin
                     saveStatus={saveStatus}
                     extraActions={staticToolbarActions}
-                    isPreviewMode={isPreviewMode}
-                    onTogglePreview={
-                      !disabled && !onRequestEdit
-                        ? () => setIsPreviewMode((p) => !p)
-                        : undefined
-                    }
                     readOnly={disabled}
                     onRequestEdit={onRequestEdit}
                   />
                 )}
 
+                <MarkdownShortcutPlugin transformers={allTransformers} />
                 <ListPlugin />
                 <TablePlugin />
                 <CodeHighlightPlugin />
@@ -626,10 +559,10 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                   <>
                     {autoFocus && <AutoFocusPlugin />}
                     <HistoryPlugin />
-                    <MarkdownInsertPlugin />
-                    <PasteMarkdownPlugin transformers={activeTransformers} />
+                    <CodeBlockEscapePlugin />
+                    <InlineCodeBoundaryPlugin />
+                    <PasteMarkdownPlugin transformers={allTransformers} />
                     <TypeaheadOpenProvider>
-                      <MarkdownListContinuePlugin />
                       <FileTagTypeaheadPlugin
                         repoIds={repoIds}
                         diffPaths={diffPaths}
@@ -653,7 +586,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                         onCmdEnter={onCmdEnter}
                         onShiftCmdEnter={onShiftCmdEnter}
                         onChange={onChange}
-                        transformers={activeTransformers}
+                        transformers={allTransformers}
                         sendShortcut={sendShortcut}
                       />
                     </TypeaheadOpenProvider>

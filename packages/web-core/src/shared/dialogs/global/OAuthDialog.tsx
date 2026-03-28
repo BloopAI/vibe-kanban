@@ -7,18 +7,19 @@ import {
   DialogTitle,
 } from '@vibe/ui/components/KeyboardDialog';
 import { Button } from '@vibe/ui/components/Button';
+import { Input } from '@vibe/ui/components/Input';
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { LogIn, Loader2 } from 'lucide-react';
 import { OAuthSignInButton } from '@vibe/ui/components/OAuthButtons';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { useCallback, useState, useRef, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthMutations } from '@/shared/hooks/auth/useAuthMutations';
 import { useAuthStatus } from '@/shared/hooks/auth/useAuthStatus';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { organizationKeys } from '@/shared/hooks/organizationKeys';
 import { tokenManager } from '@/shared/lib/auth/tokenManager';
-import type { ProfileResponse } from 'shared/types';
+import { oauthApi, type AuthMethodsResponse } from '@/shared/lib/api';
 import { useTranslation } from 'react-i18next';
 import { defineModal } from '@/shared/lib/modals';
 
@@ -28,7 +29,7 @@ type OAuthDialogProps = { initialProvider?: OAuthProvider };
 type OAuthState =
   | { type: 'select' }
   | { type: 'waiting'; provider: OAuthProvider }
-  | { type: 'success'; profile: ProfileResponse }
+  | { type: 'success'; displayName: string | null }
   | { type: 'error'; message: string };
 
 const OAuthDialogImpl = create<OAuthDialogProps>(({ initialProvider }) => {
@@ -40,6 +41,22 @@ const OAuthDialogImpl = create<OAuthDialogProps>(({ initialProvider }) => {
   const popupRef = useRef<Window | null>(null);
   const autoStartedRef = useRef(false);
   const [isPolling, setIsPolling] = useState(false);
+  const [localEmail, setLocalEmail] = useState('');
+  const [localPassword, setLocalPassword] = useState('');
+  const [isSubmittingLocal, setIsSubmittingLocal] = useState(false);
+  const {
+    data: authMethods,
+    error: authMethodsError,
+    isError: isAuthMethodsError,
+    refetch: refetchAuthMethods,
+  } = useQuery({
+    queryKey: ['auth', 'methods'],
+    queryFn: (): Promise<AuthMethodsResponse> => oauthApi.authMethods(),
+    staleTime: 60_000,
+  });
+  const hasLocalAuth = authMethods?.local_auth_enabled ?? false;
+  const oauthProviders = authMethods?.oauth_providers ?? [];
+  const hasOAuthProviders = oauthProviders.length > 0;
 
   // Auth mutations hook
   const { initHandoff } = useAuthMutations({
@@ -102,7 +119,7 @@ const OAuthDialogImpl = create<OAuthDialogProps>(({ initialProvider }) => {
     }
 
     // If logged in, stop polling and trigger success
-    if (statusData.logged_in && statusData.profile) {
+    if (statusData.logged_in) {
       setIsPolling(false);
       if (popupRef.current && !popupRef.current.closed) {
         popupRef.current.close();
@@ -118,9 +135,13 @@ const OAuthDialogImpl = create<OAuthDialogProps>(({ initialProvider }) => {
       // Invalidate organization caches to force fresh fetch after login
       queryClient.invalidateQueries({ queryKey: organizationKeys.all });
 
-      setState({ type: 'success', profile: statusData.profile });
+      setState({
+        type: 'success',
+        displayName:
+          statusData.profile?.username || statusData.profile?.email || null,
+      });
       setTimeout(() => {
-        modal.resolve(statusData.profile);
+        modal.resolve(true);
         modal.remove();
       }, 1500);
     }
@@ -160,6 +181,45 @@ const OAuthDialogImpl = create<OAuthDialogProps>(({ initialProvider }) => {
     setState({ type: 'select' });
   };
 
+  const handleLocalLogin = useCallback(async () => {
+    if (isSubmittingLocal) return;
+
+    setIsSubmittingLocal(true);
+
+    try {
+      const profile = await oauthApi.localLogin(
+        localEmail.trim(),
+        localPassword
+      );
+      await reloadSystem();
+      await tokenManager.triggerRefresh();
+      queryClient.invalidateQueries({ queryKey: organizationKeys.all });
+
+      setState({
+        type: 'success',
+        displayName: profile.username || profile.email || null,
+      });
+      setTimeout(() => {
+        modal.resolve(true);
+        modal.remove();
+      }, 800);
+    } catch (error) {
+      setState({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to sign in',
+      });
+    } finally {
+      setIsSubmittingLocal(false);
+    }
+  }, [
+    isSubmittingLocal,
+    localEmail,
+    localPassword,
+    modal,
+    queryClient,
+    reloadSystem,
+  ]);
+
   // Cleanup polling when dialog closes
   useEffect(() => {
     if (!modal.visible) {
@@ -197,16 +257,79 @@ const OAuthDialogImpl = create<OAuthDialogProps>(({ initialProvider }) => {
             </DialogHeader>
 
             <div className="space-y-3 py-4">
-              <OAuthSignInButton
-                provider="github"
-                className="w-full"
-                onClick={() => handleProviderSelect('github')}
-              />
-              <OAuthSignInButton
-                provider="google"
-                className="w-full"
-                onClick={() => handleProviderSelect('google')}
-              />
+              {isAuthMethodsError && (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    {authMethodsError instanceof Error
+                      ? authMethodsError.message
+                      : 'Failed to load available sign-in methods.'}
+                  </AlertDescription>
+                </Alert>
+              )}
+              {isAuthMethodsError && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => void refetchAuthMethods()}
+                >
+                  Retry
+                </Button>
+              )}
+              {!isAuthMethodsError && hasLocalAuth && (
+                <>
+                  <Input
+                    id="local-auth-email"
+                    type="email"
+                    value={localEmail}
+                    onChange={(event) => setLocalEmail(event.target.value)}
+                    placeholder="Email"
+                    autoComplete="username"
+                  />
+                  <Input
+                    id="local-auth-password"
+                    type="password"
+                    value={localPassword}
+                    onChange={(event) => setLocalPassword(event.target.value)}
+                    placeholder="Password"
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    className="relative flex h-10 w-full items-center overflow-hidden rounded-[4px] border border-[#dadce0] bg-[#f2f2f2] px-3 text-[14px] font-medium leading-5 tracking-[0.25px] text-[#1f1f1f] transition-colors duration-150 hover:bg-[#e8eaed] active:bg-[#e2e3e5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8]/40 disabled:cursor-not-allowed disabled:bg-[#ffffff61] disabled:text-[#1f1f1f]/40"
+                    onClick={() => void handleLocalLogin()}
+                    disabled={
+                      isSubmittingLocal || !localEmail.trim() || !localPassword
+                    }
+                    style={{ fontFamily: "'Roboto', Arial, sans-serif" }}
+                  >
+                    <span className="w-full text-center">
+                      {isSubmittingLocal
+                        ? 'Signing in...'
+                        : 'Sign in with email'}
+                    </span>
+                  </button>
+                </>
+              )}
+              {!isAuthMethodsError &&
+                hasOAuthProviders &&
+                oauthProviders.includes('github') && (
+                  <OAuthSignInButton
+                    provider="github"
+                    className="w-full"
+                    onClick={() => handleProviderSelect('github')}
+                    disabled={isSubmittingLocal}
+                  />
+                )}
+              {!isAuthMethodsError &&
+                hasOAuthProviders &&
+                oauthProviders.includes('google') && (
+                  <OAuthSignInButton
+                    provider="google"
+                    className="w-full"
+                    onClick={() => handleProviderSelect('google')}
+                    disabled={isSubmittingLocal}
+                  />
+                )}
             </div>
 
             <DialogFooter>
@@ -256,11 +379,13 @@ const OAuthDialogImpl = create<OAuthDialogProps>(({ initialProvider }) => {
           <>
             <DialogHeader>
               <DialogTitle>{t('oauth.successTitle')}</DialogTitle>
-              <DialogDescription className="text-left pt-2">
-                {t('oauth.welcomeBack', {
-                  name: state.profile.username || state.profile.email,
-                })}
-              </DialogDescription>
+              {state.displayName ? (
+                <DialogDescription className="text-left pt-2">
+                  {t('oauth.welcomeBack', {
+                    name: state.displayName,
+                  })}
+                </DialogDescription>
+              ) : null}
             </DialogHeader>
 
             <div className="py-4 flex items-center justify-center">
@@ -328,7 +453,6 @@ const OAuthDialogImpl = create<OAuthDialogProps>(({ initialProvider }) => {
   );
 });
 
-export const OAuthDialog = defineModal<
-  OAuthDialogProps,
-  ProfileResponse | null
->(OAuthDialogImpl);
+export const OAuthDialog = defineModal<OAuthDialogProps, boolean | null>(
+  OAuthDialogImpl
+);

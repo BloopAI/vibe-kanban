@@ -76,11 +76,11 @@ impl RelayApiClient {
         })
     }
 
-    pub fn base_url(&self) -> &str {
+    fn base_url(&self) -> &str {
         &self.base_url
     }
 
-    pub fn signing(&self) -> &RelaySigningService {
+    fn signing(&self) -> &RelaySigningService {
         &self.signing
     }
 
@@ -92,7 +92,7 @@ impl RelayApiClient {
             .bearer_auth(&self.access_token)
     }
 
-    pub async fn create_session(&self, host_id: Uuid) -> Result<RemoteSession, RelayApiError> {
+    async fn create_session(&self, host_id: Uuid) -> Result<RemoteSession, RelayApiError> {
         let url = format!("{}/v1/relay/create/{host_id}", self.base_url);
         let response = self
             .authenticated_post(url)
@@ -107,7 +107,7 @@ impl RelayApiClient {
         })
     }
 
-    pub async fn post_session_api<TPayload, TData>(
+    async fn post_session_api<TPayload, TData>(
         &self,
         remote_session: &RemoteSession,
         path: &str,
@@ -131,7 +131,7 @@ impl RelayApiClient {
         Ok(response_json.data)
     }
 
-    pub async fn refresh_signing_session(
+    async fn refresh_signing_session(
         &self,
         remote_session: &RemoteSession,
         client_id: Uuid,
@@ -301,7 +301,7 @@ impl RelayHostTransport {
         &self.auth_state
     }
 
-    pub fn relay_base_url(&self) -> &str {
+    fn relay_base_url(&self) -> &str {
         self.api_client.base_url()
     }
 
@@ -379,40 +379,6 @@ impl RelayHostTransport {
         }
 
         self.connect_ws_once(target_path, protocols).await
-    }
-
-    pub async fn get_signed_json<TData>(&mut self, path: &str) -> Result<TData, RelayApiError>
-    where
-        TData: DeserializeOwned,
-    {
-        let first_err = match self.get_signed_json_once(path).await {
-            Ok(data) => return Ok(data),
-            Err(error) => error,
-        };
-        if !is_http_auth_failure(&first_err) {
-            return Err(first_err);
-        }
-
-        let mut last_auth_error = first_err;
-
-        if self.refresh_signing_session().await.is_ok() {
-            let second_err = match self.get_signed_json_once(path).await {
-                Ok(data) => return Ok(data),
-                Err(error) => error,
-            };
-            if !is_http_auth_failure(&second_err) {
-                return Err(second_err);
-            }
-            last_auth_error = second_err;
-        }
-        if self.rotate_remote_session().await.is_err() {
-            return Err(last_auth_error);
-        }
-        if self.refresh_signing_session().await.is_err() {
-            return Err(last_auth_error);
-        }
-
-        self.get_signed_json_once(path).await
     }
 
     async fn send_http_once(
@@ -511,34 +477,6 @@ impl RelayHostTransport {
         Ok((upstream_socket, selected_protocol))
     }
 
-    async fn get_signed_json_once<TData>(&self, path: &str) -> Result<TData, RelayApiError>
-    where
-        TData: DeserializeOwned,
-    {
-        let url = format!("{}{path}", self.relay_url());
-        let sig = self.api_client.signing().sign_request(
-            self.auth_state.signing_session_id,
-            "GET",
-            path,
-            &[],
-        );
-
-        let response = self
-            .api_client
-            .http
-            .get(url)
-            .header(SIGNING_SESSION_HEADER, sig.signing_session_id.to_string())
-            .header(TIMESTAMP_HEADER, sig.timestamp.to_string())
-            .header(NONCE_HEADER, sig.nonce.to_string())
-            .header(REQUEST_SIGNATURE_HEADER, &sig.signature_b64)
-            .send()
-            .await?
-            .error_for_status()?;
-
-        let payload = response.json::<RelayApiResponse<TData>>().await?;
-        Ok(payload.data)
-    }
-
     async fn refresh_signing_session(&mut self) -> Result<(), RelayApiError> {
         let refreshed = self
             .api_client
@@ -564,7 +502,7 @@ impl RelayHostTransport {
     }
 }
 
-pub fn relay_session_url(base_url: &str, host_id: Uuid, session_id: Uuid) -> String {
+fn relay_session_url(base_url: &str, host_id: Uuid, session_id: Uuid) -> String {
     format!(
         "{}/v1/relay/h/{host_id}/s/{session_id}",
         base_url.trim_end_matches('/')
@@ -637,16 +575,6 @@ fn is_auth_failure_status(status_code: u16) -> bool {
 fn is_ws_auth_failure(error: &RelayApiError) -> bool {
     if let RelayApiError::WebSocket(tungstenite::Error::Http(response)) = error {
         is_auth_failure_status(response.status().as_u16())
-    } else {
-        false
-    }
-}
-
-fn is_http_auth_failure(error: &RelayApiError) -> bool {
-    if let RelayApiError::Request(request_error) = error
-        && let Some(status) = request_error.status()
-    {
-        is_auth_failure_status(status.as_u16())
     } else {
         false
     }

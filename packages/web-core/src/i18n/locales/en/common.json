@@ -535,7 +535,8 @@
     "streamsAffected": "{{count}} stream affected",
     "streamsAffected_other": "{{count}} streams affected",
     "status": "(status {{status}})",
-    "refreshPage": "Refresh Page"
+    "refreshPage": "Refresh Page",
+    "remoteAuthUnavailable": "Remote authentication is temporarily unavailable. Some remote features may not work until it recovers."
   },
   "migration": {
     "allProjectsMigrated": "All your projects have already been migrated to the cloud.",

@@ -40,7 +40,7 @@ async fn main() -> Result<(), VibeKanbanError> {
 
     let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
     let filter_string = format!(
-        "warn,server={level},services={level},db={level},executors={level},deployment={level},local_deployment={level},utils={level},embedded_ssh={level},desktop_bridge={level},codex_core=off",
+        "warn,server={level},services={level},db={level},executors={level},deployment={level},local_deployment={level},utils={level},embedded_ssh={level},desktop_bridge={level},relay_hosts={level},relay_client={level},relay_webrtc={level},codex_core=off",
         level = log_level
     );
     let env_filter = EnvFilter::try_new(filter_string).expect("Failed to create tracing filter");
@@ -67,7 +67,9 @@ async fn main() -> Result<(), VibeKanbanError> {
         tracing::info!("Database copy complete");
     }
 
-    let deployment = DeploymentImpl::new().await?;
+    let shutdown_token = CancellationToken::new();
+
+    let deployment = DeploymentImpl::new(shutdown_token.clone()).await?;
     deployment.update_sentry_scope().await?;
     deployment
         .container()
@@ -121,8 +123,6 @@ async fn main() -> Result<(), VibeKanbanError> {
     if let Err(e) = write_port_file_with_proxy(actual_main_port, Some(actual_proxy_port)).await {
         tracing::warn!("Failed to write port file: {}", e);
     }
-
-    let shutdown_token = CancellationToken::new();
 
     tracing::info!(
         "Main server on :{}, Preview proxy on :{}",

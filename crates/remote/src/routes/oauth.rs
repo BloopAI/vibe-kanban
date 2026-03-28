@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use api_types::{
-    HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse,
-    ProfileResponse, ProviderProfile,
+    AuthMethodsResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
+    HandoffRedeemResponse, LocalLoginRequest, LocalLoginResponse, ProfileResponse, ProviderProfile,
 };
 use axum::{
     Json, Router,
@@ -19,25 +19,34 @@ use uuid::Uuid;
 use crate::{
     AppState,
     audit::{self, AuditAction, AuditEvent},
-    auth::{CallbackResult, HandoffError, RequestContext},
+    auth::{
+        CallbackResult, HandoffError, LocalAuthError, RequestContext, auth_methods_response,
+        login as local_login_flow,
+    },
     db::{oauth::OAuthHandoffError, oauth_accounts::OAuthAccountRepository},
 };
 
-pub fn public_router() -> Router<AppState> {
+pub(super) fn public_router() -> Router<AppState> {
     Router::new()
+        .route("/auth/methods", get(auth_methods))
+        .route("/auth/local/login", post(local_login))
         .route("/oauth/web/init", post(web_init))
         .route("/oauth/web/redeem", post(web_redeem))
         .route("/oauth/{provider}/start", get(authorize_start))
         .route("/oauth/{provider}/callback", get(authorize_callback))
 }
 
-pub fn protected_router() -> Router<AppState> {
+async fn auth_methods(State(state): State<AppState>) -> Json<AuthMethodsResponse> {
+    Json(auth_methods_response(&state))
+}
+
+pub(super) fn protected_router() -> Router<AppState> {
     Router::new()
         .route("/profile", get(profile))
         .route("/oauth/logout", post(logout))
 }
 
-pub async fn web_init(
+async fn web_init(
     State(state): State<AppState>,
     Json(payload): Json<HandoffInitRequest>,
 ) -> Response {
@@ -63,7 +72,7 @@ pub async fn web_init(
     }
 }
 
-pub async fn web_redeem(
+async fn web_redeem(
     State(state): State<AppState>,
     Json(payload): Json<HandoffRedeemRequest>,
 ) -> Response {
@@ -102,12 +111,20 @@ pub async fn web_redeem(
     }
 }
 
+async fn local_login(
+    State(state): State<AppState>,
+    Json(payload): Json<LocalLoginRequest>,
+) -> Result<Json<LocalLoginResponse>, LocalAuthError> {
+    let response = local_login_flow(&state, &payload).await?;
+    Ok(Json(response))
+}
+
 #[derive(Debug, Deserialize)]
-pub struct StartQuery {
+struct StartQuery {
     handoff_id: Uuid,
 }
 
-pub async fn authorize_start(
+async fn authorize_start(
     State(state): State<AppState>,
     Path(provider): Path<String>,
     Query(query): Query<StartQuery>,
@@ -128,13 +145,13 @@ pub async fn authorize_start(
 }
 
 #[derive(Debug, Deserialize)]
-pub struct CallbackQuery {
+struct CallbackQuery {
     state: Option<String>,
     code: Option<String>,
     error: Option<String>,
 }
 
-pub async fn authorize_callback(
+async fn authorize_callback(
     State(state): State<AppState>,
     Path(provider): Path<String>,
     Query(query): Query<CallbackQuery>,
@@ -195,7 +212,7 @@ pub async fn authorize_callback(
     }
 }
 
-pub async fn profile(
+async fn profile(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
 ) -> Json<ProfileResponse> {
@@ -222,7 +239,7 @@ pub async fn profile(
     })
 }
 
-pub async fn logout(
+async fn logout(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
 ) -> Response {

@@ -7,13 +7,13 @@ use api_types::{
     SearchIssuesRequest, SortDirection, UpdateIssueRequest,
 };
 use rmcp::{
-    ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
+    ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::McpServer;
+use super::{McpServer, ToolError};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpCreateIssueRequest {
@@ -267,7 +267,7 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let project_id = match self.resolve_project_id(project_id) {
             Ok(id) => id,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(McpServer::tool_error(e)),
         };
 
         let expanded_description = match description {
@@ -277,13 +277,13 @@ impl McpServer {
 
         let status_id = match self.default_status_id(project_id).await {
             Ok(id) => id,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(McpServer::tool_error(e)),
         };
 
         let priority = match priority {
             Some(p) => match Self::parse_issue_priority(&p) {
                 Ok(priority) => Some(priority),
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(McpServer::tool_error(e)),
             },
             None => None,
         };
@@ -308,7 +308,7 @@ impl McpServer {
         let response: MutationResponse<Issue> =
             match self.send_json(self.client.post(&url).json(&payload)).await {
                 Ok(r) => r,
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(McpServer::tool_error(e)),
             };
 
         McpServer::success(&McpCreateIssueResponse {
@@ -339,14 +339,14 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let project_id = match self.resolve_project_id(project_id) {
             Ok(id) => id,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(McpServer::tool_error(e)),
         };
 
         let project_statuses = match self.fetch_project_statuses(project_id).await {
             Ok(statuses) => Some(statuses),
             Err(e) => {
                 if status.is_some() {
-                    return Ok(e);
+                    return Ok(McpServer::tool_error(e));
                 }
                 None
             }
@@ -387,24 +387,24 @@ impl McpServer {
         let priority = match priority {
             Some(priority) => match Self::parse_issue_priority(&priority) {
                 Ok(priority) => Some(priority),
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(McpServer::tool_error(e)),
             },
             None => None,
         };
 
         let sort_field = match Self::parse_issue_sort_field(sort_field.as_deref()) {
             Ok(value) => Some(value),
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(McpServer::tool_error(e)),
         };
         let sort_direction = match Self::parse_sort_direction(sort_direction.as_deref()) {
             Ok(value) => Some(value),
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(McpServer::tool_error(e)),
         };
 
         let matching_tag_ids = match tag_name.as_deref() {
             Some(tag_name) => match self.find_tag_ids_by_name(project_id, tag_name).await {
                 Ok(tag_ids) => Some(tag_ids),
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(McpServer::tool_error(e)),
             },
             None => None,
         };
@@ -438,7 +438,7 @@ impl McpServer {
             let url = self.url("/api/remote/issues/search");
             match self.send_json(self.client.post(&url).json(&query)).await {
                 Ok(r) => r,
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(McpServer::tool_error(e)),
             }
         };
 
@@ -472,7 +472,7 @@ impl McpServer {
         let url = self.url(&format!("/api/remote/issues/{}", issue_id));
         let issue: Issue = match self.send_json(self.client.get(&url)).await {
             Ok(i) => i,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(McpServer::tool_error(e)),
         };
 
         let pull_requests = self.fetch_pull_requests(issue_id).await;
@@ -498,7 +498,7 @@ impl McpServer {
         let get_url = self.url(&format!("/api/remote/issues/{}", issue_id));
         let existing_issue: Issue = match self.send_json(self.client.get(&get_url)).await {
             Ok(i) => i,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(McpServer::tool_error(e)),
         };
 
         // Resolve status name to status_id if provided
@@ -508,7 +508,7 @@ impl McpServer {
                 .await
             {
                 Ok(id) => Some(id),
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(McpServer::tool_error(e)),
             }
         } else {
             None
@@ -523,7 +523,7 @@ impl McpServer {
         let priority = if let Some(priority) = priority {
             match Self::parse_issue_priority(&priority) {
                 Ok(parsed) => Some(Some(parsed)),
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(McpServer::tool_error(e)),
             }
         } else {
             None
@@ -547,7 +547,7 @@ impl McpServer {
         let response: MutationResponse<Issue> =
             match self.send_json(self.client.patch(&url).json(&payload)).await {
                 Ok(r) => r,
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(McpServer::tool_error(e)),
             };
 
         let pull_requests = self.fetch_pull_requests(issue_id).await;
@@ -572,7 +572,7 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/remote/issues/{}", issue_id));
         if let Err(e) = self.send_empty_json(self.client.delete(&url)).await {
-            return Ok(e);
+            return Ok(McpServer::tool_error(e));
         }
 
         McpServer::success(&McpDeleteIssueResponse {
@@ -582,25 +582,26 @@ impl McpServer {
 }
 
 impl McpServer {
-    fn parse_issue_sort_field(sort_field: Option<&str>) -> Result<IssueSortField, CallToolResult> {
-        match sort_field.unwrap_or("sort_order").trim().to_ascii_lowercase().as_str() {
+    fn parse_issue_sort_field(sort_field: Option<&str>) -> Result<IssueSortField, ToolError> {
+        match sort_field
+            .unwrap_or("sort_order")
+            .trim()
+            .to_ascii_lowercase()
+            .as_str()
+        {
             "sort_order" => Ok(IssueSortField::SortOrder),
             "priority" => Ok(IssueSortField::Priority),
             "created_at" => Ok(IssueSortField::CreatedAt),
             "updated_at" => Ok(IssueSortField::UpdatedAt),
             "title" => Ok(IssueSortField::Title),
-            other => Err(Self::err(
-                format!(
-                    "Unknown sort_field '{}'. Allowed values: ['sort_order', 'priority', 'created_at', 'updated_at', 'title']",
-                    other
-                ),
-                None::<String>,
-            )
-            .unwrap()),
+            other => Err(ToolError::message(format!(
+                "Unknown sort_field '{}'. Allowed values: ['sort_order', 'priority', 'created_at', 'updated_at', 'title']",
+                other
+            ))),
         }
     }
 
-    fn parse_sort_direction(sort_direction: Option<&str>) -> Result<SortDirection, CallToolResult> {
+    fn parse_sort_direction(sort_direction: Option<&str>) -> Result<SortDirection, ToolError> {
         match sort_direction
             .unwrap_or("asc")
             .trim()
@@ -609,14 +610,10 @@ impl McpServer {
         {
             "asc" => Ok(SortDirection::Asc),
             "desc" => Ok(SortDirection::Desc),
-            other => Err(Self::err(
-                format!(
-                    "Unknown sort_direction '{}'. Allowed values: ['asc', 'desc']",
-                    other
-                ),
-                None::<String>,
-            )
-            .unwrap()),
+            other => Err(ToolError::message(format!(
+                "Unknown sort_direction '{}'. Allowed values: ['asc', 'desc']",
+                other
+            ))),
         }
     }
 
@@ -849,20 +846,16 @@ impl McpServer {
             .collect()
     }
 
-    fn parse_issue_priority(priority: &str) -> Result<IssuePriority, CallToolResult> {
+    fn parse_issue_priority(priority: &str) -> Result<IssuePriority, ToolError> {
         match priority.trim().to_ascii_lowercase().as_str() {
             "urgent" => Ok(IssuePriority::Urgent),
             "high" => Ok(IssuePriority::High),
             "medium" => Ok(IssuePriority::Medium),
             "low" => Ok(IssuePriority::Low),
-            _ => Err(Self::err(
-                format!(
-                    "Unknown priority '{}'. Allowed values: ['urgent', 'high', 'medium', 'low']",
-                    priority
-                ),
-                None::<String>,
-            )
-            .unwrap()),
+            _ => Err(ToolError::message(format!(
+                "Unknown priority '{}'. Allowed values: ['urgent', 'high', 'medium', 'low']",
+                priority
+            ))),
         }
     }
 
@@ -879,7 +872,7 @@ impl McpServer {
         &self,
         project_id: Uuid,
         tag_name: &str,
-    ) -> Result<Vec<Uuid>, CallToolResult> {
+    ) -> Result<Vec<Uuid>, ToolError> {
         let url = self.url(&format!("/api/remote/tags?project_id={}", project_id));
         let tags: ListTagsResponse = self.send_json(self.client.get(&url)).await?;
         Ok(Self::matching_ids_by_name(

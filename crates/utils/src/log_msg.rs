@@ -49,12 +49,6 @@ impl LogMsg {
         }
     }
 
-    /// Convert LogMsg to WebSocket message with proper error handling
-    pub fn to_ws_message(&self) -> Result<Message, serde_json::Error> {
-        let json = serde_json::to_string(self)?;
-        Ok(Message::Text(json.into()))
-    }
-
     /// Convert LogMsg to WebSocket message with fallback error handling
     ///
     /// This method mirrors the behavior of the original logmsg_to_ws function

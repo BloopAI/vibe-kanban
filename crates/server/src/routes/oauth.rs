@@ -1,4 +1,7 @@
-use api_types::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse};
+use api_types::{
+    AuthMethodsResponse, HandoffInitRequest, HandoffRedeemRequest, LocalLoginRequest,
+    ProfileResponse, StatusResponse,
+};
 use axum::{
     Router,
     extract::{Json, Query, State},
@@ -78,12 +81,22 @@ pub struct CurrentUserResponse {
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
+        .route("/auth/methods", get(auth_methods))
         .route("/auth/handoff/init", post(handoff_init))
         .route("/auth/handoff/complete", get(handoff_complete))
+        .route("/auth/local/login", post(local_login))
         .route("/auth/logout", post(logout))
         .route("/auth/status", get(status))
         .route("/auth/token", get(get_token))
         .route("/auth/user", get(get_current_user))
+}
+
+async fn auth_methods(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<AuthMethodsResponse>>, ApiError> {
+    let client = deployment.remote_client()?;
+    let methods = client.auth_methods().await?;
+    Ok(ResponseJson(ApiResponse::success(methods)))
 }
 
 #[derive(Debug, Deserialize)]
@@ -182,110 +195,40 @@ async fn handoff_complete(
 
     let redeem = client.handoff_redeem(&redeem_request).await?;
 
-    let expires_at = extract_expiration(&redeem.access_token)
-        .map_err(|err| ApiError::BadRequest(format!("Invalid access token: {err}")))?;
-    let credentials = Credentials {
-        access_token: Some(redeem.access_token.clone()),
-        refresh_token: redeem.refresh_token.clone(),
-        expires_at: Some(expires_at),
-    };
-
-    deployment
-        .auth_context()
-        .save_credentials(&credentials)
-        .await
-        .map_err(|e| {
-            tracing::error!(?e, "failed to save credentials");
-            ApiError::Io(e)
-        })?;
-
-    // Enable analytics automatically on login if not already enabled
-    let config_guard = deployment.config().read().await;
-    if !config_guard.analytics_enabled {
-        let mut new_config = config_guard.clone();
-        drop(config_guard); // Release read lock before acquiring write lock
-
-        new_config.analytics_enabled = true;
-
-        // Save updated config to disk
-        let config_path = config_path();
-        if let Err(e) = save_config_to_file(&new_config, &config_path).await {
-            tracing::warn!(
-                ?e,
-                "failed to save config after enabling analytics on login"
-            );
-        } else {
-            // Update in-memory config
-            let mut config = deployment.config().write().await;
-            *config = new_config;
-            drop(config);
-
-            tracing::info!("analytics automatically enabled after successful login");
-
-            // Track analytics_session_start event
-            if let Some(analytics) = deployment.analytics() {
-                analytics.track_event(
-                    deployment.user_id(),
-                    "analytics_session_start",
-                    Some(serde_json::json!({})),
-                );
-            }
-        }
-    } else {
-        drop(config_guard);
-    }
-
-    // Fetch and cache the user's profile
-    let _ = deployment.get_login_status().await;
-
-    // Sync all linked workspace states to remote in the background
-    if let Ok(client) = deployment.remote_client() {
-        let pool = deployment.db().pool.clone();
-        let git = deployment.git().clone();
-        tokio::spawn(async move {
-            remote_sync::sync_all_linked_workspaces(&client, &pool, &git).await;
-        });
-    }
-
-    // Sync PRs
-    deployment.trigger_pr_sync();
-
-    if let Some(profile) = deployment.auth_context().cached_profile().await
-        && let Some(analytics) = deployment.analytics()
-    {
-        analytics.track_event(
-            deployment.user_id(),
-            "$identify",
-            Some(serde_json::json!({
-                "email": profile.email,
-            })),
-        );
-
-        // Merge the local machine-based ID with the remote user UUID so all
-        // events (local frontend, local backend, remote backend) resolve to
-        // the same PostHog person. Uses $merge_dangerously because
-        // $create_alias is blocked by PostHog's safeguard when the machine
-        // ID was already used as a distinct_id in a prior identify call.
-        analytics.track_event(
-            &profile.user_id.to_string(),
-            "$merge_dangerously",
-            Some(serde_json::json!({
-                "alias": deployment.user_id(),
-            })),
-        );
-    }
-
-    // Start relay if enabled
-    let relay_deployment = deployment.clone();
-    tokio::spawn(async move {
-        relay_registration::spawn_relay(&relay_deployment).await;
-    });
+    finalize_login(
+        &deployment,
+        Credentials {
+            access_token: Some(redeem.access_token.clone()),
+            refresh_token: redeem.refresh_token.clone(),
+            expires_at: None,
+        },
+    )
+    .await?;
 
     let is_desktop = query.source.as_deref() == Some("desktop");
     Ok(close_window_response(
         format!("Signed in with {provider}. You can return to the app."),
         is_desktop,
     ))
+}
+
+async fn local_login(
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<LocalLoginRequest>,
+) -> Result<ResponseJson<ApiResponse<ProfileResponse>>, ApiError> {
+    let client = deployment.remote_client()?;
+    let response = client.local_login(&payload).await?;
+    let profile = finalize_login(
+        &deployment,
+        Credentials {
+            access_token: Some(response.access_token),
+            refresh_token: response.refresh_token,
+            expires_at: None,
+        },
+    )
+    .await?;
+
+    Ok(ResponseJson(ApiResponse::success(profile)))
 }
 
 async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, ApiError> {
@@ -312,17 +255,24 @@ async fn status(
 ) -> Result<ResponseJson<ApiResponse<StatusResponse>>, ApiError> {
     use api_types::LoginStatus;
 
-    match deployment.get_login_status().await {
+    let login_status = deployment.get_login_status().await;
+    let degraded = deployment
+        .auth_context()
+        .remote_auth_degraded_slug()
+        .await
+        .map(|_| true);
+
+    match login_status {
         LoginStatus::LoggedOut => Ok(ResponseJson(ApiResponse::success(StatusResponse {
             logged_in: false,
             profile: None,
-            degraded: None,
+            degraded,
         }))),
         LoginStatus::LoggedIn { profile } => {
             Ok(ResponseJson(ApiResponse::success(StatusResponse {
                 logged_in: true,
-                profile: Some(profile),
-                degraded: None,
+                profile,
+                degraded,
             })))
         }
     }
@@ -335,10 +285,7 @@ async fn get_token(
     let remote_client = deployment.remote_client()?;
 
     // This will auto-refresh the token if expired
-    let access_token = remote_client
-        .access_token()
-        .await
-        .map_err(|_| ApiError::Unauthorized)?;
+    let access_token = remote_client.access_token().await.map_err(ApiError::from)?;
 
     let creds = deployment.auth_context().get_credentials().await;
     let expires_at = creds.and_then(|c| c.expires_at);
@@ -355,10 +302,7 @@ async fn get_current_user(
     let remote_client = deployment.remote_client()?;
 
     // Get the access token from remote client
-    let access_token = remote_client
-        .access_token()
-        .await
-        .map_err(|_| ApiError::Unauthorized)?;
+    let access_token = remote_client.access_token().await.map_err(ApiError::from)?;
 
     // Extract user ID from the JWT token's 'sub' claim
     let user_id = utils::jwt::extract_subject(&access_token)
@@ -379,6 +323,103 @@ fn generate_secret() -> String {
         .take(64)
         .map(char::from)
         .collect()
+}
+
+async fn finalize_login(
+    deployment: &DeploymentImpl,
+    mut credentials: Credentials,
+) -> Result<ProfileResponse, ApiError> {
+    let access_token = credentials
+        .access_token
+        .as_ref()
+        .ok_or_else(|| ApiError::BadRequest("Missing access token".to_string()))?;
+    let expires_at = extract_expiration(access_token)
+        .map_err(|err| ApiError::BadRequest(format!("Invalid access token: {err}")))?;
+    credentials.expires_at = Some(expires_at);
+
+    deployment
+        .auth_context()
+        .save_credentials(&credentials)
+        .await
+        .map_err(|e| {
+            tracing::error!(?e, "failed to save credentials");
+            ApiError::Io(e)
+        })?;
+
+    let config_guard = deployment.config().read().await;
+    if !config_guard.analytics_enabled {
+        let mut new_config = config_guard.clone();
+        drop(config_guard);
+
+        new_config.analytics_enabled = true;
+
+        let config_path = config_path();
+        if let Err(e) = save_config_to_file(&new_config, &config_path).await {
+            tracing::warn!(
+                ?e,
+                "failed to save config after enabling analytics on login"
+            );
+        } else {
+            let mut config = deployment.config().write().await;
+            *config = new_config;
+            drop(config);
+
+            tracing::info!("analytics automatically enabled after successful login");
+
+            if let Some(analytics) = deployment.analytics() {
+                analytics.track_event(
+                    deployment.user_id(),
+                    "analytics_session_start",
+                    Some(serde_json::json!({})),
+                );
+            }
+        }
+    } else {
+        drop(config_guard);
+    }
+
+    let profile = match deployment.get_login_status().await {
+        api_types::LoginStatus::LoggedIn {
+            profile: Some(profile),
+        } => profile,
+        api_types::LoginStatus::LoggedIn { profile: None } | api_types::LoginStatus::LoggedOut => {
+            return Err(ApiError::Unauthorized);
+        }
+    };
+
+    if let Ok(client) = deployment.remote_client() {
+        let pool = deployment.db().pool.clone();
+        let git = deployment.git().clone();
+        tokio::spawn(async move {
+            remote_sync::sync_all_linked_workspaces(&client, &pool, &git).await;
+        });
+    }
+
+    deployment.trigger_pr_sync();
+
+    if let Some(analytics) = deployment.analytics() {
+        analytics.track_event(
+            deployment.user_id(),
+            "$identify",
+            Some(serde_json::json!({
+                "email": profile.email,
+            })),
+        );
+        analytics.track_event(
+            &profile.user_id.to_string(),
+            "$merge_dangerously",
+            Some(serde_json::json!({
+                "alias": deployment.user_id(),
+            })),
+        );
+    }
+
+    let relay_deployment = deployment.clone();
+    tokio::spawn(async move {
+        relay_registration::spawn_relay(&relay_deployment).await;
+    });
+
+    Ok(profile)
 }
 
 fn hash_sha256_hex(input: &str) -> String {

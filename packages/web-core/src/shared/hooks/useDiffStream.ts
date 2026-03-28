@@ -3,8 +3,12 @@ import type { Diff, PatchType } from 'shared/types';
 import { useJsonPatchWsStream } from '@/shared/hooks/useJsonPatchWsStream';
 import { useHostId } from '@/shared/providers/HostIdProvider';
 
-interface DiffEntries {
+interface RepoDiffEntries {
   [filePath: string]: PatchType;
+}
+
+interface DiffEntries {
+  [repoName: string]: RepoDiffEntries;
 }
 
 type DiffStreamEvent = {
@@ -56,7 +60,11 @@ export const useDiffStream = (
 
   const diffs = useMemo(() => {
     return Object.values(data?.entries ?? {})
-      .filter((entry) => entry?.type === 'DIFF')
+      .flatMap((repoEntries) => Object.values(repoEntries ?? {}))
+      .filter(
+        (entry): entry is Extract<PatchType, { type: 'DIFF' }> =>
+          entry?.type === 'DIFF'
+      )
       .map((entry) => entry.content);
   }, [data?.entries]);
 

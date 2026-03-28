@@ -18,7 +18,7 @@ use super::{
 };
 use crate::{AppState, auth::RequestContext, db::migration::MigrationRepository};
 
-pub fn router() -> Router<AppState> {
+pub(super) fn router() -> Router<AppState> {
     Router::new()
         .route("/migration/projects", post(migrate_projects))
         .route("/migration/issues", post(migrate_issues))

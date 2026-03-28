@@ -283,8 +283,8 @@ export function SharedAppLayout() {
   const handleMigrate = useCallback(async () => {
     if (!isSignedIn) {
       try {
-        const profile = await OAuthDialog.show({});
-        if (profile) {
+        const didSignIn = await OAuthDialog.show({});
+        if (didSignIn) {
           appNavigation.goToMigrate();
         }
       } catch {

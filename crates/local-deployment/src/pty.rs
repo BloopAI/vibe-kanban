@@ -217,13 +217,6 @@ impl PtyService {
         }
         Ok(())
     }
-
-    pub fn session_exists(&self, session_id: &Uuid) -> bool {
-        self.sessions
-            .lock()
-            .map(|s| s.contains_key(session_id))
-            .unwrap_or(false)
-    }
 }
 
 impl Default for PtyService {

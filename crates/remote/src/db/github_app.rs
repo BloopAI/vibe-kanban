@@ -555,17 +555,4 @@ impl<'a> GitHubAppRepository2<'a> {
 
         Ok(())
     }
-
-    pub async fn cleanup_expired_pending(&self) -> Result<u64, GitHubAppDbError> {
-        let result = sqlx::query!(
-            r#"
-            DELETE FROM github_app_pending_installations
-            WHERE expires_at < NOW()
-            "#
-        )
-        .execute(self.pool)
-        .await?;
-
-        Ok(result.rows_affected())
-    }
 }

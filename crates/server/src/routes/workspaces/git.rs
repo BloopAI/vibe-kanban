@@ -17,7 +17,6 @@ use db::models::{
 };
 use deployment::Deployment;
 use git::{ConflictOp, GitCliError, GitServiceError};
-use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{container::ContainerService, diff_stream, remote_sync};
 use ts_rs::TS;
@@ -203,10 +202,10 @@ pub async fn merge_workspace(
         ));
     }
 
-    let target_branch_type = deployment
+    let is_target_remote = deployment
         .git()
-        .find_branch_type(&repo.path, &workspace_repo.target_branch)?;
-    if target_branch_type == BranchType::Remote {
+        .is_remote_branch(&repo.path, &workspace_repo.target_branch)?;
+    if is_target_remote {
         return Err(ApiError::BadRequest(
             "Cannot merge directly into a remote branch. Please create a pull request instead."
                 .to_string(),
@@ -437,27 +436,24 @@ pub async fn get_workspace_branch_status(
 
         let has_uncommitted_changes = uncommitted_count.map(|c| c > 0);
 
-        let target_branch_type = deployment
+        let is_target_remote = deployment
             .git()
-            .find_branch_type(&repo.path, &target_branch)?;
+            .is_remote_branch(&repo.path, &target_branch)?;
 
-        let (commits_ahead, commits_behind) = match target_branch_type {
-            BranchType::Local => {
-                let (a, b) = deployment.git().get_branch_status(
-                    &repo.path,
-                    &workspace.branch,
-                    &target_branch,
-                )?;
-                (Some(a), Some(b))
-            }
-            BranchType::Remote => {
-                let (ahead, behind) = deployment.git().get_remote_branch_status(
-                    &repo.path,
-                    &workspace.branch,
-                    Some(&target_branch),
-                )?;
-                (Some(ahead), Some(behind))
-            }
+        let (commits_ahead, commits_behind) = if is_target_remote {
+            let (ahead, behind) = deployment.git().get_remote_branch_status(
+                &repo.path,
+                &workspace.branch,
+                Some(&target_branch),
+            )?;
+            (Some(ahead), Some(behind))
+        } else {
+            let (a, b) = deployment.git().get_branch_status(
+                &repo.path,
+                &workspace.branch,
+                &target_branch,
+            )?;
+            (Some(a), Some(b))
         };
 
         let (remote_ahead, remote_behind) = if let Some(Merge::Pr(PrMerge {
@@ -497,7 +493,7 @@ pub async fn get_workspace_branch_status(
                 is_rebase_in_progress,
                 conflict_op,
                 conflicted_files,
-                is_target_remote: target_branch_type == BranchType::Remote,
+                is_target_remote,
             },
         });
     }

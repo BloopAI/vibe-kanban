@@ -8,10 +8,8 @@ import { AppWithStyleOverride } from '@/shared/lib/StyleOverride';
 import { useStyleOverrideThemeSetter } from '@/shared/lib/StyleOverride';
 import { WebviewContextMenu } from '@/integrations/vscode/ContextMenu';
 import { ArrowDownIcon } from '@phosphor-icons/react';
-import {
-  useWorkspaceContext,
-  useWorkspaceDiffContext,
-} from '@/shared/hooks/useWorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { useDiffStats } from '@/shared/stores/useWorkspaceDiffStore';
 import { usePageTitle } from '@/shared/hooks/usePageTitle';
 import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
 import {
@@ -34,6 +32,8 @@ function VSCodeChatBox({
   onStartNewSession,
   onScrollToPreviousMessage,
   onScrollToBottom,
+  onScrollToUserMessage,
+  getActiveTurnPatchKey,
 }: {
   session: Session | undefined;
   workspaceId: string | undefined;
@@ -43,8 +43,10 @@ function VSCodeChatBox({
   onStartNewSession: () => void;
   onScrollToPreviousMessage: () => void;
   onScrollToBottom: (behavior?: 'auto' | 'smooth') => void;
+  onScrollToUserMessage: (patchKey: string) => void;
+  getActiveTurnPatchKey: () => string | null;
 }) {
-  const { diffStats } = useWorkspaceDiffContext();
+  const diffStats = useDiffStats();
 
   return (
     <SessionChatBoxContainer
@@ -72,6 +74,8 @@ function VSCodeChatBox({
       showOpenWorkspaceButton={false}
       onScrollToPreviousMessage={onScrollToPreviousMessage}
       onScrollToBottom={onScrollToBottom}
+      onScrollToUserMessage={onScrollToUserMessage}
+      getActiveTurnPatchKey={getActiveTurnPatchKey}
     />
   );
 }
@@ -105,6 +109,14 @@ export function VSCodeWorkspacePage() {
   const handleScrollToPreviousMessage = () => {
     conversationListRef.current?.scrollToPreviousUserMessage();
   };
+
+  const handleScrollToUserMessage = useCallback((patchKey: string) => {
+    conversationListRef.current?.scrollToEntryByPatchKey(patchKey);
+  }, []);
+
+  const handleGetActiveTurnPatchKey = useCallback(() => {
+    return conversationListRef.current?.getVisibleUserMessagePatchKey() ?? null;
+  }, []);
 
   const handleScrollToBottom = useCallback(
     (behavior: 'auto' | 'smooth' = 'smooth') => {
@@ -236,6 +248,8 @@ export function VSCodeWorkspacePage() {
                     onStartNewSession={startNewSession}
                     onScrollToPreviousMessage={handleScrollToPreviousMessage}
                     onScrollToBottom={handleScrollToBottom}
+                    onScrollToUserMessage={handleScrollToUserMessage}
+                    getActiveTurnPatchKey={handleGetActiveTurnPatchKey}
                   />
                 </div>
               </MessageEditProvider>

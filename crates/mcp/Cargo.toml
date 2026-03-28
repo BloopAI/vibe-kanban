@@ -1,6 +1,6 @@
 [package]
 name = "mcp"
-version = "0.1.36"
+version = "0.1.37"
 edition = "2024"
 autobins = false
 
@@ -23,9 +23,10 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 uuid = { version = "1.0", features = ["v4", "serde"] }
-rmcp = { version = "0.5.0", features = ["server", "transport-io"] }
+rmcp = { version = "1.2.0", features = ["server", "transport-io"] }
 schemars = { workspace = true }
 sentry = { version = "0.46.2", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest", "rustls"] }
 reqwest = { workspace = true }
 rustls = { workspace = true }
 regex = "1"
+thiserror = { workspace = true }

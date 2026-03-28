@@ -41,7 +41,7 @@ fn system_message(content: String) -> NormalizedEntry {
     }
 }
 
-pub fn normalize_logs(
+pub(super) fn normalize_logs(
     msg_store: Arc<MsgStore>,
     worktree_path: &Path,
 ) -> Vec<tokio::task::JoinHandle<()>> {

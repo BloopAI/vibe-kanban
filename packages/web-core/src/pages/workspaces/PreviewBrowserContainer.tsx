@@ -33,6 +33,23 @@ import type { PreviewDevToolsMessage } from '@/shared/types/previewDevTools';
 const MIN_RESPONSIVE_WIDTH = 320;
 const MIN_RESPONSIVE_HEIGHT = 480;
 
+const noop = () => {};
+
+/**
+ * Hostnames that are considered loopback/local.
+ * Kept in sync with `LOOPBACK_HOSTS` in usePreviewUrl.ts and
+ * `is_loopback_redirect_host` in the Rust preview-proxy crate.
+ */
+const LOOPBACK_HOSTS = new Set([
+  'localhost',
+  '127.0.0.1',
+  '0.0.0.0',
+  '[::1]',
+  '::1',
+  '[::]',
+  '::',
+]);
+
 function parsePreviewUrl(rawUrl: string, baseUrl?: string): URL | null {
   const trimmed = rawUrl.trim();
   if (!trimmed) return null;
@@ -241,14 +258,33 @@ export function PreviewBrowserContainer({
     );
   }, [hasOverride, urlInfo?.port, effectiveParsedUrl]);
 
-  // Builds the subdomain-based proxy URL loaded by the iframe.
-  //   Dev server at localhost:4000 → iframe loads http://4000.localhost:{proxyPort}/path
-  //   The proxy extracts the target port from the subdomain and forwards to the dev server.
-  //   _refresh query param forces iframe reload on refresh button click.
+  // Whether the preview URL targets a loopback address.
+  // Loopback previews use the subdomain proxy (origin isolation, devtools
+  // script injection, header stripping, SPA bridge navigation).
+  // Non-loopback previews (e.g. Coder port-forwarded URLs) load directly
+  // in the iframe — intentionally degraded: no bridge, no injected scripts,
+  // no Eruda/inspect mode, no SPA navigation via postMessage.
+  const isLoopbackPreview = useMemo(() => {
+    if (!effectiveParsedUrl) return true;
+    return LOOPBACK_HOSTS.has(effectiveParsedUrl.hostname);
+  }, [effectiveParsedUrl]);
+
   const iframeUrl = useMemo(() => {
-    if (!effectiveParsedUrl || !previewProxyPort || !devServerPort) {
+    if (!effectiveParsedUrl || !devServerPort) {
       return undefined;
     }
+
+    // Non-loopback URLs (e.g. Coder port-forwarded URLs like
+    // https://4000--workspace--user.coder.example.com) can be loaded
+    // directly — subdomain proxy routing only works for localhost.
+    if (!isLoopbackPreview) {
+      const directUrl = new URL(effectiveParsedUrl.toString());
+      directUrl.searchParams.set('_refresh', String(previewRefreshKey));
+      return directUrl.toString();
+    }
+
+    // Loopback URLs need the preview proxy for origin isolation
+    if (!previewProxyPort) return undefined;
 
     // Don't proxy to Vibe Kanban's own ports (would create infinite loop)
     const vibeKanbanPort = window.location.port || '80';
@@ -268,13 +304,6 @@ export function PreviewBrowserContainer({
       return undefined;
     }
 
-    // Warn if not on localhost (subdomain routing requires localhost)
-    if (!['localhost', '127.0.0.1'].includes(window.location.hostname)) {
-      console.warn(
-        '[Preview] Preview proxy subdomain routing may not work on non-localhost hostname'
-      );
-    }
-
     const path = effectiveParsedUrl.pathname + effectiveParsedUrl.search;
 
     // Subdomain-based routing: the proxy extracts the port from the Host header
@@ -290,6 +319,7 @@ export function PreviewBrowserContainer({
     devServerPort,
     effectiveParsedUrl,
     hostId,
+    isLoopbackPreview,
     previewProxyPort,
     previewRefreshKey,
   ]);
@@ -337,6 +367,10 @@ export function PreviewBrowserContainer({
   const bridgeRef = useRef<PreviewDevToolsBridge | null>(null);
   const displayedPreviewUrl = useMemo(() => {
     if (navigation?.url) {
+      // Non-loopback (direct) URLs: strip _refresh param and show as-is
+      if (!isLoopbackPreview) {
+        return stripPreviewRefreshParam(navigation.url) ?? navigation.url;
+      }
       if (hostId != null) {
         return stripPreviewRefreshParam(navigation.url) ?? navigation.url;
       }
@@ -356,7 +390,14 @@ export function PreviewBrowserContainer({
     }
 
     return effectiveUrl ?? null;
-  }, [devServerPort, effectiveUrl, hostId, iframeUrl, navigation?.url]);
+  }, [
+    devServerPort,
+    effectiveUrl,
+    hostId,
+    iframeUrl,
+    isLoopbackPreview,
+    navigation?.url,
+  ]);
 
   const handleBridgeMessage = useCallback(
     (message: PreviewDevToolsMessage) => {
@@ -696,20 +737,28 @@ export function PreviewBrowserContainer({
 
     resetNavigation();
 
-    if (showIframe && iframeRef.current?.contentWindow && previewProxyPort) {
-      if (devServerPort != null && normalizedInputDevPort === devServerPort) {
-        const proxyPath =
-          normalizedInputDevParsed.pathname +
-          normalizedInputDevParsed.search +
-          normalizedInputDevParsed.hash;
-        const hostToken =
-          hostId != null
-            ? `${normalizedInputDevPort}--${hostId}`
-            : normalizedInputDevPort;
-        const proxyUrl = `http://${hostToken}.localhost:${previewProxyPort}${proxyPath}`;
-        bridgeRef.current?.navigateTo(proxyUrl);
-        return;
-      }
+    // Bridge SPA navigation only works when the proxy injects devtools_script.js
+    // into the iframe. Non-loopback URLs bypass the proxy entirely, so the bridge
+    // isn't available — fall through to setOverrideUrl for a full iframe reload.
+    if (
+      showIframe &&
+      iframeRef.current?.contentWindow &&
+      isLoopbackPreview &&
+      previewProxyPort &&
+      devServerPort != null &&
+      normalizedInputDevPort === devServerPort
+    ) {
+      const proxyPath =
+        normalizedInputDevParsed.pathname +
+        normalizedInputDevParsed.search +
+        normalizedInputDevParsed.hash;
+      const hostToken =
+        hostId != null
+          ? `${normalizedInputDevPort}--${hostId}`
+          : normalizedInputDevPort;
+      const proxyUrl = `http://${hostToken}.localhost:${previewProxyPort}${proxyPath}`;
+      bridgeRef.current?.navigateTo(proxyUrl);
+      return;
     }
 
     setOverrideUrl(normalizedInputDevUrl);
@@ -719,6 +768,7 @@ export function PreviewBrowserContainer({
     urlInputValue,
     displayedPreviewUrl,
     hostId,
+    isLoopbackPreview,
     hasOverride,
     showIframe,
     previewProxyPort,
@@ -914,10 +964,10 @@ export function PreviewBrowserContainer({
       navigation={navigation}
       onNavigateBack={handleNavigateBack}
       onNavigateForward={handleNavigateForward}
-      isInspectMode={isInspectMode}
-      onToggleInspectMode={toggleInspectMode}
-      isErudaVisible={isErudaVisible}
-      onToggleEruda={handleToggleEruda}
+      isInspectMode={isLoopbackPreview && isInspectMode}
+      onToggleInspectMode={isLoopbackPreview ? toggleInspectMode : noop}
+      isErudaVisible={isLoopbackPreview && isErudaVisible}
+      onToggleEruda={isLoopbackPreview ? handleToggleEruda : noop}
       onIframeLoad={handleIframeLoad}
       isMobile={isMobile}
       mobileUrlExpanded={mobileUrlExpanded}

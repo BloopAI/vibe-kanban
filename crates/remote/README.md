@@ -1,32 +1,30 @@
-# Remote service
+# Remote Service
 
-The `remote` crate contains the implementation of the Vibe Kanban hosted API.
+The `remote` crate contains the hosted API and web app.
 
-## Prerequisites
+## Local Setup
 
-Create a `.env.remote` file in `crates/remote/` (this matches `pnpm run remote:dev`):
+Create `crates/remote/.env.remote`:
 
 ```env
-# Required — generate with: openssl rand -base64 48
-VIBEKANBAN_REMOTE_JWT_SECRET=your_base64_encoded_secret
+# Required
+VIBEKANBAN_REMOTE_JWT_SECRET=replace_with_openssl_rand_base64_48
+ELECTRIC_ROLE_PASSWORD=replace_with_secure_password
 
-# Required — password for the electric_sync database role used by ElectricSQL
-ELECTRIC_ROLE_PASSWORD=your_secure_password
-
-# OAuth — at least one provider (GitHub or Google) must be configured
-GITHUB_OAUTH_CLIENT_ID=your_github_web_app_client_id
-GITHUB_OAUTH_CLIENT_SECRET=your_github_web_app_client_secret
+# Configure at least one auth option
+GITHUB_OAUTH_CLIENT_ID=
+GITHUB_OAUTH_CLIENT_SECRET=
 GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 
-# Relay (required for tunnel/relay features)
-# For local HTTPS via Caddy on :3001:
-VITE_RELAY_API_BASE_URL=https://relay.localhost:3001
+# Or use bootstrap local auth for self-hosting
+SELF_HOST_LOCAL_AUTH_EMAIL=
+SELF_HOST_LOCAL_AUTH_PASSWORD=
 
-# Optional — enables Virtuoso Message List license for remote web UI
+# Optional
+PUBLIC_BASE_URL=http://localhost:3000
+VITE_RELAY_API_BASE_URL=http://localhost:8082
 VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY=
-
-# Optional — leave empty to disable invitation emails
 LOOPS_EMAIL_API_KEY=
 
 # Loops transactional email template IDs (optional — defaults are the upstream templates).
@@ -36,9 +34,13 @@ LOOPS_REVIEW_READY_TEMPLATE_ID=cmj47k5ge16990iylued9by17
 LOOPS_REVIEW_FAILED_TEMPLATE_ID=cmj49ougk1c8s0iznavijdqpo
 ```
 
-Generate `VIBEKANBAN_REMOTE_JWT_SECRET` once using `openssl rand -base64 48` and copy the value into `.env.remote`.
+Generate the JWT secret once:
 
-## Run the stack locally
+```bash
+openssl rand -base64 48
+```
+
+## Run
 
 From the repo root:
 
@@ -46,34 +48,62 @@ From the repo root:
 pnpm run remote:dev
 ```
 
+Full stack with relay and local attachment storage:
+
+```bash
+pnpm run remote:dev:full
+```
+
 Equivalent manual command:
 
 ```bash
 cd crates/remote
-docker compose --env-file .env.remote -f docker-compose.yml up --build
+docker compose --env-file .env.remote up --build
 ```
 
-This starts PostgreSQL, ElectricSQL, the Remote Server, and the Relay Server.
+This starts:
 
-- Remote web UI/API: `https://localhost:3001` (via Caddy) or `http://localhost:3000` (direct)
-- Relay API: `http://localhost:8082`
+- `remote-db`
+- `remote-server`
+- `electric`
+
+Default endpoints:
+
+- Remote web UI/API: `http://localhost:3000`
 - Postgres: `postgres://remote:remote@localhost:5433/remote`
 
-## Run Vibe Kanban
+## Optional Profiles
 
-To connect the desktop client to your local remote server (without relay/tunnel):
+Enable relay support:
 
 ```bash
-export VK_SHARED_API_BASE=https://localhost:3001
-
-pnpm run dev
+cd crates/remote
+docker compose --env-file .env.remote --profile relay up --build
 ```
 
-## Local HTTPS with Caddy
+Enable local attachment storage with Azurite:
 
-The stack defaults to `https://localhost:3001` as its public URL. Use [Caddy](https://caddyserver.com) as a reverse proxy to terminate TLS — it automatically provisions a locally-trusted certificate for `localhost`.
+```bash
+cd crates/remote
+docker compose --env-file .env.remote --profile attachments up --build
+```
 
-### 1. Install Caddy
+Enable both:
+
+```bash
+cd crates/remote
+docker compose --env-file .env.remote --profile relay --profile attachments up --build
+```
+
+Additional endpoint with the `relay` profile:
+
+- Relay API: `http://localhost:8082`
+
+## Local HTTPS with Caddy (Optional)
+
+Use [Caddy](https://caddyserver.com) as a reverse proxy to terminate TLS locally. A `Caddyfile.example` is provided in the repository root.
+
+### Install Caddy
 
 ```bash
 # macOS
@@ -83,56 +113,27 @@ brew install caddy
 sudo apt install caddy
 ```
 
-### 2. Create a Caddyfile
+### Start Caddy
 
-Create a `Caddyfile` in the repository root:
-
-```text
-localhost:3001, relay.localhost:3001, *.relay.localhost:3001 {
-    tls internal
-
-    @relay host relay.localhost *.relay.localhost
-    handle @relay {
-        reverse_proxy 127.0.0.1:8082
-    }
-
-    @app expression `{http.request.host} == "localhost:3001" || {http.request.host} == "localhost"`
-    handle @app {
-        reverse_proxy 127.0.0.1:3000
-    }
-
-    respond "not found" 404
-}
-```
-
-### 3. Update OAuth callback URLs
-
-Update your OAuth application to use `https://localhost:3001`:
-
-- **GitHub**: `https://localhost:3001/v1/oauth/github/callback`
-- **Google**: `https://localhost:3001/v1/oauth/google/callback`
-
-### 4. Start everything
-
-Start Docker services as usual, then start Caddy in a separate terminal:
+In a separate terminal from the repo root:
 
 ```bash
-# Terminal 1 — start the stack
-pnpm run remote:dev
-
-# Terminal 2 — start Caddy (from repo root)
-caddy run --config Caddyfile
+caddy run --config Caddyfile.example
 ```
 
 The first time Caddy runs it installs a local CA certificate — you may be prompted for your password.
 
-Open **https://localhost:3001** in your browser.
+This gives you:
 
-> **Tip:** To use plain HTTP instead (no Caddy), set `PUBLIC_BASE_URL=http://localhost:3000` in your `.env.remote`.
+- `https://localhost:3001` → remote web UI/API
+- `https://relay.localhost:3001` → relay API (requires `relay` profile)
 
-## Run desktop with relay tunnel (optional)
+Update your OAuth callback URLs accordingly:
 
-To test relay/tunnel mode end-to-end:
+- **GitHub**: `https://localhost:3001/v1/oauth/github/callback`
+- **Google**: `https://localhost:3001/v1/oauth/google/callback`
+
+### Test relay tunnel end-to-end
 
 ```bash
 export VK_SHARED_API_BASE=https://localhost:3001
@@ -148,4 +149,13 @@ curl -sk https://localhost:3001/v1/health
 curl -sk https://relay.localhost:3001/health
 ```
 
-If `https://relay.localhost:3001/health` returns the remote frontend HTML instead of `{"status":"ok"}`, your Caddy host routing is incorrect.
+If the relay health endpoint returns HTML instead of `{"status":"ok"}`, your Caddy host routing is incorrect.
+
+## Desktop App
+
+To run the desktop/local app against this remote stack:
+
+```bash
+export VK_SHARED_API_BASE=http://localhost:3000
+pnpm run dev
+```

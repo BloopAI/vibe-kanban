@@ -262,6 +262,17 @@ fn generate_types_content() -> String {
         executors::model_selector::ModelSelectorConfig::decl(),
         executors::executor_discovery::ExecutorDiscoveredOptions::decl(),
         serde_json::Value::decl(),
+        relay_protocol::RelayWsMessageType::decl(),
+        relay_webrtc::DataChannelMessage::decl(),
+        relay_webrtc::DataChannelRequest::decl(),
+        relay_webrtc::DataChannelResponse::decl(),
+        relay_webrtc::WsOpen::decl(),
+        relay_webrtc::WsOpened::decl(),
+        relay_webrtc::WsFrame::decl(),
+        relay_webrtc::WsClose::decl(),
+        relay_webrtc::WsError::decl(),
+        relay_webrtc::SdpOffer::decl(),
+        relay_webrtc::SdpAnswer::decl(),
     ];
 
     let body = decls

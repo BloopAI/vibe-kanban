@@ -521,7 +521,8 @@
     "streamsAffected": "{{count}} flux affecté",
     "streamsAffected_other": "{{count}} flux affectés",
     "status": "(statut {{status}})",
-    "refreshPage": "Actualiser la page"
+    "refreshPage": "Actualiser la page",
+    "remoteAuthUnavailable": "L’authentification distante est temporairement indisponible. Certaines fonctionnalités distantes peuvent ne pas fonctionner jusqu’à son rétablissement."
   },
   "onboardingSignIn": {
     "subtitle": "Sign in to continue",

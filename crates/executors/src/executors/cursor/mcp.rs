@@ -7,7 +7,7 @@ use tracing::warn;
 use super::CursorAgent;
 use crate::executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor};
 
-pub async fn ensure_mcp_server_trust(cursor: &CursorAgent, current_dir: &Path) {
+pub(super) async fn ensure_mcp_server_trust(cursor: &CursorAgent, current_dir: &Path) {
     if let Err(err) = ensure_mcp_server_trust_impl(cursor, current_dir).await {
         tracing::warn!(
             error = %err,

@@ -1,6 +1,6 @@
 [package]
 name = "worktree-manager"
-version = "0.1.36"
+version = "0.1.37"
 edition = "2024"
 
 [dependencies]
@@ -9,7 +9,6 @@ utils = { path = "../utils" }
 tokio = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-git2 = { workspace = true }
 dunce = "1.0"
 
 [dev-dependencies]

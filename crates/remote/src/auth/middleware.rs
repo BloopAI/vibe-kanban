@@ -32,7 +32,7 @@ pub struct RequestContext {
     pub access_token_expires_at: DateTime<Utc>,
 }
 
-pub async fn require_session(
+pub(crate) async fn require_session(
     State(state): State<AppState>,
     mut req: Request<Body>,
     next: Next,
@@ -65,7 +65,7 @@ pub async fn require_session(
     db::TX_CONTEXT.scope(Some(tx_ctx), next.run(req)).await
 }
 
-pub async fn request_context_from_access_token(
+pub(super) async fn request_context_from_access_token(
     state: &AppState,
     access_token: &str,
 ) -> Result<RequestContext, Response> {
@@ -93,7 +93,7 @@ pub async fn request_context_from_access_token(
     Ok(ctx)
 }
 
-pub async fn request_context_from_auth_session_id(
+pub(super) async fn request_context_from_auth_session_id(
     state: &AppState,
     session_id: Uuid,
 ) -> Result<RequestContext, Response> {

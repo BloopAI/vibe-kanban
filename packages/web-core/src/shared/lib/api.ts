@@ -102,6 +102,7 @@ import {
   RemoveRelayPairedHostResponse,
   OpenRemoteWorkspaceInEditorRequest,
   OpenRemoteEditorResponse,
+  ProfileResponse,
 } from 'shared/types';
 import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
@@ -1239,7 +1240,19 @@ export const approvalsApi = {
 };
 
 // OAuth API
+export type AuthMethodsResponse = {
+  local_auth_enabled: boolean;
+  oauth_providers: string[];
+};
+
 export const oauthApi = {
+  authMethods: async (): Promise<AuthMethodsResponse> => {
+    const response = await makeRequest('/api/auth/methods', {
+      cache: 'no-store',
+    });
+    return handleApiResponse<AuthMethodsResponse>(response);
+  },
+
   handoffInit: async (
     provider: string,
     returnTo: string
@@ -1260,6 +1273,17 @@ export const oauthApi = {
     return handleApiResponse<StatusResponse>(response);
   },
 
+  localLogin: async (
+    email: string,
+    password: string
+  ): Promise<ProfileResponse> => {
+    const response = await makeRequest('/api/auth/local/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    return handleApiResponse<ProfileResponse>(response);
+  },
+
   logout: async (): Promise<void> => {
     const response = await makeRequest('/api/auth/logout', {
       method: 'POST',
@@ -1274,12 +1298,11 @@ export const oauthApi = {
   },
 
   /** Returns the current access token for the remote server (auto-refreshes if needed) */
-  getToken: async (): Promise<TokenResponse | null> => {
+  getToken: async (): Promise<TokenResponse> => {
     const response = await makeRequest('/api/auth/token');
     if (response.status === 401) {
       throw new ApiError('Unauthorized', 401, response);
     }
-    if (!response.ok) return null;
     return handleApiResponse<TokenResponse>(response);
   },
 

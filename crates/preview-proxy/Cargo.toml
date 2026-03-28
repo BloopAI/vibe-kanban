@@ -1,15 +1,15 @@
 [package]
 name = "preview-proxy"
-version = "0.1.36"
+version = "0.1.37"
 edition = "2024"
 
 [dependencies]
 axum = { workspace = true }
-anyhow = { workspace = true }
-relay-tunnel-core = { path = "../relay-tunnel-core" }
+ws-bridge = { path = "../ws-bridge" }
 reqwest = { workspace = true }
+http = "1"
+thiserror = { workspace = true }
 tokio = { workspace = true }
-tokio-tungstenite = "0.26"
 tracing = { workspace = true }
 utils = { path = "../utils" }
 uuid = { version = "1.0", features = ["serde", "v4"] }

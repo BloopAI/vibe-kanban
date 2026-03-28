@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE auth_sessions\n            SET refresh_token_id = $2,\n                refresh_token_issued_at = NOW(),\n                previous_refresh_token_id = NULL,\n                previous_refresh_token_grace_expires_at = NULL\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bd8358b37bff3c0f51474f90f8dd2bcc3a901769f56e2664eaa8d803636e4d2e"
+}

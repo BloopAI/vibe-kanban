@@ -193,17 +193,17 @@ impl LocalContainerService {
         Ok((repositories, workspace_inputs))
     }
 
-    pub async fn get_child_from_store(&self, id: &Uuid) -> Option<Arc<RwLock<AsyncGroupChild>>> {
+    async fn get_child_from_store(&self, id: &Uuid) -> Option<Arc<RwLock<AsyncGroupChild>>> {
         let map = self.child_store.read().await;
         map.get(id).cloned()
     }
 
-    pub async fn add_child_to_store(&self, id: Uuid, exec: AsyncGroupChild) {
+    async fn add_child_to_store(&self, id: Uuid, exec: AsyncGroupChild) {
         let mut map = self.child_store.write().await;
         map.insert(id, Arc::new(RwLock::new(exec)));
     }
 
-    pub async fn remove_child_from_store(&self, id: &Uuid) {
+    async fn remove_child_from_store(&self, id: &Uuid) {
         let mut map = self.child_store.write().await;
         map.remove(id);
     }
@@ -238,7 +238,7 @@ impl LocalContainerService {
         map.remove(id)
     }
 
-    pub async fn cleanup_workspace(&self, workspace: &Workspace) {
+    async fn cleanup_workspace(&self, workspace: &Workspace) {
         let Some(container_ref) = &workspace.container_ref else {
             return;
         };
@@ -273,7 +273,7 @@ impl LocalContainerService {
         let _ = Workspace::mark_worktree_deleted(&self.db.pool, workspace.id).await;
     }
 
-    pub async fn cleanup_expired_workspaces(&self) -> Result<(), DeploymentError> {
+    async fn cleanup_expired_workspaces(&self) -> Result<(), DeploymentError> {
         if std::env::var("DISABLE_WORKTREE_CLEANUP").is_ok() {
             tracing::info!(
                 "Expired workspace cleanup is disabled via DISABLE_WORKTREE_CLEANUP environment variable"
@@ -296,7 +296,7 @@ impl LocalContainerService {
         Ok(())
     }
 
-    pub fn spawn_workspace_cleanup(&self) {
+    fn spawn_workspace_cleanup(&self) {
         let container = self.clone();
         tokio::spawn(async move {
             container
@@ -477,7 +477,7 @@ impl LocalContainerService {
 
     /// Spawn a background task that polls the child process for completion and
     /// cleans up the execution entry when it exits.
-    pub fn spawn_exit_monitor(
+    fn spawn_exit_monitor(
         &self,
         exec_id: &Uuid,
         exit_signal: Option<ExecutorExitSignal>,
@@ -806,7 +806,7 @@ impl LocalContainerService {
         })
     }
 
-    pub fn spawn_os_exit_watcher(
+    fn spawn_os_exit_watcher(
         &self,
         exec_id: Uuid,
     ) -> tokio::sync::oneshot::Receiver<std::io::Result<std::process::ExitStatus>> {
@@ -843,7 +843,7 @@ impl LocalContainerService {
         rx
     }
 
-    pub fn dir_name_from_workspace(workspace_id: &Uuid, task_title: &str) -> String {
+    fn dir_name_from_workspace(workspace_id: &Uuid, task_title: &str) -> String {
         let task_title_id = git_branch_id(task_title);
         format!("{}-{}", short_uuid(workspace_id), task_title_id)
     }

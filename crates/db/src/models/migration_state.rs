@@ -102,60 +102,6 @@ impl MigrationState {
         Ok(records)
     }
 
-    pub async fn find_by_status(
-        pool: &SqlitePool,
-        status: MigrationStatus,
-    ) -> Result<Vec<Self>, MigrationStateError> {
-        let status_str = status.to_string();
-        let records = sqlx::query_as!(
-            MigrationState,
-            r#"SELECT
-                id as "id!: Uuid",
-                entity_type as "entity_type!: EntityType",
-                local_id as "local_id!: Uuid",
-                remote_id as "remote_id: Uuid",
-                status as "status!: MigrationStatus",
-                error_message,
-                attempt_count as "attempt_count!",
-                created_at as "created_at!: DateTime<Utc>",
-                updated_at as "updated_at!: DateTime<Utc>"
-            FROM migration_state
-            WHERE status = $1
-            ORDER BY created_at ASC"#,
-            status_str
-        )
-        .fetch_all(pool)
-        .await?;
-        Ok(records)
-    }
-
-    pub async fn find_pending_by_type(
-        pool: &SqlitePool,
-        entity_type: EntityType,
-    ) -> Result<Vec<Self>, MigrationStateError> {
-        let entity_type_str = entity_type.to_string();
-        let records = sqlx::query_as!(
-            MigrationState,
-            r#"SELECT
-                id as "id!: Uuid",
-                entity_type as "entity_type!: EntityType",
-                local_id as "local_id!: Uuid",
-                remote_id as "remote_id: Uuid",
-                status as "status!: MigrationStatus",
-                error_message,
-                attempt_count as "attempt_count!",
-                created_at as "created_at!: DateTime<Utc>",
-                updated_at as "updated_at!: DateTime<Utc>"
-            FROM migration_state
-            WHERE entity_type = $1 AND status = 'pending'
-            ORDER BY created_at ASC"#,
-            entity_type_str
-        )
-        .fetch_all(pool)
-        .await?;
-        Ok(records)
-    }
-
     pub async fn find_by_entity(
         pool: &SqlitePool,
         entity_type: EntityType,
@@ -345,19 +291,6 @@ impl MigrationState {
         Ok(())
     }
 
-    pub async fn reset_failed(pool: &SqlitePool) -> Result<u64, MigrationStateError> {
-        let result = sqlx::query!(
-            r#"UPDATE migration_state
-            SET status = 'pending',
-                error_message = NULL,
-                updated_at = datetime('now', 'subsec')
-            WHERE status = 'failed'"#
-        )
-        .execute(pool)
-        .await?;
-        Ok(result.rows_affected())
-    }
-
     pub async fn get_stats(pool: &SqlitePool) -> Result<MigrationStats, MigrationStateError> {
         let stats = sqlx::query_as!(
             MigrationStats,
@@ -372,13 +305,6 @@ impl MigrationState {
         .fetch_one(pool)
         .await?;
         Ok(stats)
-    }
-
-    pub async fn clear_all(pool: &SqlitePool) -> Result<u64, MigrationStateError> {
-        let result = sqlx::query!("DELETE FROM migration_state")
-            .execute(pool)
-            .await?;
-        Ok(result.rows_affected())
     }
 }
 

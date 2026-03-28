@@ -1,6 +1,6 @@
 use api_types::ListProjectsResponse;
 use rmcp::{
-    ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
+    ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
 };
 use serde::{Deserialize, Serialize};
@@ -56,7 +56,7 @@ impl McpServer {
         ));
         let response: ListProjectsResponse = match self.send_json(self.client.get(&url)).await {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let project_summaries: Vec<ProjectSummary> = response

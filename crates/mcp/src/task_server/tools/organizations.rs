@@ -1,6 +1,6 @@
 use api_types::{ListMembersResponse, ListOrganizationsResponse};
 use rmcp::{
-    ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
+    ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
 };
 use serde::{Deserialize, Serialize};
@@ -69,7 +69,7 @@ impl McpServer {
         let response: ListOrganizationsResponse = match self.send_json(self.client.get(&url)).await
         {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let org_summaries: Vec<OrganizationSummary> = response
@@ -100,13 +100,13 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let organization_id = match self.resolve_organization_id(organization_id) {
             Ok(id) => id,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let url = self.url(&format!("/api/organizations/{}/members", organization_id));
         let response: ListMembersResponse = match self.send_json(self.client.get(&url)).await {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let members: Vec<OrganizationMemberSummary> = response

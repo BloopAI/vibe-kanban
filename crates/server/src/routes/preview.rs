@@ -6,12 +6,11 @@ use axum::{
     routing::any,
 };
 use deployment::Deployment;
-use relay_tunnel_core::ws_io::{axum_to_tungstenite, tungstenite_to_axum, ws_copy_bidirectional};
-use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use ws_bridge::{bridge_axum_ws, connect_upstream_ws};
 
 use crate::{DeploymentImpl, middleware::signed_ws::SignedWsUpgrade};
 
-pub fn api_router() -> Router<DeploymentImpl> {
+pub(super) fn api_router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/preview/{target_port}", any(proxy_preview_request_no_tail))
         .route("/preview/{target_port}/{*tail}", any(proxy_preview_request))
@@ -32,7 +31,7 @@ async fn proxy_preview_request_no_tail(
     match ws_upgrade {
         Ok(ws) => forward_preview_ws(ws, target_port, String::new(), request).await,
         Err(rejection) => {
-            preview_proxy::proxy_api_request(
+            preview_proxy::api::proxy_api_request(
                 deployment.preview_proxy(),
                 target_port,
                 String::new(),
@@ -53,7 +52,7 @@ async fn proxy_preview_request(
     match ws_upgrade {
         Ok(ws) => forward_preview_ws(ws, target_port, tail, request).await,
         Err(rejection) => {
-            preview_proxy::proxy_api_request(
+            preview_proxy::api::proxy_api_request(
                 deployment.preview_proxy(),
                 target_port,
                 tail,
@@ -88,7 +87,7 @@ async fn forward_preview_ws(
         .map(ToOwned::to_owned);
 
     let (upstream_ws, selected_protocol) =
-        match connect_upstream_ws(&ws_url, protocols.as_deref()).await {
+        match connect_upstream_ws(ws_url, protocols.as_deref()).await {
             Ok(value) => value,
             Err(error) => {
                 tracing::warn!(?error, "Failed to connect preview upstream WebSocket");
@@ -103,42 +102,11 @@ async fn forward_preview_ws(
     };
 
     ws.on_upgrade(move |client| async move {
-        if let Err(error) = ws_copy_bidirectional(
-            client,
-            upstream_ws,
-            axum_to_tungstenite,
-            tungstenite_to_axum,
-        )
-        .await
-        {
+        if let Err(error) = bridge_axum_ws(client, upstream_ws).await {
             tracing::debug!(?error, "Preview WS bridge closed with error");
         }
     })
     .into_response()
-}
-
-async fn connect_upstream_ws(
-    ws_url: &str,
-    protocols: Option<&str>,
-) -> anyhow::Result<(
-    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
-    Option<String>,
-)> {
-    let mut request = ws_url.into_client_request()?;
-    if let Some(protocols) = protocols
-        && !protocols.trim().is_empty()
-    {
-        request
-            .headers_mut()
-            .insert("sec-websocket-protocol", protocols.parse()?);
-    }
-    let (stream, response) = tokio_tungstenite::connect_async(request).await?;
-    let selected_protocol = response
-        .headers()
-        .get("sec-websocket-protocol")
-        .and_then(|value| value.to_str().ok())
-        .map(ToOwned::to_owned);
-    Ok((stream, selected_protocol))
 }
 
 async fn subdomain_proxy_request(

@@ -1,12 +1,46 @@
 import { ApiError, oauthApi } from '@/shared/lib/api';
+import { REMOTE_AUTH_UNAVAILABLE_SLUG } from '@/shared/lib/auth/remoteAuthDegraded';
 import { queryClient } from '@/shared/lib/queryClient';
 import { shouldRefreshAccessToken } from 'shared/jwt';
 
 const TOKEN_QUERY_KEY = ['auth', 'token'] as const;
 const TOKEN_STALE_TIME = 125 * 1000;
+const RECOVERY_RETRY_BASE_DELAY_MS = 5_000;
+const RECOVERY_RETRY_MAX_DELAY_MS = 60_000;
 
 type RefreshStateCallback = (isRefreshing: boolean) => void;
 type PauseableShape = { pause: () => void; resume: () => void };
+
+type UserSystemCache = {
+  login_status?: { status?: string };
+  remote_auth_degraded?: string | null;
+};
+
+function updateRemoteAuthDegradedCache(
+  old: UserSystemCache | undefined,
+  slug: string | null
+): UserSystemCache | undefined {
+  if (!old) return old;
+  return {
+    ...old,
+    remote_auth_degraded: slug,
+  };
+}
+
+function setRemoteAuthDegraded(slug: string | null): void {
+  queryClient.setQueryData<UserSystemCache | undefined>(
+    ['user-system'],
+    (old) => updateRemoteAuthDegradedCache(old, slug)
+  );
+
+  for (const [queryKey] of queryClient.getQueriesData<UserSystemCache>({
+    queryKey: ['remote-workspace-user-system'],
+  })) {
+    queryClient.setQueryData<UserSystemCache | undefined>(queryKey, (old) =>
+      updateRemoteAuthDegradedCache(old, slug)
+    );
+  }
+}
 
 function isUnauthorizedError(error: unknown): boolean {
   return error instanceof ApiError && error.statusCode === 401;
@@ -17,6 +51,24 @@ class TokenManager {
   private refreshPromise: Promise<string | null> | null = null;
   private subscribers = new Set<RefreshStateCallback>();
   private pauseableShapes = new Set<PauseableShape>();
+  private recoveryTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private recoveryAttempt = 0;
+
+  private handleTokenSuccess(token: string): string {
+    this.clearRecoveryLoop();
+    setRemoteAuthDegraded(null);
+    this.resumeShapes();
+    return token;
+  }
+
+  syncRecoveryState(): void {
+    if (!this.shouldRecoverDegradedAuth()) {
+      this.clearRecoveryLoop();
+      return;
+    }
+
+    this.scheduleRecoveryAttempt();
+  }
 
   /**
    * Get a valid access token, refreshing if needed.
@@ -33,6 +85,7 @@ class TokenManager {
       login_status?: { status: string };
     }>(['user-system']);
     if (cachedSystem && cachedSystem.login_status?.status !== 'loggedin') {
+      this.clearRecoveryLoop();
       return null;
     }
 
@@ -48,12 +101,25 @@ class TokenManager {
       const data = await queryClient.fetchQuery({
         queryKey: TOKEN_QUERY_KEY,
         queryFn: () => oauthApi.getToken(),
+        retry: false,
         staleTime: TOKEN_STALE_TIME,
       });
-      return data?.access_token ?? null;
+
+      if (!data.access_token) {
+        setRemoteAuthDegraded(REMOTE_AUTH_UNAVAILABLE_SLUG);
+        this.syncRecoveryState();
+        return null;
+      }
+
+      return this.handleTokenSuccess(data.access_token);
     } catch (error) {
       if (isUnauthorizedError(error)) {
+        this.clearRecoveryLoop();
+        setRemoteAuthDegraded(null);
         await this.handleUnauthorized();
+      } else {
+        setRemoteAuthDegraded(REMOTE_AUTH_UNAVAILABLE_SLUG);
+        this.syncRecoveryState();
       }
       return null;
     }
@@ -73,9 +139,6 @@ class TokenManager {
 
   /**
    * Register an Electric shape for pause/resume during token refresh.
-   * When refresh starts, all shapes are paused to prevent 401 spam.
-   * When refresh completes, shapes are resumed.
-   *
    * Returns an unsubscribe function.
    */
   registerShape(shape: PauseableShape): () => void {
@@ -126,17 +189,25 @@ class TokenManager {
       const data = await queryClient.fetchQuery({
         queryKey: TOKEN_QUERY_KEY,
         queryFn: () => oauthApi.getToken(),
+        retry: false,
         staleTime: TOKEN_STALE_TIME,
       });
 
-      const token = data?.access_token ?? null;
-      if (token) {
-        this.resumeShapes();
+      if (!data.access_token) {
+        setRemoteAuthDegraded(REMOTE_AUTH_UNAVAILABLE_SLUG);
+        this.syncRecoveryState();
+        return null;
       }
-      return token;
+
+      return this.handleTokenSuccess(data.access_token);
     } catch (error) {
       if (isUnauthorizedError(error)) {
+        this.clearRecoveryLoop();
+        setRemoteAuthDegraded(null);
         await this.handleUnauthorized();
+      } else {
+        setRemoteAuthDegraded(REMOTE_AUTH_UNAVAILABLE_SLUG);
+        this.syncRecoveryState();
       }
       return null;
     } finally {
@@ -146,6 +217,8 @@ class TokenManager {
   }
 
   private async handleUnauthorized(): Promise<void> {
+    this.clearRecoveryLoop();
+
     // Check if the user was previously logged in before we invalidate.
     // If they're already logged out, 401s are expected — don't show the dialog.
     const cachedSystem = queryClient.getQueryData<{
@@ -185,6 +258,56 @@ class TokenManager {
     for (const shape of this.pauseableShapes) {
       shape.resume();
     }
+  }
+
+  private shouldRecoverDegradedAuth(): boolean {
+    const cachedSystem = queryClient.getQueryData<UserSystemCache>([
+      'user-system',
+    ]);
+    return (
+      cachedSystem?.login_status?.status === 'loggedin' &&
+      Boolean(cachedSystem.remote_auth_degraded)
+    );
+  }
+
+  private scheduleRecoveryAttempt(): void {
+    if (this.recoveryTimeoutId) {
+      return;
+    }
+
+    const delayMs = Math.min(
+      RECOVERY_RETRY_BASE_DELAY_MS * 2 ** this.recoveryAttempt,
+      RECOVERY_RETRY_MAX_DELAY_MS
+    );
+
+    this.recoveryTimeoutId = setTimeout(() => {
+      this.recoveryTimeoutId = null;
+      void this.runRecoveryAttempt();
+    }, delayMs);
+  }
+
+  private async runRecoveryAttempt(): Promise<void> {
+    if (!this.shouldRecoverDegradedAuth()) {
+      this.clearRecoveryLoop();
+      return;
+    }
+
+    const token = await this.getToken();
+    if (token || !this.shouldRecoverDegradedAuth()) {
+      this.clearRecoveryLoop();
+      return;
+    }
+
+    this.recoveryAttempt += 1;
+    this.scheduleRecoveryAttempt();
+  }
+
+  private clearRecoveryLoop(): void {
+    if (this.recoveryTimeoutId) {
+      clearTimeout(this.recoveryTimeoutId);
+      this.recoveryTimeoutId = null;
+    }
+    this.recoveryAttempt = 0;
   }
 }
 

@@ -7,7 +7,7 @@ use axum::{
     routing::{get, post},
 };
 use db::models::{
-    execution_process::{ExecutionProcess, ExecutionProcessError, ExecutionProcessStatus},
+    execution_process::{ExecutionProcess, ExecutionProcessStatus},
     execution_process_repo_state::ExecutionProcessRepoState,
 };
 use deployment::Deployment;
@@ -27,39 +27,34 @@ use crate::{
 };
 
 #[derive(Debug, Deserialize)]
-pub struct SessionExecutionProcessQuery {
+struct SessionExecutionProcessQuery {
     pub session_id: Uuid,
     /// If true, include soft-deleted (dropped) processes in results/stream
     #[serde(default)]
     pub show_soft_deleted: Option<bool>,
 }
 
-pub async fn get_execution_process_by_id(
+async fn get_execution_process_by_id(
     Extension(execution_process): Extension<ExecutionProcess>,
     State(_deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
-pub async fn stream_raw_logs_ws(
+async fn stream_raw_logs_ws(
     ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Path(exec_id): Path<Uuid>,
-) -> Result<impl IntoResponse, ApiError> {
-    // Check if the stream exists before upgrading the WebSocket
-    let _stream = deployment
-        .container()
-        .stream_raw_logs(&exec_id)
-        .await
-        .ok_or_else(|| {
-            ApiError::ExecutionProcess(ExecutionProcessError::ExecutionProcessNotFound)
-        })?;
-
-    Ok(ws.on_upgrade(move |socket| async move {
+) -> impl IntoResponse {
+    // Always accept the WebSocket upgrade — handle "not found" inside the
+    // connection by sending `finished` and closing cleanly, instead of
+    // rejecting with HTTP 404 which the browser surfaces as an opaque
+    // connection failure.
+    ws.on_upgrade(move |socket| async move {
         if let Err(e) = handle_raw_logs_ws(socket, deployment, exec_id).await {
             tracing::warn!("raw logs WS closed: {}", e);
         }
-    }))
+    })
 }
 
 async fn handle_raw_logs_ws(
@@ -75,12 +70,19 @@ async fn handle_raw_logs_ws(
     use executors::logs::utils::patch::ConversationPatch;
     use utils::log_msg::LogMsg;
 
-    // Get the raw stream and convert to JSON patches on-the-fly
-    let raw_stream = deployment
-        .container()
-        .stream_raw_logs(&exec_id)
-        .await
-        .ok_or_else(|| anyhow::anyhow!("Execution process not found"))?;
+    // Get the raw stream — if not found, send finished and close cleanly
+    let raw_stream = match deployment.container().stream_raw_logs(&exec_id).await {
+        Some(stream) => stream,
+        None => {
+            // No logs available: send finished so the client gets a clean
+            // close instead of retrying endlessly.
+            let _ = socket
+                .send(LogMsg::Finished.to_ws_message_unchecked())
+                .await;
+            let _ = socket.close().await;
+            return Ok(());
+        }
+    };
 
     let counter = Arc::new(AtomicUsize::new(0));
     let mut stream = raw_stream.map_ok({
@@ -127,30 +129,40 @@ async fn handle_raw_logs_ws(
             }
         }
     }
+    // Send a proper close frame so the client sees code 1000 (normal closure)
+    // instead of an abnormal TCP drop that triggers reconnection attempts.
+    let _ = socket.close().await;
     Ok(())
 }
 
-pub async fn stream_normalized_logs_ws(
+async fn stream_normalized_logs_ws(
     ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Path(exec_id): Path<Uuid>,
-) -> Result<impl IntoResponse, ApiError> {
-    let stream = deployment
-        .container()
-        .stream_normalized_logs(&exec_id)
-        .await
-        .ok_or_else(|| {
-            ApiError::ExecutionProcess(ExecutionProcessError::ExecutionProcessNotFound)
-        })?;
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| async move {
+        let stream = deployment
+            .container()
+            .stream_normalized_logs(&exec_id)
+            .await;
 
-    // Convert the error type to anyhow::Error and turn TryStream -> Stream<Result<_, _>>
-    let stream = stream.err_into::<anyhow::Error>().into_stream();
-
-    Ok(ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_normalized_logs_ws(socket, stream).await {
-            tracing::warn!("normalized logs WS closed: {}", e);
+        match stream {
+            Some(stream) => {
+                let stream = stream.err_into::<anyhow::Error>().into_stream();
+                if let Err(e) = handle_normalized_logs_ws(socket, stream).await {
+                    tracing::warn!("normalized logs WS closed: {}", e);
+                }
+            }
+            None => {
+                // No logs available: send finished and close cleanly
+                let mut socket = socket;
+                let _ = socket
+                    .send(utils::log_msg::LogMsg::Finished.to_ws_message_unchecked())
+                    .await;
+                let _ = socket.close().await;
+            }
         }
-    }))
+    })
 }
 
 async fn handle_normalized_logs_ws(
@@ -184,10 +196,11 @@ async fn handle_normalized_logs_ws(
             }
         }
     }
+    let _ = socket.close().await;
     Ok(())
 }
 
-pub async fn stop_execution_process(
+async fn stop_execution_process(
     Extension(execution_process): Extension<ExecutionProcess>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
@@ -199,7 +212,7 @@ pub async fn stop_execution_process(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
-pub async fn stream_execution_processes_by_session_ws(
+async fn stream_execution_processes_by_session_ws(
     ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<SessionExecutionProcessQuery>,
@@ -260,7 +273,7 @@ async fn handle_execution_processes_by_session_ws(
     Ok(())
 }
 
-pub async fn get_execution_process_repo_states(
+async fn get_execution_process_repo_states(
     Extension(execution_process): Extension<ExecutionProcess>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<ExecutionProcessRepoState>>>, ApiError> {
@@ -270,7 +283,7 @@ pub async fn get_execution_process_repo_states(
     Ok(ResponseJson(ApiResponse::success(repo_states)))
 }
 
-pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
+pub(super) fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let workspace_id_router = Router::new()
         .route("/", get(get_execution_process_by_id))
         .route("/stop", post(stop_execution_process))

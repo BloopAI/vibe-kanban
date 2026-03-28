@@ -26,6 +26,7 @@ use services::services::{
         save_config_to_file,
     },
     container::ContainerService,
+    remote_client::RemoteClientError,
 };
 use tokio::fs;
 use ts_rs::TS;
@@ -90,6 +91,7 @@ pub struct UserSystemInfo {
     pub config: Config,
     pub machine_id: String,
     pub login_status: LoginStatus,
+    pub remote_auth_degraded: Option<String>,
     #[serde(flatten)]
     pub profiles: ExecutorConfigs,
     pub environment: Environment,
@@ -105,18 +107,57 @@ async fn get_user_system_info(
     State(deployment): State<DeploymentImpl>,
 ) -> ResponseJson<ApiResponse<UserSystemInfo>> {
     let config = deployment.config().read().await.clone();
-    let login_status = tokio::time::timeout(
+    let login_status = match tokio::time::timeout(
         std::time::Duration::from_secs(2),
         deployment.get_login_status(),
     )
     .await
-    .unwrap_or(LoginStatus::LoggedOut);
+    {
+        Ok(status) => status,
+        Err(_) => {
+            tracing::warn!("timed out determining login status for /api/info");
+
+            let auth_context = deployment.auth_context();
+            let cached_profile = auth_context.cached_profile().await;
+
+            match auth_context.get_credentials().await {
+                Some(_) => {
+                    if auth_context.remote_auth_degraded_slug().await.is_none() {
+                        auth_context
+                            .set_remote_auth_degraded_slug(
+                                RemoteClientError::generic_degraded_slug(),
+                            )
+                            .await;
+                    }
+
+                    deployment
+                        .track_if_analytics_allowed(
+                            "login_status_timeout",
+                            serde_json::json!({
+                                "has_cached_profile": cached_profile.is_some(),
+                            }),
+                        )
+                        .await;
+
+                    LoginStatus::LoggedIn {
+                        profile: cached_profile,
+                    }
+                }
+                None => {
+                    auth_context.clear_profile().await;
+                    auth_context.clear_remote_auth_degraded_slug().await;
+                    LoginStatus::LoggedOut
+                }
+            }
+        }
+    };
 
     let user_system_info = UserSystemInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
         config,
         machine_id: deployment.user_id().to_string(),
         login_status,
+        remote_auth_degraded: deployment.auth_context().remote_auth_degraded_slug().await,
         profiles: ExecutorConfigs::get_cached(),
         environment: Environment::new(),
         capabilities: {

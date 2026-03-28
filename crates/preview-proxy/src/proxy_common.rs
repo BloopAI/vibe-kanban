@@ -1,6 +1,6 @@
 use axum::http::HeaderMap;
 
-pub const SKIP_REQUEST_HEADERS: &[&str] = &[
+pub(crate) const SKIP_REQUEST_HEADERS: &[&str] = &[
     "host",
     "connection",
     "transfer-encoding",
@@ -25,16 +25,21 @@ pub const SKIP_REQUEST_HEADERS: &[&str] = &[
     "x-vk-sig-signature",
 ];
 
-pub fn normalized_proxy_path(path: &str) -> &str {
+pub(crate) fn normalized_proxy_path(path: &str) -> &str {
     path.trim_start_matches('/')
 }
 
-pub fn should_forward_request_header(name: &str) -> bool {
+pub(crate) fn should_forward_request_header(name: &str) -> bool {
     let name_lower = name.to_ascii_lowercase();
     !SKIP_REQUEST_HEADERS.contains(&name_lower.as_str())
 }
 
-pub fn build_local_upstream_url(scheme: &str, target_port: u16, path: &str, query: &str) -> String {
+pub(crate) fn build_local_upstream_url(
+    scheme: &str,
+    target_port: u16,
+    path: &str,
+    query: &str,
+) -> String {
     let normalized_path = normalized_proxy_path(path);
     if normalized_path.is_empty() {
         if query.is_empty() {
@@ -49,7 +54,7 @@ pub fn build_local_upstream_url(scheme: &str, target_port: u16, path: &str, quer
     }
 }
 
-pub fn extract_ws_protocols(headers: &HeaderMap) -> Option<String> {
+pub(crate) fn extract_ws_protocols(headers: &HeaderMap) -> Option<String> {
     headers
         .get("sec-websocket-protocol")
         .and_then(|value| value.to_str().ok())

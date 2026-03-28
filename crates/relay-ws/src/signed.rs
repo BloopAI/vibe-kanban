@@ -13,13 +13,11 @@ use std::{
 use axum::extract::ws::{Message as AxumMessage, WebSocket};
 use futures_util::{Sink, SinkExt, Stream, StreamExt};
 use relay_control::signing::{RelaySigningService, RequestSignature};
+use relay_protocol::{RelayTransportMessage, RelayWsFrame, RelayWsMessageType};
 use tokio::net::TcpStream;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, tungstenite};
 
-use crate::{
-    crypto::{RelayWsFrame, RelayWsMessageType, WsFrameSigner, WsFrameVerifier},
-    protocol::RelayTransportMessage,
-};
+use crate::crypto::{WsFrameSigner, WsFrameVerifier};
 
 pub type SignedTungsteniteSocket =
     SignedWebSocket<WebSocketStream<MaybeTlsStream<TcpStream>>, tungstenite::Message>;

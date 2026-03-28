@@ -1,6 +1,5 @@
 pub mod service;
 pub mod ssh_config;
-pub mod tunnel;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DesktopBridgeError {

@@ -1,4 +1,4 @@
-import { ReactNode, useMemo, useCallback, useEffect } from 'react';
+import { ReactNode, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useParams } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWorkspaces } from '@/shared/hooks/useWorkspaces';
@@ -9,15 +9,12 @@ import { useWorkspaceSessions } from '@/shared/hooks/useWorkspaceSessions';
 import { useGitHubComments } from '@/shared/hooks/useGitHubComments';
 import { useDiffStream } from '@/shared/hooks/useDiffStream';
 import { workspacesApi } from '@/shared/lib/api';
-import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
+import { useWorkspaceDiffStore } from '@/shared/stores/useWorkspaceDiffStore';
 import type { DiffStats } from 'shared/types';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 
-import {
-  WorkspaceContext,
-  WorkspaceDiffContext,
-} from '@/shared/hooks/useWorkspaceContext';
+import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 
 interface WorkspaceProviderProps {
   children: ReactNode;
@@ -88,11 +85,6 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     [diffs]
   );
 
-  useEffect(() => {
-    useDiffViewStore.getState().setDiffPaths(Array.from(diffPaths));
-    return () => useDiffViewStore.getState().setDiffPaths([]);
-  }, [diffPaths]);
-
   const diffStats: DiffStats = useMemo(
     () => ({
       files_changed: diffs.length,
@@ -101,6 +93,73 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     }),
     [diffs]
   );
+
+  const rafRef = useRef<number | null>(null);
+  const batchCountRef = useRef(0);
+
+  const latestDiffDataRef = useRef({
+    diffs,
+    diffPaths,
+    diffStats,
+    gitHubComments,
+    isGitHubCommentsLoading,
+    showGitHubComments,
+    setShowGitHubComments,
+    getGitHubCommentsForFile,
+    getGitHubCommentCountForFile,
+    getFilesWithGitHubComments,
+    getFirstCommentLineForFile,
+  });
+  latestDiffDataRef.current = {
+    diffs,
+    diffPaths,
+    diffStats,
+    gitHubComments,
+    isGitHubCommentsLoading,
+    showGitHubComments,
+    setShowGitHubComments,
+    getGitHubCommentsForFile,
+    getGitHubCommentCountForFile,
+    getFilesWithGitHubComments,
+    getFirstCommentLineForFile,
+  };
+
+  useEffect(() => {
+    batchCountRef.current++;
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        batchCountRef.current = 0;
+        useWorkspaceDiffStore
+          .getState()
+          .setWorkspaceDiffData(latestDiffDataRef.current);
+      });
+    }
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [
+    diffs,
+    diffPaths,
+    diffStats,
+    gitHubComments,
+    isGitHubCommentsLoading,
+    showGitHubComments,
+    setShowGitHubComments,
+    getGitHubCommentsForFile,
+    getGitHubCommentCountForFile,
+    getFilesWithGitHubComments,
+    getFirstCommentLineForFile,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      useWorkspaceDiffStore.getState().clearWorkspaceDiffData();
+    };
+  }, []);
 
   const isLoading = isLoadingList || isLoadingWorkspace;
 
@@ -176,40 +235,9 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     ]
   );
 
-  const diffValue = useMemo(
-    () => ({
-      diffs,
-      diffPaths,
-      diffStats,
-      gitHubComments,
-      isGitHubCommentsLoading,
-      showGitHubComments,
-      setShowGitHubComments,
-      getGitHubCommentsForFile,
-      getGitHubCommentCountForFile,
-      getFilesWithGitHubComments,
-      getFirstCommentLineForFile,
-    }),
-    [
-      diffs,
-      diffPaths,
-      diffStats,
-      gitHubComments,
-      isGitHubCommentsLoading,
-      showGitHubComments,
-      setShowGitHubComments,
-      getGitHubCommentsForFile,
-      getGitHubCommentCountForFile,
-      getFilesWithGitHubComments,
-      getFirstCommentLineForFile,
-    ]
-  );
-
   return (
     <WorkspaceContext.Provider value={coreValue}>
-      <WorkspaceDiffContext.Provider value={diffValue}>
-        {children}
-      </WorkspaceDiffContext.Provider>
+      {children}
     </WorkspaceContext.Provider>
   );
 }

@@ -1,7 +1,13 @@
 import type { ForwardedRef, ReactNode, RefAttributes } from 'react';
-import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { Virtuoso, VirtuosoHandle, ListRange } from 'react-virtuoso';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { cn } from '../lib/cn';
 
 export interface ChangesPanelHandle {
@@ -40,18 +46,21 @@ export interface ChangesPanelProps<
   diffItems: DiffItemData<TDiff>[];
   renderDiffItem: (props: RenderDiffItemProps<TDiff>) => ReactNode;
   onDiffRef?: (path: string, el: HTMLDivElement | null) => void;
-  /** Callback for Virtuoso's scroll container ref */
+  onMeasuredHeight?: (path: string, height: number) => void;
   onScrollerRef?: (ref: HTMLElement | Window | null) => void;
-  /** Callback when visible range changes (for scroll sync) */
   onRangeChanged?: (range: { startIndex: number; endIndex: number }) => void;
-  /** Attempt ID for opening files in IDE */
+  getMeasuredHeight?: (path: string) => number | undefined;
+  getIsExpanded?: (path: string, initialExpanded?: boolean) => boolean;
+  shouldSuppressSizeAdjustment?: () => boolean;
   workspaceId: string;
 }
 
-const HEADER_HEIGHT = 48;
-const LINE_HEIGHT = 20;
+const HEADER_HEIGHT = 40;
+const LINE_HEIGHT = 18;
 const PADDING = 16;
 const SPACING = 8;
+const LARGE_DIFF_THRESHOLD = 1000;
+const LARGE_DIFF_PLACEHOLDER_HEIGHT = 56;
 
 function getDiffPath(diff: ChangesPanelDiff): string {
   return diff.newPath || diff.oldPath || '';
@@ -66,21 +75,14 @@ function estimateDiffHeight(
   }
 
   const lineCount = (diff.additions ?? 0) + (diff.deletions ?? 0);
-  const estimatedLines = Math.max(lineCount * 1.2, 10);
+
+  if (lineCount > LARGE_DIFF_THRESHOLD) {
+    return HEADER_HEIGHT + LARGE_DIFF_PLACEHOLDER_HEIGHT + SPACING;
+  }
+
+  const estimatedLines = Math.max(lineCount, 10);
 
   return HEADER_HEIGHT + estimatedLines * LINE_HEIGHT + PADDING + SPACING;
-}
-
-function calculateDefaultHeight(diffs: ChangesPanelDiff[]): number {
-  if (diffs.length === 0) return 200;
-
-  const heights = diffs.map((diff) => estimateDiffHeight(diff, true));
-  heights.sort((a, b) => a - b);
-
-  const mid = Math.floor(heights.length / 2);
-  return heights.length % 2 === 0
-    ? (heights[mid - 1] + heights[mid]) / 2
-    : heights[mid];
 }
 
 const ChangesPanelInner = <TDiff extends ChangesPanelDiff>(
@@ -89,38 +91,126 @@ const ChangesPanelInner = <TDiff extends ChangesPanelDiff>(
     diffItems,
     renderDiffItem,
     onDiffRef,
+    onMeasuredHeight,
     onScrollerRef,
     onRangeChanged,
+    getMeasuredHeight,
+    getIsExpanded,
+    shouldSuppressSizeAdjustment,
     workspaceId,
   }: ChangesPanelProps<TDiff>,
   ref: ForwardedRef<ChangesPanelHandle>
 ) => {
   const { t } = useTranslation(['tasks', 'common']);
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevRangeRef = useRef({ startIndex: -1, endIndex: -1 });
+  const diffRefCallbacksRef = useRef(
+    new Map<string, (el: HTMLDivElement | null) => void>()
+  );
+  const virtualizer = useVirtualizer({
+    count: diffItems.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: (index) => {
+      const item = diffItems[index];
+      if (!item) return HEADER_HEIGHT + SPACING;
+
+      const path = getDiffPath(item.diff);
+      const measuredHeight = getMeasuredHeight?.(path);
+      if (measuredHeight !== undefined) {
+        return measuredHeight;
+      }
+
+      const isExpanded =
+        getIsExpanded?.(path, item.initialExpanded) ??
+        item.initialExpanded ??
+        true;
+
+      return estimateDiffHeight(item.diff, isExpanded);
+    },
+    overscan: 10,
+    paddingStart: SPACING,
+    useFlushSync: false,
+    useAnimationFrameWithResizeObserver: true,
+    getItemKey: (index) => getDiffPath(diffItems[index]?.diff) || String(index),
+    onChange: (instance) => {
+      const range = instance.range;
+      if (!range) return;
+      const prev = prevRangeRef.current;
+      if (
+        range.startIndex === prev.startIndex &&
+        range.endIndex === prev.endIndex
+      ) {
+        return; // Range unchanged — skip downstream work
+      }
+      prevRangeRef.current = {
+        startIndex: range.startIndex,
+        endIndex: range.endIndex,
+      };
+      onRangeChanged?.({
+        startIndex: range.startIndex,
+        endIndex: range.endIndex,
+      });
+    },
+  });
+  const virtualizerRef = useRef(virtualizer);
+  virtualizerRef.current = virtualizer;
+
+  // Suppress size-driven scroll adjustments during programmatic reveal
+  useEffect(() => {
+    virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (
+      item,
+      _delta,
+      instance
+    ) => {
+      if (shouldSuppressSizeAdjustment?.()) {
+        return false;
+      }
+      // Default: only adjust for items fully above the viewport
+      const scrollOffset =
+        scrollContainerRef.current?.scrollTop ?? instance.scrollOffset ?? 0;
+      return item.end <= scrollOffset;
+    };
+
+    return () => {
+      virtualizer.shouldAdjustScrollPositionOnItemSizeChange = undefined;
+    };
+  }, [shouldSuppressSizeAdjustment, virtualizer]);
+
+  const measureElementRef = useCallback(
+    (element: HTMLDivElement | null) => {
+      if (element) {
+        const path = element.dataset.path ?? null;
+        const height = element.getBoundingClientRect().height;
+
+        if (path) {
+          onMeasuredHeight?.(path, height);
+        }
+      }
+      virtualizerRef.current.measureElement(element);
+    },
+    [onMeasuredHeight]
+  );
 
   useImperativeHandle(ref, () => ({
     scrollToIndex: (
       index: number,
       options?: { align?: 'start' | 'center' | 'end' }
     ) => {
-      virtuosoRef.current?.scrollToIndex({
-        index,
+      virtualizer.scrollToIndex(index, {
         align: options?.align ?? 'start',
         behavior: 'auto',
       });
     },
   }));
 
-  const handleRangeChanged = (range: ListRange) => {
-    onRangeChanged?.({
-      startIndex: range.startIndex,
-      endIndex: range.endIndex,
-    });
-  };
-
-  const defaultItemHeight = useMemo(
-    () => calculateDefaultHeight(diffItems.map((item) => item.diff)),
-    [diffItems]
+  const scrollerRefCallback = useCallback(
+    (node: HTMLDivElement | null) => {
+      (
+        scrollContainerRef as React.MutableRefObject<HTMLDivElement | null>
+      ).current = node;
+      onScrollerRef?.(node);
+    },
+    [onScrollerRef]
   );
 
   if (diffItems.length === 0) {
@@ -138,33 +228,56 @@ const ChangesPanelInner = <TDiff extends ChangesPanelDiff>(
     );
   }
 
+  const virtualItems = virtualizer.getVirtualItems();
+  const paddingTop = virtualItems.length > 0 ? virtualItems[0].start : SPACING;
+  const paddingBottom =
+    virtualItems.length > 0
+      ? virtualizer.getTotalSize() - virtualItems[virtualItems.length - 1].end
+      : 0;
+
   return (
     <div
+      ref={scrollerRefCallback}
       className={cn(
-        'w-full h-full bg-secondary flex flex-col px-base',
+        'w-full h-full bg-secondary overflow-auto px-base',
         className
       )}
+      style={{ contain: 'layout style paint' }}
     >
-      <Virtuoso
-        ref={virtuosoRef}
-        scrollerRef={onScrollerRef}
-        data={diffItems}
-        defaultItemHeight={defaultItemHeight}
-        components={{
-          Header: () => <div className="h-base" />,
+      <div
+        style={{
+          paddingTop: `${paddingTop}px`,
+          paddingBottom: `${paddingBottom}px`,
         }}
-        itemContent={(_index, { diff, initialExpanded }) => {
+      >
+        {virtualItems.map((virtualItem) => {
+          const item = diffItems[virtualItem.index];
+          if (!item) return null;
+          const { diff, initialExpanded } = item;
           const path = getDiffPath(diff);
+          let diffRefCallback = diffRefCallbacksRef.current.get(path);
+
+          if (!diffRefCallback) {
+            diffRefCallback = (el: HTMLDivElement | null) => {
+              onDiffRef?.(path, el);
+            };
+            diffRefCallbacksRef.current.set(path, diffRefCallback);
+          }
+
           return (
-            <div ref={(el) => onDiffRef?.(path, el)}>
-              {renderDiffItem({ diff, initialExpanded, workspaceId })}
+            <div
+              key={virtualItem.key}
+              data-index={virtualItem.index}
+              data-path={path}
+              ref={measureElementRef}
+            >
+              <div ref={diffRefCallback}>
+                {renderDiffItem({ diff, initialExpanded, workspaceId })}
+              </div>
             </div>
           );
-        }}
-        computeItemKey={(index, { diff }) => getDiffPath(diff) || String(index)}
-        rangeChanged={handleRangeChanged}
-        increaseViewportBy={{ top: 500, bottom: 300 }}
-      />
+        })}
+      </div>
     </div>
   );
 };

@@ -100,6 +100,9 @@ export function transformDiffToFileDiffMetadata(
       hunks: [],
       splitLineCount: 0,
       unifiedLineCount: 0,
+      isPartial: true,
+      deletionLines: [],
+      additionLines: [],
     };
   }
 

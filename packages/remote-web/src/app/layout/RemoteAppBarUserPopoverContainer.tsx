@@ -34,7 +34,7 @@ export function RemoteAppBarUserPopoverContainer({
   // Extract avatar URL from first provider (matches local-web behavior)
   const avatarUrl =
     loginStatus?.status === "loggedin"
-      ? (loginStatus.profile.providers[0]?.avatar_url ?? null)
+      ? (loginStatus.profile?.providers[0]?.avatar_url ?? null)
       : null;
   const navigate = useNavigate();
   const location = useLocation();

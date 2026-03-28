@@ -1,6 +1,6 @@
 use db::models::{requests::UpdateWorkspace, workspace::Workspace};
 use rmcp::{
-    ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
+    ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
 };
 use serde::{Deserialize, Serialize};
@@ -113,7 +113,7 @@ impl McpServer {
         let url = self.url("/api/workspaces");
         let mut workspaces: Vec<Workspace> = match self.send_json(self.client.get(&url)).await {
             Ok(ws) => ws,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         if let Some(archived_filter) = archived {
@@ -180,10 +180,10 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let workspace_id = match self.resolve_workspace_id(workspace_id) {
             Ok(id) => id,
-            Err(error_result) => return Ok(error_result),
+            Err(error_result) => return Ok(Self::tool_error(error_result)),
         };
         if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
-            return Ok(error_result);
+            return Ok(Self::tool_error(error_result));
         }
 
         let url = self.url(&format!("/api/workspaces/{}", workspace_id));
@@ -195,7 +195,7 @@ impl McpServer {
 
         let updated: Workspace = match self.send_json(self.client.put(&url).json(&payload)).await {
             Ok(ws) => ws,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         McpServer::success(&McpUpdateWorkspaceResponse {
@@ -220,10 +220,10 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let workspace_id = match self.resolve_workspace_id(workspace_id) {
             Ok(id) => id,
-            Err(error_result) => return Ok(error_result),
+            Err(error_result) => return Ok(Self::tool_error(error_result)),
         };
         if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
-            return Ok(error_result);
+            return Ok(Self::tool_error(error_result));
         }
 
         let delete_remote = delete_remote.unwrap_or(false);
@@ -237,7 +237,7 @@ impl McpServer {
             ]))
             .await
         {
-            return Ok(e);
+            return Ok(Self::tool_error(e));
         }
 
         McpServer::success(&McpDeleteWorkspaceResponse {

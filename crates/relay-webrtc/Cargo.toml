@@ -1,0 +1,26 @@
+[package]
+name = "relay-webrtc"
+version = "0.1.37"
+edition = "2024"
+
+[dependencies]
+webrtc = "0.12"
+webrtc-ice = "0.12"
+bytes = "1"
+tokio = { workspace = true }
+tokio-util = { version = "0.7", features = ["rt"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+ts-rs = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+reqwest = { workspace = true }
+relay-protocol = { path = "../relay-protocol" }
+ws-bridge = { path = "../ws-bridge" }
+tokio-tungstenite = "0.26"
+futures-util = { version = "0.3", features = ["sink"] }
+http = "1"
+base64 = "0.22"
+uuid = { version = "1.0", features = ["serde", "v4"] }
+rand = "0.8"
+thiserror = { workspace = true }

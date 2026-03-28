@@ -138,7 +138,7 @@ export function VirtualizedProcessLogs({
     );
   }
 
-  if (error) {
+  if (error && logs.length === 0) {
     return (
       <div className="h-full flex items-center justify-center">
         <p className="text-center text-destructive text-sm">

@@ -17,20 +17,15 @@ use axum::{
 };
 use reqwest::Client;
 use uuid::Uuid;
+use ws_bridge::{UpstreamWsConnectError, WsBridgeError, bridge_axum_ws, connect_upstream_ws};
 
-use crate::{
-    proxy_common::{
-        build_local_upstream_url, extract_ws_protocols, normalized_proxy_path,
-        should_forward_request_header,
-    },
-    ws_bridge::{bridge_ws, connect_upstream_ws},
+use crate::proxy_common::{
+    build_local_upstream_url, extract_ws_protocols, normalized_proxy_path,
+    should_forward_request_header,
 };
 
-mod api;
+pub mod api;
 mod proxy_common;
-mod ws_bridge;
-
-pub use api::proxy_api_request;
 
 #[derive(Clone)]
 pub struct PreviewProxyService {
@@ -52,7 +47,7 @@ impl PreviewProxyService {
         Self { http_client }
     }
 
-    pub fn http_client(&self) -> &Client {
+    pub(crate) fn http_client(&self) -> &Client {
         &self.http_client
     }
 }
@@ -69,6 +64,14 @@ fn env_flag_enabled(name: &str) -> bool {
 struct PreviewTarget {
     port: u16,
     relay_host_id: Option<Uuid>,
+}
+
+#[derive(Debug, thiserror::Error)]
+enum PreviewWsBridgeError {
+    #[error(transparent)]
+    Connect(#[from] UpstreamWsConnectError),
+    #[error(transparent)]
+    Bridge(#[from] WsBridgeError),
 }
 
 /// Headers that should be stripped from the proxied response.
@@ -524,7 +527,7 @@ async fn http_proxy_handler(
     let response = match req_builder.send().await {
         Ok(response) => response,
         Err(error) => {
-            tracing::error!("Failed to proxy request to {}: {}", target_url, error);
+            tracing::debug!("Failed to proxy request to {}: {}", target_url, error);
             return (
                 StatusCode::BAD_GATEWAY,
                 format!("Dev server unreachable: {}", error),
@@ -724,7 +727,7 @@ async fn handle_ws_proxy(
     path: String,
     query_string: Option<String>,
     ws_protocols: Option<String>,
-) -> anyhow::Result<()> {
+) -> Result<(), PreviewWsBridgeError> {
     let normalized_path = normalized_proxy_path(&path);
     let query = query_string.as_deref().unwrap_or_default();
     let ws_url = if let Some(host_id) = target.relay_host_id {
@@ -745,7 +748,8 @@ async fn handle_ws_proxy(
         connect_upstream_ws(ws_url, ws_protocols.as_deref()).await?;
     tracing::debug!("Connected to dev server WebSocket");
 
-    bridge_ws(dev_server_ws, client_socket).await
+    bridge_axum_ws(client_socket, dev_server_ws).await?;
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq)]

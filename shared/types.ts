@@ -200,7 +200,7 @@ export type DiffChangeKind = "added" | "deleted" | "modified" | "renamed" | "cop
 
 export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_data: E | null, message: string | null, };
 
-export type LoginStatus = { "status": "loggedout" } | { "status": "loggedin", profile: ProfileResponse, };
+export type LoginStatus = { "status": "loggedout" } | { "status": "loggedin", profile: ProfileResponse | null, };
 
 export type ProfileResponse = { user_id: string, username: string | null, email: string, providers: Array<ProviderProfile>, };
 
@@ -272,7 +272,7 @@ export type TagSearchParams = { search: string | null, };
 
 export type TokenResponse = { access_token: string, expires_at: string | null, };
 
-export type UserSystemInfo = { version: string, config: Config, machine_id: string, login_status: LoginStatus, environment: Environment, 
+export type UserSystemInfo = { version: string, config: Config, machine_id: string, login_status: LoginStatus, remote_auth_degraded: string | null, environment: Environment, 
 /**
  * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
  */
@@ -814,6 +814,80 @@ permissions: Array<PermissionPolicy>, };
 export type ExecutorDiscoveredOptions = { model_selector: ModelSelectorConfig, slash_commands: Array<SlashCommandDescription>, loading_models: boolean, loading_agents: boolean, loading_slash_commands: boolean, error: string | null, };
 
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;
+
+export type RelayWsMessageType = "text" | "binary" | "ping" | "pong" | "close";
+
+export type DataChannelMessage = { "type": "http_request" } & DataChannelRequest | { "type": "http_response" } & DataChannelResponse | { "type": "ws_open" } & WsOpen | { "type": "ws_opened" } & WsOpened | { "type": "ws_frame" } & WsFrame | { "type": "ws_close" } & WsClose | { "type": "ws_error" } & WsError;
+
+export type DataChannelRequest = { id: string, method: string, path: string, headers: { [key in string]?: Array<string> }, 
+/**
+ * Base64-encoded request body, if any.
+ */
+body_b64?: string | null, };
+
+export type DataChannelResponse = { id: string, status: number, headers: { [key in string]?: Array<string> }, 
+/**
+ * Base64-encoded response body, if any.
+ */
+body_b64?: string | null, };
+
+export type WsOpen = { 
+/**
+ * Unique connection ID for multiplexing.
+ */
+conn_id: string, 
+/**
+ * Target path, e.g. `/api/sessions/abc/queue`.
+ */
+path: string, 
+/**
+ * Optional sub-protocol(s) to negotiate.
+ */
+protocols?: string | null, };
+
+export type WsOpened = { conn_id: string, 
+/**
+ * The sub-protocol selected by the server, if any.
+ */
+selected_protocol?: string | null, };
+
+export type WsFrame = { conn_id: string, msg_type: RelayWsMessageType, 
+/**
+ * Base64-encoded payload.
+ */
+payload_b64?: string | null, };
+
+export type WsClose = { conn_id: string, 
+/**
+ * Close code (RFC 6455 §7.4).
+ */
+code?: number | null, 
+/**
+ * Close reason.
+ */
+reason?: string | null, };
+
+export type WsError = { conn_id: string, error: string, };
+
+export type SdpOffer = { 
+/**
+ * The SDP string from the peer's `RTCPeerConnection.createOffer()`.
+ */
+sdp: string, 
+/**
+ * Caller-provided session identifier to correlate offer/answer/candidates.
+ */
+session_id: string, };
+
+export type SdpAnswer = { 
+/**
+ * The SDP string from `Rtc::direct_api().create_answer()`.
+ */
+sdp: string, 
+/**
+ * Echoed session identifier from the offer.
+ */
+session_id: string, };
 
 export const DEFAULT_PR_DESCRIPTION_PROMPT = "Update the PR that was just created with a better title and description.\nThe PR number is #{pr_number} and the URL is {pr_url}.\n\nAnalyze the changes in this branch and write:\n1. A concise, descriptive title that summarizes the changes, postfixed with \"(Vibe Kanban)\"\n2. A detailed description that explains:\n   - What changes were made\n   - Why they were made (based on the task context)\n   - Any important implementation details\n   - At the end, include a note: \"This PR was written using [Vibe Kanban](https://vibekanban.com)\"\n\nUse the appropriate CLI tool to update the PR (gh pr edit for GitHub, az repos pr update for Azure DevOps).";
 

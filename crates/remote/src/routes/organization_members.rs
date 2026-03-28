@@ -31,11 +31,11 @@ use crate::{
     },
 };
 
-pub fn public_router() -> Router<AppState> {
+pub(super) fn public_router() -> Router<AppState> {
     Router::new().route("/invitations/{token}", get(get_invitation))
 }
 
-pub fn protected_router() -> Router<AppState> {
+pub(super) fn protected_router() -> Router<AppState> {
     Router::new()
         .route(
             "/organizations/{org_id}/invitations",
@@ -59,23 +59,23 @@ pub fn protected_router() -> Router<AppState> {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct CreateInvitationRequest {
+struct CreateInvitationRequest {
     pub email: String,
     pub role: MemberRole,
 }
 
 #[derive(Debug, Serialize)]
-pub struct CreateInvitationResponse {
+struct CreateInvitationResponse {
     pub invitation: Invitation,
 }
 
 #[derive(Debug, Serialize)]
-pub struct ListInvitationsResponse {
+struct ListInvitationsResponse {
     pub invitations: Vec<Invitation>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct GetInvitationResponse {
+struct GetInvitationResponse {
     pub id: Uuid,
     pub organization_slug: String,
     pub organization_name: String,
@@ -84,13 +84,13 @@ pub struct GetInvitationResponse {
 }
 
 #[derive(Debug, Serialize)]
-pub struct AcceptInvitationResponse {
+struct AcceptInvitationResponse {
     pub organization_id: String,
     pub organization_slug: String,
     pub role: MemberRole,
 }
 
-pub async fn create_invitation(
+async fn create_invitation(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(org_id): Path<Uuid>,
@@ -184,7 +184,7 @@ pub async fn create_invitation(
     ))
 }
 
-pub async fn list_invitations(
+async fn list_invitations(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(org_id): Path<Uuid>,
@@ -208,7 +208,7 @@ pub async fn list_invitations(
     Ok(Json(ListInvitationsResponse { invitations }))
 }
 
-pub async fn get_invitation(
+async fn get_invitation(
     State(state): State<AppState>,
     Path(token): Path<String>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
@@ -239,7 +239,7 @@ pub async fn get_invitation(
     }))
 }
 
-pub async fn revoke_invitation(
+async fn revoke_invitation(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(org_id): Path<Uuid>,
@@ -277,7 +277,7 @@ pub async fn revoke_invitation(
     Ok(StatusCode::NO_CONTENT)
 }
 
-pub async fn accept_invitation(
+async fn accept_invitation(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(token): Path<String>,
@@ -329,7 +329,7 @@ pub async fn accept_invitation(
     }))
 }
 
-pub async fn list_members(
+async fn list_members(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(org_id): Path<Uuid>,
@@ -370,7 +370,7 @@ pub async fn list_members(
     Ok(Json(ListMembersResponse { members }))
 }
 
-pub async fn remove_member(
+async fn remove_member(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path((org_id, user_id)): Path<(Uuid, Uuid)>,
@@ -474,7 +474,7 @@ pub async fn remove_member(
     Ok(StatusCode::NO_CONTENT)
 }
 
-pub async fn update_member_role(
+async fn update_member_role(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path((org_id, user_id)): Path<(Uuid, Uuid)>,

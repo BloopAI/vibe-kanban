@@ -12,10 +12,10 @@ import {
   getServerVerifyKey,
   getSigningKey,
 } from "@remote/shared/lib/relay/keyCache";
+import type { RelayWsMessageType } from "shared/types";
 import type {
   RelaySignature,
   RelaySignedWsEnvelope,
-  RelayWsMessageType,
   RelayWsSigningContext,
 } from "@remote/shared/lib/relay/types";
 

@@ -2,7 +2,7 @@ use api_types::{
     CreateIssueTagRequest, IssueTag, ListIssueTagsResponse, ListTagsResponse, MutationResponse,
 };
 use rmcp::{
-    ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
+    ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
 };
 use serde::{Deserialize, Serialize};
@@ -96,13 +96,13 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let project_id = match self.resolve_project_id(project_id) {
             Ok(id) => id,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let url = self.url(&format!("/api/remote/tags?project_id={}", project_id));
         let response: ListTagsResponse = match self.send_json(self.client.get(&url)).await {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let tags = response
@@ -131,7 +131,7 @@ impl McpServer {
         let url = self.url(&format!("/api/remote/issue-tags?issue_id={}", issue_id));
         let response: ListIssueTagsResponse = match self.send_json(self.client.get(&url)).await {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let issue_tags = response
@@ -166,7 +166,7 @@ impl McpServer {
         let response: MutationResponse<IssueTag> =
             match self.send_json(self.client.post(&url).json(&payload)).await {
                 Ok(r) => r,
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(Self::tool_error(e)),
             };
 
         McpServer::success(&McpAddIssueTagResponse {
@@ -181,7 +181,7 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/remote/issue-tags/{}", issue_tag_id));
         if let Err(e) = self.send_empty_json(self.client.delete(&url)).await {
-            return Ok(e);
+            return Ok(Self::tool_error(e));
         }
 
         McpServer::success(&McpRemoveIssueTagResponse {

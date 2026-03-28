@@ -8,14 +8,14 @@ use rust_embed::RustEmbed;
 
 #[derive(RustEmbed)]
 #[folder = "../../packages/local-web/dist"]
-pub struct Assets;
+struct Assets;
 
-pub async fn serve_frontend(uri: axum::extract::Path<String>) -> impl IntoResponse {
+pub(super) async fn serve_frontend(uri: axum::extract::Path<String>) -> impl IntoResponse {
     let path = uri.trim_start_matches('/');
     serve_file(path).await
 }
 
-pub async fn serve_frontend_root() -> impl IntoResponse {
+pub(super) async fn serve_frontend_root() -> impl IntoResponse {
     serve_file("index.html").await
 }
 

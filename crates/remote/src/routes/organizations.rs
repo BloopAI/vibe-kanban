@@ -20,7 +20,7 @@ use crate::{
     },
 };
 
-pub fn router() -> Router<AppState> {
+pub(super) fn router() -> Router<AppState> {
     Router::new()
         .route("/organizations", post(create_organization))
         .route("/organizations", get(list_organizations))
@@ -29,7 +29,7 @@ pub fn router() -> Router<AppState> {
         .route("/organizations/{org_id}", delete(delete_organization))
 }
 
-pub async fn create_organization(
+async fn create_organization(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Json(payload): Json<CreateOrganizationRequest>,
@@ -89,7 +89,7 @@ pub async fn create_organization(
     ))
 }
 
-pub async fn list_organizations(
+async fn list_organizations(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
@@ -103,7 +103,7 @@ pub async fn list_organizations(
     Ok(Json(ListOrganizationsResponse { organizations }))
 }
 
-pub async fn get_organization(
+async fn get_organization(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(org_id): Path<Uuid>,
@@ -144,7 +144,7 @@ pub async fn get_organization(
     }))
 }
 
-pub async fn update_organization(
+async fn update_organization(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(org_id): Path<Uuid>,
@@ -177,7 +177,7 @@ pub async fn update_organization(
     Ok(Json(organization))
 }
 
-pub async fn delete_organization(
+async fn delete_organization(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(org_id): Path<Uuid>,

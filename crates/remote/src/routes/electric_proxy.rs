@@ -30,7 +30,7 @@ pub(crate) struct ShapeQuery {
 const ELECTRIC_PARAMS: &[&str] = &["offset", "handle", "live", "cursor", "columns"];
 const ELECTRIC_STICKY_HEADER: &str = "x-vk-electric-sticky";
 
-pub fn router() -> Router<AppState> {
+pub(crate) fn router() -> Router<AppState> {
     let mut router = Router::new();
     for route in crate::shape_routes::all_shape_routes() {
         router = router.merge(route.router);

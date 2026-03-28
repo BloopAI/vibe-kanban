@@ -161,28 +161,12 @@ This mode requires local HTTPS + Caddy routing (next step).
 
 ## Step 7: Optional Local HTTPS + Caddy (required for tunnel-mode testing)
 
-Create a Caddy config that routes:
+Use the checked-in `Caddyfile.example` in the repository root. It routes:
 - `localhost:3001` -> remote server (`127.0.0.1:3000`)
 - `relay.localhost:3001` and `*.relay.localhost:3001` -> relay server (`127.0.0.1:8082`)
 
 ```bash
-caddy run --config - --adapter caddyfile <<'EOF'
-localhost:3001, relay.localhost:3001, *.relay.localhost:3001 {
-  tls internal
-
-  @relay host relay.localhost *.relay.localhost
-  handle @relay {
-    reverse_proxy 127.0.0.1:8082
-  }
-
-  @app expression `{http.request.host} == "localhost:3001" || {http.request.host} == "localhost"`
-  handle @app {
-    reverse_proxy 127.0.0.1:3000
-  }
-
-  respond "not found" 404
-}
-EOF
+caddy run --config Caddyfile.example
 ```
 
 If you use this HTTPS setup, update OAuth callback URLs to:

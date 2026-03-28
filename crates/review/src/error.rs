@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum ReviewError {
+pub(crate) enum ReviewError {
     #[error("GitHub CLI (gh) is not installed. Install it from https://cli.github.com/")]
     GhNotInstalled,
 

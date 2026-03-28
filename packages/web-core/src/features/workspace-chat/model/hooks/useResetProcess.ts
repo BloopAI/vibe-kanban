@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
+import { useExecutionProcessesAll } from '@/shared/stores/useExecutionProcessesStore';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { isCodingAgent } from '@/shared/constants/processes';
 import { useResetProcessMutation } from './useResetProcessMutation';
@@ -19,7 +19,7 @@ export function useResetProcess(
   selectedSessionId: string | undefined
 ): UseResetProcessResult {
   const { data: branchStatus } = useBranchStatus(workspaceId);
-  const { executionProcessesAll: processes } = useExecutionProcessesContext();
+  const processes = useExecutionProcessesAll();
 
   const resetMutation = useResetProcessMutation(selectedSessionId ?? '');
   const isResetPending = resetMutation.isPending;

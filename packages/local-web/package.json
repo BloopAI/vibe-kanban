@@ -1,7 +1,7 @@
 {
   "name": "@vibe/local-web",
   "private": true,
-  "version": "0.1.36",
+  "version": "0.1.37",
   "type": "module",
   "scripts": {
     "dev": "VITE_OPEN=${VITE_OPEN:-false} vite",
@@ -34,7 +34,7 @@
     "@lexical/rich-text": "^0.36.2",
     "@lexical/table": "^0.36.2",
     "@phosphor-icons/react": "^2.1.10",
-    "@pierre/diffs": "^1.0.8",
+    "@pierre/diffs": "1.1.4",
     "@radix-ui/react-accordion": "^1.2.1",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.15",

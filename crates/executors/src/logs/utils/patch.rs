@@ -1,4 +1,7 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use json_patch::Patch;
 use serde::{Deserialize, Serialize};
@@ -78,33 +81,52 @@ impl ConversationPatch {
         from_value(json!([patch_entry])).unwrap()
     }
 
-    /// Create an ADD patch for a new diff at the given index
-    pub fn add_diff(entry_index: String, diff: Diff) -> Patch {
-        let patch_entry = PatchEntry {
-            op: PatchOperation::Add,
-            path: format!("/entries/{entry_index}"),
-            value: PatchType::Diff(diff),
-        };
-
-        from_value(json!([patch_entry])).unwrap()
-    }
-
-    /// Create an ADD patch for a new diff at the given index
-    pub fn replace_diff(entry_index: String, diff: Diff) -> Patch {
-        let patch_entry = PatchEntry {
-            op: PatchOperation::Replace,
-            path: format!("/entries/{entry_index}"),
-            value: PatchType::Diff(diff),
-        };
-
-        from_value(json!([patch_entry])).unwrap()
-    }
-
-    /// Create a REMOVE patch for removing a diff
+    /// Create a REMOVE patch for removing a diff.
     pub fn remove_diff(entry_index: String) -> Patch {
         from_value(json!([{
             "op": PatchOperation::Remove,
             "path": format!("/entries/{entry_index}"),
+        }]))
+        .unwrap()
+    }
+
+    /// Add a diff entry under a repo namespace: `/entries/<repo>/<file>`
+    pub fn add_repo_diff(repo_key: &str, file_path: &str, diff: Diff) -> Patch {
+        let patch_entry = PatchEntry {
+            op: PatchOperation::Add,
+            path: format!(
+                "/entries/{}/{}",
+                escape_json_pointer_segment(repo_key),
+                escape_json_pointer_segment(file_path)
+            ),
+            value: PatchType::Diff(diff),
+        };
+        from_value(json!([patch_entry])).unwrap()
+    }
+
+    /// Remove a diff entry under a repo namespace: `/entries/<repo>/<file>`
+    pub fn remove_repo_diff(repo_key: &str, file_path: &str) -> Patch {
+        from_value(json!([{
+            "op": PatchOperation::Remove,
+            "path": format!(
+                "/entries/{}/{}",
+                escape_json_pointer_segment(repo_key),
+                escape_json_pointer_segment(file_path)
+            ),
+        }]))
+        .unwrap()
+    }
+
+    /// Atomically replace all diffs for a repo. Single op, no intermediate empty state.
+    pub fn replace_repo_diffs(repo_key: &str, diffs: HashMap<String, Diff>) -> Patch {
+        let entries: HashMap<String, PatchType> = diffs
+            .into_iter()
+            .map(|(path, diff)| (path, PatchType::Diff(diff)))
+            .collect();
+        from_value(json!([{
+            "op": "replace",
+            "path": format!("/entries/{}", escape_json_pointer_segment(repo_key)),
+            "value": entries,
         }]))
         .unwrap()
     }

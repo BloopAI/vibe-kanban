@@ -81,32 +81,6 @@ impl CodingAgentTurn {
         .await
     }
 
-    pub async fn find_by_agent_session_id(
-        pool: &SqlitePool,
-        agent_session_id: &str,
-    ) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            CodingAgentTurn,
-            r#"SELECT
-                id as "id!: Uuid",
-                execution_process_id as "execution_process_id!: Uuid",
-                agent_session_id,
-                agent_message_id,
-                prompt,
-                summary,
-                seen as "seen!: bool",
-                created_at as "created_at!: DateTime<Utc>",
-                updated_at as "updated_at!: DateTime<Utc>"
-               FROM coding_agent_turns
-               WHERE agent_session_id = ?
-               ORDER BY updated_at DESC
-               LIMIT 1"#,
-            agent_session_id
-        )
-        .fetch_optional(pool)
-        .await
-    }
-
     /// Create a new coding agent turn
     pub async fn create(
         pool: &SqlitePool,
@@ -259,25 +233,6 @@ impl CodingAgentTurn {
     }
 
     /// Check if a workspace has any unseen coding agent turns
-    pub async fn has_unseen_by_workspace_id(
-        pool: &SqlitePool,
-        workspace_id: Uuid,
-    ) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query_scalar!(
-            r#"SELECT EXISTS(
-                SELECT 1 FROM coding_agent_turns cat
-                JOIN execution_processes ep ON cat.execution_process_id = ep.id
-                JOIN sessions s ON ep.session_id = s.id
-                WHERE s.workspace_id = $1 AND cat.seen = 0
-            ) as "has_unseen!: bool""#,
-            workspace_id
-        )
-        .fetch_one(pool)
-        .await?;
-
-        Ok(result)
-    }
-
     /// Find all workspaces that have unseen coding agent turns, filtered by archived status
     pub async fn find_workspaces_with_unseen(
         pool: &SqlitePool,

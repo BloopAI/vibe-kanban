@@ -57,6 +57,8 @@ export interface ConversationListHandle {
   scrollToBottom: (behavior?: 'auto' | 'smooth') => void;
   adjustScrollBy: (delta: number) => void;
   getScrollElement: () => HTMLDivElement | null;
+  scrollToEntryByPatchKey: (patchKey: string) => void;
+  getVisibleUserMessagePatchKey: () => string | null;
 }
 
 const ALWAYS_UNVIRTUALIZED_TAIL_ROWS = 8;
@@ -651,9 +653,89 @@ export const ConversationList = forwardRef<
         scrollElement.scrollTop += delta;
       },
       getScrollElement: () => tanstackScrollRef.current,
+      scrollToEntryByPatchKey: (patchKey: string) => {
+        const targetIndex = conversationRows.findIndex(
+          (row) => row.entry.patchKey === patchKey
+        );
+        if (targetIndex < 0) return;
+
+        const scrollEl = tanstackScrollRef.current;
+        if (!scrollEl) return;
+
+        conversationVirtualizer.releaseBottomLock();
+        programmaticScrollDeadlineRef.current = performance.now() + 1000;
+
+        // Initial scroll via scrollToAbsoluteIndex which handles both
+        // virtualized and unvirtualized (tail) rows correctly.
+        scrollToAbsoluteIndex(targetIndex, 'start', 'auto');
+
+        // Correction loop: after the virtualizer lays out the target
+        // row, its actual size may differ from the estimate, so we
+        // iteratively adjust until the row is at the container top.
+        let attempts = 0;
+        const maxAttempts = 5;
+
+        const correctScroll = () => {
+          if (attempts >= maxAttempts) return;
+          attempts++;
+
+          programmaticScrollDeadlineRef.current = performance.now() + 500;
+
+          const node = scrollEl.querySelector<HTMLElement>(
+            `[data-row-index="${targetIndex}"]`
+          );
+          if (!node) {
+            requestAnimationFrame(correctScroll);
+            return;
+          }
+
+          const nodeRect = node.getBoundingClientRect();
+          const contRect = scrollEl.getBoundingClientRect();
+          const delta = nodeRect.top - contRect.top;
+
+          if (Math.abs(delta) < 2) return;
+
+          scrollEl.scrollTop += delta;
+          requestAnimationFrame(correctScroll);
+        };
+
+        requestAnimationFrame(correctScroll);
+      },
+      getVisibleUserMessagePatchKey: () => {
+        const scrollEl = tanstackScrollRef.current;
+        if (!scrollEl || conversationRows.length === 0) return null;
+
+        const containerTop = scrollEl.getBoundingClientRect().top;
+        const rowNodes = Array.from(
+          scrollEl.querySelectorAll<HTMLElement>('[data-row-index]')
+        );
+
+        let firstVisibleIndex = conversationRows.length - 1;
+
+        for (const node of rowNodes) {
+          const rect = node.getBoundingClientRect();
+          if (rect.bottom <= containerTop + 1) continue;
+          const indexAttr = node.dataset.rowIndex;
+          if (!indexAttr) continue;
+          const parsedIndex = Number.parseInt(indexAttr, 10);
+          if (!Number.isFinite(parsedIndex)) continue;
+          firstVisibleIndex = parsedIndex;
+          break;
+        }
+
+        // Find the nearest user message at or before the first visible index
+        for (let i = firstVisibleIndex; i >= 0; i--) {
+          if (conversationRows[i].isUserMessage) {
+            return conversationRows[i].entry.patchKey;
+          }
+        }
+        return null;
+      },
     }),
     [
+      conversationRows,
       conversationVirtualizer,
+      scrollToAbsoluteIndex,
       scrollToBottomAndClearSpacer,
       scrollToPreviousUserMessage,
     ]

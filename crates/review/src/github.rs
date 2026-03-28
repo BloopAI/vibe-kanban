@@ -8,14 +8,14 @@ use crate::error::ReviewError;
 
 /// Information about a pull request
 #[derive(Debug)]
-pub struct PrInfo {
-    pub owner: String,
-    pub repo: String,
-    pub title: String,
-    pub description: String,
-    pub base_commit: String,
-    pub head_commit: String,
-    pub head_ref_name: String,
+pub(crate) struct PrInfo {
+    pub(crate) owner: String,
+    pub(crate) repo: String,
+    pub(crate) title: String,
+    pub(crate) description: String,
+    pub(crate) base_commit: String,
+    pub(crate) head_commit: String,
+    pub(crate) head_ref_name: String,
 }
 
 /// Response from `gh pr view --json`
@@ -49,7 +49,7 @@ struct GhApiRef {
 /// Parse a GitHub PR URL to extract owner, repo, and PR number
 ///
 /// Expected format: https://github.com/owner/repo/pull/123
-pub fn parse_pr_url(url: &str) -> Result<(String, String, i64), ReviewError> {
+pub(crate) fn parse_pr_url(url: &str) -> Result<(String, String, i64), ReviewError> {
     let url = url.trim();
 
     // Remove trailing slashes
@@ -144,7 +144,7 @@ fn get_pr_info_via_api(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo
 }
 
 /// Get PR information using `gh pr view`
-pub fn get_pr_info(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo, ReviewError> {
+pub(crate) fn get_pr_info(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo, ReviewError> {
     ensure_gh_available()?;
 
     debug!("Fetching PR info for {owner}/{repo}#{pr_number}");
@@ -199,7 +199,7 @@ pub fn get_pr_info(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo, Re
 }
 
 /// Clone a repository using `gh repo clone`
-pub fn clone_repo(owner: &str, repo: &str, target_dir: &Path) -> Result<(), ReviewError> {
+pub(crate) fn clone_repo(owner: &str, repo: &str, target_dir: &Path) -> Result<(), ReviewError> {
     ensure_gh_available()?;
 
     debug!("Cloning {owner}/{repo} to {}", target_dir.display());
@@ -229,7 +229,7 @@ pub fn clone_repo(owner: &str, repo: &str, target_dir: &Path) -> Result<(), Revi
 ///
 /// This is more reliable than `gh pr checkout` because it works even when
 /// the PR's branch has been deleted (common for merged PRs).
-pub fn checkout_commit(commit_sha: &str, repo_dir: &Path) -> Result<(), ReviewError> {
+pub(crate) fn checkout_commit(commit_sha: &str, repo_dir: &Path) -> Result<(), ReviewError> {
     debug!("Fetching commit {commit_sha} in {}", repo_dir.display());
 
     // First, fetch the specific commit

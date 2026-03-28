@@ -6,7 +6,7 @@ pub use v4::{EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFi
 use crate::services::config::versions::v4::{self, ProfileVariantLabel};
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
-pub struct Config {
+pub(crate) struct Config {
     pub config_version: String,
     pub theme: ThemeMode,
     pub profile: ProfileVariantLabel,
@@ -24,7 +24,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
+    pub(crate) fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
         let old_config = match serde_json::from_str::<v4::Config>(raw_config) {
             Ok(cfg) => cfg,
             Err(e) => {

@@ -4,7 +4,7 @@ use db::models::requests::{
 };
 use executors::profile::ExecutorConfig;
 use rmcp::{
-    ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
+    ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
 };
 use serde::{Deserialize, Serialize};
@@ -152,7 +152,7 @@ impl McpServer {
             let issue_url = self.url(&format!("/api/remote/issues/{issue_id}"));
             let issue: api_types::Issue = match self.send_json(self.client.get(&issue_url)).await {
                 Ok(issue) => issue,
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(Self::tool_error(e)),
             };
 
             (
@@ -202,7 +202,7 @@ impl McpServer {
             .await
         {
             Ok(response) => response,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         // Link workspace to remote issue if issue_id is provided
@@ -211,7 +211,7 @@ impl McpServer {
                 .link_workspace_to_issue(create_and_start_response.workspace.id, issue_id)
                 .await
         {
-            return Ok(e);
+            return Ok(Self::tool_error(e));
         }
 
         let response = StartWorkspaceResponse {
@@ -232,7 +232,7 @@ impl McpServer {
         }): Parameters<LinkWorkspaceIssueRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         if let Err(e) = self.link_workspace_to_issue(workspace_id, issue_id).await {
-            return Ok(e);
+            return Ok(Self::tool_error(e));
         }
 
         McpServer::success(&LinkWorkspaceIssueResponse {

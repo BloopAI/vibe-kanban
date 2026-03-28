@@ -1,10 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import type { ExecutionProcess } from 'shared/types';
-import {
-  ExecutionProcessesContext,
-  type ExecutionProcessesContextType,
-} from '@/shared/hooks/useExecutionProcessesContext';
+import { useExecutionProcessesStore } from '@/shared/stores/useExecutionProcessesStore';
 
 export const ExecutionProcessesProvider: React.FC<{
   sessionId?: string | undefined;
@@ -19,7 +16,6 @@ export const ExecutionProcessesProvider: React.FC<{
     error,
   } = useExecutionProcesses(sessionId, { showSoftDeleted: true });
 
-  // Filter out dropped processes (server already filters by session)
   const visible = useMemo(() => {
     return executionProcesses.filter((p) => !p.dropped);
   }, [executionProcesses]);
@@ -42,8 +38,8 @@ export const ExecutionProcessesProvider: React.FC<{
     [visible]
   );
 
-  const value = useMemo<ExecutionProcessesContextType>(
-    () => ({
+  useEffect(() => {
+    useExecutionProcessesStore.getState().setExecutionProcessesData({
       executionProcessesAll: executionProcesses,
       executionProcessesByIdAll: executionProcessesById,
       isAttemptRunningAll: isAttemptRunning,
@@ -53,23 +49,24 @@ export const ExecutionProcessesProvider: React.FC<{
       isLoading,
       isConnected,
       error,
-    }),
-    [
-      executionProcesses,
-      executionProcessesById,
-      isAttemptRunning,
-      visible,
-      executionProcessesByIdVisible,
-      isAttemptRunningVisible,
-      isLoading,
-      isConnected,
-      error,
-    ]
-  );
+    });
+  }, [
+    executionProcesses,
+    executionProcessesById,
+    isAttemptRunning,
+    visible,
+    executionProcessesByIdVisible,
+    isAttemptRunningVisible,
+    isLoading,
+    isConnected,
+    error,
+  ]);
 
-  return (
-    <ExecutionProcessesContext.Provider value={value}>
-      {children}
-    </ExecutionProcessesContext.Provider>
-  );
+  useEffect(() => {
+    return () => {
+      useExecutionProcessesStore.getState().clearExecutionProcessesData();
+    };
+  }, []);
+
+  return <>{children}</>;
 };

@@ -18,7 +18,7 @@ use crate::{
     middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
 };
 
-pub async fn respond_to_approval(
+async fn respond_to_approval(
     State(deployment): State<DeploymentImpl>,
     axum::extract::Path(id): axum::extract::Path<String>,
     ResponseJson(request): ResponseJson<ApprovalResponse>,
@@ -48,7 +48,7 @@ pub async fn respond_to_approval(
     }
 }
 
-pub async fn stream_approvals_ws(
+async fn stream_approvals_ws(
     ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
 ) -> impl IntoResponse {
@@ -106,7 +106,7 @@ async fn handle_approvals_ws(
     Ok(())
 }
 
-pub fn router() -> Router<DeploymentImpl> {
+pub(super) fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/approvals/{id}/respond", post(respond_to_approval))
         .route("/approvals/stream/ws", get(stream_approvals_ws))

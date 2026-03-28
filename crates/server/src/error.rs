@@ -12,12 +12,11 @@ use deployment::{DeploymentError, RelayHostsNotConfigured, RemoteClientNotConfig
 use executors::{command::CommandBuildError, executors::ExecutorError};
 use git::GitServiceError;
 use git_host::GitHostError;
-use git2::Error as Git2Error;
 use local_deployment::pty::PtyError;
 use relay_hosts::{
-    OpenRemoteEditorError, RelayApiError, RelayConnectionError, RelayHostLookupError,
-    RelayPairingClientError,
+    RelayApiError, RelayConnectionError, RelayHostLookupError, RelayPairingClientError,
 };
+use relay_webrtc::WebRtcError;
 use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
@@ -52,13 +51,13 @@ pub enum ApiError {
     #[error(transparent)]
     Deployment(#[from] DeploymentError),
     #[error(transparent)]
-    Container(#[from] ContainerError),
+    Container(ContainerError),
     #[error(transparent)]
     Executor(#[from] ExecutorError),
     #[error(transparent)]
     Database(#[from] sqlx::Error),
     #[error(transparent)]
-    Worktree(#[from] WorktreeError),
+    Worktree(WorktreeError),
     #[error(transparent)]
     Config(#[from] ConfigError),
     #[error(transparent)]
@@ -91,17 +90,13 @@ pub enum ApiError {
     Pty(#[from] PtyError),
     #[error(transparent)]
     Migration(#[from] MigrationError),
+    #[error(transparent)]
+    WebRtc(#[from] WebRtcError),
 }
 
 impl From<&'static str> for ApiError {
     fn from(msg: &'static str) -> Self {
         ApiError::BadRequest(msg.to_string())
-    }
-}
-
-impl From<Git2Error> for ApiError {
-    fn from(err: Git2Error) -> Self {
-        ApiError::GitService(GitServiceError::from(err))
     }
 }
 
@@ -141,6 +136,29 @@ impl From<WorkspaceManagerError> for ApiError {
                 ApiError::BadRequest("Workspace has no repositories configured".to_string())
             }
             WorkspaceManagerError::PartialCreation(msg) => ApiError::Conflict(msg),
+        }
+    }
+}
+
+impl From<WorktreeError> for ApiError {
+    fn from(err: WorktreeError) -> Self {
+        match err {
+            WorktreeError::GitService(e) => ApiError::GitService(e),
+            other => ApiError::Worktree(other),
+        }
+    }
+}
+
+impl From<ContainerError> for ApiError {
+    fn from(err: ContainerError) -> Self {
+        match err {
+            ContainerError::GitServiceError(e) => ApiError::GitService(e),
+            ContainerError::Workspace(e) => ApiError::Workspace(e),
+            ContainerError::Session(e) => ApiError::Session(e),
+            ContainerError::ExecutionProcess(e) => ApiError::ExecutionProcess(e),
+            ContainerError::ExecutorError(e) => ApiError::Executor(e),
+            ContainerError::Worktree(e) => e.into(),
+            other => ApiError::Container(other),
         }
     }
 }
@@ -206,11 +224,6 @@ fn remote_client_error(err: &RemoteClientError) -> ErrorInfo {
             "RemoteClientError",
             "Remote service timeout. Please try again.",
         ),
-        RemoteClientError::TokenRefreshTimeout => ErrorInfo::with_status(
-            StatusCode::UNAUTHORIZED,
-            "RemoteClientError",
-            "Remote service timeout during token refresh. Please sign in again.",
-        ),
         RemoteClientError::Transport(_) => ErrorInfo::with_status(
             StatusCode::BAD_GATEWAY,
             "RemoteClientError",
@@ -270,6 +283,21 @@ fn remote_client_error(err: &RemoteClientError) -> ErrorInfo {
                     "Internal remote service error. Please try again.",
                 ),
                 HandoffErrorCode::Other(m) => {
+                    if matches!(
+                        m.as_str(),
+                        "invalid_token"
+                            | "expired_token"
+                            | "session_revoked"
+                            | "token_reuse_detected"
+                            | "provider_token_revoked"
+                            | "identity_error"
+                    ) {
+                        return ErrorInfo::with_status(
+                            StatusCode::UNAUTHORIZED,
+                            "RemoteClientError",
+                            "Unauthorized. Please sign in again.",
+                        );
+                    }
                     return ErrorInfo::bad_request(
                         "RemoteClientError",
                         format!("Authentication error: {}", m),
@@ -347,32 +375,28 @@ impl IntoResponse for ApiError {
             }
             ApiError::ExecutionProcess(_) => ErrorInfo::internal("ExecutionProcessError"),
 
-            ApiError::GitService(git::GitServiceError::MergeConflicts { message, .. }) => {
+            ApiError::GitService(GitServiceError::MergeConflicts { message, .. }) => {
                 ErrorInfo::conflict("GitServiceError", message.clone())
             }
-            ApiError::GitService(git::GitServiceError::RebaseInProgress) => ErrorInfo::conflict(
+            ApiError::GitService(GitServiceError::RebaseInProgress) => ErrorInfo::conflict(
                 "GitServiceError",
                 "A rebase is already in progress. Resolve conflicts or abort the rebase, then retry.",
             ),
-            ApiError::GitService(git::GitServiceError::BranchNotFound(branch)) => {
-                ErrorInfo::not_found(
-                    "GitServiceError",
-                    format!(
-                        "Branch '{}' not found. Try changing the target branch.",
-                        branch
-                    ),
-                )
-            }
-            ApiError::GitService(git::GitServiceError::BranchesDiverged(msg)) => {
-                ErrorInfo::conflict(
-                    "GitServiceError",
-                    format!(
-                        "{} Rebase onto the target branch first, then retry the merge.",
-                        msg
-                    ),
-                )
-            }
-            ApiError::GitService(git::GitServiceError::WorktreeDirty(branch, files)) => {
+            ApiError::GitService(GitServiceError::BranchNotFound(branch)) => ErrorInfo::not_found(
+                "GitServiceError",
+                format!(
+                    "Branch '{}' not found. Try changing the target branch.",
+                    branch
+                ),
+            ),
+            ApiError::GitService(GitServiceError::BranchesDiverged(msg)) => ErrorInfo::conflict(
+                "GitServiceError",
+                format!(
+                    "{} Rebase onto the target branch first, then retry the merge.",
+                    msg
+                ),
+            ),
+            ApiError::GitService(GitServiceError::WorktreeDirty(branch, files)) => {
                 ErrorInfo::conflict(
                     "GitServiceError",
                     format!(
@@ -381,16 +405,16 @@ impl IntoResponse for ApiError {
                     ),
                 )
             }
-            ApiError::GitService(git::GitServiceError::GitCLI(git::GitCliError::AuthFailed(
-                msg,
-            ))) => ErrorInfo::with_status(
-                StatusCode::UNAUTHORIZED,
-                "GitServiceError",
-                format!(
-                    "{}. Check your git credentials or SSH keys and try again.",
-                    msg
-                ),
-            ),
+            ApiError::GitService(GitServiceError::GitCLI(git::GitCliError::AuthFailed(msg))) => {
+                ErrorInfo::with_status(
+                    StatusCode::UNAUTHORIZED,
+                    "GitServiceError",
+                    format!(
+                        "{}. Check your git credentials or SSH keys and try again.",
+                        msg
+                    ),
+                )
+            }
             ApiError::GitService(e) => ErrorInfo::with_status(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "GitServiceError",
@@ -462,31 +486,15 @@ impl IntoResponse for ApiError {
             ),
 
             ApiError::Deployment(_) => ErrorInfo::internal("DeploymentError"),
-            ApiError::Container(err) => match err {
-                ContainerError::GitServiceError(_) => ErrorInfo::internal("ContainerError"),
-                ContainerError::Workspace(WorkspaceError::WorkspaceNotFound) => {
-                    ErrorInfo::not_found("ContainerError", "Workspace not found.")
-                }
-                ContainerError::Workspace(WorkspaceError::ValidationError(msg)) => {
-                    ErrorInfo::bad_request("ContainerError", msg.clone())
-                }
-                ContainerError::Workspace(WorkspaceError::BranchNotFound(branch)) => {
-                    ErrorInfo::not_found(
-                        "ContainerError",
-                        format!("Branch '{}' not found.", branch),
-                    )
-                }
-                ContainerError::ExecutorError(e) => ErrorInfo::with_status(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "ContainerError",
-                    format!("Executor error: {e}"),
-                ),
-                _ => ErrorInfo::internal("ContainerError"),
-            },
+            ApiError::Container(_) => ErrorInfo::internal("ContainerError"),
             ApiError::Executor(_) => ErrorInfo::internal("ExecutorError"),
             ApiError::CommandBuilder(_) => ErrorInfo::internal("CommandBuildError"),
             ApiError::Database(_) => ErrorInfo::internal("DatabaseError"),
-            ApiError::Worktree(_) => ErrorInfo::internal("WorktreeError"),
+            ApiError::Worktree(err) => ErrorInfo::with_status(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "WorktreeError",
+                format!("Worktree operation failed: {}", err),
+            ),
             ApiError::Config(_) => ErrorInfo::internal("ConfigError"),
             ApiError::Io(_) => ErrorInfo::internal("IoError"),
             ApiError::Migration(MigrationError::Database(_)) => {
@@ -530,6 +538,21 @@ impl IntoResponse for ApiError {
                 "MigrationError",
                 format!("Remote error: {}", msg),
             ),
+            ApiError::WebRtc(err) => match err {
+                WebRtcError::SessionNotFound { .. } => {
+                    ErrorInfo::not_found("WebRtcError", err.to_string())
+                }
+                WebRtcError::IceGatheringTimedOut
+                | WebRtcError::IceGatheringChannelDropped
+                | WebRtcError::NoLocalDescription
+                | WebRtcError::WebRtc(_) => ErrorInfo::bad_request("WebRtcError", err.to_string()),
+                WebRtcError::ConnectUpstreamWs(_)
+                | WebRtcError::DataChannelSendQueueClosed
+                | WebRtcError::WsBridge(_) => {
+                    ErrorInfo::with_status(StatusCode::BAD_GATEWAY, "WebRtcError", err.to_string())
+                }
+                WebRtcError::SerializeMessage(_) => ErrorInfo::internal("WebRtcError"),
+            },
         };
 
         // Log internal errors so they are visible in server output.
@@ -613,22 +636,6 @@ impl From<RelayApiError> for ApiError {
     fn from(err: RelayApiError) -> Self {
         tracing::warn!(%err, "Relay transport failed");
         ApiError::BadGateway(err.to_string())
-    }
-}
-
-impl From<OpenRemoteEditorError> for ApiError {
-    fn from(err: OpenRemoteEditorError) -> Self {
-        match err {
-            OpenRemoteEditorError::Connection(err) => err.into(),
-            OpenRemoteEditorError::CreateTunnel(ref detail) => {
-                tracing::warn!(%detail, "Failed to create SSH tunnel");
-                ApiError::BadGateway(err.to_string())
-            }
-            OpenRemoteEditorError::SshSetup(ref detail) => {
-                tracing::warn!(%detail, "Failed to open remote editor");
-                ApiError::BadGateway(err.to_string())
-            }
-        }
     }
 }
 

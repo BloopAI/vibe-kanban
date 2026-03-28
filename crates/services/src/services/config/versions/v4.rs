@@ -7,19 +7,19 @@ use crate::services::config::versions::v3;
 
 // DEPRECATED
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-pub struct ProfileVariantLabel {
+pub(crate) struct ProfileVariantLabel {
     pub profile: String,
     pub variant: Option<String>,
 }
 
 impl ProfileVariantLabel {
-    pub fn default(profile: String) -> Self {
+    pub(crate) fn default(profile: String) -> Self {
         Self {
             profile,
             variant: None,
         }
     }
-    pub fn with_variant(profile: String, mode: String) -> Self {
+    pub(crate) fn with_variant(profile: String, mode: String) -> Self {
         Self {
             profile,
             variant: Some(mode),
@@ -28,7 +28,7 @@ impl ProfileVariantLabel {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
-pub struct Config {
+pub(crate) struct Config {
     pub config_version: String,
     pub theme: ThemeMode,
     pub profile: ProfileVariantLabel,
@@ -44,7 +44,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
+    pub(crate) fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
         let old_config = match serde_json::from_str::<v3::Config>(raw_config) {
             Ok(cfg) => cfg,
             Err(e) => {

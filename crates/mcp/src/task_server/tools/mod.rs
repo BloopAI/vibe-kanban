@@ -9,9 +9,32 @@ use rmcp::{
     model::{CallToolResult, Content},
 };
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use thiserror::Error;
 use uuid::Uuid;
 
 use super::{ApiResponseEnvelope, McpMode, McpServer};
+
+type ToolCallResult = Result<CallToolResult, ErrorData>;
+
+#[derive(Debug, Error)]
+#[error("{message}")]
+struct ToolError {
+    message: String,
+    details: Option<String>,
+}
+
+impl ToolError {
+    fn new(message: impl Into<String>, details: Option<impl Into<String>>) -> Self {
+        Self {
+            message: message.into(),
+            details: details.map(Into::into),
+        }
+    }
+
+    fn message(message: impl Into<String>) -> Self {
+        Self::new(message, None::<String>)
+    }
+}
 
 mod context;
 mod issue_assignees;
@@ -44,8 +67,8 @@ impl McpServer {
         let mut router = Self::context_tools_router()
             + Self::workspaces_tools_router()
             + Self::session_tools_router();
-        router.remove_route::<(), ()>("list_workspaces");
-        router.remove_route::<(), ()>("delete_workspace");
+        router.remove_route("list_workspaces");
+        router.remove_route("delete_workspace");
         router
     }
 }
@@ -61,69 +84,76 @@ impl McpServer {
         self.context.as_ref().map(|ctx| ctx.workspace_id)
     }
 
-    fn success<T: Serialize>(data: &T) -> Result<CallToolResult, ErrorData> {
+    fn success<T: Serialize>(data: &T) -> ToolCallResult {
         Ok(CallToolResult::success(vec![Content::text(
             serde_json::to_string_pretty(data)
                 .unwrap_or_else(|_| "Failed to serialize response".to_string()),
         )]))
     }
 
-    fn err_value(v: serde_json::Value) -> Result<CallToolResult, ErrorData> {
-        Ok(CallToolResult::error(vec![Content::text(
-            serde_json::to_string_pretty(&v)
-                .unwrap_or_else(|_| "Failed to serialize error".to_string()),
-        )]))
+    fn err<S: Into<String>>(msg: S, details: Option<S>) -> ToolCallResult {
+        Ok(Self::tool_error(ToolError::new(msg, details)))
     }
 
-    fn err<S: Into<String>>(msg: S, details: Option<S>) -> Result<CallToolResult, ErrorData> {
-        let mut v = serde_json::json!({"success": false, "error": msg.into()});
-        if let Some(d) = details {
-            v["details"] = serde_json::json!(d.into());
-        };
-        Self::err_value(v)
+    fn tool_error(error: ToolError) -> CallToolResult {
+        let mut value = serde_json::json!({
+            "success": false,
+            "error": error.message,
+        });
+        if let Some(details) = error.details {
+            value["details"] = serde_json::json!(details);
+        }
+
+        CallToolResult::error(vec![Content::text(
+            serde_json::to_string_pretty(&value)
+                .unwrap_or_else(|_| "Failed to serialize error".to_string()),
+        )])
     }
 
     async fn send_json<T: DeserializeOwned>(
         &self,
         rb: reqwest::RequestBuilder,
-    ) -> Result<T, CallToolResult> {
-        let resp = rb
-            .send()
-            .await
-            .map_err(|e| Self::err("Failed to connect to VK API", Some(&e.to_string())).unwrap())?;
+    ) -> Result<T, ToolError> {
+        let resp = rb.send().await.map_err(|error| {
+            ToolError::new("Failed to connect to VK API", Some(error.to_string()))
+        })?;
 
         if !resp.status().is_success() {
             let status = resp.status();
-            return Err(
-                Self::err(format!("VK API returned error status: {}", status), None).unwrap(),
-            );
+            return Err(ToolError::message(format!(
+                "VK API returned error status: {}",
+                status
+            )));
         }
 
-        let api_response = resp.json::<ApiResponseEnvelope<T>>().await.map_err(|e| {
-            Self::err("Failed to parse VK API response", Some(&e.to_string())).unwrap()
-        })?;
+        let api_response = resp
+            .json::<ApiResponseEnvelope<T>>()
+            .await
+            .map_err(|error| {
+                ToolError::new("Failed to parse VK API response", Some(error.to_string()))
+            })?;
 
         if !api_response.success {
             let msg = api_response.message.as_deref().unwrap_or("Unknown error");
-            return Err(Self::err("VK API returned error", Some(msg)).unwrap());
+            return Err(ToolError::new("VK API returned error", Some(msg)));
         }
 
         api_response
             .data
-            .ok_or_else(|| Self::err("VK API response missing data field", None).unwrap())
+            .ok_or_else(|| ToolError::message("VK API response missing data field"))
     }
 
-    async fn send_empty_json(&self, rb: reqwest::RequestBuilder) -> Result<(), CallToolResult> {
-        let resp = rb
-            .send()
-            .await
-            .map_err(|e| Self::err("Failed to connect to VK API", Some(&e.to_string())).unwrap())?;
+    async fn send_empty_json(&self, rb: reqwest::RequestBuilder) -> Result<(), ToolError> {
+        let resp = rb.send().await.map_err(|error| {
+            ToolError::new("Failed to connect to VK API", Some(error.to_string()))
+        })?;
 
         if !resp.status().is_success() {
             let status = resp.status();
-            return Err(
-                Self::err(format!("VK API returned error status: {}", status), None).unwrap(),
-            );
+            return Err(ToolError::message(format!(
+                "VK API returned error status: {}",
+                status
+            )));
         }
 
         #[derive(Deserialize)]
@@ -132,45 +162,42 @@ impl McpServer {
             message: Option<String>,
         }
 
-        let api_response = resp.json::<EmptyApiResponse>().await.map_err(|e| {
-            Self::err("Failed to parse VK API response", Some(&e.to_string())).unwrap()
+        let api_response = resp.json::<EmptyApiResponse>().await.map_err(|error| {
+            ToolError::new("Failed to parse VK API response", Some(error.to_string()))
         })?;
 
         if !api_response.success {
             let msg = api_response.message.as_deref().unwrap_or("Unknown error");
-            return Err(Self::err("VK API returned error", Some(msg)).unwrap());
+            return Err(ToolError::new("VK API returned error", Some(msg)));
         }
 
         Ok(())
     }
 
-    fn resolve_workspace_id(&self, explicit: Option<Uuid>) -> Result<Uuid, CallToolResult> {
+    fn resolve_workspace_id(&self, explicit: Option<Uuid>) -> Result<Uuid, ToolError> {
         if let Some(id) = explicit {
             return Ok(id);
         }
         if let Some(workspace_id) = self.scoped_workspace_id() {
             return Ok(workspace_id);
         }
-        Err(Self::err(
+        Err(ToolError::message(
             "workspace_id is required (not available from current MCP context)",
-            None::<&str>,
-        )
-        .unwrap())
+        ))
     }
 
-    fn scope_allows_workspace(&self, workspace_id: Uuid) -> Result<(), CallToolResult> {
+    fn scope_allows_workspace(&self, workspace_id: Uuid) -> Result<(), ToolError> {
         if matches!(self.mode(), McpMode::Orchestrator)
             && let Some(scoped_workspace_id) = self.scoped_workspace_id()
             && scoped_workspace_id != workspace_id
         {
-            return Err(Self::err(
-                "Operation is outside the configured workspace scope".to_string(),
+            return Err(ToolError::new(
+                "Operation is outside the configured workspace scope",
                 Some(format!(
                     "requested workspace_id={}, configured workspace_id={}",
                     workspace_id, scoped_workspace_id
                 )),
-            )
-            .unwrap());
+            ));
         }
 
         Ok(())
@@ -222,7 +249,7 @@ impl McpServer {
     }
 
     // Resolves a project_id from an explicit parameter or falls back to context.
-    fn resolve_project_id(&self, explicit: Option<Uuid>) -> Result<Uuid, CallToolResult> {
+    fn resolve_project_id(&self, explicit: Option<Uuid>) -> Result<Uuid, ToolError> {
         if let Some(id) = explicit {
             return Ok(id);
         }
@@ -231,15 +258,13 @@ impl McpServer {
         {
             return Ok(id);
         }
-        Err(Self::err(
+        Err(ToolError::message(
             "project_id is required (not available from workspace context)",
-            None::<&str>,
-        )
-        .unwrap())
+        ))
     }
 
     // Resolves an organization_id from an explicit parameter or falls back to context.
-    fn resolve_organization_id(&self, explicit: Option<Uuid>) -> Result<Uuid, CallToolResult> {
+    fn resolve_organization_id(&self, explicit: Option<Uuid>) -> Result<Uuid, ToolError> {
         if let Some(id) = explicit {
             return Ok(id);
         }
@@ -248,18 +273,16 @@ impl McpServer {
         {
             return Ok(id);
         }
-        Err(Self::err(
+        Err(ToolError::message(
             "organization_id is required (not available from workspace context)",
-            None::<&str>,
-        )
-        .unwrap())
+        ))
     }
 
     // Fetches project statuses for a project.
     async fn fetch_project_statuses(
         &self,
         project_id: Uuid,
-    ) -> Result<Vec<ProjectStatus>, CallToolResult> {
+    ) -> Result<Vec<ProjectStatus>, ToolError> {
         let url = self.url(&format!(
             "/api/remote/project-statuses?project_id={}",
             project_id
@@ -273,7 +296,7 @@ impl McpServer {
         &self,
         project_id: Uuid,
         status_name: &str,
-    ) -> Result<Uuid, CallToolResult> {
+    ) -> Result<Uuid, ToolError> {
         let statuses = self.fetch_project_statuses(project_id).await?;
         statuses
             .iter()
@@ -281,28 +304,22 @@ impl McpServer {
             .map(|s| s.id)
             .ok_or_else(|| {
                 let available: Vec<&str> = statuses.iter().map(|s| s.name.as_str()).collect();
-                Self::err(
-                    format!(
-                        "Unknown status '{}'. Available statuses: {:?}",
-                        status_name, available
-                    ),
-                    None::<String>,
-                )
-                .unwrap()
+                ToolError::message(format!(
+                    "Unknown status '{}'. Available statuses: {:?}",
+                    status_name, available
+                ))
             })
     }
 
     // Gets the default status_id for a project (first non-hidden status by sort_order).
-    async fn default_status_id(&self, project_id: Uuid) -> Result<Uuid, CallToolResult> {
+    async fn default_status_id(&self, project_id: Uuid) -> Result<Uuid, ToolError> {
         let statuses = self.fetch_project_statuses(project_id).await?;
         statuses
             .iter()
             .filter(|s| !s.hidden)
             .min_by_key(|s| s.sort_order)
             .map(|s| s.id)
-            .ok_or_else(|| {
-                Self::err("No visible statuses found for project", None::<&str>).unwrap()
-            })
+            .ok_or_else(|| ToolError::message("No visible statuses found for project"))
     }
 
     // Resolves a status_id to its display name. Falls back to UUID string if lookup fails.
@@ -322,7 +339,7 @@ impl McpServer {
         &self,
         workspace_id: Uuid,
         issue_id: Uuid,
-    ) -> Result<(), CallToolResult> {
+    ) -> Result<(), ToolError> {
         let issue_url = self.url(&format!("/api/remote/issues/{}", issue_id));
         let issue: Issue = self.send_json(self.client.get(&issue_url)).await?;
 
@@ -335,14 +352,13 @@ impl McpServer {
             .await
     }
 
-    fn parse_executor_agent(executor: &str) -> Result<BaseCodingAgent, CallToolResult> {
+    fn parse_executor_agent(executor: &str) -> Result<BaseCodingAgent, ToolError> {
         let normalized = executor.replace('-', "_").to_ascii_uppercase();
-        BaseCodingAgent::from_str(&normalized).map_err(|_| {
-            Self::err(format!("Unknown executor '{executor}'."), None::<String>).unwrap()
-        })
+        BaseCodingAgent::from_str(&normalized)
+            .map_err(|_| ToolError::message(format!("Unknown executor '{executor}'.")))
     }
 
-    fn normalize_executor_name(executor: Option<&str>) -> Result<String, CallToolResult> {
+    fn normalize_executor_name(executor: Option<&str>) -> Result<String, ToolError> {
         let Some(executor) = executor.map(str::trim).filter(|value| !value.is_empty()) else {
             return Ok("CODEX".to_string());
         };
@@ -350,11 +366,10 @@ impl McpServer {
         Self::parse_executor_agent(executor)
             .map(|agent| agent.to_string())
             .map_err(|_| {
-                Self::err(
-                    format!("Unknown executor '{}' configured for session", executor),
-                    None::<String>,
-                )
-                .unwrap()
+                ToolError::message(format!(
+                    "Unknown executor '{}' configured for session",
+                    executor
+                ))
             })
     }
 
