@@ -205,9 +205,8 @@ const ChangesPanelInner = <TDiff extends ChangesPanelDiff>(
 
   const scrollerRefCallback = useCallback(
     (node: HTMLDivElement | null) => {
-      (
-        scrollContainerRef as React.RefObject<HTMLDivElement | null>
-      ).current = node;
+      (scrollContainerRef as React.RefObject<HTMLDivElement | null>).current =
+        node;
       onScrollerRef?.(node);
     },
     [onScrollerRef]

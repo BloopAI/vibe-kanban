@@ -231,7 +231,7 @@ export function PreviewBrowser({
             </>
           ) : isMobile ? (
             /* Mobile: URL collapsed mode — globe, refresh, open-in-tab, start/stop */
-            (<>
+            <>
               <IconButtonGroup>
                 <IconButtonGroupItem
                   icon={GlobeIcon}
@@ -291,10 +291,10 @@ export function PreviewBrowser({
                   }
                 />
               </IconButtonGroup>
-            </>)
+            </>
           ) : (
             /* Desktop: Full toolbar */
-            (<>
+            <>
               {/* Navigation (Back/Forward) */}
               <PreviewNavigation
                 navigation={navigation}
@@ -459,7 +459,7 @@ export function PreviewBrowser({
                   }
                 />
               </IconButtonGroup>
-            </>)
+            </>
           )}
         </div>
       </div>
@@ -480,7 +480,7 @@ export function PreviewBrowser({
           >
             {screenSize === 'mobile' ? (
               // Phone frame for mobile mode - scales down to fit container
-              (<div
+              <div
                 className="bg-primary rounded-[2rem] p-3 shadow-xl origin-center"
                 style={{
                   transform:
@@ -501,10 +501,10 @@ export function PreviewBrowser({
                     onLoad={onIframeLoad}
                   />
                 </div>
-              </div>)
+              </div>
             ) : (
               // Desktop and responsive modes
-              (<div
+              <div
                 className={cn(
                   'rounded-sm border overflow-hidden relative',
                   screenSize === 'responsive' && 'shadow-lg'
@@ -546,7 +546,7 @@ export function PreviewBrowser({
                     />
                   </>
                 )}
-              </div>)
+              </div>
             )}
           </div>
         ) : (

@@ -101,8 +101,7 @@ export const KanbanCard = ({
           if (typeof forwardedRef === 'function') {
             forwardedRef(node);
           } else if (forwardedRef && typeof forwardedRef === 'object') {
-            (forwardedRef as RefObject<HTMLDivElement | null>).current =
-              node;
+            (forwardedRef as RefObject<HTMLDivElement | null>).current = node;
           }
         };
 
