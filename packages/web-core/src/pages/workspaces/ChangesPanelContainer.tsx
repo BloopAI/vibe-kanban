@@ -9,7 +9,10 @@ import { sortDiffs } from '@/shared/lib/fileTreeUtils';
 import { useChangesView } from '@/shared/hooks/useChangesView';
 import { useScrollSyncStateMachine } from '@/shared/hooks/useScrollSyncStateMachine';
 import { usePersistedExpanded } from '@/shared/stores/useUiPreferencesStore';
-import { useDiffs } from '@/shared/stores/useWorkspaceDiffStore';
+import {
+  useDiffs,
+  useFileInViewStore,
+} from '@/shared/stores/useWorkspaceDiffStore';
 import { PierreDiffCard } from './PierreDiffCard';
 import type { Diff, DiffChangeKind } from 'shared/types';
 import { usePanelFindShortcut } from '@/shared/hooks/usePanelFindShortcut';
@@ -115,12 +118,9 @@ export function ChangesPanelContainer({
   workspaceId,
 }: ChangesPanelContainerProps) {
   const diffs = useDiffs();
-  const {
-    selectedFilePath,
-    selectedLineNumber,
-    setFileInView,
-    registerScrollToFile,
-  } = useChangesView();
+  const { selectedFilePath, selectedLineNumber, registerScrollToFile } =
+    useChangesView();
+  const setFileInView = useFileInViewStore((s) => s.setFileInView);
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const changesPanelRef = useRef<ChangesPanelHandle>(null);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
