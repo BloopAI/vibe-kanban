@@ -468,7 +468,9 @@ export function LandingPage() {
                     type="text"
                     value={customCommand}
                     onChange={(e) => setCustomCommand(e.target.value)}
-                    placeholder={t('onboardingLanding.customCommandPlaceholder')}
+                    placeholder={t(
+                      'onboardingLanding.customCommandPlaceholder'
+                    )}
                     className={cn(
                       'w-full bg-panel border rounded-sm px-base py-half text-sm text-high',
                       'placeholder:text-low placeholder:opacity-80 focus:outline-none',
@@ -558,7 +560,7 @@ export function LandingPage() {
         {/* Footer */}
         <div className="shrink-0 border-t border-border p-double pt-base flex items-center justify-between gap-base">
           <p className="text-xs text-low">
-            {t('onboardingLanding.footer.beforeTerms')}{' '}
+            {t('onboardingLanding.footer.beforeTerms')}
             <a
               href="https://www.vibekanban.com/terms"
               target="_blank"
@@ -566,8 +568,8 @@ export function LandingPage() {
               className="text-brand hover:underline"
             >
               {t('onboardingLanding.footer.termsAndConditions')}
-            </a>{' '}
-            {t('onboardingLanding.footer.and')}{' '}
+            </a>
+            {t('onboardingLanding.footer.and')}
             <a
               href="https://www.vibekanban.com/privacy"
               target="_blank"
