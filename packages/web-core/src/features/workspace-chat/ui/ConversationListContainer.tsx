@@ -101,9 +101,6 @@ export interface ConversationListHandle {
   scrollToPreviousUserMessage: () => void;
   scrollToBottom: (behavior?: 'auto' | 'smooth') => void;
   adjustScrollBy: (delta: number) => void;
-  getScrollElement: () => HTMLDivElement | null;
-  scrollToEntryByPatchKey: (patchKey: string) => void;
-  getVisibleUserMessagePatchKey: () => string | null;
 }
 
 const ALWAYS_UNVIRTUALIZED_TAIL_ROWS = 8;
@@ -234,7 +231,6 @@ export const ConversationList = forwardRef<
   // rAF naturally limits updates to the display refresh rate (~60fps) while
   // ensuring every frame reflects the latest data.
   const rafIdRef = useRef<number | null>(null);
-  const planRevealSpacerRef = useRef<HTMLDivElement | null>(null);
   const pendingInteractionAnchorRef = useRef<{
     element: HTMLElement;
     top: number;
@@ -285,9 +281,6 @@ export const ConversationList = forwardRef<
     }
     pendingUpdateRef.current = null;
     scriptOutputCacheRef.current.clear();
-    if (planRevealSpacerRef.current) {
-      planRevealSpacerRef.current.style.height = '0px';
-    }
     setLoading(true);
     setHasSetupScriptRun(false);
     setHasCleanupScriptRun(false);
@@ -532,12 +525,7 @@ export const ConversationList = forwardRef<
 
       const scrollEl = tanstackScrollRef.current;
       if (!scrollEl) return false;
-
-      const targetNode = scrollEl.querySelector<HTMLElement>(
-        `[data-row-index="${index}"]`
-      );
-
-      if (targetNode) {
+      const getVisibleHeight = (): number => {
         const scrollRect = scrollEl.getBoundingClientRect();
         const chatBoxContainer = panelRef.current
           ?.closest('main')
@@ -551,41 +539,45 @@ export const ConversationList = forwardRef<
               )
             )
           : 0;
-        const visibleHeight = Math.max(
-          1,
-          scrollEl.clientHeight - obscuredBottomHeight
-        );
-
-        let top = targetNode.offsetTop;
-
+        return Math.max(1, scrollEl.clientHeight - obscuredBottomHeight);
+      };
+      const getTargetTop = (targetNode: HTMLElement): number => {
+        const scrollRect = scrollEl.getBoundingClientRect();
+        const targetRect = targetNode.getBoundingClientRect();
+        const targetTopInScroll =
+          scrollEl.scrollTop + (targetRect.top - scrollRect.top);
+        const visibleHeight = getVisibleHeight();
         if (align === 'center') {
-          top =
-            targetNode.offsetTop -
-            visibleHeight / 2 +
-            targetNode.offsetHeight / 2;
-        } else if (align === 'end') {
-          top = targetNode.offsetTop - visibleHeight + targetNode.offsetHeight;
+          return (
+            targetTopInScroll - visibleHeight / 2 + targetNode.offsetHeight / 2
+          );
         }
-
-        const requestedTop = Math.max(0, top);
-        let maxScrollable = scrollEl.scrollHeight - scrollEl.clientHeight;
-        const deficit = requestedTop - maxScrollable;
-
-        if (deficit > 1 && align === 'start' && planRevealSpacerRef.current) {
-          conversationVirtualizer.releaseBottomLock();
-          planRevealSpacerRef.current.style.height = `${Math.ceil(deficit)}px`;
-          maxScrollable = scrollEl.scrollHeight - scrollEl.clientHeight;
+        if (align === 'end') {
+          return targetTopInScroll - visibleHeight + targetNode.offsetHeight;
         }
+        return targetTopInScroll;
+      };
 
-        scrollEl.scrollTo({
-          top: Math.min(requestedTop, maxScrollable),
-          behavior,
-        });
+      const targetNode = scrollEl.querySelector<HTMLElement>(
+        `[data-row-index="${index}"]`
+      );
+
+      if (targetNode) {
+        const top = getTargetTop(targetNode);
+        scrollEl.scrollTo({ top: Math.max(0, top), behavior });
         return true;
       }
 
       if (index < virtualizedRows.length) {
         conversationVirtualizer.scrollToIndex(index, { align, behavior });
+        requestAnimationFrame(() => {
+          const renderedTargetNode = scrollEl.querySelector<HTMLElement>(
+            `[data-row-index="${index}"]`
+          );
+          if (!renderedTargetNode) return;
+          const top = getTargetTop(renderedTargetNode);
+          scrollEl.scrollTo({ top: Math.max(0, top), behavior });
+        });
         return true;
       }
 
@@ -598,22 +590,12 @@ export const ConversationList = forwardRef<
     scrollToAbsoluteIndexRef.current = scrollToAbsoluteIndex;
   }, [scrollToAbsoluteIndex]);
 
-  const scrollToBottomAndClearSpacer = useCallback(
-    (behavior?: 'auto' | 'smooth') => {
-      if (planRevealSpacerRef.current) {
-        planRevealSpacerRef.current.style.height = '0px';
-      }
-      conversationVirtualizer.scrollToBottom(behavior);
-    },
-    [conversationVirtualizer]
-  );
-
   const scrollExecutor = useScrollCommandExecutor({
     virtualizer: conversationVirtualizer.virtualizer,
     itemCount: conversationRows.length,
     dataVersion,
-    checkIsAtBottom: conversationVirtualizer.checkIsAtBottom,
-    scrollToBottom: scrollToBottomAndClearSpacer,
+    isAtBottom: conversationVirtualizer.isAtBottom,
+    scrollToBottom: conversationVirtualizer.scrollToBottom,
     scrollToAbsoluteIndex,
   });
   scrollOnEntriesChangedRef.current = scrollExecutor.onEntriesChanged;
@@ -904,7 +886,7 @@ export const ConversationList = forwardRef<
         scrollToPreviousUserMessage();
       },
       scrollToBottom: (behavior = 'smooth') => {
-        scrollToBottomAndClearSpacer(behavior);
+        conversationVirtualizer.scrollToBottom(behavior);
       },
       adjustScrollBy: (delta) => {
         if (Math.abs(delta) < 0.5) return;
@@ -912,93 +894,8 @@ export const ConversationList = forwardRef<
         if (!scrollElement) return;
         scrollElement.scrollTop += delta;
       },
-      getScrollElement: () => tanstackScrollRef.current,
-      scrollToEntryByPatchKey: (patchKey: string) => {
-        const targetIndex = conversationRows.findIndex(
-          (row) => row.entry.patchKey === patchKey
-        );
-        if (targetIndex < 0) return;
-
-        const scrollEl = tanstackScrollRef.current;
-        if (!scrollEl) return;
-
-        conversationVirtualizer.releaseBottomLock();
-        programmaticScrollDeadlineRef.current = performance.now() + 1000;
-
-        // Initial scroll via scrollToAbsoluteIndex which handles both
-        // virtualized and unvirtualized (tail) rows correctly.
-        scrollToAbsoluteIndex(targetIndex, 'start', 'auto');
-
-        // Correction loop: after the virtualizer lays out the target
-        // row, its actual size may differ from the estimate, so we
-        // iteratively adjust until the row is at the container top.
-        let attempts = 0;
-        const maxAttempts = 5;
-
-        const correctScroll = () => {
-          if (attempts >= maxAttempts) return;
-          attempts++;
-
-          programmaticScrollDeadlineRef.current = performance.now() + 500;
-
-          const node = scrollEl.querySelector<HTMLElement>(
-            `[data-row-index="${targetIndex}"]`
-          );
-          if (!node) {
-            requestAnimationFrame(correctScroll);
-            return;
-          }
-
-          const nodeRect = node.getBoundingClientRect();
-          const contRect = scrollEl.getBoundingClientRect();
-          const delta = nodeRect.top - contRect.top;
-
-          if (Math.abs(delta) < 2) return;
-
-          scrollEl.scrollTop += delta;
-          requestAnimationFrame(correctScroll);
-        };
-
-        requestAnimationFrame(correctScroll);
-      },
-      getVisibleUserMessagePatchKey: () => {
-        const scrollEl = tanstackScrollRef.current;
-        if (!scrollEl || conversationRows.length === 0) return null;
-
-        const containerTop = scrollEl.getBoundingClientRect().top;
-        const rowNodes = Array.from(
-          scrollEl.querySelectorAll<HTMLElement>('[data-row-index]')
-        );
-
-        let firstVisibleIndex = conversationRows.length - 1;
-
-        for (const node of rowNodes) {
-          const rect = node.getBoundingClientRect();
-          if (rect.bottom <= containerTop + 1) continue;
-          const indexAttr = node.dataset.rowIndex;
-          if (!indexAttr) continue;
-          const parsedIndex = Number.parseInt(indexAttr, 10);
-          if (!Number.isFinite(parsedIndex)) continue;
-          firstVisibleIndex = parsedIndex;
-          break;
-        }
-
-        // Find the nearest user message at or before the first visible index
-        for (let i = firstVisibleIndex; i >= 0; i--) {
-          if (conversationRows[i].isUserMessage) {
-            return conversationRows[i].entry.patchKey;
-          }
-        }
-        return null;
-      },
     }),
-    [
-      conversationRows,
-      conversationVirtualizer,
-      scrollToAbsoluteIndex,
-      scrollToBottomAndClearSpacer,
-      scrollToPreviousUserMessage,
-    ]
+    [conversationVirtualizer, scrollToPreviousUserMessage]
   );
 
   const showLoader = loading && conversationRows.length === 0;
@@ -1198,11 +1095,6 @@ export const ConversationList = forwardRef<
               </div>
             );
           })}
-
-          {/* Plan-reveal spacer: provides extra scroll room so plan-reveal
-              can align the plan entry to the top of the viewport. Height is set
-              imperatively in scrollToAbsoluteIndex and cleared on scrollToBottom. */}
-          <div ref={planRevealSpacerRef} style={{ height: 0 }} />
 
           {/* Footer placeholder */}
           <div className="pb-2">
