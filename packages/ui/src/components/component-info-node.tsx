@@ -11,7 +11,7 @@ import {
   type GeneratedDecoratorNode,
 } from './create-decorator-node';
 
-import type { JSX } from "react";
+import type { JSX } from 'react';
 
 /**
  * Data model for a detected UI component.
