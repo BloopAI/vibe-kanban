@@ -20,8 +20,9 @@ const AutoExpandingTextarea = React.forwardRef<
     const textareaRef = ref || internalRef;
 
     const adjustHeight = React.useCallback(() => {
-      const textarea = (textareaRef as React.RefObject<HTMLTextAreaElement | null>)
-        .current;
+      const textarea = (
+        textareaRef as React.RefObject<HTMLTextAreaElement | null>
+      ).current;
       if (!textarea) return;
 
       // Reset height to auto to get the natural height
