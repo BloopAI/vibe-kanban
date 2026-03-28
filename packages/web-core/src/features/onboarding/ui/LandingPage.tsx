@@ -23,6 +23,7 @@ import {
 } from '@phosphor-icons/react';
 import type { IconProps } from '@phosphor-icons/react';
 import { usePostHog } from 'posthog-js/react';
+import { useTranslation } from 'react-i18next';
 import { siDiscord } from 'simple-icons';
 import {
   BaseCodingAgent,
@@ -147,6 +148,7 @@ function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
 }
 
 export function LandingPage() {
+  const { t } = useTranslation('common');
   const appNavigation = useAppNavigation();
   const { theme } = useTheme();
   const { config, profiles, updateAndSaveConfig, loading } = useUserSystem();
@@ -380,7 +382,9 @@ export function LandingPage() {
           <div className="grid grid-cols-3 gap-double">
             {/* Column 1: Coding Agent */}
             <section className="space-y-half">
-              <h2 className="text-sm font-medium text-high">Coding Agent</h2>
+              <h2 className="text-sm font-medium text-high">
+                {t('onboardingLanding.codingAgent')}
+              </h2>
               <div className="grid gap-1.5">
                 {executorOptions.map((agent) => {
                   const selected = selectedAgent === agent;
@@ -418,7 +422,9 @@ export function LandingPage() {
 
             {/* Column 2: Code Editor */}
             <section className="space-y-half">
-              <h2 className="text-sm font-medium text-high">Code Editor</h2>
+              <h2 className="text-sm font-medium text-high">
+                {t('onboardingLanding.codeEditor')}
+              </h2>
               <div className="grid gap-1.5">
                 {editorOptions.map((editor) => {
                   const selected = editorType === editor;
@@ -456,13 +462,13 @@ export function LandingPage() {
               {editorType === EditorType.CUSTOM && (
                 <div className="space-y-half">
                   <label className="text-sm font-medium text-normal">
-                    Custom Command
+                    {t('onboardingLanding.customCommand')}
                   </label>
                   <input
                     type="text"
                     value={customCommand}
                     onChange={(e) => setCustomCommand(e.target.value)}
-                    placeholder="e.g. code --wait"
+                    placeholder={t('onboardingLanding.customCommandPlaceholder')}
                     className={cn(
                       'w-full bg-panel border rounded-sm px-base py-half text-sm text-high',
                       'placeholder:text-low placeholder:opacity-80 focus:outline-none',
@@ -478,9 +484,9 @@ export function LandingPage() {
 
             {/* Column 3: Notification Sound */}
             <section className="space-y-half">
-              <h2 className="text-sm font-medium text-high">
-                Notification Sound
-              </h2>
+                <h2 className="text-sm font-medium text-high">
+                  {t('onboardingLanding.notificationSound')}
+                </h2>
               <div className="grid gap-1.5">
                 {SOUND_OPTIONS.map((option) => {
                   const Icon = option.icon;
@@ -534,7 +540,9 @@ export function LandingPage() {
                     )}
                     weight={!soundEnabled ? 'fill' : 'bold'}
                   />
-                  <span className="text-sm text-normal flex-1">No sound</span>
+                  <span className="text-sm text-normal flex-1">
+                    {t('onboardingLanding.noSound')}
+                  </span>
                   {!soundEnabled && (
                     <CheckIcon
                       className="size-icon-xs text-brand shrink-0"

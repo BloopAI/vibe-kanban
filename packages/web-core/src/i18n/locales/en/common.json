@@ -109,6 +109,14 @@
     "yes": "Yes",
     "no": "No"
   },
+  "onboardingLanding": {
+    "codingAgent": "Coding Agent",
+    "codeEditor": "Code Editor",
+    "customCommand": "Custom Command",
+    "customCommandPlaceholder": "e.g. code --wait",
+    "notificationSound": "Notification Sound",
+    "noSound": "No sound"
+  },
   "toolbar": {
     "sortBy": "Sort by",
     "groupBy": "Group by"
