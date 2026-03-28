@@ -115,7 +115,31 @@
     "customCommand": "Custom Command",
     "customCommandPlaceholder": "e.g. code --wait",
     "notificationSound": "Notification Sound",
-    "noSound": "No sound"
+    "noSound": "No sound",
+    "actions": {
+      "saving": "Saving...",
+      "continue": "Continue"
+    },
+    "safetyNotice": {
+      "beforeFlags": "Vibe Kanban runs AI coding agents with",
+      "afterFlags": "by default. Always review what agents are doing.",
+      "learnMore": "Learn more"
+    },
+    "footer": {
+      "beforeTerms": "By continuing you agree to the",
+      "termsAndConditions": "terms and conditions",
+      "and": "and",
+      "privacyPolicy": "privacy policy"
+    },
+    "soundOptions": {
+      "abstract1": "Abstract Sound 1",
+      "abstract2": "Abstract Sound 2",
+      "abstract3": "Abstract Sound 3",
+      "abstract4": "Abstract Sound 4",
+      "cowMooing": "Cow Mooing",
+      "phoneVibration": "Phone Vibration",
+      "rooster": "Rooster"
+    }
   },
   "toolbar": {
     "sortBy": "Sort by",

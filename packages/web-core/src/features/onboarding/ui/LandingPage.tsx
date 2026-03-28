@@ -44,44 +44,44 @@ import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 
 type SoundOption = {
   value: SoundFile;
-  label: string;
+  labelKey: string;
   icon: Icon;
 };
 
 const SOUND_OPTIONS: SoundOption[] = [
   {
     value: SoundFile.ABSTRACT_SOUND1,
-    label: 'Abstract Sound 1',
+    labelKey: 'onboardingLanding.soundOptions.abstract1',
     icon: WaveformIcon,
   },
   {
     value: SoundFile.ABSTRACT_SOUND2,
-    label: 'Abstract Sound 2',
+    labelKey: 'onboardingLanding.soundOptions.abstract2',
     icon: MusicNoteIcon,
   },
   {
     value: SoundFile.ABSTRACT_SOUND3,
-    label: 'Abstract Sound 3',
+    labelKey: 'onboardingLanding.soundOptions.abstract3',
     icon: MusicNotesIcon,
   },
   {
     value: SoundFile.ABSTRACT_SOUND4,
-    label: 'Abstract Sound 4',
+    labelKey: 'onboardingLanding.soundOptions.abstract4',
     icon: SpeakerHighIcon,
   },
   {
     value: SoundFile.COW_MOOING,
-    label: 'Cow Mooing',
+    labelKey: 'onboardingLanding.soundOptions.cowMooing',
     icon: CowIcon,
   },
   {
     value: SoundFile.PHONE_VIBRATION,
-    label: 'Phone Vibration',
+    labelKey: 'onboardingLanding.soundOptions.phoneVibration',
     icon: DeviceMobileIcon,
   },
   {
     value: SoundFile.ROOSTER,
-    label: 'Rooster',
+    labelKey: 'onboardingLanding.soundOptions.rooster',
     icon: BirdIcon,
   },
 ];
@@ -318,7 +318,7 @@ export function LandingPage() {
   if (loading || !config || !initialized) {
     return (
       <div className="h-screen bg-primary flex items-center justify-center">
-        <p className="text-low">Loading...</p>
+        <p className="text-low">{t('states.loading')}</p>
       </div>
     );
   }
@@ -359,17 +359,17 @@ export function LandingPage() {
                 weight="fill"
               />
               <p className="text-sm text-normal">
-                Vibe Kanban runs AI coding agents with{' '}
+                {t('onboardingLanding.safetyNotice.beforeFlags')}{' '}
                 <code>--dangerously-skip-permissions</code> /{' '}
-                <code>--yolo</code> by default. Always review what agents are
-                doing.{' '}
+                <code>--yolo</code>{' '}
+                {t('onboardingLanding.safetyNotice.afterFlags')}{' '}
                 <a
                   href="https://www.vibekanban.com/docs/getting-started#safety-notice"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-brand hover:underline"
                 >
-                  Learn more
+                  {t('onboardingLanding.safetyNotice.learnMore')}
                 </a>
                 .
               </p>
@@ -512,7 +512,7 @@ export function LandingPage() {
                         weight={selected ? 'fill' : 'bold'}
                       />
                       <span className="text-sm text-normal flex-1 truncate">
-                        {option.label}
+                        {t(option.labelKey)}
                       </span>
                       {selected && (
                         <CheckIcon
@@ -558,28 +558,32 @@ export function LandingPage() {
         {/* Footer */}
         <div className="shrink-0 border-t border-border p-double pt-base flex items-center justify-between gap-base">
           <p className="text-xs text-low">
-            By continuing you agree to the{' '}
+            {t('onboardingLanding.footer.beforeTerms')}{' '}
             <a
               href="https://www.vibekanban.com/terms"
               target="_blank"
               rel="noopener noreferrer"
               className="text-brand hover:underline"
             >
-              terms and conditions
+              {t('onboardingLanding.footer.termsAndConditions')}
             </a>{' '}
-            and{' '}
+            {t('onboardingLanding.footer.and')}{' '}
             <a
               href="https://www.vibekanban.com/privacy"
               target="_blank"
               rel="noopener noreferrer"
               className="text-brand hover:underline"
             >
-              privacy policy
+              {t('onboardingLanding.footer.privacyPolicy')}
             </a>
             .
           </p>
           <PrimaryButton
-            value={saving ? 'Saving...' : 'Continue'}
+            value={
+              saving
+                ? t('onboardingLanding.actions.saving')
+                : t('onboardingLanding.actions.continue')
+            }
             onClick={handleContinue}
             disabled={!canContinue}
           />

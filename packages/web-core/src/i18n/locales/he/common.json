@@ -115,7 +115,31 @@
     "customCommand": "פקודה מותאמת אישית",
     "customCommandPlaceholder": "לדוגמה: code --wait",
     "notificationSound": "צליל התראה",
-    "noSound": "ללא צליל"
+    "noSound": "ללא צליל",
+    "actions": {
+      "saving": "שומר...",
+      "continue": "המשך"
+    },
+    "safetyNotice": {
+      "beforeFlags": "Vibe Kanban מריץ סוכני קוד מבוססי AI עם",
+      "afterFlags": "כברירת מחדל. תמיד עברו על מה שהסוכנים עושים.",
+      "learnMore": "למידע נוסף"
+    },
+    "footer": {
+      "beforeTerms": "בהמשך השימוש אתם מסכימים ל",
+      "termsAndConditions": "תנאים והגבלות",
+      "and": "ו",
+      "privacyPolicy": "מדיניות פרטיות"
+    },
+    "soundOptions": {
+      "abstract1": "צליל מופשט 1",
+      "abstract2": "צליל מופשט 2",
+      "abstract3": "צליל מופשט 3",
+      "abstract4": "צליל מופשט 4",
+      "cowMooing": "געיית פרה",
+      "phoneVibration": "רטט טלפון",
+      "rooster": "קריאת תרנגול"
+    }
   },
   "toolbar": {
     "sortBy": "מיין לפי",
