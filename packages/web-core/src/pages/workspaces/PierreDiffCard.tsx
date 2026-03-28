@@ -28,7 +28,10 @@ import {
   useIgnoreWhitespaceDiff,
 } from '@/shared/stores/useDiffViewStore';
 import { useReview, type ReviewDraft } from '@/shared/hooks/useReview';
-import { useWorkspaceDiffContext } from '@/shared/hooks/useWorkspaceContext';
+import {
+  useShowGitHubComments,
+  useGetGitHubCommentsForFile,
+} from '@/shared/stores/useWorkspaceDiffStore';
 import { isRealMobileDevice } from '@/shared/hooks/useIsMobile';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { OpenInIdeButton } from '@/shared/components/OpenInIdeButton';
@@ -233,8 +236,8 @@ export function PierreDiffCard({
   const ignoreWhitespace = useIgnoreWhitespaceDiff();
 
   const { comments, drafts, setDraft, addComment } = useReview();
-  const { showGitHubComments, getGitHubCommentsForFile } =
-    useWorkspaceDiffContext();
+  const showGitHubComments = useShowGitHubComments();
+  const getGitHubCommentsForFile = useGetGitHubCommentsForFile();
 
   // File path logic
   const filePath = diff.newPath || diff.oldPath || 'unknown';

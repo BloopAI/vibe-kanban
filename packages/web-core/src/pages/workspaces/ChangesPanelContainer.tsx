@@ -7,9 +7,9 @@ import {
 } from '@vibe/ui/components/ChangesPanel';
 import { sortDiffs } from '@/shared/lib/fileTreeUtils';
 import { useChangesView } from '@/shared/hooks/useChangesView';
-import { useWorkspaceDiffContext } from '@/shared/hooks/useWorkspaceContext';
 import { useScrollSyncStateMachine } from '@/shared/hooks/useScrollSyncStateMachine';
 import { usePersistedExpanded } from '@/shared/stores/useUiPreferencesStore';
+import { useDiffs } from '@/shared/stores/useWorkspaceDiffStore';
 import { PierreDiffCard } from './PierreDiffCard';
 import type { Diff, DiffChangeKind } from 'shared/types';
 import { usePanelFindShortcut } from '@/shared/hooks/usePanelFindShortcut';
@@ -114,7 +114,7 @@ export function ChangesPanelContainer({
   className,
   workspaceId,
 }: ChangesPanelContainerProps) {
-  const { diffs } = useWorkspaceDiffContext();
+  const diffs = useDiffs();
   const {
     selectedFilePath,
     selectedLineNumber,
