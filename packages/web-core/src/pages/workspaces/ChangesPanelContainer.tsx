@@ -9,10 +9,8 @@ import { sortDiffs } from '@/shared/lib/fileTreeUtils';
 import { useChangesView } from '@/shared/hooks/useChangesView';
 import { useScrollSyncStateMachine } from '@/shared/hooks/useScrollSyncStateMachine';
 import { usePersistedExpanded } from '@/shared/stores/useUiPreferencesStore';
-import {
-  useDiffs,
-  useFileInViewStore,
-} from '@/shared/stores/useWorkspaceDiffStore';
+import { useDiffs } from '@/shared/stores/useWorkspaceDiffStore';
+import { useFileInViewStore } from '@/shared/stores/useFileInViewStore';
 import { PierreDiffCard } from './PierreDiffCard';
 import type { Diff, DiffChangeKind } from 'shared/types';
 import { usePanelFindShortcut } from '@/shared/hooks/usePanelFindShortcut';
