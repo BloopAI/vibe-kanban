@@ -100,7 +100,7 @@ export function SearchableTagDropdown({
       >
         {isCreating ? (
           // Color picker step
-          (<div
+          <div
             ref={colorPickerRef}
             className="p-base space-y-base outline-none"
             tabIndex={-1}
@@ -134,10 +134,10 @@ export function SearchableTagDropdown({
                 {t('buttons.create')}
               </button>
             </div>
-          </div>)
+          </div>
         ) : (
           // Search and tag list
-          (<>
+          <>
             <DropdownMenuSearchInput
               placeholder={t('kanban.searchTags')}
               value={searchTerm}
@@ -210,7 +210,7 @@ export function SearchableTagDropdown({
                 )}
               </>
             )}
-          </>)
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
