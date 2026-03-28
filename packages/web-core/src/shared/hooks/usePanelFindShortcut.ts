@@ -49,6 +49,14 @@ export function usePanelFindShortcut({
     );
   }, [otherPanel]);
 
+  const isOtherPanelAvailable = useCallback((): boolean => {
+    const otherPanelEl = document.querySelector<HTMLElement>(
+      `[data-vk-search-panel="${otherPanel}"]`
+    );
+    if (!otherPanelEl) return false;
+    return otherPanelEl.getClientRects().length > 0;
+  }, [otherPanel]);
+
   const tryOpenOtherPanelSearch = useCallback((): boolean => {
     const otherPanelEl = document.querySelector<HTMLElement>(
       `[data-vk-search-panel="${otherPanel}"]`
@@ -117,6 +125,21 @@ export function usePanelFindShortcut({
       }
 
       if (showSearch) {
+        const hasOtherPanel = isOtherPanelAvailable();
+
+        if (!hasOtherPanel) {
+          if (isDesktopApp) {
+            event.preventDefault();
+            focusSearchInput();
+            return;
+          }
+
+          // Browser mode: alternate panel search <-> browser find
+          closeSearchState();
+          panelRef.current?.focus({ preventScroll: true });
+          return;
+        }
+
         if (openedFromPanelRef.current === otherPanel) {
           if (isDesktopApp) {
             event.preventDefault();
@@ -160,6 +183,7 @@ export function usePanelFindShortcut({
     closeOtherPanelSearchIfOpen,
     closeSearchState,
     focusSearchInput,
+    isOtherPanelAvailable,
     otherPanel,
     panelRef,
     isDesktopApp,
