@@ -538,18 +538,33 @@ export const ConversationList = forwardRef<
       );
 
       if (targetNode) {
+        const scrollRect = scrollEl.getBoundingClientRect();
+        const chatBoxContainer = panelRef.current
+          ?.closest('main')
+          ?.querySelector<HTMLElement>('[data-chatbox-container="true"]');
+        const obscuredBottomHeight = chatBoxContainer
+          ? Math.max(
+              0,
+              Math.min(
+                scrollEl.clientHeight,
+                scrollRect.bottom - chatBoxContainer.getBoundingClientRect().top
+              )
+            )
+          : 0;
+        const visibleHeight = Math.max(
+          1,
+          scrollEl.clientHeight - obscuredBottomHeight
+        );
+
         let top = targetNode.offsetTop;
 
         if (align === 'center') {
           top =
             targetNode.offsetTop -
-            scrollEl.clientHeight / 2 +
+            visibleHeight / 2 +
             targetNode.offsetHeight / 2;
         } else if (align === 'end') {
-          top =
-            targetNode.offsetTop -
-            scrollEl.clientHeight +
-            targetNode.offsetHeight;
+          top = targetNode.offsetTop - visibleHeight + targetNode.offsetHeight;
         }
 
         const requestedTop = Math.max(0, top);
