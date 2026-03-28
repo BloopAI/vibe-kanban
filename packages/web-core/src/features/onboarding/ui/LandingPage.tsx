@@ -484,9 +484,9 @@ export function LandingPage() {
 
             {/* Column 3: Notification Sound */}
             <section className="space-y-half">
-                <h2 className="text-sm font-medium text-high">
-                  {t('onboardingLanding.notificationSound')}
-                </h2>
+              <h2 className="text-sm font-medium text-high">
+                {t('onboardingLanding.notificationSound')}
+              </h2>
               <div className="grid gap-1.5">
                 {SOUND_OPTIONS.map((option) => {
                   const Icon = option.icon;
