@@ -367,10 +367,32 @@ impl LocalAuthConfig {
 }
 
 #[derive(Debug, Clone)]
+pub struct EntraIdOAuthProviderConfig {
+    client_id: String,
+    client_secret: SecretString,
+    tenant_id: String,
+}
+
+impl EntraIdOAuthProviderConfig {
+    pub fn client_id(&self) -> &str {
+        &self.client_id
+    }
+
+    pub fn client_secret(&self) -> &SecretString {
+        &self.client_secret
+    }
+
+    pub fn tenant_id(&self) -> &str {
+        &self.tenant_id
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct AuthConfig {
     github: Option<OAuthProviderConfig>,
     google: Option<OAuthProviderConfig>,
     local: Option<LocalAuthConfig>,
+    entra_id: Option<EntraIdOAuthProviderConfig>,
     jwt_secret: SecretString,
     public_base_url: String,
 }
@@ -408,7 +430,22 @@ impl AuthConfig {
 
         let local = LocalAuthConfig::from_env()?;
 
-        if github.is_none() && google.is_none() && local.is_none() {
+        let entra_id = match env::var("ENTRA_ID_OAUTH_CLIENT_ID") {
+            Ok(client_id) if !client_id.is_empty() => {
+                let client_secret = env::var("ENTRA_ID_OAUTH_CLIENT_SECRET")
+                    .map_err(|_| ConfigError::MissingVar("ENTRA_ID_OAUTH_CLIENT_SECRET"))?;
+                let tenant_id = env::var("ENTRA_ID_TENANT_ID")
+                    .unwrap_or_else(|_| "common".to_string());
+                Some(EntraIdOAuthProviderConfig {
+                    client_id,
+                    client_secret: SecretString::new(client_secret.into()),
+                    tenant_id,
+                })
+            }
+            _ => None,
+        };
+
+        if github.is_none() && google.is_none() && local.is_none() && entra_id.is_none() {
             return Err(ConfigError::NoOAuthProviders);
         }
 
@@ -419,6 +456,7 @@ impl AuthConfig {
             github,
             google,
             local,
+            entra_id,
             jwt_secret,
             public_base_url,
         })
@@ -434,6 +472,10 @@ impl AuthConfig {
 
     pub fn local(&self) -> Option<&LocalAuthConfig> {
         self.local.as_ref()
+    }
+
+    pub fn entra_id(&self) -> Option<&EntraIdOAuthProviderConfig> {
+        self.entra_id.as_ref()
     }
 
     pub fn jwt_secret(&self) -> &SecretString {
