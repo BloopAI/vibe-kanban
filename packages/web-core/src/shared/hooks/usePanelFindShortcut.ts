@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
+import { isTauriApp } from '@/shared/lib/platform';
 
 export const PANEL_FIND_EVENT = 'vk-open-panel-find';
 
@@ -30,6 +31,7 @@ export function usePanelFindShortcut({
   closeSearchState,
 }: UsePanelFindShortcutParams): void {
   const openedFromPanelRef = useRef<PanelKind | null>(null);
+  const isDesktopApp = isTauriApp();
 
   const closeOtherPanelSearchIfOpen = useCallback(() => {
     const otherPanelEl = document.querySelector<HTMLElement>(
@@ -116,8 +118,21 @@ export function usePanelFindShortcut({
 
       if (showSearch) {
         if (openedFromPanelRef.current === otherPanel) {
+          if (isDesktopApp) {
+            event.preventDefault();
+            openedFromPanelRef.current = null;
+            const openedOther = tryOpenOtherPanelSearch();
+            if (!openedOther) {
+              closeSearchState();
+              setShowSearch(true);
+              focusSearchInput();
+            }
+            return;
+          }
+
           openedFromPanelRef.current = null;
           closeSearchState();
+          panelRef.current?.focus({ preventScroll: true });
           return;
         }
 
@@ -147,6 +162,7 @@ export function usePanelFindShortcut({
     focusSearchInput,
     otherPanel,
     panelRef,
+    isDesktopApp,
     setShowSearch,
     showSearch,
     tryOpenOtherPanelSearch,
