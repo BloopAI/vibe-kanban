@@ -23,6 +23,7 @@ import {
 } from '@phosphor-icons/react';
 import type { IconProps } from '@phosphor-icons/react';
 import { usePostHog } from 'posthog-js/react';
+import { useTranslation } from 'react-i18next';
 import { siDiscord } from 'simple-icons';
 import {
   BaseCodingAgent,
@@ -43,44 +44,44 @@ import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 
 type SoundOption = {
   value: SoundFile;
-  label: string;
+  labelKey: string;
   icon: Icon;
 };
 
 const SOUND_OPTIONS: SoundOption[] = [
   {
     value: SoundFile.ABSTRACT_SOUND1,
-    label: 'Abstract Sound 1',
+    labelKey: 'onboardingLanding.soundOptions.abstract1',
     icon: WaveformIcon,
   },
   {
     value: SoundFile.ABSTRACT_SOUND2,
-    label: 'Abstract Sound 2',
+    labelKey: 'onboardingLanding.soundOptions.abstract2',
     icon: MusicNoteIcon,
   },
   {
     value: SoundFile.ABSTRACT_SOUND3,
-    label: 'Abstract Sound 3',
+    labelKey: 'onboardingLanding.soundOptions.abstract3',
     icon: MusicNotesIcon,
   },
   {
     value: SoundFile.ABSTRACT_SOUND4,
-    label: 'Abstract Sound 4',
+    labelKey: 'onboardingLanding.soundOptions.abstract4',
     icon: SpeakerHighIcon,
   },
   {
     value: SoundFile.COW_MOOING,
-    label: 'Cow Mooing',
+    labelKey: 'onboardingLanding.soundOptions.cowMooing',
     icon: CowIcon,
   },
   {
     value: SoundFile.PHONE_VIBRATION,
-    label: 'Phone Vibration',
+    labelKey: 'onboardingLanding.soundOptions.phoneVibration',
     icon: DeviceMobileIcon,
   },
   {
     value: SoundFile.ROOSTER,
-    label: 'Rooster',
+    labelKey: 'onboardingLanding.soundOptions.rooster',
     icon: BirdIcon,
   },
 ];
@@ -147,6 +148,7 @@ function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
 }
 
 export function LandingPage() {
+  const { t } = useTranslation('common');
   const appNavigation = useAppNavigation();
   const { theme } = useTheme();
   const { config, profiles, updateAndSaveConfig, loading } = useUserSystem();
@@ -316,7 +318,7 @@ export function LandingPage() {
   if (loading || !config || !initialized) {
     return (
       <div className="h-screen bg-primary flex items-center justify-center">
-        <p className="text-low">Loading...</p>
+        <p className="text-low">{t('states.loading')}</p>
       </div>
     );
   }
@@ -357,17 +359,17 @@ export function LandingPage() {
                 weight="fill"
               />
               <p className="text-sm text-normal">
-                Vibe Kanban runs AI coding agents with{' '}
+                {t('onboardingLanding.safetyNotice.beforeFlags')}{' '}
                 <code>--dangerously-skip-permissions</code> /{' '}
-                <code>--yolo</code> by default. Always review what agents are
-                doing.{' '}
+                <code>--yolo</code>{' '}
+                {t('onboardingLanding.safetyNotice.afterFlags')}{' '}
                 <a
                   href="https://www.vibekanban.com/docs/getting-started#safety-notice"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-brand hover:underline"
                 >
-                  Learn more
+                  {t('onboardingLanding.safetyNotice.learnMore')}
                 </a>
                 .
               </p>
@@ -380,7 +382,9 @@ export function LandingPage() {
           <div className="grid grid-cols-3 gap-double">
             {/* Column 1: Coding Agent */}
             <section className="space-y-half">
-              <h2 className="text-sm font-medium text-high">Coding Agent</h2>
+              <h2 className="text-sm font-medium text-high">
+                {t('onboardingLanding.codingAgent')}
+              </h2>
               <div className="grid gap-1.5">
                 {executorOptions.map((agent) => {
                   const selected = selectedAgent === agent;
@@ -418,7 +422,9 @@ export function LandingPage() {
 
             {/* Column 2: Code Editor */}
             <section className="space-y-half">
-              <h2 className="text-sm font-medium text-high">Code Editor</h2>
+              <h2 className="text-sm font-medium text-high">
+                {t('onboardingLanding.codeEditor')}
+              </h2>
               <div className="grid gap-1.5">
                 {editorOptions.map((editor) => {
                   const selected = editorType === editor;
@@ -456,13 +462,13 @@ export function LandingPage() {
               {editorType === EditorType.CUSTOM && (
                 <div className="space-y-half">
                   <label className="text-sm font-medium text-normal">
-                    Custom Command
+                    {t('onboardingLanding.customCommand')}
                   </label>
                   <input
                     type="text"
                     value={customCommand}
                     onChange={(e) => setCustomCommand(e.target.value)}
-                    placeholder="e.g. code --wait"
+                    placeholder={t('onboardingLanding.customCommandPlaceholder')}
                     className={cn(
                       'w-full bg-panel border rounded-sm px-base py-half text-sm text-high',
                       'placeholder:text-low placeholder:opacity-80 focus:outline-none',
@@ -479,7 +485,7 @@ export function LandingPage() {
             {/* Column 3: Notification Sound */}
             <section className="space-y-half">
               <h2 className="text-sm font-medium text-high">
-                Notification Sound
+                {t('onboardingLanding.notificationSound')}
               </h2>
               <div className="grid gap-1.5">
                 {SOUND_OPTIONS.map((option) => {
@@ -506,7 +512,7 @@ export function LandingPage() {
                         weight={selected ? 'fill' : 'bold'}
                       />
                       <span className="text-sm text-normal flex-1 truncate">
-                        {option.label}
+                        {t(option.labelKey)}
                       </span>
                       {selected && (
                         <CheckIcon
@@ -534,7 +540,9 @@ export function LandingPage() {
                     )}
                     weight={!soundEnabled ? 'fill' : 'bold'}
                   />
-                  <span className="text-sm text-normal flex-1">No sound</span>
+                  <span className="text-sm text-normal flex-1">
+                    {t('onboardingLanding.noSound')}
+                  </span>
                   {!soundEnabled && (
                     <CheckIcon
                       className="size-icon-xs text-brand shrink-0"
@@ -550,28 +558,32 @@ export function LandingPage() {
         {/* Footer */}
         <div className="shrink-0 border-t border-border p-double pt-base flex items-center justify-between gap-base">
           <p className="text-xs text-low">
-            By continuing you agree to the{' '}
+            {t('onboardingLanding.footer.beforeTerms')}{' '}
             <a
               href="https://www.vibekanban.com/terms"
               target="_blank"
               rel="noopener noreferrer"
               className="text-brand hover:underline"
             >
-              terms and conditions
+              {t('onboardingLanding.footer.termsAndConditions')}
             </a>{' '}
-            and{' '}
+            {t('onboardingLanding.footer.and')}{' '}
             <a
               href="https://www.vibekanban.com/privacy"
               target="_blank"
               rel="noopener noreferrer"
               className="text-brand hover:underline"
             >
-              privacy policy
+              {t('onboardingLanding.footer.privacyPolicy')}
             </a>
             .
           </p>
           <PrimaryButton
-            value={saving ? 'Saving...' : 'Continue'}
+            value={
+              saving
+                ? t('onboardingLanding.actions.saving')
+                : t('onboardingLanding.actions.continue')
+            }
             onClick={handleContinue}
             disabled={!canContinue}
           />
