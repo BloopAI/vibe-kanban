@@ -578,6 +578,10 @@ export const ConversationList = forwardRef<
     },
     [conversationRows.length, conversationVirtualizer, virtualizedRows.length]
   );
+  const scrollToAbsoluteIndexRef = useRef(scrollToAbsoluteIndex);
+  useEffect(() => {
+    scrollToAbsoluteIndexRef.current = scrollToAbsoluteIndex;
+  }, [scrollToAbsoluteIndex]);
 
   const scrollToBottomAndClearSpacer = useCallback(
     (behavior?: 'auto' | 'smooth') => {
@@ -660,13 +664,8 @@ export const ConversationList = forwardRef<
   useEffect(() => {
     if (hasActiveStreamingTurn) return;
     if (currentMatchRowIndex === null) return;
-    scrollToAbsoluteIndex(currentMatchRowIndex, 'center', 'smooth');
-  }, [
-    currentMatchRowIndex,
-    hasActiveStreamingTurn,
-    scrollToAbsoluteIndex,
-    searchQuery,
-  ]);
+    scrollToAbsoluteIndexRef.current(currentMatchRowIndex, 'center', 'smooth');
+  }, [currentMatchRowIndex, hasActiveStreamingTurn, searchQuery]);
 
   const handleNextMatch = useCallback(() => {
     if (matchRowIndices.length === 0) return;
