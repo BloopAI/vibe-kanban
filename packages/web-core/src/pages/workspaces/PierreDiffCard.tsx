@@ -504,11 +504,18 @@ export function PierreDiffCard({
     if (!root) return;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let rafId: number | null = null;
-    let applyingDepth = 0;
+    const shouldObserve =
+      searchQuery.trim().length >= 1 && expanded && !shouldShowPlaceholder;
+    let observer: MutationObserver | null = null;
+    const disconnectObserver = () => {
+      if (observer) {
+        observer.disconnect();
+      }
+    };
 
     const applyHighlights = () => {
       if (!cardRef.current) return;
-      applyingDepth += 1;
+      disconnectObserver();
       clearSearchTextHighlightsWithKey(cardRef.current, highlightKey);
       const query = searchQuery.trim();
       let count = 0;
@@ -519,9 +526,12 @@ export function PierreDiffCard({
         });
       }
       onVisibleMatchCountChange?.(count);
-      queueMicrotask(() => {
-        applyingDepth = Math.max(0, applyingDepth - 1);
-      });
+      if (shouldObserve && observer) {
+        observer.observe(root, {
+          childList: true,
+          subtree: true,
+        });
+      }
     };
 
     const scheduleApply = () => {
@@ -534,19 +544,14 @@ export function PierreDiffCard({
 
     applyHighlights();
 
-    const query = searchQuery.trim();
-    if (query.length >= 1 && expanded && !shouldShowPlaceholder) {
-      const observer = new MutationObserver(() => {
-        if (applyingDepth > 0) return;
+    if (shouldObserve) {
+      const createdObserver = new MutationObserver(() => {
         scheduleApply();
       });
-      observer.observe(root, {
-        childList: true,
-        subtree: true,
-      });
+      observer = createdObserver;
 
       return () => {
-        observer.disconnect();
+        createdObserver.disconnect();
         if (timeoutId) clearTimeout(timeoutId);
         if (rafId) cancelAnimationFrame(rafId);
         clearSearchTextHighlightsWithKey(root, highlightKey);
@@ -555,6 +560,7 @@ export function PierreDiffCard({
     }
 
     return () => {
+      disconnectObserver();
       if (timeoutId) clearTimeout(timeoutId);
       if (rafId) cancelAnimationFrame(rafId);
       clearSearchTextHighlightsWithKey(root, highlightKey);

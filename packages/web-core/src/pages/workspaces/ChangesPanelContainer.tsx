@@ -121,7 +121,6 @@ export function ChangesPanelContainer({
   const setFileInView = useFileInViewStore((s) => s.setFileInView);
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const changesPanelRef = useRef<ChangesPanelHandle>(null);
-  const scrollContainerRef = useRef<HTMLElement | null>(null);
   const [processedPaths] = useState(() => new Set<string>());
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -351,10 +350,6 @@ export function ChangesPanelContainer({
     []
   );
 
-  const handleScrollerRef = useCallback((el: HTMLElement | Window | null) => {
-    scrollContainerRef.current = el instanceof HTMLElement ? el : null;
-  }, []);
-
   const renderDiffItem = useCallback(
     ({
       index,
@@ -475,7 +470,6 @@ export function ChangesPanelContainer({
         className={className}
         diffItems={diffItems}
         onDiffRef={handleDiffRef}
-        onScrollerRef={handleScrollerRef}
         onRangeChanged={handleRangeChanged}
         renderDiffItem={renderDiffItem}
         workspaceId={workspaceId}
