@@ -12,6 +12,7 @@ pub mod requests;
 pub mod scratch;
 pub mod external_session;
 pub mod session;
+pub mod webhook;
 pub mod tag;
 pub mod task;
 pub mod workspace;
