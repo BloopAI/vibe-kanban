@@ -15,8 +15,7 @@ use tokio::{
 use workspace_utils::command_ext::GroupSpawnNoWindowExt;
 
 use super::{
-    ClaudeCode, ClaudeJson, ClaudePlugin, base_command, ensure_npx_delimiter,
-    normalize_npx_base_command,
+    ClaudeCode, ClaudeJson, ClaudePlugin, base_command, normalize_npx_base_command,
 };
 use crate::{
     command::{CommandBuildError, CommandBuilder, apply_overrides},
@@ -197,10 +196,9 @@ impl ClaudeCode {
     async fn build_slash_commands_discovery_command_builder(
         &self,
     ) -> Result<CommandBuilder, CommandBuildError> {
-        let mut builder = CommandBuilder::new(ensure_npx_delimiter(base_command(
-            self.claude_code_router.unwrap_or(false),
-        )))
-        .params(["-p"]);
+        let mut builder =
+            CommandBuilder::new(base_command(self.claude_code_router.unwrap_or(false)))
+                .params(["-p"]);
 
         builder = builder.extend_params([
             "--verbose",

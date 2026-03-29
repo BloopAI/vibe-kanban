@@ -176,10 +176,9 @@ impl ClaudeCode {
             );
         }
 
-        let mut builder = CommandBuilder::new(ensure_npx_delimiter(base_command(
-            self.claude_code_router.unwrap_or(false),
-        )))
-        .params(["-p"]);
+        let mut builder =
+            CommandBuilder::new(base_command(self.claude_code_router.unwrap_or(false)))
+                .params(["-p"]);
 
         let plan = self.plan.unwrap_or(false);
         let approvals = self.approvals.unwrap_or(false);
