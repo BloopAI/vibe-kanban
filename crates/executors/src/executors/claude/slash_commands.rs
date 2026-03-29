@@ -14,7 +14,10 @@ use tokio::{
 };
 use workspace_utils::command_ext::GroupSpawnNoWindowExt;
 
-use super::{ClaudeCode, ClaudeJson, ClaudePlugin, base_command};
+use super::{
+    ClaudeCode, ClaudeJson, ClaudePlugin, base_command, ensure_npx_delimiter,
+    normalize_npx_base_command,
+};
 use crate::{
     command::{CommandBuildError, CommandBuilder, apply_overrides},
     env::{ExecutionEnv, RepoContext},
@@ -194,9 +197,10 @@ impl ClaudeCode {
     async fn build_slash_commands_discovery_command_builder(
         &self,
     ) -> Result<CommandBuilder, CommandBuildError> {
-        let mut builder =
-            CommandBuilder::new(base_command(self.claude_code_router.unwrap_or(false)))
-                .params(["-p"]);
+        let mut builder = CommandBuilder::new(ensure_npx_delimiter(base_command(
+            self.claude_code_router.unwrap_or(false),
+        )))
+        .params(["-p"]);
 
         builder = builder.extend_params([
             "--verbose",
@@ -207,7 +211,8 @@ impl ClaudeCode {
             "/",
         ]);
 
-        apply_overrides(builder, &self.cmd)
+        let builder = apply_overrides(builder, &self.cmd)?;
+        Ok(normalize_npx_base_command(builder))
     }
 
     async fn discover_available_command_and_plugins(
@@ -365,5 +370,42 @@ impl ClaudeCode {
         } else {
             raw.to_case(Case::Title)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::command::CmdOverrides;
+
+    use std::sync::Arc;
+
+    use super::super::{AppendPrompt, ExecutorApprovalService};
+    use super::*;
+
+    #[tokio::test]
+    async fn test_discovery_builder_normalizes_npx_override() {
+        let executor = ClaudeCode {
+            append_prompt: AppendPrompt::default(),
+            claude_code_router: Some(false),
+            plan: None,
+            approvals: None,
+            model: None,
+            effort: None,
+            agent: None,
+            dangerously_skip_permissions: None,
+            disable_api_key: None,
+            cmd: CmdOverrides {
+                base_command_override: Some("npx -y @anthropic-ai/claude-code@2.1.62".to_string()),
+                additional_params: None,
+                env: None,
+            },
+            approvals_service: None::<Arc<dyn ExecutorApprovalService>>,
+        };
+
+        let builder = executor
+            .build_slash_commands_discovery_command_builder()
+            .await
+            .unwrap();
+        assert_eq!(builder.base, "npx -y @anthropic-ai/claude-code@2.1.62 --");
     }
 }
