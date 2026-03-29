@@ -83,7 +83,13 @@
   },
   "diff": {
     "filesChanged_one": "{{count}} fichier modifié",
-    "filesChanged_other": "{{count}} fichiers modifiés"
+    "filesChanged_other": "{{count}} fichiers modifiés",
+    "largeDiff": {
+      "title": "Large diff",
+      "linesChanged": "{{count}} lines changed",
+      "loadAnyway": "Load anyway",
+      "warning": "Rendering this diff may impact performance."
+    }
   },
   "processes": {
     "noLogsAvailable": "Aucun log disponible",

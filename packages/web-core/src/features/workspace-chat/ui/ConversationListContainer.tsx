@@ -661,7 +661,7 @@ export const ConversationList = forwardRef<
     if (hasActiveStreamingTurn) return;
     if (currentMatchRowIndex === null) return;
     scrollToAbsoluteIndexRef.current(currentMatchRowIndex, 'center', 'smooth');
-  }, [currentMatchRowIndex, hasActiveStreamingTurn, searchQuery]);
+  }, [currentMatchRowIndex, searchQuery]);
 
   const handleNextMatch = useCallback(() => {
     if (matchRowIndices.length === 0) return;

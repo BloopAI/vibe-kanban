@@ -86,7 +86,13 @@
   },
   "diff": {
     "filesChanged_one": "{{count}} 个文件已更改",
-    "filesChanged_other": "{{count}} 个文件已更改"
+    "filesChanged_other": "{{count}} 个文件已更改",
+    "largeDiff": {
+      "title": "Large diff",
+      "linesChanged": "{{count}} lines changed",
+      "loadAnyway": "Load anyway",
+      "warning": "Rendering this diff may impact performance."
+    }
   },
   "processes": {
     "noLogsAvailable": "没有可用的日志",

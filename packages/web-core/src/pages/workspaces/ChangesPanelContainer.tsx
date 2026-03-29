@@ -87,6 +87,12 @@ const PersistedDiffItem = memo(function PersistedDiffItem({
     if (forceExpand) return;
     toggle();
   }, [forceExpand, toggle]);
+  const handleVisibleMatchCount = useCallback(
+    (count: number) => {
+      onVisibleMatchCountChange?.(index, count);
+    },
+    [index, onVisibleMatchCountChange]
+  );
 
   return (
     <PierreDiffCard
@@ -95,11 +101,7 @@ const PersistedDiffItem = memo(function PersistedDiffItem({
       onToggle={handleToggle}
       workspaceId={workspaceId}
       searchQuery={searchQuery}
-      onVisibleMatchCountChange={
-        onVisibleMatchCountChange
-          ? (count) => onVisibleMatchCountChange(index, count)
-          : undefined
-      }
+      onVisibleMatchCountChange={handleVisibleMatchCount}
       className={
         isMatched
           ? isCurrentMatch

@@ -109,7 +109,13 @@
   },
   "diff": {
     "filesChanged_one": "{{count}} file changed",
-    "filesChanged_other": "{{count}} files changed"
+    "filesChanged_other": "{{count}} files changed",
+    "largeDiff": {
+      "title": "Large diff",
+      "linesChanged": "{{count}} lines changed",
+      "loadAnyway": "Load anyway",
+      "warning": "Rendering this diff may impact performance."
+    }
   },
   "followUp": {
     "queuedMessage": "메시지가 대기열에 추가됨 - 현재 실행이 완료되면 실행됩니다"
