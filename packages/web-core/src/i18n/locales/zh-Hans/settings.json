@@ -79,6 +79,11 @@
           "placeholder": "例如：code、subl、vim",
           "helper": "输入启动自定义编辑器的命令。这将用于打开文件。"
         },
+        "codeServerUrl": {
+          "label": "Code Server URL",
+          "helper": "必填。code-server 实例的浏览器 URL。Vibe Kanban 将在新标签页中打开此 URL 并附加工作区文件夹路径。",
+          "placeholder": "https://code-server.example.com"
+        },
         "remoteSsh": {
           "host": {
             "label": "远程 SSH 主机（可选）",

@@ -79,6 +79,11 @@
           "placeholder": "예: code, subl, vim",
           "helper": "사용자 정의 에디터를 실행하는 명령을 입력하세요. 파일을 여는 데 사용됩니다."
         },
+        "codeServerUrl": {
+          "label": "Code Server URL",
+          "helper": "필수. code-server 인스턴스의 브라우저 URL입니다. Vibe Kanban이 이 URL을 새 탭에서 열고 작업 공간 폴더 경로를 추가합니다.",
+          "placeholder": "https://code-server.example.com"
+        },
         "remoteSsh": {
           "host": {
             "label": "원격 SSH 호스트 (선택사항)",

@@ -79,6 +79,11 @@
           "placeholder": "例如：code、subl、vim",
           "helper": "輸入啟動自訂編輯器的指令，用於開啟檔案。"
         },
+        "codeServerUrl": {
+          "label": "Code Server URL",
+          "helper": "必填。code-server 實例的瀏覽器 URL。Vibe Kanban 將在新分頁中開啟此 URL 並附加工作區資料夾路徑。",
+          "placeholder": "https://code-server.example.com"
+        },
         "remoteSsh": {
           "host": {
             "label": "遠端 SSH 主機（選填）",

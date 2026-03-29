@@ -79,6 +79,11 @@
           "placeholder": "ex: code, subl, vim",
           "helper": "Saisissez la commande pour lancer votre éditeur personnalisé. Elle sera utilisée pour ouvrir les fichiers."
         },
+        "codeServerUrl": {
+          "label": "URL de Code Server",
+          "helper": "Requis. URL du navigateur vers votre instance code-server. Vibe Kanban ouvrira cette URL dans un nouvel onglet et ajoutera le chemin du dossier de l'espace de travail.",
+          "placeholder": "https://code-server.example.com"
+        },
         "remoteSsh": {
           "host": {
             "label": "Hôte SSH distant (optionnel)",

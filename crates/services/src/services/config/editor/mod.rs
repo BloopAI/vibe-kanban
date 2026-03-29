@@ -2,7 +2,7 @@ use std::{path::Path, str::FromStr};
 
 use executors::{command::CommandBuilder, executors::ExecutorError};
 use serde::{Deserialize, Serialize};
-use strum_macros::{EnumIter, EnumString};
+use strum_macros::{AsRefStr, EnumIter, EnumString};
 use thiserror::Error;
 use ts_rs::TS;
 use url::Url;
@@ -45,7 +45,7 @@ pub struct EditorConfig {
     auto_install_extension: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString, EnumIter)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString, EnumIter, AsRefStr)]
 #[ts(use_ts_enum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
@@ -60,23 +60,6 @@ pub enum EditorType {
     GoogleAntigravity,
     CodeServer,
     Custom,
-}
-
-impl EditorType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            EditorType::VsCode => "VS_CODE",
-            EditorType::VsCodeInsiders => "VS_CODE_INSIDERS",
-            EditorType::Cursor => "CURSOR",
-            EditorType::Windsurf => "WINDSURF",
-            EditorType::IntelliJ => "INTELLI_J",
-            EditorType::Zed => "ZED",
-            EditorType::Xcode => "XCODE",
-            EditorType::GoogleAntigravity => "GOOGLE_ANTIGRAVITY",
-            EditorType::CodeServer => "CODE_SERVER",
-            EditorType::Custom => "CUSTOM",
-        }
-    }
 }
 
 impl Default for EditorConfig {

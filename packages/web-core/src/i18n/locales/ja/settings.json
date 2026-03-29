@@ -79,6 +79,11 @@
           "placeholder": "例: code, subl, vim",
           "helper": "カスタムエディターを起動するコマンドを入力してください。ファイルを開くために使用されます。"
         },
+        "codeServerUrl": {
+          "label": "Code Server URL",
+          "helper": "必須。code-serverインスタンスのブラウザURL。Vibe KanbanはこのURLを新しいタブで開き、ワークスペースフォルダのパスを追加します。",
+          "placeholder": "https://code-server.example.com"
+        },
         "remoteSsh": {
           "host": {
             "label": "リモートSSHホスト（オプション）",
