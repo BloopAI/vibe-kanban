@@ -8,6 +8,7 @@ use crate::{DeploymentImpl, middleware};
 
 pub mod approvals;
 pub mod config;
+pub mod external_sessions;
 pub mod containers;
 pub mod filesystem;
 // pub mod github;
@@ -54,6 +55,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(releases::router())
         .merge(migration::router())
         .merge(sessions::router(&deployment))
+        .nest("/sessions/external", external_sessions::router(&deployment))
         .merge(terminal::router())
         .route("/ssh-session", get(ssh_session::ssh_session_ws))
         .nest("/remote", remote::router())

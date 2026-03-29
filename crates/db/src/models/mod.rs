@@ -10,6 +10,7 @@ pub mod pull_request;
 pub mod repo;
 pub mod requests;
 pub mod scratch;
+pub mod external_session;
 pub mod session;
 pub mod tag;
 pub mod task;

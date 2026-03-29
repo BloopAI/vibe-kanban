@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                ep.id                         as \"id!: Uuid\",\n                ep.session_id                 as \"session_id!: Uuid\",\n                s.workspace_id                as \"workspace_id!: Uuid\",\n                eprs.repo_id                  as \"repo_id!: Uuid\",\n                eprs.after_head_commit        as after_head_commit,\n                prev.after_head_commit        as prev_after_head_commit,\n                wr.target_branch              as \"target_branch!\",\n                r.path                        as repo_path\n            FROM execution_processes ep\n            JOIN sessions s ON s.id = ep.session_id\n            JOIN execution_process_repo_states eprs ON eprs.execution_process_id = ep.id\n            JOIN repos r ON r.id = eprs.repo_id\n            JOIN workspaces w ON w.id = s.workspace_id\n            JOIN workspace_repos wr ON wr.workspace_id = w.id AND wr.repo_id = eprs.repo_id\n            LEFT JOIN execution_process_repo_states prev\n              ON prev.execution_process_id = (\n                   SELECT id FROM execution_processes\n                     WHERE session_id = ep.session_id\n                       AND created_at < ep.created_at\n                     ORDER BY created_at DESC\n                     LIMIT 1\n               )\n              AND prev.repo_id = eprs.repo_id\n            WHERE eprs.before_head_commit IS NULL\n              AND eprs.after_head_commit IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "session_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "workspace_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "repo_id!: Uuid",
+        "ordinal": 3,
+        "type_info": "Blob"
+      },
+      {
+        "name": "after_head_commit",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "prev_after_head_commit",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "target_branch!",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "repo_path",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "99399425f53b140a8de232a4de3c6c056bc422f2fbdb8ead6aab3f6945906e51"
+}

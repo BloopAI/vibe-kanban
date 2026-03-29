@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE pull_requests SET synced_at = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "8076c3d62eba1cdf2a050c9d61dc20ef2fc3e24b0830d1e20099a42ae78333d0"
+}

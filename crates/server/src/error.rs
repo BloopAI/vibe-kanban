@@ -5,8 +5,12 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use db::models::{
-    execution_process::ExecutionProcessError, repo::RepoError, scratch::ScratchError,
-    session::SessionError, workspace::WorkspaceError,
+    execution_process::ExecutionProcessError,
+    external_session::ExternalSessionError,
+    repo::RepoError,
+    scratch::ScratchError,
+    session::SessionError,
+    workspace::WorkspaceError,
 };
 use deployment::{DeploymentError, RelayHostsNotConfigured, RemoteClientNotConfigured};
 use executors::{command::CommandBuildError, executors::ExecutorError};
@@ -40,6 +44,8 @@ pub enum ApiError {
     Workspace(#[from] WorkspaceError),
     #[error(transparent)]
     Session(#[from] SessionError),
+    #[error(transparent)]
+    ExternalSession(#[from] ExternalSessionError),
     #[error(transparent)]
     ScratchError(#[from] ScratchError),
     #[error(transparent)]
@@ -351,6 +357,19 @@ impl IntoResponse for ApiError {
                         "Executor mismatch: session uses {} but request specified {}.",
                         expected, actual
                     ),
+                )
+            }
+
+            ApiError::ExternalSession(ExternalSessionError::Database(_)) => {
+                ErrorInfo::internal("ExternalSessionError")
+            }
+            ApiError::ExternalSession(ExternalSessionError::NotFound) => {
+                ErrorInfo::not_found("ExternalSessionError", "External session not found.")
+            }
+            ApiError::ExternalSession(ExternalSessionError::InvalidStatus(s)) => {
+                ErrorInfo::bad_request(
+                    "ExternalSessionError",
+                    format!("Invalid status: {}. Must be one of: in_progress, in_review, done, blocked.", s),
                 )
             }
 
