@@ -236,6 +236,8 @@ export function PierreDiffCard({
   const ignoreWhitespace = useIgnoreWhitespaceDiff();
 
   const { comments, drafts, setDraft, addComment } = useReview();
+  const draftsRef = useRef(drafts);
+  draftsRef.current = drafts;
   const showGitHubComments = useShowGitHubComments();
   const getGitHubCommentsForFile = useGetGitHubCommentsForFile();
 
@@ -415,7 +417,7 @@ export function PierreDiffCard({
       const widgetKey = `${filePath}-${splitSide}-${lineNumber}`;
 
       // Don't create a new draft if one already exists
-      if (drafts[widgetKey]) return;
+      if (draftsRef.current[widgetKey]) return;
 
       const codeLine = getCodeLineForComment(diff, lineNumber, splitSide);
 
@@ -427,7 +429,7 @@ export function PierreDiffCard({
         ...(codeLine !== undefined ? { codeLine } : {}),
       });
     },
-    [filePath, drafts, setDraft, diff]
+    [filePath, setDraft, diff]
   );
 
   const renderHoverUtility = useCallback(
@@ -447,7 +449,7 @@ export function PierreDiffCard({
             const splitSide = mapAnnotationSideToSplitSide(side);
             const widgetKey = `${filePath}-${splitSide}-${lineNumber}`;
 
-            if (drafts[widgetKey]) return;
+            if (draftsRef.current[widgetKey]) return;
 
             const codeLine = getCodeLineForComment(diff, lineNumber, splitSide);
 
@@ -465,7 +467,7 @@ export function PierreDiffCard({
         </button>
       );
     },
-    [filePath, drafts, setDraft, t, diff]
+    [filePath, setDraft, t, diff]
   );
 
   const fileDiffOptions = useMemo(

@@ -909,7 +909,7 @@ export const ConversationList = forwardRef<
           scrollEl.querySelectorAll<HTMLElement>('[data-row-index]')
         );
 
-        let firstVisibleIndex = 0;
+        let firstVisibleIndex = conversationRows.length - 1;
         for (const node of rowNodes) {
           const rect = node.getBoundingClientRect();
           if (rect.bottom <= containerTop + 1) continue;
@@ -921,11 +921,7 @@ export const ConversationList = forwardRef<
           break;
         }
 
-        for (
-          let index = firstVisibleIndex;
-          index < conversationRows.length;
-          index += 1
-        ) {
+        for (let index = firstVisibleIndex; index >= 0; index -= 1) {
           const row = conversationRows[index];
           if (!row?.isUserMessage) continue;
           return row.entry.patchKey;
