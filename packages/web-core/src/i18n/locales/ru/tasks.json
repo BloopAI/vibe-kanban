@@ -1,0 +1,539 @@
+{
+  "dropzone": {
+    "dropImagesHere": "Перетащите изображения сюда",
+    "supportedFormats": "Поддерживаются PNG, JPG, GIF, WebP, SVG"
+  },
+  "gitPanel": {
+    "advanced": {
+      "placeholder": "например, acme Corp"
+    }
+  },
+  "loading": "Загрузка задач...",
+  "actions": {
+    "addTask": "Добавить задачу"
+  },
+  "rebase": {
+    "common": {
+      "action": "Ребейз",
+      "inProgress": "Выполняется rebase..."
+    },
+    "dialog": {
+      "title": "Попытка rebase задачи",
+      "description": "Выберите новую базовую ветку для выполнения rebase этого воркспейса.",
+      "upstreamLabel": "Ветка Upstream",
+      "upstreamPlaceholder": "Выберите ветку upstream",
+      "targetLabel": "Целевая ветка",
+      "targetPlaceholder": "Выберите целевую ветку",
+      "advanced": "Дополнительно"
+    }
+  },
+  "branches": {
+    "changeTarget": {
+      "dialog": {
+        "title": "Изменить целевую ветку",
+        "description": "Выберите новую целевую ветку для воркспейса.",
+        "placeholder": "Выберите целевую ветку",
+        "action": "Изменить ветку",
+        "inProgress": "Изменение..."
+      }
+    }
+  },
+  "repos": {
+    "selector": {
+      "placeholder": "Выберите репозиторий",
+      "empty": "Нет доступных репозиториев"
+    }
+  },
+  "preview": {
+    "noServer": {
+      "title": "Dev-сервер не запущен",
+      "setupTitle": "Для использования функции предварительного просмотра необходимо настроить скрипт dev-сервера",
+      "setupPrompt": "Чтобы использовать предварительный просмотр в реальном времени и редактирование по клику, пожалуйста, добавьте скрипт dev-сервера в этот проект.",
+      "editDevScript": "Редактировать скрипт dev-сервера",
+      "learnMore": "Узнать больше о тестировании приложений"
+    },
+    "logs": {
+      "label": "Логи",
+      "viewFull": "Посмотреть полные логи"
+    },
+    "toolbar": {
+      "refresh": "Обновить превью",
+      "copyUrl": "Копировать URL",
+      "openInTab": "Открыть в новой вкладке",
+      "stopDevServer": "Остановить dev-сервер",
+      "resetUrl": "Сбросить до обнаруженного URL",
+      "clearUrlOverride": "Очистить переопределение URL",
+      "desktopView": "Десктопный вид",
+      "mobileView": "Мобильный вид (390x844)",
+      "responsiveView": "Адаптивный вид (с изменяемым размером)",
+      "startDevServer": "Запустить dev-сервер",
+      "submitUrl": "Отправить URL",
+      "toggleDevTools": "Переключить DevTools"
+    },
+    "loading": {
+      "startingServer": "Запуск dev-сервера...",
+      "waitingForServer": "Ожидание сервера...",
+      "loadingPreview": "Загрузка превью...",
+      "manualUrlHint": "URL пока не обнаружен. Вы можете ввести URL вручную на панели инструментов выше."
+    },
+    "browser": {
+      "title": "Превью dev-сервера",
+      "devServerFallback": "Dev-сервер"
+    }
+  },
+  "diff": {
+    "filesChanged_one": "{{count}} файл изменен",
+    "filesChanged_other": "{{count}} файлов изменено"
+  },
+  "processes": {
+    "noLogsAvailable": "Логи недоступны",
+    "selectAttempt": "Выберите попытку для просмотра процессов выполнения.",
+    "errorLoadingUpdates": "Не удалось загрузить обновления процессов в реальном времени.",
+    "reconnecting": "Переподключение...",
+    "loading": "Загрузка процессов выполнения...",
+    "noProcesses": "Для этой попытки процессы выполнения не найдены.",
+    "processId": "ID процесса: {{id}}",
+    "deleted": "Удалено",
+    "deletedTooltip": "Удалено при восстановлении: временная шкала была восстановлена до контрольной точки, и последующие выполнения были удалены",
+    "agent": "Агент:",
+    "exit": "Выход: {{code}}",
+    "started": "Запущено: {{date}}",
+    "completed": "Завершено: {{date}}",
+    "detailsTitle": "Детали процесса",
+    "backToList": "Назад к списку",
+    "loadingDetails": "Загрузка деталей процесса...",
+    "errorLoadingDetails": "Не удалось загрузить детали процесса. Пожалуйста, попробуйте еще раз.",
+    "copyLogs": "Копировать логи",
+    "logsCopied": "Скопировано!"
+  },
+  "followUp": {
+    "queuedMessage": "Сообщение в очереди — будет выполнено по завершении текущего запуска"
+  },
+  "todoPopup": {
+    "title": "Задачи",
+    "progress": "Выполнено {{completed}}/{{total}}",
+    "noTasks": "Нет задач"
+  },
+  "conversation": {
+    "executors": "Исполнители",
+    "saveAsDefault": "Сохранить как по умолчанию",
+    "you": "Вы",
+    "thinking": "Думает",
+    "todo": "Задача",
+    "todos": "Задачи",
+    "completed": "завершено",
+    "incomplete": "незавершено",
+    "pending": "в ожидании",
+    "inProgress": "в процессе",
+    "skipped": "пропущено",
+    "error": "Ошибка",
+    "retry": "Повторить",
+    "showMore": "Показать больше",
+    "showLess": "Показать меньше",
+    "actions": {
+      "cancel": "Отмена",
+      "submitFeedback": "Отправить отзыв",
+      "stop": "Остановить",
+      "stopping": "Остановка...",
+      "loading": "Загрузка",
+      "send": "Отправить",
+      "sending": "Отправка...",
+      "queue": "В очередь",
+      "cancelQueue": "Отменить очередь",
+      "requestChanges": "Запросить изменения",
+      "approve": "Одобрить",
+      "clearReviewComments": "Очистить комментарии к обзору",
+      "edit": "Редактировать сообщение",
+      "scrollToPreviousMessage": "Перейти к предыдущему сообщению",
+      "reset": "Сбросить",
+      "resetTooltip": "Сбросить до этой точки"
+    },
+    "approval": {
+      "conflictWarning": "Конфликтующие файлы требуют ручного решения",
+      "conflicts_one": "{{count}} конфликт",
+      "conflicts_other": "{{count}} конфликтов"
+    },
+    "sessions": {
+      "newSession": "Новая сессия",
+      "latest": "Последняя",
+      "previous": "Предыдущая",
+      "label": "Сессии",
+      "noPreviousSessions": "Нет предыдущих сессий",
+      "rename": "Переименовать",
+      "renameTitle": "Переименовать сессию",
+      "renameDescription": "Введите новое имя для этой сессии.",
+      "renamePlaceholder": "Введите имя сессии",
+      "renaming": "Переименование..."
+    },
+    "reviewComments": {
+      "count_one": "{{count}} комментарий к обзору будет включен",
+      "count_other": "{{count}} комментариев к обзору будет включено"
+    },
+    "workspace": {
+      "create": "Создать",
+      "creating": "Создание..."
+    },
+    "fileEntry": {
+      "created": "Создан",
+      "modified": "Изменен",
+      "deleted": "Удален",
+      "renamed": "Переименован"
+    },
+    "script": {
+      "running": "Выполняется...",
+      "exitCode": "Код выхода: {{code}}",
+      "completedSuccessfully": "Успешно завершено",
+      "clickToViewLogs": "Нажмите, чтобы просмотреть логи"
+    },
+    "scriptPlaceholder": {
+      "setupTitle": "Скрипт настройки",
+      "setupDescription": "Скрипт настройки не сконфигурирован. Скрипты настройки запускаются перед началом работы кодинг-агента.",
+      "cleanupTitle": "Скрипт очистки",
+      "cleanupDescription": "Скрипт очистки не сконфигурирован. Скрипты очистки запускаются после завершения работы кодинг-агента.",
+      "configure": "Настроить"
+    },
+    "updatedTodos": "Обновленные задачи",
+    "viewInChangesPanel": "Просмотреть в панели изменений",
+    "unableToRenderDiff": "Не удалось отобразить diff."
+  },
+  "attempt": {
+    "actions": {
+      "startDevServer": "Запустить dev-сервер"
+    }
+  },
+  "git": {
+    "labels": {
+      "taskBranch": "Ветка задачи"
+    },
+    "branch": {
+      "current": "текущая"
+    },
+    "forcePushDialog": {
+      "title": "Требуется форс-пуш",
+      "description": "Удаленная ветка {{branchLabel}} разошлась с вашей локальной веткой. Обычный push был отклонен.",
+      "warning": "Force push перезапишет удаленные изменения вашими локальными изменениями. Это действие нельзя отменить.",
+      "note": "Продолжайте только если вы уверены, что хотите заменить историю удаленной ветки.",
+      "error": "Не удалось выполнить force push"
+    },
+    "status": {
+      "commits_one": "коммит",
+      "commits_other": "коммитов"
+    },
+    "status_info": {
+      "conflicts": "Конфликты",
+      "upToDate": "Актуально",
+      "ahead": "впереди",
+      "behind": "позади"
+    },
+    "states": {
+      "merged": "Слито!",
+      "merging": "Слияние...",
+      "merge": "Слить",
+      "rebasing": "Выполняется rebase...",
+      "rebase": "Ребейз",
+      "pushed": "Отправлено!",
+      "pushing": "Отправка...",
+      "push": "Пуш",
+      "pushFailed": "Ошибка",
+      "forcePush": "Форс-пуш",
+      "forcePushing": "Выполняется force push...",
+      "creating": "Создание...",
+      "createPr": "Создать PR"
+    },
+    "errors": {
+      "changeTargetBranch": "Не удалось изменить целевую ветку",
+      "pushChanges": "Не удалось отправить изменения",
+      "mergeChanges": "Не удалось слить изменения",
+      "rebaseBranch": "Не удалось выполнить rebase ветки",
+      "branchStatusUnavailable": "Не удалось получить статус ветки. Вы все еще можете изменить целевую ветку."
+    },
+    "pr": {
+      "open": "Открыть PR #{{number}}",
+      "number": "PR #{{number}}",
+      "merged": "Слит PR #{{prNumber}}"
+    },
+    "actions": {
+      "title": "Git действия",
+      "changeTarget": "Изменить цель",
+      "prMerged": "PR #{{number}} уже слит",
+      "loginRequired": {
+        "title": "Войдите, чтобы управлять действиями git",
+        "description": "Войдите в Vibe Kanban, чтобы отправлять ветки, сливать изменения или открывать pull request'ы для этой задачи.",
+        "action": "Войти"
+      }
+    },
+    "mergeDialog": {
+      "title": "Слить изменения",
+      "description": "Это сольет ваши изменения в целевую ветку. Вы уверены, что хотите продолжить?"
+    },
+    "createRepo": {
+      "dialog": {
+        "title": "Создать новый репозиторий",
+        "description": "Инициализировать новый git репозиторий"
+      },
+      "form": {
+        "nameLabel": "Имя",
+        "namePlaceholder": "мой-проект",
+        "locationLabel": "Расположение",
+        "locationPlaceholder": "Текущая директория"
+      },
+      "browseDialog": {
+        "title": "Выбрать родительскую директорию",
+        "description": "Выберите, где создать новый репозиторий"
+      },
+      "errors": {
+        "nameRequired": "Имя репозитория обязательно",
+        "createFailed": "Не удалось создать репозиторий"
+      },
+      "buttons": {
+        "createRepository": "Создать репозиторий"
+      },
+      "states": {
+        "creating": "Создание..."
+      }
+    }
+  },
+  "repoBranchSelector": {
+    "label": "Базовая ветка"
+  },
+  "viewProcessesDialog": {
+    "title": "Процессы выполнения"
+  },
+  "editBranchName": {
+    "dialog": {
+      "title": "Редактировать имя ветки",
+      "description": "Введите новое имя для ветки. Нельзя переименовать, если существует открытый PR.",
+      "branchNameLabel": "Имя ветки",
+      "placeholder": "например, feature/my-branch",
+      "renaming": "Переименование...",
+      "action": "Переименовать ветку"
+    }
+  },
+  "startReviewDialog": {
+    "title": "Начать обзор",
+    "description": "Попросите кодинг-агента просмотреть ваши изменения и оставить отзыв.",
+    "additionalInstructions": "Дополнительные инструкции (опционально)",
+    "reviewComments": "Комментарии к обзору ({{count}})",
+    "includeGitContext": "Включить git контекст",
+    "includeGitContextDescription": "Сообщает агенту, как просмотреть все изменения, сделанные в этой ветке",
+    "newSession": "Новая сессия",
+    "sessionName": "Обзор"
+  },
+  "actionsMenu": {
+    "startReview": "Начать обзор",
+    "startingReview": "Запуск обзора..."
+  },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "Разрешить конфликты",
+      "description": "Обнаружены конфликты. Выберите, как агент должен их разрешить.",
+      "newSession": "Начать новую сессию",
+      "resolve": "Разрешить конфликты",
+      "resolving": "Запуск...",
+      "filesWithConflicts_one": "{{count}} файл имеет конфликты",
+      "filesWithConflicts_other": "{{count}} файлов имеют конфликты",
+      "andMore": "...и еще {{count}}",
+      "sessionName": "Разрешение конфликтов"
+    }
+  },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "Выполняется rebase",
+      "description": "Выполняется rebase на {{targetBranch}} без конфликтов. Выберите, как продолжить.",
+      "hint": "Вы можете продолжить rebase, чтобы завершить его, или прервать, чтобы вернуться к предыдущему состоянию.",
+      "continue": "Продолжить rebase",
+      "continuing": "Продолжение...",
+      "abort": "Прервать rebase",
+      "aborting": "Прерывание...",
+      "continueError": "Не удалось продолжить rebase. Возможно, есть неразрешенные конфликты.",
+      "abortError": "Не удалось прервать rebase. Пожалуйста, попробуйте еще раз."
+    }
+  },
+  "createPrDialog": {
+    "title": "Создать pull request",
+    "description": "Создать pull request для этого воркспейса.",
+    "titleLabel": "Заголовок",
+    "titlePlaceholder": "Введите заголовок PR",
+    "descriptionLabel": "Описание (опционально)",
+    "descriptionPlaceholder": "Введите описание PR",
+    "baseBranchLabel": "Базовая ветка",
+    "loadingBranches": "Загрузка веток...",
+    "selectBaseBranch": "Выберите базовую ветку",
+    "draftLabel": "Создать как черновик",
+    "autoGenerateLabel": "Автоматически сгенерировать описание PR с помощью AI",
+    "creating": "Создание...",
+    "createButton": "Создать PR",
+    "errors": {
+      "failedToCreate": "Не удалось создать PR",
+      "gitCliNotLoggedIn": "Git не аутентифицирован. Запустите \"gh auth login\" (или настройте учетные данные Git) и попробуйте снова.",
+      "gitCliNotInstalled": "Git CLI не установлен. Установите Git, чтобы создать PR.",
+      "targetBranchNotFound": "Целевая ветка '{{branch}}' не существует на удаленном репозитории. Пожалуйста, убедитесь, что ветка существует, прежде чем создавать pull request."
+    }
+  },
+  "prComments": {
+    "dialog": {
+      "title": "Выбрать комментарии PR",
+      "noComments": "В этом PR не найдено комментариев",
+      "selectAll": "Выбрать все",
+      "deselectAll": "Снять выделение",
+      "add": "Добавить",
+      "selectedCount": "Выбрано {{selected}} из {{total}}"
+    },
+    "card": {
+      "review": "Обзор",
+      "tooltip": "Нажмите для просмотра, двойной клик для редактирования"
+    }
+  },
+  "taskFormDialog": {
+    "createTitle": "Создать новую задачу",
+    "editTitle": "Редактировать задачу",
+    "titlePlaceholder": "Заголовок задачи...",
+    "descriptionPlaceholder": "Добавьте детали (опционально). Введите @ для поиска файлов.",
+    "statusLabel": "Статус",
+    "statusOptions": {
+      "todo": "К выполнению",
+      "inprogress": "В процессе",
+      "inreview": "На проверке",
+      "done": "Готово",
+      "cancelled": "Отменено"
+    },
+    "startLabel": "Начать",
+    "attachFile": "Прикрепить файл",
+    "dropImagesHere": "Перетащите изображения сюда",
+    "updating": "Обновление...",
+    "updateTask": "Обновить задачу",
+    "starting": "Запуск...",
+    "creating": "Создание...",
+    "create": "Создать",
+    "discardDialog": {
+      "title": "Сбросить несохраненные изменения?",
+      "description": "У вас есть несохраненные изменения. Вы уверены, что хотите их сбросить?",
+      "continueEditing": "Продолжить редактирование",
+      "discardChanges": "Сбросить изменения"
+    }
+  },
+  "restoreLogsDialog": {
+    "title": "Подтвердить повтор",
+    "titleReset": "Подтвердить сброс",
+    "historyChange": {
+      "title": "Изменение истории",
+      "willDelete": "Этот процесс будет удален",
+      "willDeleteProcesses_one": "{{count}} процесс будет удален",
+      "willDeleteProcesses_other": "{{count}} процессов будет удалено",
+      "andLaterProcesses_one": "и {{count}} последующий процесс",
+      "andLaterProcesses_other": "и {{count}} последующих процессов",
+      "fromHistory": "из истории.",
+      "codingAgentRuns_one": "{{count}} запуск кодинг-агента",
+      "codingAgentRuns_other": "{{count}} запусков кодинг-агента",
+      "scriptProcesses_one": "{{count}} запуск скрипта",
+      "scriptProcesses_other": "{{count}} запусков скриптов",
+      "setupCleanupBreakdown": "({{setup}} настройки, {{cleanup}} очистки)",
+      "permanentWarning": "Это навсегда изменит историю, действие нельзя отменить."
+    },
+    "uncommittedChanges": {
+      "title": "Обнаружены незакоммиченные изменения",
+      "description_one": "У вас есть {{count}} незакоммиченное изменение",
+      "description_other": "У вас есть {{count}} незакоммиченных изменений",
+      "andUntracked_one": " и {{count}} неотслеживаемый файл",
+      "andUntracked_other": " и {{count}} неотслеживаемых файлов",
+      "acknowledgeLabel": "Я понимаю, что эти изменения могут быть затронуты"
+    },
+    "resetWorktree": {
+      "title": "Сбросить рабочее дерево",
+      "enabled": "Включено",
+      "disabled": "Выключено",
+      "disabledUncommitted": "Выключено (обнаружены незакоммиченные изменения)",
+      "restoreDescription": "Ваше рабочее дерево будет восстановлено до этого коммита.",
+      "discardChanges_one": "Сбросить {{count}} незакоммиченное изменение.",
+      "discardChanges_other": "Сбросить {{count}} незакоммиченных изменений.",
+      "untrackedPresent_one": "{{count}} неотслеживаемый файл (не затрагивается сбросом).",
+      "untrackedPresent_other": "{{count}} неотслеживаемых файлов (не затрагиваются сбросом).",
+      "forceReset": "Принудительный сброс (удалить незакоммиченные изменения)",
+      "uncommittedWillDiscard": "Незакоммиченные изменения будут удалены.",
+      "uncommittedPresentHint": "Есть незакоммиченные изменения. Включите принудительный сброс или сделайте commit/stash, чтобы продолжить."
+    },
+    "buttons": {
+      "retry": "Повторить",
+      "reset": "Сбросить"
+    }
+  },
+  "scriptFixer": {
+    "setupScriptTitle": "Исправить скрипт настройки",
+    "cleanupScriptTitle": "Исправить скрипт очистки",
+    "archiveScriptTitle": "Исправить скрипт архивации",
+    "devServerTitle": "Исправить скрипт dev-сервера",
+    "scriptLabel": "Скрипт (редактировать)",
+    "logsLabel": "Логи последнего выполнения",
+    "saveButton": "Сохранить",
+    "saveAndTestButton": "Сохранить и протестировать",
+    "noLogs": "Нет доступных логов выполнения",
+    "selectRepo": "Репозиторий",
+    "fixScript": "Исправить скрипт",
+    "statusRunning": "Выполняется...",
+    "statusSuccess": "Успешно завершено",
+    "statusFailed": "Ошибка с кодом выхода {{exitCode}}",
+    "statusKilled": "Процесс был принудительно завершен"
+  },
+  "shareDialog": {
+    "loginRequired": {
+      "title": "Требуется вход",
+      "description": "Войдите, чтобы получить доступ к этой функции.",
+      "action": "Войти"
+    }
+  },
+  "createWorkspaceFromPr": {
+    "title": "Создать воркспейс из PR",
+    "description": "Выберите открытый pull request, чтобы создать из него воркспейс. Задача будет создана автоматически с использованием заголовка PR.",
+    "repositoryLabel": "Репозиторий",
+    "remoteLabel": "Удаленный репозиторий",
+    "pullRequestLabel": "Pull request",
+    "loadingRepositories": "Загрузка репозиториев...",
+    "loadingRemotes": "Загрузка удаленных репозиториев...",
+    "noRepositoriesFound": "Репозитории не найдены",
+    "loadingPullRequests": "Загрузка pull request'ов...",
+    "selectRepositoryFirst": "Сначала выберите репозиторий",
+    "noPullRequestsFound": "Открытых pull request'ов не найдено",
+    "runSetupScript": "Запустить скрипт настройки",
+    "creating": "Создание...",
+    "createWorkspace": "Создать воркспейс",
+    "selectRepository": "Выберите репозиторий",
+    "selectRemote": "Выберите удаленный репозиторий",
+    "selectPullRequest": "Выберите pull request",
+    "searchPrsPlaceholder": "Поиск PR по номеру или заголовку...",
+    "noMatchingPrs": "Нет подходящих pull request'ов",
+    "default": "по умолчанию",
+    "openPrInBrowser": "Открыть PR в браузере",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLI не установлен",
+      "unsupportedProvider": "Git провайдер не поддерживается",
+      "failedToLoadPrs": "Не удалось загрузить pull request'ы",
+      "prNotFound": "Pull request не найден",
+      "failedToCreateWorkspace": "Не удалось создать воркспейс"
+    }
+  },
+  "linkPrToIssue": {
+    "title": "Привязать pull request",
+    "description": "Привязать существующий pull request к этой задаче.",
+    "urlTab": "По URL",
+    "browseTab": "Обзор",
+    "urlLabel": "URL pull request'а",
+    "urlPlaceholder": "https://github.com/owner/repo/pull/123",
+    "repositoryLabel": "Репозиторий",
+    "remoteLabel": "Удаленный репозиторий",
+    "pullRequestLabel": "Pull request",
+    "loadingPrInfo": "Загрузка информации о PR...",
+    "invalidUrl": "Не удалось загрузить информацию о PR по этому URL",
+    "baseBranch": "База:",
+    "linkPr": "Привязать PR",
+    "linking": "Привязка...",
+    "status": {
+      "open": "Открыт",
+      "merged": "Слит",
+      "closed": "Закрыт",
+      "unknown": "Неизвестно"
+    },
+    "errors": {
+      "failed": "Не удалось привязать PR. Пожалуйста, попробуйте еще раз."
+    }
+  }
+}

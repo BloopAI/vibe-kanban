@@ -9,6 +9,11 @@ import enSettings from './locales/en/settings.json';
 import enProjects from './locales/en/projects.json';
 import enTasks from './locales/en/tasks.json';
 import enOrganization from './locales/en/organization.json';
+import ruCommon from './locales/ru/common.json';
+import ruSettings from './locales/ru/settings.json';
+import ruProjects from './locales/ru/projects.json';
+import ruTasks from './locales/ru/tasks.json';
+import ruOrganization from './locales/ru/organization.json';
 import frCommon from './locales/fr/common.json';
 import frSettings from './locales/fr/settings.json';
 import frProjects from './locales/fr/projects.json';
@@ -47,6 +52,13 @@ const resources = {
     projects: enProjects,
     tasks: enTasks,
     organization: enOrganization,
+  },
+  ru: {
+    common: ruCommon,
+    settings: ruSettings,
+    projects: ruProjects,
+    tasks: ruTasks,
+    organization: ruOrganization,
   },
   fr: {
     common: frCommon,
