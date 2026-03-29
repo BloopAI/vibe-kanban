@@ -513,16 +513,27 @@ export function PierreDiffCard({
       }
     };
 
+    if (shouldObserve) {
+      observer = new MutationObserver(() => {
+        scheduleApply();
+      });
+      observer.observe(root, {
+        childList: true,
+        subtree: true,
+      });
+    }
+
     const applyHighlights = () => {
-      if (!cardRef.current) return;
+      if (!root.isConnected) return;
       disconnectObserver();
-      clearSearchTextHighlightsWithKey(cardRef.current, highlightKey);
+      clearSearchTextHighlightsWithKey(root, highlightKey);
       const query = searchQuery.trim();
       let count = 0;
       if (query.length >= 1 && expanded && !shouldShowPlaceholder) {
-        count = applySearchTextHighlights(cardRef.current, query, {
+        count = applySearchTextHighlights(root, query, {
           maxMatches: 400,
           highlightKey,
+          disableCustomHighlights: true,
         });
       }
       onVisibleMatchCountChange?.(count);
@@ -543,21 +554,6 @@ export function PierreDiffCard({
     };
 
     applyHighlights();
-
-    if (shouldObserve) {
-      const createdObserver = new MutationObserver(() => {
-        scheduleApply();
-      });
-      observer = createdObserver;
-
-      return () => {
-        createdObserver.disconnect();
-        if (timeoutId) clearTimeout(timeoutId);
-        if (rafId) cancelAnimationFrame(rafId);
-        clearSearchTextHighlightsWithKey(root, highlightKey);
-        onVisibleMatchCountChange?.(0);
-      };
-    }
 
     return () => {
       disconnectObserver();

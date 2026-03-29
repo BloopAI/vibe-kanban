@@ -113,7 +113,11 @@ export function clearSearchTextHighlightsWithKey(
 export function applySearchTextHighlights(
   root: HTMLElement,
   query: string,
-  options?: { maxMatches?: number; highlightKey?: string }
+  options?: {
+    maxMatches?: number;
+    highlightKey?: string;
+    disableCustomHighlights?: boolean;
+  }
 ): number {
   const normalizedQuery = query.trim().toLowerCase();
   if (!normalizedQuery) return 0;
@@ -122,7 +126,8 @@ export function applySearchTextHighlights(
   const highlightKey = options?.highlightKey ?? CUSTOM_HIGHLIGHT_KEY;
   let count = 0;
   const textNodes = collectTextNodes(root);
-  const useCustomHighlights = supportsCustomHighlights();
+  const useCustomHighlights =
+    supportsCustomHighlights() && !options?.disableCustomHighlights;
   const ranges: Range[] = [];
 
   for (const textNode of textNodes) {
