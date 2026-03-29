@@ -188,10 +188,6 @@ export function ChangesPanelContainer({
   }, [searchQuery, showSearch, visibleMatchCounts]);
 
   useEffect(() => {
-    setCurrentMatchIdx(0);
-  }, [searchQuery]);
-
-  useEffect(() => {
     if (matchDiffIndices.length === 0) return;
     if (currentMatchIdx < matchDiffIndices.length) return;
     setCurrentMatchIdx(0);
@@ -288,8 +284,10 @@ export function ChangesPanelContainer({
 
   const handleScrollToFile = useCallback(
     (path: string, lineNumber?: number) => {
-      const index = stateMachineScrollToFile(path, lineNumber);
-      if (index === null) return;
+      const requestId = stateMachineScrollToFile(path, lineNumber);
+      if (requestId === null) return;
+      const index = pathToIndex.get(path);
+      if (index === undefined) return;
 
       changesPanelRef.current?.scrollToIndex(index, { align: 'start' });
 
@@ -306,11 +304,11 @@ export function ChangesPanelContainer({
               });
             }
           }
-          onScrollComplete();
+          onScrollComplete(requestId);
         }, 100);
       });
     },
-    [stateMachineScrollToFile, onScrollComplete]
+    [stateMachineScrollToFile, pathToIndex, onScrollComplete]
   );
 
   useEffect(() => {
@@ -417,7 +415,10 @@ export function ChangesPanelContainer({
             ref={searchInputRef}
             type="search"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentMatchIdx(0);
+            }}
             placeholder="Search diffs"
             className="w-[280px] rounded-sm border border-border bg-primary px-base py-half text-sm text-high placeholder:text-low focus:border-brand focus:outline-none"
             onKeyDown={(e) => {

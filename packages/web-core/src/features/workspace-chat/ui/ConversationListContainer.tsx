@@ -652,10 +652,6 @@ export const ConversationList = forwardRef<
   }, [conversationRows, matchRowIndices]);
 
   useEffect(() => {
-    setCurrentMatchIdx(0);
-  }, [searchQuery]);
-
-  useEffect(() => {
     if (matchRowIndices.length === 0) return;
     if (currentMatchIdx < matchRowIndices.length) return;
     setCurrentMatchIdx(0);
@@ -987,7 +983,10 @@ export const ConversationList = forwardRef<
               ref={searchInputRef}
               type="search"
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setCurrentMatchIdx(0);
+              }}
               placeholder="Search conversation"
               className="w-[280px] rounded-sm border border-border bg-primary px-base py-half text-sm text-high placeholder:text-low focus:border-brand focus:outline-none"
               onKeyDown={(event) => {
