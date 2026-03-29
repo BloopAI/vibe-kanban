@@ -217,9 +217,7 @@
     },
     "status": {
       "commits_one": "коммит",
-      "commits_other": "коммитов"
-    },
-    "status_info": {
+      "commits_other": "коммитов",
       "conflicts": "Конфликты",
       "upToDate": "Актуально",
       "ahead": "впереди",
