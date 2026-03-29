@@ -38,6 +38,14 @@ function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
+function toRustUiLanguageVariant(ui) {
+  return ui
+    .split('_')
+    .filter(Boolean)
+    .map((segment) => segment[0] + segment.slice(1).toLowerCase())
+    .join('');
+}
+
 const args = parseArgs(process.argv.slice(2));
 const ui = args.ui;
 const code = args.code;
@@ -76,7 +84,7 @@ console.log(`Scaffolded locale '${code}' in ${targetDir}`);
 console.log('');
 console.log('Next steps:');
 console.log(
-  `1. Add UiLanguage::${ui[0]}${ui.slice(1).toLowerCase()} in crates/services/src/services/config/versions/v6.rs`,
+  `1. Add UiLanguage::${toRustUiLanguageVariant(ui)} in crates/services/src/services/config/versions/v6.rs`,
 );
 console.log('2. Run: pnpm run generate-types');
 console.log(
