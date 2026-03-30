@@ -273,7 +273,9 @@ export function useExecutorConfig({
   // Clears variant + all override fields.
   const setExecutor = useCallback(
     (exec: BaseCodingAgent) => {
-      setUserSelections({ executor: exec });
+      const nextSelections = { executor: exec };
+      userSelectionsRef.current = nextSelections;
+      setUserSelections(nextSelections);
       // Persist with auto-resolved variant (no overrides)
       const newVariants = getVariantOptions(exec, profiles);
       const newVariant = newVariants[0] ?? null;
