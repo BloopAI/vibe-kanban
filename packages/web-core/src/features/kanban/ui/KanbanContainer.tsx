@@ -143,7 +143,6 @@ export function KanbanContainer() {
     getWorkspacesForIssue,
     getRelationshipsForIssue,
     issuesById,
-    statusesById,
     insertIssueTag,
     removeIssueTag,
     insertTag,
@@ -269,13 +268,27 @@ export function KanbanContainer() {
   );
   const shouldAnimateCreateButton = issues.length === 0;
 
+  // Compute done status IDs: hidden statuses + last visible status (the "Done" column)
+  const doneStatusIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const s of statuses) {
+      if (s.hidden) ids.add(s.id);
+    }
+    const sorted = statuses
+      .filter((s) => !s.hidden)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    const lastVisible = sorted[sorted.length - 1];
+    if (lastVisible) ids.add(lastVisible.id);
+    return ids;
+  }, [statuses]);
+
   const { filteredIssues } = useKanbanFilters({
     issues,
     issueAssignees,
     issueTags,
     issueRelationships,
     issuesById,
-    statusesById,
+    doneStatusIds,
     filters: kanbanFilters,
     showSubIssues,
     hideBlocked,
