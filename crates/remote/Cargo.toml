@@ -67,6 +67,7 @@ image = { version = "0.25", default-features = false, features = ["jpeg", "png",
 tempfile = "3"
 tar = "0.4"
 flate2 = "1.0"
+lettre = { version = "0.11", default-features = false, features = ["tokio1-rustls-tls", "smtp-transport", "builder", "hostname"] }
 
 
 [workspace]
