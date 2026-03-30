@@ -66,6 +66,8 @@ export interface RenderKanbanFiltersDialogProps<
   onSortChange: (sortField: TSortField, sortDirection: 'asc' | 'desc') => void;
   onShowSubIssuesChange: (show: boolean) => void;
   onShowWorkspacesChange: (show: boolean) => void;
+  hideBlocked: boolean;
+  onHideBlockedChange: (hide: boolean) => void;
 }
 
 interface KanbanFilterBarProps<
@@ -93,6 +95,8 @@ interface KanbanFilterBarProps<
   onSortChange: (sortField: TSortField, sortDirection: 'asc' | 'desc') => void;
   onShowSubIssuesChange: (show: boolean) => void;
   onShowWorkspacesChange: (show: boolean) => void;
+  hideBlocked: boolean;
+  onHideBlockedChange: (hide: boolean) => void;
   onClearFilters: () => void;
   onCreateIssue: () => void;
   shouldAnimateCreateButton: boolean;
@@ -127,6 +131,8 @@ export function KanbanFilterBar<
   onSortChange,
   onShowSubIssuesChange,
   onShowWorkspacesChange,
+  hideBlocked,
+  onHideBlockedChange,
   onClearFilters,
   onCreateIssue,
   shouldAnimateCreateButton,
@@ -277,6 +283,8 @@ export function KanbanFilterBar<
         onSortChange,
         onShowSubIssuesChange,
         onShowWorkspacesChange,
+        hideBlocked,
+        onHideBlockedChange,
       })}
     </>
   );

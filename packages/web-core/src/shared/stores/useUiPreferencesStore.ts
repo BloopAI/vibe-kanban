@@ -96,6 +96,7 @@ export const KANBAN_PROJECT_VIEW_IDS = {
 
 export const DEFAULT_KANBAN_PROJECT_VIEW_ID = KANBAN_PROJECT_VIEW_IDS.TEAM;
 export const DEFAULT_KANBAN_SHOW_WORKSPACES = true;
+export const DEFAULT_KANBAN_HIDE_BLOCKED = false;
 
 export const getDefaultShowSubIssuesForView = (viewId: string): boolean =>
   viewId === KANBAN_PROJECT_VIEW_IDS.PERSONAL;
@@ -106,6 +107,7 @@ export type KanbanProjectView = {
   filters: KanbanFilterState;
   showSubIssues: boolean;
   showWorkspaces: boolean;
+  hideBlocked: boolean;
 };
 
 export type KanbanProjectViewSelection = {
@@ -116,6 +118,7 @@ export type KanbanProjectViewPreferences = {
   filters: KanbanFilterState;
   showSubIssues: boolean;
   showWorkspaces: boolean;
+  hideBlocked: boolean;
 };
 
 export type ResolvedKanbanProjectState = {
@@ -123,6 +126,7 @@ export type ResolvedKanbanProjectState = {
   filters: KanbanFilterState;
   showSubIssues: boolean;
   showWorkspaces: boolean;
+  hideBlocked: boolean;
 };
 
 const cloneKanbanFilters = (filters: KanbanFilterState): KanbanFilterState => ({
@@ -155,6 +159,7 @@ const getKanbanDefaultView = (viewId: string): KanbanProjectView => {
         KANBAN_PROJECT_VIEW_IDS.PERSONAL
       ),
       showWorkspaces: DEFAULT_KANBAN_SHOW_WORKSPACES,
+      hideBlocked: DEFAULT_KANBAN_HIDE_BLOCKED,
     };
   }
 
@@ -164,6 +169,7 @@ const getKanbanDefaultView = (viewId: string): KanbanProjectView => {
     filters: cloneKanbanFilters(DEFAULT_KANBAN_FILTER_STATE),
     showSubIssues: getDefaultShowSubIssuesForView(KANBAN_PROJECT_VIEW_IDS.TEAM),
     showWorkspaces: DEFAULT_KANBAN_SHOW_WORKSPACES,
+    hideBlocked: DEFAULT_KANBAN_HIDE_BLOCKED,
   };
 };
 
@@ -175,6 +181,7 @@ const createDefaultKanbanProjectViewPreferences = (
     filters: cloneKanbanFilters(view.filters),
     showSubIssues: view.showSubIssues,
     showWorkspaces: view.showWorkspaces,
+    hideBlocked: view.hideBlocked,
   };
 };
 
@@ -192,6 +199,7 @@ export const resolveKanbanProjectState = (
     filters: cloneKanbanFilters(activeView.filters),
     showSubIssues: activeView.showSubIssues,
     showWorkspaces: activeView.showWorkspaces,
+    hideBlocked: activeView.hideBlocked,
   };
 };
 
@@ -402,6 +410,11 @@ type State = {
     projectId: string,
     viewId: string,
     show: boolean
+  ) => void;
+  setKanbanProjectViewHideBlocked: (
+    projectId: string,
+    viewId: string,
+    hide: boolean
   ) => void;
   clearKanbanProjectViewPreferences: (
     projectId: string,
@@ -715,6 +728,33 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
             [viewId]: {
               ...existingPreferences,
               showWorkspaces: show,
+            },
+          },
+        },
+      };
+    });
+  },
+
+  setKanbanProjectViewHideBlocked: (projectId, viewId, hide) => {
+    if (!isKanbanProjectViewId(viewId)) {
+      return;
+    }
+
+    set((s) => {
+      const projectPreferences =
+        s.kanbanProjectViewPreferences[projectId] ?? {};
+      const existingPreferences =
+        projectPreferences[viewId] ??
+        createDefaultKanbanProjectViewPreferences(viewId);
+
+      return {
+        kanbanProjectViewPreferences: {
+          ...s.kanbanProjectViewPreferences,
+          [projectId]: {
+            ...projectPreferences,
+            [viewId]: {
+              ...existingPreferences,
+              hideBlocked: hide,
             },
           },
         },
