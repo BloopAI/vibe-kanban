@@ -1,6 +1,6 @@
 {
   "name": "vibe-kanban",
-  "version": "0.1.37",
+  "version": "0.1.33-artef.6",
   "private": true,
   "bin": {
     "vibe-kanban": "npx-cli/bin/cli.js"
@@ -40,15 +40,14 @@
     "prepare-db:check": "node scripts/prepare-db.js --check",
     "build:bippy-bundle": "node scripts/build-bippy-bundle.mjs",
     "build:npx": "bash ./local-build.sh",
-    "build:npx-cli": "cd npx-cli && npm ci && npm run build",
+    "build:npx-cli": "esbuild npx-cli/src/cli.ts --bundle --platform=node --target=node20 --format=cjs --outfile=npx-cli/bin/cli.js --external:adm-zip --banner:js=\"#!/usr/bin/env node\"",
     "check:npx-cli": "tsc --noEmit -p npx-cli/tsconfig.json",
     "prepack": "pnpm run build:npx && pnpm run build:npx-cli",
     "remote:dev": "cd crates/remote && docker compose --env-file .env.remote up --build ; docker compose --env-file .env.remote down -v",
-    "remote:dev:full": "cd crates/remote && docker compose --env-file .env.remote --profile relay --profile attachments up --build ; docker compose --env-file .env.remote down -v",
-    "remote:dev:clean": "cd crates/remote && docker compose --env-file .env.remote --profile relay --profile attachments down -v --remove-orphans",
+    "remote:dev:clean": "cd crates/remote && docker compose --env-file .env.remote down -v",
     "remote:prepare-db": "cd crates/remote && bash scripts/prepare-db.sh",
     "remote:prepare-db:check": "cd crates/remote && bash scripts/prepare-db.sh --check",
-    "tauri:dev": "set -a && [ -f .env ] && . ./.env && set +a && export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export VK_ALLOWED_ORIGINS=\"http://localhost:${FRONTEND_PORT}\" && export DISABLE_WORKTREE_CLEANUP=1 && export RUST_LOG=debug && export VITE_VK_SHARED_API_BASE=${VK_SHARED_API_BASE:-} && cd crates/tauri-app && cargo tauri dev --config '{\"build\":{\"devUrl\":\"http://localhost:'\"${FRONTEND_PORT}\"'\"}}'",
+    "tauri:dev": "set -a && [ -f .env ] && . ./.env && set +a && export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export VK_ALLOWED_ORIGINS=\"http://localhost:${FRONTEND_PORT}\" && export DISABLE_WORKTREE_CLEANUP=1 && export RUST_LOG=debug && export VITE_VK_SHARED_API_BASE=${VK_SHARED_API_BASE:-} && cd crates/tauri-app && cargo tauri dev",
     "tauri:build": "cd crates/tauri-app && cargo tauri build"
   },
   "devDependencies": {

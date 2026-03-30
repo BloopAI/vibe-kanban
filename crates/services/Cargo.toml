@@ -1,6 +1,6 @@
 [package]
 name = "services"
-version = "0.1.37"
+version = "0.1.33-artef.6"
 edition = "2024"
 
 [features]
@@ -11,7 +11,6 @@ qa-mode = ["executors/qa-mode"]
 [dependencies]
 indicatif = "0.17"
 api-types = { path = "../api-types" }
-relay-types = { path = "../relay-types" }
 utils = { path = "../utils" }
 git = { path = "../git" }
 git-host = { path = "../git-host" }
@@ -30,6 +29,7 @@ chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true }
 dirs = "5.0"
+git2 = { workspace = true }
 async-trait = { workspace = true }
 rust-embed = "8.2"
 ignore = "0.4"
