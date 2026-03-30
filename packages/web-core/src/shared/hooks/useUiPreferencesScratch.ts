@@ -19,6 +19,8 @@ import {
   type WorkspacePrFilter,
   type WorkspaceSortBy,
   type WorkspaceSortOrder,
+  type KanbanProjectViewSelection,
+  type KanbanProjectViewPreferences,
 } from '@/shared/stores/useUiPreferencesStore';
 import type { RepoAction } from '@vibe/ui/components/RepoCard';
 
@@ -46,6 +48,11 @@ function storeToScratchData(state: {
   selectedOrgId: string | null;
   selectedProjectId: string | null;
   createDraftWorkspaceByDefault: boolean;
+  kanbanProjectViewSelections: Record<string, KanbanProjectViewSelection>;
+  kanbanProjectViewPreferences: Record<
+    string,
+    Record<string, KanbanProjectViewPreferences>
+  >;
 }): UiPreferencesData {
   const workspacePanelStates: { [key: string]: WorkspacePanelStateData } = {};
   for (const [key, value] of Object.entries(state.workspacePanelStates)) {
@@ -77,6 +84,12 @@ function storeToScratchData(state: {
     selected_org_id: state.selectedOrgId,
     selected_project_id: state.selectedProjectId,
     create_draft_workspace_by_default: state.createDraftWorkspaceByDefault,
+    kanban_project_view_selections: state.kanbanProjectViewSelections as Record<
+      string,
+      JsonValue
+    >,
+    kanban_project_view_preferences:
+      state.kanbanProjectViewPreferences as Record<string, JsonValue>,
   };
 }
 
@@ -99,6 +112,11 @@ function scratchDataToStore(data: UiPreferencesData): {
   selectedOrgId: string | null;
   selectedProjectId: string | null;
   createDraftWorkspaceByDefault: boolean;
+  kanbanProjectViewSelections: Record<string, KanbanProjectViewSelection>;
+  kanbanProjectViewPreferences: Record<
+    string,
+    Record<string, KanbanProjectViewPreferences>
+  >;
 } {
   const workspacePanelStates: Record<string, WorkspacePanelState> = {};
   if (data.workspace_panel_states) {
@@ -153,6 +171,10 @@ function scratchDataToStore(data: UiPreferencesData): {
     createDraftWorkspaceByDefault:
       data.create_draft_workspace_by_default ??
       DEFAULT_CREATE_DRAFT_WORKSPACE_BY_DEFAULT,
+    kanbanProjectViewSelections: (data.kanban_project_view_selections ??
+      {}) as Record<string, KanbanProjectViewSelection>,
+    kanbanProjectViewPreferences: (data.kanban_project_view_preferences ??
+      {}) as Record<string, Record<string, KanbanProjectViewPreferences>>,
   };
 }
 
@@ -188,6 +210,8 @@ export function useUiPreferencesScratch() {
     selectedOrgId: state.selectedOrgId,
     selectedProjectId: state.selectedProjectId,
     createDraftWorkspaceByDefault: state.createDraftWorkspaceByDefault,
+    kanbanProjectViewSelections: state.kanbanProjectViewSelections,
+    kanbanProjectViewPreferences: state.kanbanProjectViewPreferences,
   }));
 
   // Extract scratch data
@@ -218,6 +242,8 @@ export function useUiPreferencesScratch() {
       selectedOrgId: currentState.selectedOrgId,
       selectedProjectId: currentState.selectedProjectId,
       createDraftWorkspaceByDefault: currentState.createDraftWorkspaceByDefault,
+      kanbanProjectViewSelections: currentState.kanbanProjectViewSelections,
+      kanbanProjectViewPreferences: currentState.kanbanProjectViewPreferences,
     });
 
     try {
@@ -265,6 +291,8 @@ export function useUiPreferencesScratch() {
         selectedProjectId: serverState.selectedProjectId,
         createDraftWorkspaceByDefault:
           serverState.createDraftWorkspaceByDefault,
+        kanbanProjectViewSelections: serverState.kanbanProjectViewSelections,
+        kanbanProjectViewPreferences: serverState.kanbanProjectViewPreferences,
       });
 
       // Allow a brief delay for state to settle

@@ -9,6 +9,7 @@ import type {
   IssueRelationship,
   IssueTag,
   IssuePriority,
+  ProjectStatus,
 } from 'shared/remote-types';
 
 type UseKanbanFiltersParams = {
@@ -17,6 +18,7 @@ type UseKanbanFiltersParams = {
   issueTags: IssueTag[];
   issueRelationships: IssueRelationship[];
   issuesById: Map<string, Issue>;
+  statusesById: Map<string, ProjectStatus>;
   filters: KanbanFilterState;
   showSubIssues: boolean;
   hideBlocked: boolean;
@@ -40,6 +42,7 @@ export function useKanbanFilters({
   issueTags,
   issueRelationships,
   issuesById,
+  statusesById,
   filters,
   showSubIssues,
   hideBlocked,
@@ -150,7 +153,11 @@ export function useKanbanFilters({
           if (r.relationship_type !== 'blocking') return false;
           if (r.related_issue_id !== issue.id) return false;
           const blockingIssue = issuesById.get(r.issue_id);
-          return blockingIssue != null && blockingIssue.completed_at === null;
+          if (blockingIssue == null) return false;
+          // Use status hidden flag (done columns) since completed_at
+          // may not be set immediately on optimistic client updates
+          const status = statusesById.get(blockingIssue.status_id);
+          return !status?.hidden;
         });
       });
     }
@@ -168,6 +175,7 @@ export function useKanbanFilters({
     hideBlocked,
     issueRelationships,
     issuesById,
+    statusesById,
     currentUserId,
   ]);
 

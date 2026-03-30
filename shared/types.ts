@@ -130,7 +130,15 @@ selected_project_id: string | null,
 /**
  * Default setting for creating a draft workspace from new issues
  */
-create_draft_workspace_by_default: boolean | null, };
+create_draft_workspace_by_default: boolean | null, 
+/**
+ * Kanban project view selections (active view per project)
+ */
+kanban_project_view_selections: { [key in string]?: JsonValue }, 
+/**
+ * Kanban project view preferences (filters, toggles per project per view)
+ */
+kanban_project_view_preferences: { [key in string]?: JsonValue }, };
 
 export type ProjectRepoDefaultsData = { repos: Array<DraftWorkspaceRepo>, };
 
