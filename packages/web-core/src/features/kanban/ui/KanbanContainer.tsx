@@ -268,9 +268,15 @@ export function KanbanContainer() {
   );
   const shouldAnimateCreateButton = issues.length === 0;
 
-  // Compute done status IDs: the last visible status (rightmost kanban column, conventionally "Done")
+  // Compute resolved status IDs for the blocked filter.
+  // A blocking issue is considered resolved when it's in:
+  // - The last visible status (rightmost kanban column, e.g. "Done")
+  // - Any hidden status (terminal states like "Cancelled" that don't appear as columns)
   const doneStatusIds = useMemo(() => {
     const ids = new Set<string>();
+    for (const s of statuses) {
+      if (s.hidden) ids.add(s.id);
+    }
     const sorted = statuses
       .filter((s) => !s.hidden)
       .sort((a, b) => a.sort_order - b.sort_order);
