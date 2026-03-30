@@ -268,12 +268,9 @@ export function KanbanContainer() {
   );
   const shouldAnimateCreateButton = issues.length === 0;
 
-  // Compute done status IDs: hidden statuses + last visible status (the "Done" column)
+  // Compute done status IDs: the last visible status (rightmost kanban column, conventionally "Done")
   const doneStatusIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const s of statuses) {
-      if (s.hidden) ids.add(s.id);
-    }
     const sorted = statuses
       .filter((s) => !s.hidden)
       .sort((a, b) => a.sort_order - b.sort_order);
