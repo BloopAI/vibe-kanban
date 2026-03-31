@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO projects (id, organization_id, name, color, issue_prefix, created_at, updated_at)\n            SELECT gen_random_uuid(), organization_id, name, color, issue_prefix, created_at, NOW()\n            FROM UNNEST($1::uuid[], $2::text[], $3::text[], $4::text[], $5::timestamptz[])\n                AS t(organization_id, name, color, issue_prefix, created_at)\n            RETURNING id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "TimestamptzArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "fec6a4b067802fb120ef8ecdf084779b9eed203f60e69d78546ff1cf4438d1f5"
+}

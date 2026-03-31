@@ -8,7 +8,7 @@ use super::{
         add_member, assert_admin as check_admin, assert_membership as check_membership,
         check_user_role as get_user_role,
     },
-    projects::ProjectRepository,
+    projects::{ProjectRepository, derive_issue_prefix},
 };
 
 pub struct OrganizationRepository<'a> {
@@ -362,5 +362,3 @@ fn personal_org_slug(user_id: Uuid) -> String {
     // Use a deterministic slug pattern so we can find personal orgs
     format!("personal-{user_id}")
 }
-
-use super::projects::derive_issue_prefix;

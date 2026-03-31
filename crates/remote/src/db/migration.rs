@@ -7,7 +7,9 @@ use sqlx::PgPool;
 use thiserror::Error;
 use uuid::Uuid;
 
-use super::{project_statuses::ProjectStatusRepository, tags::TagRepository};
+use super::{
+    project_statuses::ProjectStatusRepository, projects::derive_issue_prefix, tags::TagRepository,
+};
 
 #[derive(Debug, Error)]
 pub enum MigrationError {
@@ -35,19 +37,24 @@ impl MigrationRepository {
         let org_ids: Vec<Uuid> = inputs.iter().map(|i| i.organization_id).collect();
         let names: Vec<String> = inputs.iter().map(|i| i.name.clone()).collect();
         let colors: Vec<String> = inputs.iter().map(|i| i.color.clone()).collect();
+        let issue_prefixes: Vec<String> = inputs
+            .iter()
+            .map(|i| derive_issue_prefix(&i.name))
+            .collect();
         let created_ats: Vec<DateTime<Utc>> = inputs.iter().map(|i| i.created_at).collect();
 
         let ids = sqlx::query_scalar!(
             r#"
-            INSERT INTO projects (id, organization_id, name, color, created_at, updated_at)
-            SELECT gen_random_uuid(), organization_id, name, color, created_at, NOW()
-            FROM UNNEST($1::uuid[], $2::text[], $3::text[], $4::timestamptz[])
-                AS t(organization_id, name, color, created_at)
+            INSERT INTO projects (id, organization_id, name, color, issue_prefix, created_at, updated_at)
+            SELECT gen_random_uuid(), organization_id, name, color, issue_prefix, created_at, NOW()
+            FROM UNNEST($1::uuid[], $2::text[], $3::text[], $4::text[], $5::timestamptz[])
+                AS t(organization_id, name, color, issue_prefix, created_at)
             RETURNING id
             "#,
             &org_ids,
             &names,
             &colors,
+            &issue_prefixes,
             &created_ats,
         )
         .fetch_all(&mut *tx)
