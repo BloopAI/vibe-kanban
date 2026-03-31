@@ -109,7 +109,13 @@
   },
   "diff": {
     "filesChanged_one": "{{count}} file changed",
-    "filesChanged_other": "{{count}} files changed"
+    "filesChanged_other": "{{count}} files changed",
+    "largeDiff": {
+      "title": "Large diff",
+      "linesChanged": "{{count}} lines changed",
+      "loadAnyway": "Load anyway",
+      "warning": "Rendering this diff may impact performance."
+    }
   },
   "followUp": {
     "queuedMessage": "Mensaje en cola - se ejecutará cuando finalice la ejecución actual"

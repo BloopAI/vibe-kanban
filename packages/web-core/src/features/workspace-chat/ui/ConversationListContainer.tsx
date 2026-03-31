@@ -8,7 +8,12 @@ import {
   useState,
   type MouseEvent,
 } from 'react';
-import { SpinnerIcon } from '@phosphor-icons/react';
+import {
+  CaretDownIcon,
+  CaretUpIcon,
+  SpinnerIcon,
+  XIcon,
+} from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -44,6 +49,46 @@ import type { RepoWithTargetBranch } from 'shared/types';
 import { ChatEmptyState } from '@vibe/ui/components/ChatEmptyState';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
+import {
+  applySearchTextHighlights,
+  clearSearchTextHighlightsWithKey,
+} from '@/shared/lib/searchTextHighlight';
+import { usePanelFindShortcut } from '@/shared/hooks/usePanelFindShortcut';
+
+const CONVERSATION_HIGHLIGHT_KEY = 'vk-search-highlight-conversation';
+
+function toSearchableText(value: unknown): string {
+  const pieces: string[] = [];
+  const queue: unknown[] = [value];
+  let cursor = 0;
+
+  while (cursor < queue.length) {
+    const current = queue[cursor];
+    cursor += 1;
+
+    if (typeof current === 'string') {
+      pieces.push(current);
+      continue;
+    }
+    if (typeof current === 'number' || typeof current === 'boolean') {
+      pieces.push(String(current));
+      continue;
+    }
+    if (Array.isArray(current)) {
+      for (const item of current) {
+        queue.push(item);
+      }
+      continue;
+    }
+    if (current && typeof current === 'object') {
+      for (const item of Object.values(current)) {
+        queue.push(item);
+      }
+    }
+  }
+
+  return pieces.join(' ').toLowerCase();
+}
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
@@ -56,9 +101,9 @@ export interface ConversationListHandle {
   scrollToPreviousUserMessage: () => void;
   scrollToBottom: (behavior?: 'auto' | 'smooth') => void;
   adjustScrollBy: (delta: number) => void;
-  getScrollElement: () => HTMLDivElement | null;
   scrollToEntryByPatchKey: (patchKey: string) => void;
   getVisibleUserMessagePatchKey: () => string | null;
+  getScrollElement: () => HTMLDivElement | null;
 }
 
 const ALWAYS_UNVIRTUALIZED_TAIL_ROWS = 8;
@@ -158,6 +203,9 @@ export const ConversationList = forwardRef<
   const [filteredEntries, setFilteredEntries] = useState<DisplayEntry[]>([]);
   const [dataVersion, setDataVersion] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
   const [hasSetupScriptRun, setHasSetupScriptRun] = useState(false);
   const [hasCleanupScriptRun, setHasCleanupScriptRun] = useState(false);
   const [hasRunningProcess, setHasRunningProcess] = useState(false);
@@ -170,6 +218,8 @@ export const ConversationList = forwardRef<
   const scrollOnEntriesChangedRef = useRef<
     ((addType: AddEntryType, isInitialLoad: boolean) => void) | null
   >(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const pendingUpdateRef = useRef<{
     source: ConversationTimelineSource;
     addType: AddEntryType;
@@ -184,7 +234,6 @@ export const ConversationList = forwardRef<
   // rAF naturally limits updates to the display refresh rate (~60fps) while
   // ensuring every frame reflects the latest data.
   const rafIdRef = useRef<number | null>(null);
-  const planRevealSpacerRef = useRef<HTMLDivElement | null>(null);
   const pendingInteractionAnchorRef = useRef<{
     element: HTMLElement;
     top: number;
@@ -235,9 +284,6 @@ export const ConversationList = forwardRef<
     }
     pendingUpdateRef.current = null;
     scriptOutputCacheRef.current.clear();
-    if (planRevealSpacerRef.current) {
-      planRevealSpacerRef.current.style.height = '0px';
-    }
     setLoading(true);
     setHasSetupScriptRun(false);
     setHasCleanupScriptRun(false);
@@ -482,45 +528,59 @@ export const ConversationList = forwardRef<
 
       const scrollEl = tanstackScrollRef.current;
       if (!scrollEl) return false;
+      const getVisibleHeight = (): number => {
+        const scrollRect = scrollEl.getBoundingClientRect();
+        const chatBoxContainer = panelRef.current
+          ?.closest('main')
+          ?.querySelector<HTMLElement>('[data-chatbox-container="true"]');
+        const obscuredBottomHeight = chatBoxContainer
+          ? Math.max(
+              0,
+              Math.min(
+                scrollEl.clientHeight,
+                scrollRect.bottom - chatBoxContainer.getBoundingClientRect().top
+              )
+            )
+          : 0;
+        return Math.max(1, scrollEl.clientHeight - obscuredBottomHeight);
+      };
+      const getTargetTop = (targetNode: HTMLElement): number => {
+        const scrollRect = scrollEl.getBoundingClientRect();
+        const targetRect = targetNode.getBoundingClientRect();
+        const targetTopInScroll =
+          scrollEl.scrollTop + (targetRect.top - scrollRect.top);
+        const visibleHeight = getVisibleHeight();
+        if (align === 'center') {
+          return (
+            targetTopInScroll - visibleHeight / 2 + targetNode.offsetHeight / 2
+          );
+        }
+        if (align === 'end') {
+          return targetTopInScroll - visibleHeight + targetNode.offsetHeight;
+        }
+        return targetTopInScroll;
+      };
 
       const targetNode = scrollEl.querySelector<HTMLElement>(
         `[data-row-index="${index}"]`
       );
 
       if (targetNode) {
-        let top = targetNode.offsetTop;
-
-        if (align === 'center') {
-          top =
-            targetNode.offsetTop -
-            scrollEl.clientHeight / 2 +
-            targetNode.offsetHeight / 2;
-        } else if (align === 'end') {
-          top =
-            targetNode.offsetTop -
-            scrollEl.clientHeight +
-            targetNode.offsetHeight;
-        }
-
-        const requestedTop = Math.max(0, top);
-        let maxScrollable = scrollEl.scrollHeight - scrollEl.clientHeight;
-        const deficit = requestedTop - maxScrollable;
-
-        if (deficit > 1 && align === 'start' && planRevealSpacerRef.current) {
-          conversationVirtualizer.releaseBottomLock();
-          planRevealSpacerRef.current.style.height = `${Math.ceil(deficit)}px`;
-          maxScrollable = scrollEl.scrollHeight - scrollEl.clientHeight;
-        }
-
-        scrollEl.scrollTo({
-          top: Math.min(requestedTop, maxScrollable),
-          behavior,
-        });
+        const top = getTargetTop(targetNode);
+        scrollEl.scrollTo({ top: Math.max(0, top), behavior });
         return true;
       }
 
       if (index < virtualizedRows.length) {
         conversationVirtualizer.scrollToIndex(index, { align, behavior });
+        requestAnimationFrame(() => {
+          const renderedTargetNode = scrollEl.querySelector<HTMLElement>(
+            `[data-row-index="${index}"]`
+          );
+          if (!renderedTargetNode) return;
+          const top = getTargetTop(renderedTargetNode);
+          scrollEl.scrollTo({ top: Math.max(0, top), behavior });
+        });
         return true;
       }
 
@@ -528,29 +588,210 @@ export const ConversationList = forwardRef<
     },
     [conversationRows.length, conversationVirtualizer, virtualizedRows.length]
   );
-
-  const scrollToBottomAndClearSpacer = useCallback(
-    (behavior?: 'auto' | 'smooth') => {
-      if (planRevealSpacerRef.current) {
-        planRevealSpacerRef.current.style.height = '0px';
-      }
-      conversationVirtualizer.scrollToBottom(behavior);
-    },
-    [conversationVirtualizer]
-  );
+  const scrollToAbsoluteIndexRef = useRef(scrollToAbsoluteIndex);
+  useEffect(() => {
+    scrollToAbsoluteIndexRef.current = scrollToAbsoluteIndex;
+  }, [scrollToAbsoluteIndex]);
 
   const scrollExecutor = useScrollCommandExecutor({
     virtualizer: conversationVirtualizer.virtualizer,
     itemCount: conversationRows.length,
     dataVersion,
     checkIsAtBottom: conversationVirtualizer.checkIsAtBottom,
-    scrollToBottom: scrollToBottomAndClearSpacer,
+    scrollToBottom: conversationVirtualizer.scrollToBottom,
     scrollToAbsoluteIndex,
   });
   scrollOnEntriesChangedRef.current = scrollExecutor.onEntriesChanged;
 
+  const focusSearchInput = useCallback(() => {
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    });
+  }, []);
+
+  const searchableTextByPatchKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of conversationRows) {
+      map.set(row.entry.patchKey, toSearchableText(row.entry));
+    }
+    return map;
+  }, [conversationRows]);
+
+  const matchRowIndices = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return [];
+
+    const indices: number[] = [];
+    conversationRows.forEach((row, index) => {
+      const searchText = searchableTextByPatchKey.get(row.entry.patchKey) ?? '';
+      if (searchText.includes(query)) {
+        indices.push(index);
+      }
+    });
+    return indices;
+  }, [conversationRows, searchQuery, searchableTextByPatchKey]);
+
+  const activeMatchIdx =
+    matchRowIndices.length === 0
+      ? 0
+      : Math.min(currentMatchIdx, matchRowIndices.length - 1);
+  const currentMatchRowIndex = matchRowIndices[activeMatchIdx] ?? null;
+  const currentMatchPatchKey =
+    currentMatchRowIndex === null
+      ? null
+      : (conversationRows[currentMatchRowIndex]?.entry.patchKey ?? null);
+
+  const matchPatchKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const rowIndex of matchRowIndices) {
+      const patchKey = conversationRows[rowIndex]?.entry.patchKey;
+      if (patchKey) keys.add(patchKey);
+    }
+    return keys;
+  }, [conversationRows, matchRowIndices]);
+
+  useEffect(() => {
+    if (matchRowIndices.length === 0) return;
+    if (currentMatchIdx < matchRowIndices.length) return;
+    setCurrentMatchIdx(0);
+  }, [currentMatchIdx, matchRowIndices.length]);
+
+  useEffect(() => {
+    if (hasActiveStreamingTurn) return;
+    if (currentMatchRowIndex === null) return;
+    scrollToAbsoluteIndexRef.current(currentMatchRowIndex, 'center', 'smooth');
+  }, [currentMatchRowIndex, searchQuery]);
+
+  const handleNextMatch = useCallback(() => {
+    if (matchRowIndices.length === 0) return;
+    setCurrentMatchIdx((prev) => (prev + 1) % matchRowIndices.length);
+  }, [matchRowIndices.length]);
+
+  const handlePrevMatch = useCallback(() => {
+    if (matchRowIndices.length === 0) return;
+    setCurrentMatchIdx(
+      (prev) => (prev - 1 + matchRowIndices.length) % matchRowIndices.length
+    );
+  }, [matchRowIndices.length]);
+
+  const closeSearch = useCallback(() => {
+    setShowSearch(false);
+    setSearchQuery('');
+    setCurrentMatchIdx(0);
+    panelRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  const closeSearchState = useCallback(() => {
+    setShowSearch(false);
+    setSearchQuery('');
+    setCurrentMatchIdx(0);
+  }, []);
+
+  usePanelFindShortcut({
+    panel: 'conversation',
+    otherPanel: 'diffs',
+    panelRef,
+    showSearch,
+    setShowSearch,
+    focusSearchInput,
+    closeSearchState,
+  });
+
+  const renderSearchHighlightedContent = useCallback(
+    (row: ConversationRow) => {
+      const content = renderRowContent(row.entry, attempt, resetAction, repos);
+      const isMatch = matchPatchKeys.has(row.entry.patchKey);
+      if (!isMatch) return content;
+
+      const isCurrentMatch = currentMatchPatchKey === row.entry.patchKey;
+      return (
+        <div
+          className={
+            isCurrentMatch
+              ? 'border-l-2 border-brand/70 bg-brand/8'
+              : 'border-l-2 border-brand/40 bg-brand/4'
+          }
+        >
+          {content}
+        </div>
+      );
+    },
+    [attempt, currentMatchPatchKey, matchPatchKeys, repos, resetAction]
+  );
+
+  useEffect(() => {
+    const root = panelRef.current;
+    if (!root) return;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let rafId: number | null = null;
+    let applyingDepth = 0;
+
+    const apply = () => {
+      if (!panelRef.current) return;
+      applyingDepth += 1;
+      clearSearchTextHighlightsWithKey(
+        panelRef.current,
+        CONVERSATION_HIGHLIGHT_KEY
+      );
+      const query = searchQuery.trim();
+      if (showSearch && query.length >= 1) {
+        applySearchTextHighlights(panelRef.current, query, {
+          maxMatches: 1200,
+          highlightKey: CONVERSATION_HIGHLIGHT_KEY,
+        });
+      }
+      queueMicrotask(() => {
+        applyingDepth = Math.max(0, applyingDepth - 1);
+      });
+    };
+
+    const scheduleApply = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(apply);
+      }, 60);
+    };
+
+    apply();
+
+    if (!showSearch || !searchQuery.trim()) {
+      return () => {
+        clearSearchTextHighlightsWithKey(root, CONVERSATION_HIGHLIGHT_KEY);
+      };
+    }
+    const observer = new MutationObserver(() => {
+      if (applyingDepth > 0) return;
+      scheduleApply();
+    });
+
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+      if (timeoutId) clearTimeout(timeoutId);
+      if (rafId) cancelAnimationFrame(rafId);
+      clearSearchTextHighlightsWithKey(root, CONVERSATION_HIGHLIGHT_KEY);
+    };
+  }, [showSearch, searchQuery, conversationRows]);
+
   // Determine if there are entries to show placeholders
   const hasEntries = conversationRows.length > 0;
+
+  useEffect(() => {
+    return () => {
+      if (panelRef.current) {
+        clearSearchTextHighlightsWithKey(
+          panelRef.current,
+          CONVERSATION_HIGHLIGHT_KEY
+        );
+      }
+    };
+  }, []);
 
   // Show placeholders only if script not configured AND not already run AND first turn
   const showSetupPlaceholder =
@@ -644,7 +885,7 @@ export const ConversationList = forwardRef<
         scrollToPreviousUserMessage();
       },
       scrollToBottom: (behavior = 'smooth') => {
-        scrollToBottomAndClearSpacer(behavior);
+        conversationVirtualizer.scrollToBottom(behavior);
       },
       adjustScrollBy: (delta) => {
         if (Math.abs(delta) < 0.5) return;
@@ -652,54 +893,12 @@ export const ConversationList = forwardRef<
         if (!scrollElement) return;
         scrollElement.scrollTop += delta;
       },
-      getScrollElement: () => tanstackScrollRef.current,
-      scrollToEntryByPatchKey: (patchKey: string) => {
+      scrollToEntryByPatchKey: (patchKey) => {
         const targetIndex = conversationRows.findIndex(
           (row) => row.entry.patchKey === patchKey
         );
         if (targetIndex < 0) return;
-
-        const scrollEl = tanstackScrollRef.current;
-        if (!scrollEl) return;
-
-        conversationVirtualizer.releaseBottomLock();
-        programmaticScrollDeadlineRef.current = performance.now() + 1000;
-
-        // Initial scroll via scrollToAbsoluteIndex which handles both
-        // virtualized and unvirtualized (tail) rows correctly.
-        scrollToAbsoluteIndex(targetIndex, 'start', 'auto');
-
-        // Correction loop: after the virtualizer lays out the target
-        // row, its actual size may differ from the estimate, so we
-        // iteratively adjust until the row is at the container top.
-        let attempts = 0;
-        const maxAttempts = 5;
-
-        const correctScroll = () => {
-          if (attempts >= maxAttempts) return;
-          attempts++;
-
-          programmaticScrollDeadlineRef.current = performance.now() + 500;
-
-          const node = scrollEl.querySelector<HTMLElement>(
-            `[data-row-index="${targetIndex}"]`
-          );
-          if (!node) {
-            requestAnimationFrame(correctScroll);
-            return;
-          }
-
-          const nodeRect = node.getBoundingClientRect();
-          const contRect = scrollEl.getBoundingClientRect();
-          const delta = nodeRect.top - contRect.top;
-
-          if (Math.abs(delta) < 2) return;
-
-          scrollEl.scrollTop += delta;
-          requestAnimationFrame(correctScroll);
-        };
-
-        requestAnimationFrame(correctScroll);
+        scrollToAbsoluteIndex(targetIndex, 'start', 'smooth');
       },
       getVisibleUserMessagePatchKey: () => {
         const scrollEl = tanstackScrollRef.current;
@@ -711,7 +910,6 @@ export const ConversationList = forwardRef<
         );
 
         let firstVisibleIndex = conversationRows.length - 1;
-
         for (const node of rowNodes) {
           const rect = node.getBoundingClientRect();
           if (rect.bottom <= containerTop + 1) continue;
@@ -723,20 +921,20 @@ export const ConversationList = forwardRef<
           break;
         }
 
-        // Find the nearest user message at or before the first visible index
-        for (let i = firstVisibleIndex; i >= 0; i--) {
-          if (conversationRows[i].isUserMessage) {
-            return conversationRows[i].entry.patchKey;
-          }
+        for (let index = firstVisibleIndex; index >= 0; index -= 1) {
+          const row = conversationRows[index];
+          if (!row?.isUserMessage) continue;
+          return row.entry.patchKey;
         }
+
         return null;
       },
+      getScrollElement: () => tanstackScrollRef.current,
     }),
     [
       conversationRows,
       conversationVirtualizer,
       scrollToAbsoluteIndex,
-      scrollToBottomAndClearSpacer,
       scrollToPreviousUserMessage,
     ]
   );
@@ -754,7 +952,88 @@ export const ConversationList = forwardRef<
 
   return (
     <ApprovalFormProvider>
-      <div className="relative h-full overflow-hidden">
+      <div
+        ref={panelRef}
+        data-vk-search-panel="conversation"
+        data-vk-search-open={showSearch ? 'true' : 'false'}
+        tabIndex={-1}
+        onMouseDown={(event) => {
+          const target = event.target as HTMLElement;
+          if (
+            target.closest(
+              'input, textarea, select, button, a, [contenteditable="true"]'
+            )
+          ) {
+            return;
+          }
+          panelRef.current?.focus({ preventScroll: true });
+        }}
+        className="relative h-full overflow-hidden"
+      >
+        {showSearch && (
+          <div
+            data-vk-search-ignore="true"
+            className="absolute right-3 top-3 z-20 flex items-center gap-2 rounded-sm border border-border bg-secondary p-2 shadow-lg"
+          >
+            <input
+              ref={searchInputRef}
+              type="search"
+              value={searchQuery}
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setCurrentMatchIdx(0);
+              }}
+              placeholder="Search conversation"
+              className="w-[280px] rounded-sm border border-border bg-primary px-base py-half text-sm text-high placeholder:text-low focus:border-brand focus:outline-none"
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  if (event.shiftKey) {
+                    handlePrevMatch();
+                  } else {
+                    handleNextMatch();
+                  }
+                } else if (event.key === 'Escape') {
+                  event.preventDefault();
+                  closeSearch();
+                }
+              }}
+            />
+            <>
+              <span className="w-12 text-right text-xs text-low whitespace-nowrap">
+                {matchRowIndices.length > 0
+                  ? `${activeMatchIdx + 1}/${matchRowIndices.length}`
+                  : '0/0'}
+              </span>
+              <button
+                type="button"
+                onClick={handlePrevMatch}
+                disabled={matchRowIndices.length === 0}
+                className="p-1 text-low hover:text-normal disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Previous match (Shift+Enter)"
+              >
+                <CaretUpIcon className="size-icon-sm" weight="bold" />
+              </button>
+              <button
+                type="button"
+                onClick={handleNextMatch}
+                disabled={matchRowIndices.length === 0}
+                className="p-1 text-low hover:text-normal disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Next match (Enter)"
+              >
+                <CaretDownIcon className="size-icon-sm" weight="bold" />
+              </button>
+              <button
+                type="button"
+                onClick={closeSearch}
+                className="p-1 text-low hover:text-normal"
+                title="Close search (Escape)"
+              >
+                <XIcon className="size-icon-sm" weight="bold" />
+              </button>
+            </>
+          </div>
+        )}
         {showLoader && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <SpinnerIcon className="size-6 animate-spin text-low" />
@@ -841,7 +1120,7 @@ export const ConversationList = forwardRef<
                       transform: `translateY(${virtualItem.start}px)`,
                     }}
                   >
-                    {renderRowContent(row.entry, attempt, resetAction, repos)}
+                    {renderSearchHighlightedContent(row)}
                   </div>
                 );
               })}
@@ -856,15 +1135,10 @@ export const ConversationList = forwardRef<
                 data-row-index={rowIndex}
                 data-semantic-key={row.semanticKey}
               >
-                {renderRowContent(row.entry, attempt, resetAction, repos)}
+                {renderSearchHighlightedContent(row)}
               </div>
             );
           })}
-
-          {/* Plan-reveal spacer: provides extra scroll room so plan-reveal
-              can align the plan entry to the top of the viewport. Height is set
-              imperatively in scrollToAbsoluteIndex and cleared on scrollToBottom. */}
-          <div ref={planRevealSpacerRef} style={{ height: 0 }} />
 
           {/* Footer placeholder */}
           <div className="pb-2">
