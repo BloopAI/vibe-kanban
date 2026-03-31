@@ -6,6 +6,19 @@ use uuid::Uuid;
 
 use super::{get_txid, project_statuses::ProjectStatusRepository, tags::TagRepository};
 
+/// Derive an issue prefix from a project name.
+/// Takes the first 3 uppercase letters from the name.
+/// Examples: "Backend API" -> "BAC", "Mobile App" -> "MOB"
+pub fn derive_issue_prefix(name: &str) -> String {
+    let letters: String = name.chars().filter(|c| c.is_ascii_alphabetic()).collect();
+    let prefix: String = letters.chars().take(3).collect::<String>().to_uppercase();
+    if prefix.is_empty() {
+        "ISS".to_string()
+    } else {
+        prefix
+    }
+}
+
 /// Default color for the initial project created with personal organizations
 /// HSL format: "H S% L%" (blue - matches "To do" status)
 pub const INITIAL_PROJECT_COLOR: &str = "217 91% 60%";
@@ -40,6 +53,7 @@ impl ProjectRepository {
                 organization_id  AS "organization_id!: Uuid",
                 name             AS "name!",
                 color            AS "color!",
+                issue_prefix     AS "issue_prefix!",
                 sort_order       AS "sort_order!",
                 created_at       AS "created_at!: DateTime<Utc>",
                 updated_at       AS "updated_at!: DateTime<Utc>"
@@ -65,12 +79,13 @@ impl ProjectRepository {
         E: Executor<'e, Database = Postgres>,
     {
         let id = id.unwrap_or_else(Uuid::new_v4);
+        let issue_prefix = derive_issue_prefix(&name);
         let now = Utc::now();
         let record = sqlx::query_as!(
             Project,
             r#"
             INSERT INTO projects (
-                id, organization_id, name, color, sort_order,
+                id, organization_id, name, color, issue_prefix, sort_order,
                 created_at, updated_at
             )
             VALUES (
@@ -78,18 +93,20 @@ impl ProjectRepository {
                 $2,
                 $3,
                 $4,
+                $5,
                 COALESCE(
                     (SELECT MAX(sort_order) + 1 FROM projects WHERE organization_id = $2),
                     0
                 ),
-                $5,
-                $6
+                $6,
+                $7
             )
             RETURNING
                 id               AS "id!: Uuid",
                 organization_id  AS "organization_id!: Uuid",
                 name             AS "name!",
                 color            AS "color!",
+                issue_prefix     AS "issue_prefix!",
                 sort_order       AS "sort_order!",
                 created_at       AS "created_at!: DateTime<Utc>",
                 updated_at       AS "updated_at!: DateTime<Utc>"
@@ -98,6 +115,7 @@ impl ProjectRepository {
             organization_id,
             name,
             color,
+            issue_prefix,
             now,
             now
         )
@@ -122,6 +140,7 @@ impl ProjectRepository {
                 organization_id  AS "organization_id!: Uuid",
                 name             AS "name!",
                 color            AS "color!",
+                issue_prefix     AS "issue_prefix!",
                 sort_order       AS "sort_order!",
                 created_at       AS "created_at!: DateTime<Utc>",
                 updated_at       AS "updated_at!: DateTime<Utc>"
@@ -181,6 +200,7 @@ impl ProjectRepository {
                 organization_id  AS "organization_id!: Uuid",
                 name             AS "name!",
                 color            AS "color!",
+                issue_prefix     AS "issue_prefix!",
                 sort_order       AS "sort_order!",
                 created_at       AS "created_at!: DateTime<Utc>",
                 updated_at       AS "updated_at!: DateTime<Utc>"
