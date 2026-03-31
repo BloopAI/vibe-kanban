@@ -8,7 +8,7 @@ use super::{
         add_member, assert_admin as check_admin, assert_membership as check_membership,
         check_user_role as get_user_role,
     },
-    projects::{ProjectRepository, derive_issue_prefix},
+    projects::ProjectRepository,
 };
 
 pub struct OrganizationRepository<'a> {
@@ -40,7 +40,6 @@ impl<'a> OrganizationRepository<'a> {
                 name         AS "name!",
                 slug         AS "slug!",
                 is_personal  AS "is_personal!",
-                issue_prefix AS "issue_prefix!",
                 created_at   AS "created_at!",
                 updated_at   AS "updated_at!"
             FROM organizations
@@ -118,24 +117,21 @@ impl<'a> OrganizationRepository<'a> {
     ) -> Result<OrganizationWithRole, IdentityError> {
         let mut tx = super::begin_tx(self.pool).await?;
 
-        let issue_prefix = derive_issue_prefix(name);
         let org = sqlx::query_as!(
             Organization,
             r#"
-            INSERT INTO organizations (name, slug, issue_prefix)
-            VALUES ($1, $2, $3)
+            INSERT INTO organizations (name, slug)
+            VALUES ($1, $2)
             RETURNING
                 id           AS "id!: Uuid",
                 name         AS "name!",
                 slug         AS "slug!",
                 is_personal  AS "is_personal!",
-                issue_prefix AS "issue_prefix!",
                 created_at   AS "created_at!",
                 updated_at   AS "updated_at!"
             "#,
             name,
             slug,
-            issue_prefix
         )
         .fetch_one(&mut *tx)
         .await
@@ -168,7 +164,6 @@ impl<'a> OrganizationRepository<'a> {
             name: org.name,
             slug: org.slug,
             is_personal: org.is_personal,
-            issue_prefix: org.issue_prefix,
             created_at: org.created_at,
             updated_at: org.updated_at,
             user_role: MemberRole::Admin,
@@ -187,7 +182,6 @@ impl<'a> OrganizationRepository<'a> {
                 o.name         AS "name!",
                 o.slug         AS "slug!",
                 o.is_personal  AS "is_personal!",
-                o.issue_prefix AS "issue_prefix!",
                 o.created_at   AS "created_at!",
                 o.updated_at   AS "updated_at!",
                 m.role         AS "user_role!: MemberRole"
@@ -223,7 +217,6 @@ impl<'a> OrganizationRepository<'a> {
                 name         AS "name!",
                 slug         AS "slug!",
                 is_personal  AS "is_personal!",
-                issue_prefix AS "issue_prefix!",
                 created_at   AS "created_at!",
                 updated_at   AS "updated_at!"
             "#,
@@ -309,7 +302,6 @@ async fn find_organization_by_slug(
             name         AS "name!",
             slug         AS "slug!",
             is_personal  AS "is_personal!",
-            issue_prefix AS "issue_prefix!",
             created_at   AS "created_at!",
             updated_at   AS "updated_at!"
         FROM organizations
@@ -329,24 +321,21 @@ async fn create_personal_org_tx<'e, E>(
 where
     E: Executor<'e, Database = Postgres>,
 {
-    let issue_prefix = derive_issue_prefix(name);
     query_as!(
         Organization,
         r#"
-        INSERT INTO organizations (name, slug, is_personal, issue_prefix)
-        VALUES ($1, $2, TRUE, $3)
+        INSERT INTO organizations (name, slug, is_personal)
+        VALUES ($1, $2, TRUE)
         RETURNING
             id           AS "id!: Uuid",
             name         AS "name!",
             slug         AS "slug!",
             is_personal  AS "is_personal!",
-            issue_prefix AS "issue_prefix!",
             created_at   AS "created_at!",
             updated_at   AS "updated_at!"
         "#,
         name,
         slug,
-        issue_prefix
     )
     .fetch_one(executor)
     .await

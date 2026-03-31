@@ -47,6 +47,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 5. Drop the now-unused org-level counter
+-- 5. Drop the now-unused org-level issue columns
 ALTER TABLE organizations
-    DROP COLUMN IF EXISTS issue_counter;
+    DROP COLUMN IF EXISTS issue_counter,
+    DROP COLUMN IF EXISTS issue_prefix;
