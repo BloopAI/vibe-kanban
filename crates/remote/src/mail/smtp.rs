@@ -194,7 +194,10 @@ impl Mailer for SmtpMailer {
             contact.email,
             &format!("You have {notification_count} new notifications"),
         ) else {
-            return Ok(());
+            return Err(DigestError::Transport(format!(
+                "invalid recipient address: {}",
+                contact.email
+            )));
         };
 
         let message = builder
