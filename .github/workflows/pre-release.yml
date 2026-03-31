@@ -925,50 +925,51 @@ jobs:
             --target ${{ matrix.target }} \
             --version ${{ needs.bump-version.outputs.new_version }}
 
-      - name: Setup Jsign
-        if: contains(matrix.target, 'windows')
-        id: jsign
-        uses: ./.github/actions/setup-jsign
-
-      - name: Install JRE for Jsign
-        if: contains(matrix.target, 'windows')
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y default-jre-headless
-
-      - name: Azure CLI login
-        if: contains(matrix.target, 'windows') && env.AZURE_ENDPOINT != ''
-        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
-        with:
-          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
-          allow-no-subscriptions: true
-        env:
-          AZURE_ENDPOINT: ${{ secrets.AZURE_ENDPOINT }}
-
-      - name: Sign Windows artifacts with Azure Trusted Signing
-        if: contains(matrix.target, 'windows') && env.AZURE_ENDPOINT != ''
-        env:
-          AZURE_ENDPOINT: ${{ secrets.AZURE_ENDPOINT }}
-          AZURE_CODE_SIGNING_NAME: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
-          AZURE_CERT_PROFILE_NAME: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
-        run: |
-          TOKEN=$(az account get-access-token --resource https://codesigning.azure.net --query accessToken -o tsv)
-
-          # Extract hostname from endpoint URL
-          KEYSTORE=$(echo "$AZURE_ENDPOINT" | sed 's|https\?://||;s|/.*||')
-
-          # Sign all exe and msi files in the bundle directory
-          find target/${{ matrix.target }}/release/bundle -type f \( -name "*.exe" -o -name "*.msi" \) | while read file; do
-            echo "Signing: $file"
-            java -jar "${{ steps.jsign.outputs.jar-path }}" \
-              --storetype TRUSTEDSIGNING \
-              --keystore "$KEYSTORE" \
-              --storepass "$TOKEN" \
-              --alias "${AZURE_CODE_SIGNING_NAME}/${AZURE_CERT_PROFILE_NAME}" \
-              --tsaurl http://timestamp.acs.microsoft.com \
-              --tsmode RFC3161 \
-              "$file"
-          done
+      # TODO: Re-enable Windows code signing once Azure Trusted Signing 403 is resolved
+      # - name: Setup Jsign
+      #   if: contains(matrix.target, 'windows')
+      #   id: jsign
+      #   uses: ./.github/actions/setup-jsign
+      #
+      # - name: Install JRE for Jsign
+      #   if: contains(matrix.target, 'windows')
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y default-jre-headless
+      #
+      # - name: Azure CLI login
+      #   if: contains(matrix.target, 'windows') && env.AZURE_ENDPOINT != ''
+      #   uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
+      #   with:
+      #     creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+      #     allow-no-subscriptions: true
+      #   env:
+      #     AZURE_ENDPOINT: ${{ secrets.AZURE_ENDPOINT }}
+      #
+      # - name: Sign Windows artifacts with Azure Trusted Signing
+      #   if: contains(matrix.target, 'windows') && env.AZURE_ENDPOINT != ''
+      #   env:
+      #     AZURE_ENDPOINT: ${{ secrets.AZURE_ENDPOINT }}
+      #     AZURE_CODE_SIGNING_NAME: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
+      #     AZURE_CERT_PROFILE_NAME: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
+      #   run: |
+      #     TOKEN=$(az account get-access-token --resource https://codesigning.azure.net --query accessToken -o tsv)
+      #
+      #     # Extract hostname from endpoint URL
+      #     KEYSTORE=$(echo "$AZURE_ENDPOINT" | sed 's|https\?://||;s|/.*||')
+      #
+      #     # Sign all exe and msi files in the bundle directory
+      #     find target/${{ matrix.target }}/release/bundle -type f \( -name "*.exe" -o -name "*.msi" \) | while read file; do
+      #       echo "Signing: $file"
+      #       java -jar "${{ steps.jsign.outputs.jar-path }}" \
+      #         --storetype TRUSTEDSIGNING \
+      #         --keystore "$KEYSTORE" \
+      #         --storepass "$TOKEN" \
+      #         --alias "${AZURE_CODE_SIGNING_NAME}/${AZURE_CERT_PROFILE_NAME}" \
+      #         --tsaurl http://timestamp.acs.microsoft.com \
+      #         --tsmode RFC3161 \
+      #         "$file"
+      #     done
 
       - name: Collect updater artifacts and installers
         run: |
