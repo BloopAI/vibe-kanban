@@ -13,41 +13,15 @@ SET issue_prefix = o.issue_prefix
 FROM organizations o
 WHERE o.id = p.organization_id;
 
--- 3. Renumber issues per-project (ordered by created_at, id as tiebreaker)
---    and update simple_id to use the project's prefix.
-WITH renumbered AS (
-    SELECT
-        i.id,
-        ROW_NUMBER() OVER (
-            PARTITION BY i.project_id
-            ORDER BY i.created_at, i.id
-        ) AS new_issue_number,
-        p.issue_prefix
-    FROM issues i
-    JOIN projects p ON p.id = i.project_id
-)
-UPDATE issues i
-SET
-    issue_number = r.new_issue_number,
-    simple_id    = r.issue_prefix || '-' || r.new_issue_number
-FROM renumbered r
-WHERE i.id = r.id;
-
--- 4. Backfill project counters to the max issue_number per project
+-- 3. Backfill project counters to the max issue_number per project
+--    so the trigger doesn't restart numbering at 1
 UPDATE projects p
 SET issue_counter = COALESCE(
     (SELECT MAX(i.issue_number) FROM issues i WHERE i.project_id = p.id),
     0
 );
 
--- 5. Update denormalized notification payloads that store issue_simple_id
-UPDATE notifications n
-SET payload = jsonb_set(n.payload, '{issue_simple_id}', to_jsonb(i.simple_id), true)
-FROM issues i
-WHERE n.issue_id = i.id
-  AND n.payload ? 'issue_simple_id';
-
--- 6. Replace the trigger function to use project prefix/counter directly
+-- 4. Replace the trigger function to use project prefix/counter directly
 CREATE OR REPLACE FUNCTION set_issue_simple_id()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -69,6 +43,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 7. Drop the now-unused org-level counter
+-- 5. Drop the now-unused org-level counter
 ALTER TABLE organizations
     DROP COLUMN IF EXISTS issue_counter;
