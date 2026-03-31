@@ -16,20 +16,22 @@ pub struct SmtpMailer {
 
 impl SmtpMailer {
     pub fn new(host: &str, port: u16, username: &str, password: &str, from: &str) -> Self {
-        let credentials = Credentials::new(username.to_owned(), password.to_owned());
-
-        let transport = if port == 465 {
+        let builder = if port == 465 {
             AsyncSmtpTransport::<Tokio1Executor>::relay(host)
                 .expect("failed to create SMTP relay transport")
                 .port(port)
-                .credentials(credentials)
-                .build()
         } else {
             AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(host)
                 .expect("failed to create SMTP STARTTLS transport")
                 .port(port)
-                .credentials(credentials)
+        };
+
+        let transport = if !username.is_empty() {
+            builder
+                .credentials(Credentials::new(username.to_owned(), password.to_owned()))
                 .build()
+        } else {
+            builder.build()
         };
 
         let from: Mailbox = from.parse().expect("invalid SMTP_FROM address");
@@ -190,9 +192,10 @@ impl Mailer for SmtpMailer {
             url = esc(notifications_url),
         ));
 
+        let s = if notification_count == 1 { "" } else { "s" };
         let Some(builder) = self.message_builder(
             contact.email,
-            &format!("You have {notification_count} new notifications"),
+            &format!("You have {notification_count} new notification{s}"),
         ) else {
             return Err(DigestError::Transport(format!(
                 "invalid recipient address: {}",
