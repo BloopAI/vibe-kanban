@@ -33,12 +33,7 @@ pub struct DigestStats {
 pub enum DigestError {
     #[error("digest database error: {0}")]
     Database(#[from] sqlx::Error),
-    #[error("email send failed for digest: status={status}, body={body}")]
-    SendFailed {
-        status: reqwest::StatusCode,
-        body: String,
-    },
-    #[error("email request error for digest: {0}")]
+    #[error("email send error for digest: {0}")]
     Transport(String),
     #[error("invalid digest window duration")]
     InvalidWindowDuration,

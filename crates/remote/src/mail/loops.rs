@@ -258,7 +258,9 @@ impl Mailer for LoopsMailer {
             Ok(resp) => {
                 let status = resp.status();
                 let body = resp.text().await.unwrap_or_default();
-                Err(DigestError::SendFailed { status, body })
+                Err(DigestError::Transport(format!(
+                    "Loops send failed: status={status}, body={body}"
+                )))
             }
             Err(err) => Err(DigestError::Transport(err.to_string())),
         }
