@@ -19,6 +19,13 @@ SET simple_id = p.issue_prefix || '-' || i.issue_number
 FROM projects p
 WHERE p.id = i.project_id;
 
+-- 4. Update denormalized notification payloads to match new simple_ids
+UPDATE notifications n
+SET payload = jsonb_set(n.payload, '{issue_simple_id}', to_jsonb(i.simple_id), true)
+FROM issues i
+WHERE n.issue_id = i.id
+  AND n.payload ? 'issue_simple_id';
+
 -- 5. Backfill project counters to the max issue_number per project
 --    so the trigger doesn't restart numbering at 1
 UPDATE projects p
