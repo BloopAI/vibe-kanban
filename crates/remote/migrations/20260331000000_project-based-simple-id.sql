@@ -13,7 +13,13 @@ UPDATE projects
 SET issue_prefix = UPPER(LEFT(REGEXP_REPLACE(name, '[^a-zA-Z]', '', 'g'), 3))
 WHERE REGEXP_REPLACE(name, '[^a-zA-Z]', '', 'g') <> '';
 
--- 3. Backfill project counters to the max issue_number per project
+-- 3. Update existing issues to use the new project prefix
+UPDATE issues i
+SET simple_id = p.issue_prefix || '-' || i.issue_number
+FROM projects p
+WHERE p.id = i.project_id;
+
+-- 5. Backfill project counters to the max issue_number per project
 --    so the trigger doesn't restart numbering at 1
 UPDATE projects p
 SET issue_counter = COALESCE(
@@ -21,7 +27,7 @@ SET issue_counter = COALESCE(
     0
 );
 
--- 4. Replace the trigger function to use project prefix/counter directly
+-- 6. Replace the trigger function to use project prefix/counter directly
 CREATE OR REPLACE FUNCTION set_issue_simple_id()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -43,7 +49,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 5. Drop the now-unused org-level issue columns
+-- 7. Drop the now-unused org-level issue columns
 ALTER TABLE organizations
     DROP COLUMN IF EXISTS issue_counter,
     DROP COLUMN IF EXISTS issue_prefix;
