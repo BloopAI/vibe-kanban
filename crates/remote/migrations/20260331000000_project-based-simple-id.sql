@@ -7,11 +7,15 @@ ALTER TABLE projects
     ADD COLUMN IF NOT EXISTS issue_prefix VARCHAR(10) NOT NULL DEFAULT 'ISS',
     ADD COLUMN IF NOT EXISTS issue_counter INTEGER NOT NULL DEFAULT 0;
 
--- 2. Backfill project prefixes from their organization's current prefix
-UPDATE projects p
-SET issue_prefix = o.issue_prefix
-FROM organizations o
-WHERE o.id = p.organization_id;
+-- 2. Derive project prefixes from project names (first 3 alpha chars, uppercased)
+UPDATE projects
+SET issue_prefix = UPPER(LEFT(REGEXP_REPLACE(name, '[^a-zA-Z]', '', 'g'), 3))
+WHERE REGEXP_REPLACE(name, '[^a-zA-Z]', '', 'g') <> '';
+
+-- Fallback for projects with no alpha chars in name
+UPDATE projects
+SET issue_prefix = 'ISS'
+WHERE REGEXP_REPLACE(name, '[^a-zA-Z]', '', 'g') = '';
 
 -- 3. Backfill project counters to the max issue_number per project
 --    so the trigger doesn't restart numbering at 1
