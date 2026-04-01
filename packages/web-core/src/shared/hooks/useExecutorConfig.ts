@@ -264,6 +264,11 @@ export function useExecutorConfig({
     if (config) onPersistRef.current?.(config);
   }, []);
 
+  const userSelectionsRef = useRef(userSelections);
+  useEffect(() => {
+    userSelectionsRef.current = userSelections;
+  }, [userSelections]);
+
   // Setting executor → replaces entire selections with just { executor }.
   // Clears variant + all override fields.
   const setExecutor = useCallback(
@@ -294,24 +299,22 @@ export function useExecutorConfig({
   // Changing model clears reasoning selection; other overrides are independent.
   const setOverrides = useCallback(
     (partial: Partial<ExecutorConfig>) => {
-      setUserSelections((prev) => {
-        const next = { ...prev, ...partial };
-        if ('model_id' in partial && !('reasoning_id' in partial)) {
-          delete next.reasoning_id;
-        }
-        const persistedConfig = executor.effective
-          ? {
-              ...next,
-              executor: executor.effective,
-              variant: variant.resolved,
-            }
-          : null;
-        // Persist with current effective executor/variant
-        if (persistedConfig) {
-          persist(persistedConfig);
-        }
-        return next;
-      });
+      const prev = userSelectionsRef.current;
+      const next = { ...prev, ...partial };
+      if ('model_id' in partial && !('reasoning_id' in partial)) {
+        delete next.reasoning_id;
+      }
+
+      userSelectionsRef.current = next;
+      setUserSelections(next);
+
+      if (executor.effective) {
+        persist({
+          ...next,
+          executor: executor.effective,
+          variant: variant.resolved,
+        });
+      }
     },
     [executor.effective, variant.resolved, persist]
   );

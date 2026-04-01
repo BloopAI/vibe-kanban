@@ -20,9 +20,9 @@ import {
 import {
   type KeyboardEvent,
   type MouseEvent,
-  type MutableRefObject,
   type ReactNode,
   type Ref,
+  type RefObject,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DotsSixVerticalIcon, PlusIcon } from '@phosphor-icons/react';
@@ -101,8 +101,7 @@ export const KanbanCard = ({
           if (typeof forwardedRef === 'function') {
             forwardedRef(node);
           } else if (forwardedRef && typeof forwardedRef === 'object') {
-            (forwardedRef as MutableRefObject<HTMLDivElement | null>).current =
-              node;
+            (forwardedRef as RefObject<HTMLDivElement | null>).current = node;
           }
         };
 

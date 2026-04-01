@@ -56,7 +56,7 @@ interface SearchableTagDropdownProps {
   onCancelCreate: () => void;
 
   // Ref for color picker container (for focus management)
-  colorPickerRef: RefObject<HTMLDivElement>;
+  colorPickerRef: RefObject<HTMLDivElement | null>;
 
   contentClassName?: string;
   disabled?: boolean;
@@ -153,7 +153,7 @@ export function SearchableTagDropdown({
               <>
                 {filteredTags.length > 0 && (
                   <Virtuoso
-                    ref={virtuosoRef as React.RefObject<VirtuosoHandle>}
+                    ref={virtuosoRef as React.RefObject<VirtuosoHandle | null>}
                     style={{ height: Math.min(filteredTags.length * 36, 200) }}
                     totalCount={filteredTags.length}
                     computeItemKey={(idx) =>

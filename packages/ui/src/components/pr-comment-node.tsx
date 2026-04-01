@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, type JSX } from 'react';
 import { NodeKey, SerializedLexicalNode, Spread } from 'lexical';
 import { PrCommentCard } from './pr-comment-card';
 import {

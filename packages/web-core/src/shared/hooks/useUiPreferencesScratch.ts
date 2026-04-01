@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { useShallow } from 'zustand/shallow';
 import { useScratch } from '@/shared/hooks/useScratch';
 import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 import {
@@ -194,25 +195,27 @@ export function useUiPreferencesScratch() {
   const isApplyingServerDataRef = useRef(false);
 
   // Get current store state
-  const storeState = useUiPreferencesStore((state) => ({
-    repoActions: state.repoActions,
-    expanded: state.expanded,
-    contextBarPosition: state.contextBarPosition,
-    paneSizes: state.paneSizes,
-    collapsedPaths: state.collapsedPaths,
-    fileSearchRepoId: state.fileSearchRepoId,
-    isLeftSidebarVisible: state.isLeftSidebarVisible,
-    isRightSidebarVisible: state.isRightSidebarVisible,
-    isTerminalVisible: state.isTerminalVisible,
-    workspacePanelStates: state.workspacePanelStates,
-    workspaceFilters: state.workspaceFilters,
-    workspaceSort: state.workspaceSort,
-    selectedOrgId: state.selectedOrgId,
-    selectedProjectId: state.selectedProjectId,
-    createDraftWorkspaceByDefault: state.createDraftWorkspaceByDefault,
-    kanbanProjectViewSelections: state.kanbanProjectViewSelections,
-    kanbanProjectViewPreferences: state.kanbanProjectViewPreferences,
-  }));
+  const storeState = useUiPreferencesStore(
+    useShallow((state) => ({
+      repoActions: state.repoActions,
+      expanded: state.expanded,
+      contextBarPosition: state.contextBarPosition,
+      paneSizes: state.paneSizes,
+      collapsedPaths: state.collapsedPaths,
+      fileSearchRepoId: state.fileSearchRepoId,
+      isLeftSidebarVisible: state.isLeftSidebarVisible,
+      isRightSidebarVisible: state.isRightSidebarVisible,
+      isTerminalVisible: state.isTerminalVisible,
+      workspacePanelStates: state.workspacePanelStates,
+      workspaceFilters: state.workspaceFilters,
+      workspaceSort: state.workspaceSort,
+      selectedOrgId: state.selectedOrgId,
+      selectedProjectId: state.selectedProjectId,
+      createDraftWorkspaceByDefault: state.createDraftWorkspaceByDefault,
+      kanbanProjectViewSelections: state.kanbanProjectViewSelections,
+      kanbanProjectViewPreferences: state.kanbanProjectViewPreferences,
+    }))
+  );
 
   // Extract scratch data
   const payload = scratch?.payload as ScratchPayload | undefined;

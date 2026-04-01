@@ -12,8 +12,7 @@ import {
   WorkerPoolContextProvider,
 } from '@pierre/diffs/react';
 import type { DiffLineAnnotation, AnnotationSide } from '@pierre/diffs';
-const WorkerUrl = new URL('@pierre/diffs/worker/worker.js', import.meta.url)
-  .href;
+import WorkerUrl from '@pierre/diffs/worker/worker.js?worker&url';
 import { sortDiffs } from '@/shared/lib/fileTreeUtils';
 import { useChangesView } from '@/shared/hooks/useChangesView';
 import { useScrollSyncStateMachine } from '@/shared/hooks/useScrollSyncStateMachine';

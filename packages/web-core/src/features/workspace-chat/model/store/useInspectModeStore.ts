@@ -9,7 +9,7 @@ interface InspectModeState {
   clearPendingComponentMarkdown: () => void;
 }
 
-export const useInspectModeStore = create<InspectModeState>((set) => ({
+export const useInspectModeStore = create<InspectModeState>()((set) => ({
   isInspectMode: false,
   setInspectMode: (active) => set({ isInspectMode: active }),
   toggleInspectMode: () => set((s) => ({ isInspectMode: !s.isInspectMode })),

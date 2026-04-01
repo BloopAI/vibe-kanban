@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type JSX } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { NodeKey, SerializedLexicalNode, Spread, $getNodeByKey } from 'lexical';
@@ -244,7 +244,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
     const showDownloadButton = Boolean(
       (isAttachment &&
         (localAttachment?.proxy_url || fullSizeUrl || metadata?.proxy_url)) ||
-        (!isWorkspaceImage && metadata?.proxy_url)
+      (!isWorkspaceImage && metadata?.proxy_url)
     );
 
     const handleClick = useCallback(

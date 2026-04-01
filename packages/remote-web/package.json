@@ -24,21 +24,21 @@
     "clsx": "^2.1.1",
     "posthog-js": "^1.283.0",
     "prettier": "^3.6.1",
-    "react": "^18.2.0",
+    "react": "^19.2.4",
     "react-hotkeys-hook": "^5.1.0",
-    "react-compiler-runtime": "^1.0.0",
-    "react-dom": "^18.2.0",
+    "react-dom": "^19.2.4",
     "simple-icons": "^15.16.0",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.25.76",
-    "zustand": "^4.5.7"
+    "use-sync-external-store": "^1.6.0",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@tailwindcss/container-queries": "^0.1.1",
     "@tanstack/router-plugin": "^1.161.1",
-    "@types/react": "^18.2.43",
-    "@types/react-dom": "^18.2.17",
-    "@vitejs/plugin-react": "^4.2.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.16",
     "babel-plugin-react-compiler": "^1.0.0",
     "postcss": "^8.4.32",
@@ -46,6 +46,8 @@
     "tailwindcss": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.9.2",
-    "vite": "^7.3.1"
+    "vite": "^8.0.3",
+    "@rolldown/plugin-babel": "^0.2.2",
+    "@babel/core": "^7.29.0"
   }
 }

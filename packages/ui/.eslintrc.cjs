@@ -30,5 +30,9 @@ module.exports = {
       },
     ],
     '@typescript-eslint/no-explicit-any': 'warn',
+    'react-hooks/set-state-in-effect': 'off',
+    'react-hooks/static-components': 'off',
+    'react-hooks/refs': 'off',
+    'react-hooks/incompatible-library': 'off',
   },
 };

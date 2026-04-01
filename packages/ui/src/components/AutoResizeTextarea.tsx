@@ -5,11 +5,10 @@ function normalizeSingleLineValue(value: string): string {
   return value.replace(/\r\n|\r|\n/g, ' ');
 }
 
-export interface AutoResizeTextareaProps
-  extends Omit<
-    React.ComponentPropsWithoutRef<'textarea'>,
-    'onChange' | 'value'
-  > {
+export interface AutoResizeTextareaProps extends Omit<
+  React.ComponentPropsWithoutRef<'textarea'>,
+  'onChange' | 'value'
+> {
   value: string;
   onChange: (value: string) => void;
   preventNewlines?: boolean;
@@ -82,7 +81,7 @@ export const AutoResizeTextarea = React.forwardRef<
   }, [resizeToContent]);
 
   const handleInput = React.useCallback(
-    (event: React.FormEvent<HTMLTextAreaElement>) => {
+    (event: React.InputEvent<HTMLTextAreaElement>) => {
       resizeToContent();
       onInput?.(event);
     },

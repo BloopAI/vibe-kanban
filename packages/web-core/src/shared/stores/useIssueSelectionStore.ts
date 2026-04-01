@@ -24,7 +24,7 @@ interface IssueSelectionState {
   setOrderedIssueIds: (ids: string[]) => void;
 }
 
-export const useIssueSelectionStore = create<IssueSelectionState>(
+export const useIssueSelectionStore = create<IssueSelectionState>()(
   (set, get) => ({
     selectedIssueIds: new Set<string>(),
     anchorIssueId: null,
