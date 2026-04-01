@@ -70,14 +70,14 @@ fn resolve_cursor_model_name<'a>(base_model: &'a str, reasoning: Option<&'a str>
 
         ("gpt-5.4-mini", Some("none")) => "gpt-5.4-mini-none",
         ("gpt-5.4-mini", Some("low")) => "gpt-5.4-mini-low",
-        ("gpt-5.4-mini", Some("medium")) => "gpt-5.4-mini",
-        ("gpt-5.4-mini", Some("high") | None) => "gpt-5.4-mini-high",
+        ("gpt-5.4-mini", None | Some("medium")) => "gpt-5.4-mini",
+        ("gpt-5.4-mini", Some("high")) => "gpt-5.4-mini-high",
         ("gpt-5.4-mini", Some("xhigh")) => "gpt-5.4-mini-xhigh",
 
         ("gpt-5.4-nano", Some("none")) => "gpt-5.4-nano-none",
         ("gpt-5.4-nano", Some("low")) => "gpt-5.4-nano-low",
-        ("gpt-5.4-nano", Some("medium")) => "gpt-5.4-nano",
-        ("gpt-5.4-nano", Some("high") | None) => "gpt-5.4-nano-high",
+        ("gpt-5.4-nano", None | Some("medium")) => "gpt-5.4-nano",
+        ("gpt-5.4-nano", Some("high")) => "gpt-5.4-nano-high",
         ("gpt-5.4-nano", Some("xhigh")) => "gpt-5.4-nano-xhigh",
 
         ("gpt-5.3-codex", Some("low")) => "gpt-5.3-codex-low",
