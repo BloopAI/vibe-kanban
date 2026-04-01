@@ -400,16 +400,15 @@ export const useConversationHistory = ({
       if (executionProcesses.current.length === 0) {
         if (emittedEmptyInitialRef.current) return;
         emittedEmptyInitialRef.current = true;
-        loadedInitialEntries.current = true;
         emitEntries(displayedExecutionProcesses.current, 'initial', false);
         return;
       }
 
       emittedEmptyInitialRef.current = false;
-      loadedInitialEntries.current = true;
 
       const allInitialEntries = await loadHistoricEntries(MIN_INITIAL_ENTRIES);
       if (cancelled) return;
+      loadedInitialEntries.current = true;
       mergeIntoDisplayed((state) => {
         Object.assign(state, allInitialEntries);
       });
