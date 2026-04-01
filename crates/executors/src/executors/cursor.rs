@@ -47,7 +47,7 @@ pub struct CursorAgent {
     pub force: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(
-        description = "auto, opus-4.6, sonnet-4.6, gpt-5.4, gpt-5.4-fast, gpt-5.3-codex, gpt-5.3-codex-fast, gpt-5.3-codex-spark-preview, gpt-5.2, gpt-5.2-codex, gpt-5.2-codex-fast, gpt-5.1, gpt-5.1-codex-max, gpt-5.1-codex-mini, grok, kimi-k2.5, gemini-3.1-pro, gemini-3-pro, gemini-3-flash, opus-4.5, sonnet-4.5, composer-1.5, composer-1, composer-2, composer-2-fast"
+        description = "auto, composer-2-fast, composer-2, composer-1.5, gpt-5.3-codex-low, gpt-5.3-codex-low-fast, gpt-5.3-codex, gpt-5.3-codex-fast, gpt-5.3-codex-high, gpt-5.3-codex-high-fast, gpt-5.3-codex-xhigh, gpt-5.3-codex-xhigh-fast, gpt-5.2, gpt-5.3-codex-spark-preview-low, gpt-5.3-codex-spark-preview, gpt-5.3-codex-spark-preview-high, gpt-5.3-codex-spark-preview-xhigh, gpt-5.2-codex-low, gpt-5.2-codex-low-fast, gpt-5.2-codex, gpt-5.2-codex-fast, gpt-5.2-codex-high, gpt-5.2-codex-high-fast, gpt-5.2-codex-xhigh, gpt-5.2-codex-xhigh-fast, gpt-5.1-codex-max-low, gpt-5.1-codex-max-low-fast, gpt-5.1-codex-max-medium, gpt-5.1-codex-max-medium-fast, gpt-5.1-codex-max-high, gpt-5.1-codex-max-high-fast, gpt-5.1-codex-max-xhigh, gpt-5.1-codex-max-xhigh-fast, gpt-5.4-high, gpt-5.4-high-fast, gpt-5.4-xhigh-fast, claude-4.6-opus-high-thinking, gpt-5.4-low, gpt-5.4-medium, gpt-5.4-medium-fast, gpt-5.4-xhigh, claude-4.6-sonnet-medium, claude-4.6-sonnet-medium-thinking, claude-4.6-opus-high, claude-4.6-opus-max, claude-4.6-opus-max-thinking, claude-4.5-opus-high, claude-4.5-opus-high-thinking, gpt-5.2-low, gpt-5.2-low-fast, gpt-5.2-fast, gpt-5.2-high, gpt-5.2-high-fast, gpt-5.2-xhigh, gpt-5.2-xhigh-fast, gemini-3.1-pro, gpt-5.4-mini-none, gpt-5.4-mini-low, gpt-5.4-mini-medium, gpt-5.4-mini-high, gpt-5.4-mini-xhigh, gpt-5.4-nano-none, gpt-5.4-nano-low, gpt-5.4-nano-medium, gpt-5.4-nano-high, gpt-5.4-nano-xhigh, grok-4-20, grok-4-20-thinking, claude-4.5-sonnet, claude-4.5-sonnet-thinking, gpt-5.1-low, gpt-5.1, gpt-5.1-high, gemini-3-flash, gpt-5.1-codex-mini-low, gpt-5.1-codex-mini, gpt-5.1-codex-mini-high, claude-4-sonnet, claude-4-sonnet-1m, claude-4-sonnet-thinking, claude-4-sonnet-1m-thinking, gpt-5-mini, kimi-k2.5"
     )]
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -59,13 +59,26 @@ pub struct CursorAgent {
 // get the model full name
 fn resolve_cursor_model_name<'a>(base_model: &'a str, reasoning: Option<&'a str>) -> &'a str {
     match (base_model, reasoning) {
-        ("gpt-5.4", Some("medium")) => "gpt-5.4-medium",
-        ("gpt-5.4", Some("high") | None) => "gpt-5.4-high",
-        ("gpt-5.4", Some("xhigh")) => "gpt-5.4-xhigh",
+        ("gpt-5.4-1m", Some("low")) => "gpt-5.4-1m-low",
+        ("gpt-5.4-1m", Some("medium")) => "gpt-5.4-1m",
+        ("gpt-5.4-1m", Some("high") | None) => "gpt-5.4-1m-high",
+        ("gpt-5.4-1m", Some("xhigh")) => "gpt-5.4-1m-xhigh",
 
-        ("gpt-5.4-fast", Some("medium")) => "gpt-5.4-medium-fast",
+        ("gpt-5.4-fast", Some("medium")) => "gpt-5.4-fast",
         ("gpt-5.4-fast", Some("high") | None) => "gpt-5.4-high-fast",
         ("gpt-5.4-fast", Some("xhigh")) => "gpt-5.4-xhigh-fast",
+
+        ("gpt-5.4-mini", Some("none")) => "gpt-5.4-mini-none",
+        ("gpt-5.4-mini", Some("low")) => "gpt-5.4-mini-low",
+        ("gpt-5.4-mini", Some("medium")) => "gpt-5.4-mini",
+        ("gpt-5.4-mini", Some("high") | None) => "gpt-5.4-mini-high",
+        ("gpt-5.4-mini", Some("xhigh")) => "gpt-5.4-mini-xhigh",
+
+        ("gpt-5.4-nano", Some("none")) => "gpt-5.4-nano-none",
+        ("gpt-5.4-nano", Some("low")) => "gpt-5.4-nano-low",
+        ("gpt-5.4-nano", Some("medium")) => "gpt-5.4-nano",
+        ("gpt-5.4-nano", Some("high") | None) => "gpt-5.4-nano-high",
+        ("gpt-5.4-nano", Some("xhigh")) => "gpt-5.4-nano-xhigh",
 
         ("gpt-5.3-codex", Some("low")) => "gpt-5.3-codex-low",
         ("gpt-5.3-codex", Some("medium")) => "gpt-5.3-codex",
@@ -77,6 +90,21 @@ fn resolve_cursor_model_name<'a>(base_model: &'a str, reasoning: Option<&'a str>
         ("gpt-5.3-codex-fast", Some("high") | None) => "gpt-5.3-codex-high-fast",
         ("gpt-5.3-codex-fast", Some("xhigh")) => "gpt-5.3-codex-xhigh-fast",
 
+        ("gpt-5.3-codex-spark", Some("low")) => "gpt-5.3-codex-spark-low",
+        ("gpt-5.3-codex-spark", Some("medium")) => "gpt-5.3-codex-spark",
+        ("gpt-5.3-codex-spark", Some("high") | None) => "gpt-5.3-codex-spark-high",
+        ("gpt-5.3-codex-spark", Some("xhigh")) => "gpt-5.3-codex-spark-xhigh",
+
+        ("gpt-5.2", Some("low")) => "gpt-5.2-low",
+        ("gpt-5.2", Some("medium")) => "gpt-5.2",
+        ("gpt-5.2", Some("high") | None) => "gpt-5.2-high",
+        ("gpt-5.2", Some("xhigh")) => "gpt-5.2-xhigh",
+
+        ("gpt-5.2-fast", Some("low")) => "gpt-5.2-low-fast",
+        ("gpt-5.2-fast", Some("medium")) => "gpt-5.2-fast",
+        ("gpt-5.2-fast", Some("high") | None) => "gpt-5.2-high-fast",
+        ("gpt-5.2-fast", Some("xhigh")) => "gpt-5.2-xhigh-fast",
+
         ("gpt-5.2-codex", Some("low")) => "gpt-5.2-codex-low",
         ("gpt-5.2-codex", Some("medium")) => "gpt-5.2-codex",
         ("gpt-5.2-codex", Some("high") | None) => "gpt-5.2-codex-high",
@@ -87,23 +115,30 @@ fn resolve_cursor_model_name<'a>(base_model: &'a str, reasoning: Option<&'a str>
         ("gpt-5.2-codex-fast", Some("high") | None) => "gpt-5.2-codex-high-fast",
         ("gpt-5.2-codex-fast", Some("xhigh")) => "gpt-5.2-codex-xhigh-fast",
 
-        ("gpt-5.2", Some("medium")) => "gpt-5.2",
-        ("gpt-5.2", Some("high") | None) => "gpt-5.2-high",
-
-        ("gpt-5.1-codex-max", Some("medium")) => "gpt-5.1-codex-max",
-        ("gpt-5.1-codex-max", Some("high") | None) => "gpt-5.1-codex-max-high",
-
-        ("gpt-5.1", Some("medium")) => "gpt-5.1",
-        ("gpt-5.1", Some("high") | None) => "gpt-5.1-high",
-
-        ("opus-4.6", Some("standard")) => "opus-4.6",
-        ("opus-4.6", Some("thinking") | None) => "opus-4.6-thinking",
-        ("sonnet-4.6", Some("standard")) => "sonnet-4.6",
-        ("sonnet-4.6", Some("thinking") | None) => "sonnet-4.6-thinking",
         ("opus-4.5", Some("standard")) => "opus-4.5",
         ("opus-4.5", Some("thinking") | None) => "opus-4.5-thinking",
-        ("sonnet-4.5", Some("standard")) => "sonnet-4.5",
-        ("sonnet-4.5", Some("thinking") | None) => "sonnet-4.5-thinking",
+
+        ("sonnet-4.5-1m", Some("standard")) => "sonnet-4.5-1m",
+        ("sonnet-4.5-1m", Some("thinking") | None) => "sonnet-4.5-1m-thinking",
+
+        ("grok-4.20", Some("standard")) => "grok-4.20",
+        ("grok-4.20", Some("thinking") | None) => "grok-4.20-thinking",
+
+        // Legacy ids from older catalogs / saved profiles
+        ("gpt-5.4", Some("medium")) => "gpt-5.4-1m",
+        ("gpt-5.4", Some("high") | None) => "gpt-5.4-1m-high",
+        ("gpt-5.4", Some("xhigh")) => "gpt-5.4-1m-xhigh",
+        ("gpt-5.4", Some("low")) => "gpt-5.4-1m-low",
+
+        ("opus-4.6", Some("standard")) => "opus-4.5",
+        ("opus-4.6", Some("thinking") | None) => "opus-4.5-thinking",
+        ("sonnet-4.6", Some("standard")) => "sonnet-4.5-1m",
+        ("sonnet-4.6", Some("thinking") | None) => "sonnet-4.5-1m-thinking",
+        ("sonnet-4.5", Some("standard")) => "sonnet-4.5-1m",
+        ("sonnet-4.5", Some("thinking") | None) => "sonnet-4.5-1m-thinking",
+
+        ("gpt-5.3-codex-spark-preview", _) => "gpt-5.3-codex-spark",
+        ("grok", _) => "grok-4.20",
 
         _ => base_model,
     }
@@ -111,16 +146,50 @@ fn resolve_cursor_model_name<'a>(base_model: &'a str, reasoning: Option<&'a str>
 
 fn cursor_reasoning_options(base_model: &str) -> Vec<ReasoningOption> {
     match base_model {
-        "gpt-5.4" | "gpt-5.4-fast" => {
-            ReasoningOption::from_names(["medium", "high", "xhigh"].map(String::from))
-        }
-        "gpt-5.3-codex" | "gpt-5.3-codex-fast" | "gpt-5.2-codex" | "gpt-5.2-codex-fast" => {
+        "gpt-5.4-1m" => {
             ReasoningOption::from_names(["low", "medium", "high", "xhigh"].map(String::from))
         }
-        "gpt-5.2" | "gpt-5.1-codex-max" | "gpt-5.1" => {
-            ReasoningOption::from_names(["medium", "high"].map(String::from))
+        "gpt-5.4-fast" => {
+            ReasoningOption::from_names(["medium", "high", "xhigh"].map(String::from))
         }
-        "opus-4.6" | "sonnet-4.6" | "opus-4.5" | "sonnet-4.5" => vec![
+        "gpt-5.4-mini" | "gpt-5.4-nano" => vec![
+            ReasoningOption {
+                id: "none".to_string(),
+                label: "None".to_string(),
+                is_default: false,
+            },
+            ReasoningOption {
+                id: "low".to_string(),
+                label: "Low".to_string(),
+                is_default: false,
+            },
+            ReasoningOption {
+                id: "medium".to_string(),
+                label: "Medium".to_string(),
+                is_default: true,
+            },
+            ReasoningOption {
+                id: "high".to_string(),
+                label: "High".to_string(),
+                is_default: false,
+            },
+            ReasoningOption {
+                id: "xhigh".to_string(),
+                label: "Extra High".to_string(),
+                is_default: false,
+            },
+        ],
+        "gpt-5.3-codex"
+        | "gpt-5.3-codex-fast"
+        | "gpt-5.3-codex-spark"
+        | "gpt-5.2-codex"
+        | "gpt-5.2-codex-fast" => {
+            ReasoningOption::from_names(["low", "medium", "high", "xhigh"].map(String::from))
+        }
+        "gpt-5.2" | "gpt-5.2-fast" => {
+            ReasoningOption::from_names(["low", "medium", "high", "xhigh"].map(String::from))
+        }
+        "opus-4.5" | "sonnet-4.5-1m" | "grok-4.20" => vec![
             ReasoningOption {
                 id: "standard".to_string(),
                 label: "Standard".to_string(),
@@ -648,30 +717,67 @@ impl StandardCodingAgentExecutor for CursorAgent {
     ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
         let models: Vec<ModelInfo> = [
             ("auto", "Auto"),
-            ("gpt-5.4", "GPT-5.4"),
-            ("gpt-5.4-fast", "GPT-5.4 Fast"),
-            ("gemini-3.1-pro", "Gemini 3.1 Pro"),
-            ("opus-4.6", "Claude 4.6 Opus"),
-            ("sonnet-4.6", "Claude 4.6 Sonnet"),
+            ("composer-2-fast", "Composer 2 Fast"),
+            ("composer-2", "Composer 2"),
+            ("composer-1.5", "Composer 1.5"),
+            ("gpt-5.3-codex-low", "GPT-5.3 Codex Low"),
+            ("gpt-5.3-codex-low-fast", "GPT-5.3 Codex Low Fast"),
             ("gpt-5.3-codex", "GPT-5.3 Codex"),
             ("gpt-5.3-codex-fast", "GPT-5.3 Codex Fast"),
-            ("gpt-5.3-codex-spark-preview", "GPT-5.3 Codex Spark"),
-            ("kimi-k2.5", "Kimi K2.5"),
-            ("opus-4.5", "Claude 4.5 Opus"),
-            ("sonnet-4.5", "Claude 4.5 Sonnet"),
-            ("gemini-3-pro", "Gemini 3 Pro"),
-            ("gemini-3-flash", "Gemini 3 Flash"),
+            ("gpt-5.3-codex-high", "GPT-5.3 Codex High"),
+            ("gpt-5.3-codex-high-fast", "GPT-5.3 Codex High Fast"),
+            ("gpt-5.3-codex-xhigh", "GPT-5.3 Codex Extra High"),
+            ("gpt-5.3-codex-xhigh-fast", "GPT-5.3 Codex Extra High Fast"),
+            ("gpt-5.3-codex-spark-low", "GPT-5.3 Codex Spark Low"),
+            ("gpt-5.3-codex-spark", "GPT-5.3 Codex Spark"),
+            ("gpt-5.3-codex-spark-high", "GPT-5.3 Codex Spark High"),
+            (
+                "gpt-5.3-codex-spark-xhigh",
+                "GPT-5.3 Codex Spark Extra High",
+            ),
+            ("gpt-5.2", "GPT-5.2"),
+            ("gpt-5.2-low", "GPT-5.2 Low"),
+            ("gpt-5.2-low-fast", "GPT-5.2 Low Fast"),
+            ("gpt-5.2-fast", "GPT-5.2 Fast"),
+            ("gpt-5.2-high", "GPT-5.2 High"),
+            ("gpt-5.2-high-fast", "GPT-5.2 High Fast"),
+            ("gpt-5.2-xhigh", "GPT-5.2 Extra High"),
+            ("gpt-5.2-xhigh-fast", "GPT-5.2 Extra High Fast"),
+            ("gpt-5.2-codex-low", "GPT-5.2 Codex Low"),
+            ("gpt-5.2-codex-low-fast", "GPT-5.2 Codex Low Fast"),
             ("gpt-5.2-codex", "GPT-5.2 Codex"),
             ("gpt-5.2-codex-fast", "GPT-5.2 Codex Fast"),
-            ("gpt-5.2", "GPT-5.2"),
-            ("gpt-5.1-codex-max", "GPT-5.1 Codex Max"),
-            ("gpt-5.1", "GPT-5.1"),
-            ("gpt-5.1-codex-mini", "GPT-5.1 Codex Mini"),
-            ("grok", "Grok"),
-            ("composer-1", "Composer 1"),
-            ("composer-1.5", "Composer 1.5"),
-            ("composer-2", "Composer 2"),
-            ("composer-2-fast", "Composer 2 Fast"),
+            ("gpt-5.2-codex-high", "GPT-5.2 Codex High"),
+            ("gpt-5.2-codex-high-fast", "GPT-5.2 Codex High Fast"),
+            ("gpt-5.2-codex-xhigh", "GPT-5.2 Codex Extra High"),
+            ("gpt-5.2-codex-xhigh-fast", "GPT-5.2 Codex Extra High Fast"),
+            ("gpt-5.4-1m-low", "GPT-5.4 1M Low"),
+            ("gpt-5.4-1m", "GPT-5.4 1M"),
+            ("gpt-5.4-1m-high", "GPT-5.4 1M High"),
+            ("gpt-5.4-1m-xhigh", "GPT-5.4 1M Extra High"),
+            ("gpt-5.4-fast", "GPT-5.4 Fast"),
+            ("gpt-5.4-high-fast", "GPT-5.4 High Fast"),
+            ("gpt-5.4-xhigh-fast", "GPT-5.4 Extra High Fast"),
+            ("gpt-5.4-mini-none", "GPT-5.4 Mini None"),
+            ("gpt-5.4-mini-low", "GPT-5.4 Mini Low"),
+            ("gpt-5.4-mini", "GPT-5.4 Mini"),
+            ("gpt-5.4-mini-high", "GPT-5.4 Mini High"),
+            ("gpt-5.4-mini-xhigh", "GPT-5.4 Mini Extra High"),
+            ("gpt-5.4-nano-none", "GPT-5.4 Nano None"),
+            ("gpt-5.4-nano-low", "GPT-5.4 Nano Low"),
+            ("gpt-5.4-nano", "GPT-5.4 Nano"),
+            ("gpt-5.4-nano-high", "GPT-5.4 Nano High"),
+            ("gpt-5.4-nano-xhigh", "GPT-5.4 Nano Extra High"),
+            ("opus-4.5", "Opus 4.5"),
+            ("opus-4.5-thinking", "Opus 4.5 Thinking"),
+            ("sonnet-4.5-1m", "Sonnet 4.5 1M"),
+            ("sonnet-4.5-1m-thinking", "Sonnet 4.5 1M Thinking"),
+            ("grok-4.20", "Grok 4.20"),
+            ("grok-4.20-thinking", "Grok 4.20 Thinking"),
+            ("gemini-3.1-pro", "Gemini 3.1 Pro"),
+            ("gemini-3-flash", "Gemini 3 Flash"),
+            ("gpt-5-mini", "GPT-5 Mini"),
+            ("kimi-k2.5", "Kimi K2.5"),
         ]
         .into_iter()
         .map(|(id, name)| ModelInfo {
