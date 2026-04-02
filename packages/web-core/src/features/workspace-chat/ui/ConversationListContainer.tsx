@@ -155,6 +155,7 @@ export const ConversationList = forwardRef<
   const repos = reposProp;
   const resetAction = useResetProcess(attempt.id, attempt.session?.id);
   const conversationScopeKey = `${attempt.id}:${sessionScopeId ?? attempt.session?.id ?? 'new'}`;
+  console.log('[CLC] RENDER scopeKey=' + conversationScopeKey);
   const [filteredEntries, setFilteredEntries] = useState<DisplayEntry[]>([]);
   const [dataVersion, setDataVersion] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -249,7 +250,9 @@ export const ConversationList = forwardRef<
   }, [conversationScopeKey, reset]);
 
   useEffect(() => {
+    console.log('[CLC] MOUNT scopeKey=' + conversationScopeKey);
     return () => {
+      console.log('[CLC] UNMOUNT scopeKey=' + conversationScopeKey);
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
       }
@@ -354,6 +357,17 @@ export const ConversationList = forwardRef<
 
     prevEntriesRef.current = derivedTimeline.displayEntries;
     prevRowsRef.current = derivedTimeline.rows;
+
+    console.log(
+      '[CLC] FLUSH addType=' +
+        pending.addType +
+        ' entryCount=' +
+        derivedTimeline.displayEntries.length +
+        ' loading=' +
+        pending.loading +
+        ' processIds=' +
+        JSON.stringify(Object.keys(pending.source.executionProcessState))
+    );
 
     setFilteredEntries(derivedTimeline.displayEntries);
     setDataVersion((current) => current + 1);

@@ -39,6 +39,18 @@ export const ExecutionProcessesProvider: React.FC<{
   );
 
   useEffect(() => {
+    console.log(
+      '[EPP] UPDATE sessionId=' +
+        sessionId +
+        ' visibleCount=' +
+        visible.length +
+        ' isLoading=' +
+        isLoading +
+        ' isConnected=' +
+        isConnected +
+        ' ids=' +
+        JSON.stringify(visible.map((p) => p.id.slice(0, 8)))
+    );
     useExecutionProcessesStore.getState().setExecutionProcessesData({
       executionProcessesAll: executionProcesses,
       executionProcessesByIdAll: executionProcessesById,
