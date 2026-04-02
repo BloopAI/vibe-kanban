@@ -801,7 +801,11 @@ impl LocalContainerService {
                 let _ = tokio::time::timeout(Duration::from_secs(5), handle).await;
             }
 
-            // Cleanup child handle
+            // Reap zombie before dropping the child handle
+            if let Some(child_lock) = child_store.read().await.get(&exec_id).cloned() {
+                let mut child = child_lock.write().await;
+                let _ = child.inner().try_wait();
+            }
             child_store.write().await.remove(&exec_id);
         })
     }
@@ -820,7 +824,7 @@ impl LocalContainerService {
                 };
                 if let Some(child_lock) = child_lock {
                     let mut child_handler = child_lock.write().await;
-                    match child_handler.try_wait() {
+                    match child_handler.inner().try_wait() {
                         Ok(Some(status)) => {
                             let _ = tx.send(Ok(status));
                             break;
