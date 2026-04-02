@@ -66,7 +66,7 @@ export const ExecutionProcessesProvider: React.FC<{
     return () => {
       useExecutionProcessesStore.getState().clearExecutionProcessesData();
     };
-  }, []);
+  }, [sessionId]);
 
   return <>{children}</>;
 };
