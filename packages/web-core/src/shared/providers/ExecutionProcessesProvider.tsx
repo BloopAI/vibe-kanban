@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import type { ExecutionProcess } from 'shared/types';
 import { useExecutionProcessesStore } from '@/shared/stores/useExecutionProcessesStore';
@@ -38,7 +38,25 @@ export const ExecutionProcessesProvider: React.FC<{
     [visible]
   );
 
-  useEffect(() => {
+  // Update store synchronously during render so children always see current
+  // data. This restores the timing that React Context provided before the
+  // Zustand migration (06a6ae18b). Using useEffect deferred the update until
+  // after children's effects, causing them to read stale execution processes
+  // from the previous session/workspace.
+  const prevDepsRef = useRef<unknown[]>([]);
+  const deps = [
+    executionProcesses,
+    executionProcessesById,
+    isAttemptRunning,
+    visible,
+    executionProcessesByIdVisible,
+    isAttemptRunningVisible,
+    isLoading,
+    isConnected,
+    error,
+  ];
+  if (deps.some((d, i) => d !== prevDepsRef.current[i])) {
+    prevDepsRef.current = deps;
     useExecutionProcessesStore.getState().setExecutionProcessesData({
       executionProcessesAll: executionProcesses,
       executionProcessesByIdAll: executionProcessesById,
@@ -50,23 +68,13 @@ export const ExecutionProcessesProvider: React.FC<{
       isConnected,
       error,
     });
-  }, [
-    executionProcesses,
-    executionProcessesById,
-    isAttemptRunning,
-    visible,
-    executionProcessesByIdVisible,
-    isAttemptRunningVisible,
-    isLoading,
-    isConnected,
-    error,
-  ]);
+  }
 
   useEffect(() => {
     return () => {
       useExecutionProcessesStore.getState().clearExecutionProcessesData();
     };
-  }, [sessionId]);
+  }, []);
 
   return <>{children}</>;
 };
