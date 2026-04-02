@@ -1,7 +1,10 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import type { ExecutionProcess } from 'shared/types';
-import { useExecutionProcessesStore } from '@/shared/stores/useExecutionProcessesStore';
+import {
+  ExecutionProcessesContext,
+  type ExecutionProcessesContextType,
+} from '@/shared/hooks/useExecutionProcessesContext';
 
 export const ExecutionProcessesProvider: React.FC<{
   sessionId?: string | undefined;
@@ -38,26 +41,8 @@ export const ExecutionProcessesProvider: React.FC<{
     [visible]
   );
 
-  // Update store synchronously during render so children always see current
-  // data. This restores the timing that React Context provided before the
-  // Zustand migration (06a6ae18b). Using useEffect deferred the update until
-  // after children's effects, causing them to read stale execution processes
-  // from the previous session/workspace.
-  const prevDepsRef = useRef<unknown[]>([]);
-  const deps = [
-    executionProcesses,
-    executionProcessesById,
-    isAttemptRunning,
-    visible,
-    executionProcessesByIdVisible,
-    isAttemptRunningVisible,
-    isLoading,
-    isConnected,
-    error,
-  ];
-  if (deps.some((d, i) => d !== prevDepsRef.current[i])) {
-    prevDepsRef.current = deps;
-    useExecutionProcessesStore.getState().setExecutionProcessesData({
+  const value = useMemo<ExecutionProcessesContextType>(
+    () => ({
       executionProcessesAll: executionProcesses,
       executionProcessesByIdAll: executionProcessesById,
       isAttemptRunningAll: isAttemptRunning,
@@ -67,14 +52,23 @@ export const ExecutionProcessesProvider: React.FC<{
       isLoading,
       isConnected,
       error,
-    });
-  }
+    }),
+    [
+      executionProcesses,
+      executionProcessesById,
+      isAttemptRunning,
+      visible,
+      executionProcessesByIdVisible,
+      isAttemptRunningVisible,
+      isLoading,
+      isConnected,
+      error,
+    ]
+  );
 
-  useEffect(() => {
-    return () => {
-      useExecutionProcessesStore.getState().clearExecutionProcessesData();
-    };
-  }, []);
-
-  return <>{children}</>;
+  return (
+    <ExecutionProcessesContext.Provider value={value}>
+      {children}
+    </ExecutionProcessesContext.Provider>
+  );
 };

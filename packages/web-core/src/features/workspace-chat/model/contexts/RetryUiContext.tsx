@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { useExecutionProcessesAll } from '@/shared/stores/useExecutionProcessesStore';
+import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import {
   RetryUiContext,
   type RetryUiContextType,
@@ -11,7 +11,8 @@ export function RetryUiProvider({
   workspaceId?: string;
   children: React.ReactNode;
 }) {
-  const executionProcesses = useExecutionProcessesAll();
+  const { executionProcessesAll: executionProcesses } =
+    useExecutionProcessesContext();
 
   const [activeRetryProcessId, setActiveRetryProcessId] = useState<
     string | null
