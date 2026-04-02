@@ -41,9 +41,7 @@ export const useConversationHistory = ({
   const displayedExecutionProcesses = useRef<ExecutionProcessStateStore>({});
   const loadedInitialEntries = useRef(false);
   const emittedEmptyInitialRef = useRef(false);
-  const activeStreamControllersRef = useRef<Map<string, { close: () => void }>>(
-    new Map()
-  );
+  const streamingProcessIdsRef = useRef<Set<string>>(new Set());
   const onTimelineUpdatedRef = useRef<
     UseConversationHistoryParams['onTimelineUpdated'] | null
   >(null);
@@ -248,7 +246,6 @@ export const useConversationHistory = ({
             emitEntries(displayedExecutionProcesses.current, 'running', false);
           },
           onFinished: () => {
-            activeStreamControllersRef.current.delete(executionProcess.id);
             emitEntries(displayedExecutionProcesses.current, 'running', false);
             controller.close();
             resolve();
@@ -258,7 +255,6 @@ export const useConversationHistory = ({
             reject();
           },
         });
-        activeStreamControllersRef.current.set(executionProcess.id, controller);
       });
     },
     [emitEntries]
@@ -422,8 +418,7 @@ export const useConversationHistory = ({
     displayedExecutionProcesses.current = {};
     loadedInitialEntries.current = false;
     emittedEmptyInitialRef.current = false;
-    activeStreamControllersRef.current.forEach((c) => c.close());
-    activeStreamControllersRef.current.clear();
+    streamingProcessIdsRef.current.clear();
     previousStatusMapRef.current.clear();
     emitEntries(displayedExecutionProcesses.current, 'initial', true);
   }, [scopeKey, emitEntries]);
@@ -534,10 +529,11 @@ export const useConversationHistory = ({
 
       if (
         activeProcess.status === ExecutionProcessStatus.running &&
-        !activeStreamControllersRef.current.has(activeProcess.id)
+        !streamingProcessIdsRef.current.has(activeProcess.id)
       ) {
+        streamingProcessIdsRef.current.add(activeProcess.id);
         loadRunningAndEmitWithBackoff(activeProcess).finally(() => {
-          activeStreamControllersRef.current.delete(activeProcess.id);
+          streamingProcessIdsRef.current.delete(activeProcess.id);
         });
       }
     }
