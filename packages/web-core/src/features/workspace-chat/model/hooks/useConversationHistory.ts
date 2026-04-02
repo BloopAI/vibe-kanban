@@ -86,16 +86,6 @@ export const useConversationHistory = ({
 
   // Keep executionProcesses up to date
   useEffect(() => {
-    console.log(
-      '[CH:REF-UPDATE] scopeKey=' +
-        scopeKey +
-        ' rawCount=' +
-        executionProcessesRaw.length +
-        ' isLoading=' +
-        isLoading +
-        ' ids=' +
-        JSON.stringify(executionProcessesRaw.map((p) => p.id.slice(0, 8)))
-    );
     executionProcesses.current = executionProcessesRaw.filter(
       (ep) =>
         ep.run_reason === 'setupscript' ||
@@ -228,12 +218,6 @@ export const useConversationHistory = ({
         }
         const controller = streamJsonPatchEntries<PatchType>(url, {
           onEntries(entries) {
-            console.log(
-              '[CH:STREAM] processId=' +
-                executionProcess.id.slice(0, 8) +
-                ' entryCount=' +
-                entries.length
-            );
             const patchesWithKey = entries.map((entry, index) =>
               patchWithKey(entry, executionProcess.id, index)
             );
@@ -380,41 +364,24 @@ export const useConversationHistory = ({
 
   // Clean up entries for processes that have been removed (e.g., after reset)
   useEffect(() => {
-    if (isLoading || !isConnected) {
-      console.log(
-        '[CH:CLEANUP] SKIPPED isLoading=' +
-          isLoading +
-          ' isConnected=' +
-          isConnected
-      );
-      return;
-    }
+    if (isLoading || !isConnected) return;
     const visibleProcessIds = new Set(executionProcessesRaw.map((p) => p.id));
     const displayedIds = Object.keys(displayedExecutionProcesses.current);
     let changed = false;
-    const removedIds: string[] = [];
 
     for (const id of displayedIds) {
       if (!visibleProcessIds.has(id)) {
         delete displayedExecutionProcesses.current[id];
-        removedIds.push(id.slice(0, 8));
         changed = true;
       }
     }
 
     if (changed) {
-      console.log('[CH:CLEANUP] removed=' + JSON.stringify(removedIds));
       emitEntries(displayedExecutionProcesses.current, 'historic', false);
     }
   }, [idListKey, executionProcessesRaw, emitEntries, isLoading, isConnected]);
 
   useEffect(() => {
-    console.log(
-      '[CH:RESET] scopeKey=' +
-        scopeKey +
-        ' controllersToClose=' +
-        activeStreamControllersRef.current.size
-    );
     displayedExecutionProcesses.current = {};
     loadedInitialEntries.current = false;
     emittedEmptyInitialRef.current = false;
@@ -426,49 +393,21 @@ export const useConversationHistory = ({
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (loadedInitialEntries.current) {
-        console.log('[CH:LOAD] SKIP-LOADED scopeKey=' + scopeKey);
-        return;
-      }
+      if (loadedInitialEntries.current) return;
 
-      if (isLoading) {
-        console.log('[CH:LOAD] SKIP-LOADING scopeKey=' + scopeKey);
-        return;
-      }
+      if (isLoading) return;
 
       if (executionProcesses.current.length === 0) {
         if (emittedEmptyInitialRef.current) return;
-        console.log('[CH:LOAD] EMPTY scopeKey=' + scopeKey);
         emittedEmptyInitialRef.current = true;
         emitEntries(displayedExecutionProcesses.current, 'initial', false);
         return;
       }
 
-      console.log(
-        '[CH:LOAD] START scopeKey=' +
-          scopeKey +
-          ' processCount=' +
-          executionProcesses.current.length +
-          ' ids=' +
-          JSON.stringify(
-            executionProcesses.current.map((p) => p.id.slice(0, 8))
-          )
-      );
       emittedEmptyInitialRef.current = false;
 
       const allInitialEntries = await loadHistoricEntries(MIN_INITIAL_ENTRIES);
-      if (cancelled) {
-        console.log('[CH:LOAD] CANCELLED scopeKey=' + scopeKey);
-        return;
-      }
-      console.log(
-        '[CH:LOAD] DONE scopeKey=' +
-          scopeKey +
-          ' entryProcessIds=' +
-          JSON.stringify(
-            Object.keys(allInitialEntries).map((id) => id.slice(0, 8))
-          )
-      );
+      if (cancelled) return;
       loadedInitialEntries.current = true;
       mergeIntoDisplayed((state) => {
         Object.assign(state, allInitialEntries);
@@ -500,18 +439,6 @@ export const useConversationHistory = ({
   useEffect(() => {
     const activeProcesses = getActiveAgentProcesses();
     if (activeProcesses.length === 0) return;
-    console.log(
-      '[CH:RUNNING] scopeKey=' +
-        scopeKey +
-        ' activeIds=' +
-        JSON.stringify(activeProcesses.map((p) => p.id.slice(0, 8))) +
-        ' controllerKeys=' +
-        JSON.stringify(
-          [...activeStreamControllersRef.current.keys()].map((k) =>
-            k.slice(0, 8)
-          )
-        )
-    );
 
     for (const activeProcess of activeProcesses) {
       if (!displayedExecutionProcesses.current[activeProcess.id]) {
@@ -566,10 +493,6 @@ export const useConversationHistory = ({
     }
 
     if (processesToReload.length === 0) return;
-    console.log(
-      '[CH:STATUS-RELOAD] processIds=' +
-        JSON.stringify(processesToReload.map((p) => p.id.slice(0, 8)))
-    );
 
     (async () => {
       let anyUpdated = false;
@@ -606,10 +529,6 @@ export const useConversationHistory = ({
     ).filter((id) => !executionProcessesRaw.some((p) => p.id === id));
 
     if (removedProcessIds.length > 0) {
-      console.log(
-        '[CH:REMOVAL] removedIds=' +
-          JSON.stringify(removedProcessIds.map((id) => id.slice(0, 8)))
-      );
       mergeIntoDisplayed((state) => {
         removedProcessIds.forEach((id) => {
           delete state[id];
