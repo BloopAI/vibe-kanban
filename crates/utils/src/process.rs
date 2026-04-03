@@ -11,14 +11,17 @@ pub async fn kill_process_group(child: &mut AsyncGroupChild) -> std::io::Result<
         use command_group::{Signal, UnixChildExt};
 
         for sig in [Signal::SIGINT, Signal::SIGTERM, Signal::SIGKILL] {
-            if child.try_wait()?.is_some() {
-                break;
-            }
             tracing::info!("Sending {:?} to process group", sig);
             if let Err(e) = child.signal(sig) {
+                // break if the group does not exist anymore
+                if e.raw_os_error() == Some(nix::libc::ESRCH) {
+                    break;
+                }
                 tracing::warn!("Failed to send signal {:?} to process group: {}", sig, e);
             }
-            tokio::time::sleep(Duration::from_secs(2)).await;
+            if sig != Signal::SIGKILL {
+                tokio::time::sleep(Duration::from_secs(2)).await;
+            }
         }
     }
 
