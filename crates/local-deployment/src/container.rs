@@ -208,29 +208,6 @@ impl LocalContainerService {
         map.remove(id);
     }
 
-    /// Kill the process group and clean up all per-execution resources
-    /// (child handle, msg store, DB stream). Idempotent — safe to call
-    /// multiple times or after resources have already been cleaned up.
-    async fn reap_execution(&self, exec_id: &Uuid) {
-        // Kill the process group
-        if let Some(child_lock) = self.get_child_from_store(exec_id).await {
-            let mut child = child_lock.write().await;
-            if let Err(err) = command::kill_process_group(&mut child).await {
-                tracing::warn!("Failed to kill process group for {}: {}", exec_id, err);
-            }
-        }
-        self.remove_child_from_store(exec_id).await;
-
-        // Flush logs to DB before dropping the MsgStore
-        let db_stream_handle = self.take_db_stream_handle(exec_id).await;
-        if let Some(msg_arc) = self.msg_stores.write().await.remove(exec_id) {
-            msg_arc.push_finished();
-        }
-        if let Some(handle) = db_stream_handle {
-            let _ = tokio::time::timeout(Duration::from_secs(5), handle).await;
-        }
-    }
-
     async fn add_cancellation_token(&self, id: Uuid, token: CancellationToken) {
         let mut map = self.cancellation_tokens.write().await;
         map.insert(id, token);
@@ -506,6 +483,8 @@ impl LocalContainerService {
         exit_signal: Option<ExecutorExitSignal>,
     ) -> JoinHandle<()> {
         let exec_id = *exec_id;
+        let child_store = self.child_store.clone();
+        let msg_stores = self.msg_stores.clone();
         let db = self.db.clone();
         let config = self.config.clone();
         let container = self.clone();
@@ -526,9 +505,15 @@ impl LocalContainerService {
                 // Some coding agent processes do not automatically exit after processing the user request; instead the executor
                 // signals when processing has finished to gracefully kill the process.
                 exit_result = &mut exit_signal_future => {
-                    // Executor signaled completion. The process may still be alive but
-                    // has finished its work. reap_execution at the end of this task
-                    // is the single place that kills the process group and cleans up.
+                    // Executor signaled completion: kill group and use the provided result
+                    if let Some(child_lock) = child_store.read().await.get(&exec_id).cloned() {
+                        let mut child = child_lock.write().await ;
+                        if let Err(err) = command::kill_process_group(&mut child).await {
+                            tracing::error!("Failed to kill process group after exit signal: {} {}", exec_id, err);
+                        }
+                    }
+
+                    // Map the exit result to appropriate exit status
                     status_result = match exit_result {
                         Ok(ExecutorExitResult::Success) => Ok(success_exit_status()),
                         Ok(ExecutorExitResult::Failure) => Ok(failure_exit_status()),
@@ -807,9 +792,30 @@ impl LocalContainerService {
             // capture the HEAD OID as the definitive "after" state (best-effort).
             container.update_after_head_commits(exec_id).await;
 
-            // Kill process group (cleans up orphaned children like MCP servers)
-            // and release all per-execution resources.
-            container.reap_execution(&exec_id).await;
+            // Wait for DB persistence to complete before cleaning up MsgStore
+            let db_stream_handle = container.take_db_stream_handle(&exec_id).await;
+            if let Some(msg_arc) = msg_stores.write().await.remove(&exec_id) {
+                msg_arc.push_finished();
+            }
+            if let Some(handle) = db_stream_handle {
+                let _ = tokio::time::timeout(Duration::from_secs(5), handle).await;
+            }
+
+            // Kill the process group to clean up child processes (e.g. MCP
+            // servers) that may outlive the executor. In the exit-signal branch
+            // the group was already killed above; in the natural-exit branch the
+            // leader is dead but children may still be running.
+            if let Some(child_lock) = child_store.read().await.get(&exec_id).cloned() {
+                let mut child = child_lock.write().await;
+                if let Err(err) = command::kill_process_group(&mut child).await {
+                    tracing::warn!(
+                        "Failed to kill process group during cleanup: {} {}",
+                        exec_id,
+                        err
+                    );
+                }
+            }
+            child_store.write().await.remove(&exec_id);
         })
     }
 
@@ -826,8 +832,8 @@ impl LocalContainerService {
                     map.get(&exec_id).cloned()
                 };
                 if let Some(child_lock) = child_lock {
-                    let mut child = child_lock.write().await;
-                    match child.try_wait() {
+                    let mut child_handler = child_lock.write().await;
+                    match child_handler.try_wait() {
                         Ok(Some(status)) => {
                             let _ = tx.send(Ok(status));
                             break;
@@ -1399,17 +1405,12 @@ impl ContainerService for LocalContainerService {
         execution_process: &ExecutionProcess,
         status: ExecutionProcessStatus,
     ) -> Result<(), ContainerError> {
-        // Verify the child exists before proceeding
-        if self
+        let child = self
             .get_child_from_store(&execution_process.id)
             .await
-            .is_none()
-        {
-            return Err(ContainerError::Other(anyhow!(
-                "Child process not found for execution"
-            )));
-        }
-
+            .ok_or_else(|| {
+                ContainerError::Other(anyhow!("Child process not found for execution"))
+            })?;
         let exit_code = if status == ExecutionProcessStatus::Completed {
             Some(0)
         } else {
@@ -1440,9 +1441,27 @@ impl ContainerService for LocalContainerService {
             }
         }
 
-        // Kill process group and release all per-execution resources.
-        // Idempotent — safe even if the exit monitor already reaped.
-        self.reap_execution(&execution_process.id).await;
+        {
+            let mut child_guard = child.write().await;
+            if let Err(e) = command::kill_process_group(&mut child_guard).await {
+                tracing::error!(
+                    "Failed to stop execution process {}: {}",
+                    execution_process.id,
+                    e
+                );
+                return Err(e);
+            }
+        }
+        self.remove_child_from_store(&execution_process.id).await;
+
+        // Mark the process finished in the MsgStore and wait for DB persistence
+        let db_stream_handle = self.take_db_stream_handle(&execution_process.id).await;
+        if let Some(msg) = self.msg_stores.write().await.remove(&execution_process.id) {
+            msg.push_finished();
+        }
+        if let Some(handle) = db_stream_handle {
+            let _ = tokio::time::timeout(Duration::from_secs(5), handle).await;
+        }
 
         tracing::debug!(
             "Execution process {} stopped successfully",
