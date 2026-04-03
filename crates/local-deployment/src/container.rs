@@ -801,19 +801,12 @@ impl LocalContainerService {
                 let _ = tokio::time::timeout(Duration::from_secs(5), handle).await;
             }
 
-            // Kill the process group to clean up child processes (e.g. MCP
-            // servers) that may outlive the executor. In the exit-signal branch
-            // the group was already killed above; in the natural-exit branch the
-            // leader is dead but children may still be running.
+            // SIGKILL any orphaned children (e.g. MCP servers) still in the
+            // process group. The executor itself is already done — either it
+            // exited naturally or was killed in the exit-signal branch above.
             if let Some(child_lock) = child_store.read().await.get(&exec_id).cloned() {
-                let mut child = child_lock.write().await;
-                if let Err(err) = command::kill_process_group(&mut child).await {
-                    tracing::warn!(
-                        "Failed to kill process group during cleanup: {} {}",
-                        exec_id,
-                        err
-                    );
-                }
+                let child = child_lock.write().await;
+                let _ = child.start_kill();
             }
             child_store.write().await.remove(&exec_id);
         })
