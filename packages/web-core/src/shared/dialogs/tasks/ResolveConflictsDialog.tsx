@@ -16,6 +16,7 @@ import { ConfigSelector } from '@/shared/components/tasks/ConfigSelector';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useHostId } from '@/shared/providers/HostIdProvider';
+import { workspaceSessionKeys } from '@/shared/hooks/workspaceSessionKeys';
 import { sessionsApi } from '@/shared/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
 import { create, useModal } from '@ebay/nice-modal-react';
@@ -178,7 +179,7 @@ const ResolveConflictsDialogImpl = create<ResolveConflictsDialogProps>(
         // Invalidate queries and wait for them to complete
         await Promise.all([
           queryClient.invalidateQueries({
-            queryKey: ['workspaceSessions', hostId ?? 'local', workspaceId],
+            queryKey: workspaceSessionKeys.byWorkspace(workspaceId, hostId),
           }),
           queryClient.invalidateQueries({
             queryKey: ['processes', workspaceId],

@@ -10,6 +10,7 @@ import {
 } from 'shared/types';
 import { AgentIcon } from '@/shared/components/AgentIcon';
 import { useHostId } from '@/shared/providers/HostIdProvider';
+import { workspaceSessionKeys } from '@/shared/hooks/workspaceSessionKeys';
 import { useWorkspaceExecution } from '@/shared/hooks/useWorkspaceExecution';
 import { useWorkspaceRepo } from '@/shared/hooks/useWorkspaceRepo';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
@@ -179,7 +180,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         onRename: async (newName: string) => {
           await sessionsApi.update(targetSessionId, { name: newName });
           void queryClient.invalidateQueries({
-            queryKey: ['workspaceSessions', hostId ?? 'local', workspaceId],
+            queryKey: workspaceSessionKeys.byWorkspace(workspaceId, hostId),
           });
         },
       });
