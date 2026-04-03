@@ -805,7 +805,7 @@ impl LocalContainerService {
             // process group. The executor itself is already done — either it
             // exited naturally or was killed in the exit-signal branch above.
             if let Some(child_lock) = child_store.read().await.get(&exec_id).cloned() {
-                let child = child_lock.write().await;
+                let mut child = child_lock.write().await;
                 let _ = child.start_kill();
             }
             child_store.write().await.remove(&exec_id);
