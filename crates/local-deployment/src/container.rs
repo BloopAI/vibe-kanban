@@ -506,7 +506,6 @@ impl LocalContainerService {
         exit_signal: Option<ExecutorExitSignal>,
     ) -> JoinHandle<()> {
         let exec_id = *exec_id;
-        let child_store = self.child_store.clone();
         let db = self.db.clone();
         let config = self.config.clone();
         let container = self.clone();
@@ -527,17 +526,9 @@ impl LocalContainerService {
                 // Some coding agent processes do not automatically exit after processing the user request; instead the executor
                 // signals when processing has finished to gracefully kill the process.
                 exit_result = &mut exit_signal_future => {
-                    // Executor signaled completion: kill group and use the provided result.
-                    // reap_execution below handles the full cleanup; this kill is needed
-                    // here to *initiate* the shutdown (the process hasn't exited yet).
-                    if let Some(child_lock) = child_store.read().await.get(&exec_id).cloned() {
-                        let mut child = child_lock.write().await;
-                        if let Err(err) = command::kill_process_group(&mut child).await {
-                            tracing::error!("Failed to kill process group after exit signal: {} {}", exec_id, err);
-                        }
-                    }
-
-                    // Map the exit result to appropriate exit status
+                    // Executor signaled completion. The process may still be alive but
+                    // has finished its work. reap_execution at the end of this task
+                    // is the single place that kills the process group and cleans up.
                     status_result = match exit_result {
                         Ok(ExecutorExitResult::Success) => Ok(success_exit_status()),
                         Ok(ExecutorExitResult::Failure) => Ok(failure_exit_status()),
