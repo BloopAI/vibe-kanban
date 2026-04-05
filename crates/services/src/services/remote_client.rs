@@ -6,17 +6,18 @@ use api_types::{
     AcceptInvitationResponse, AuthMethodsResponse, CreateInvitationRequest,
     CreateInvitationResponse, CreateIssueAssigneeRequest, CreateIssueRelationshipRequest,
     CreateIssueRequest, CreateIssueTagRequest, CreateOrganizationRequest,
-    CreateOrganizationResponse, CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest,
-    GetInvitationResponse, GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse,
-    HandoffRedeemRequest, HandoffRedeemResponse, Issue, IssueAssignee, IssueRelationship, IssueTag,
-    ListAttachmentsResponse, ListInvitationsResponse, ListIssueAssigneesResponse,
-    ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse,
-    ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse,
-    ListPullRequestsResponse, ListTagsResponse, LocalLoginRequest, LocalLoginResponse,
-    MutationResponse, Organization, ProfileResponse, PullRequest, RevokeInvitationRequest,
-    SearchIssuesRequest, Tag, TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest,
-    UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
-    UpdatePullRequestApiRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
+    CreateOrganizationResponse, CreateTagRequest, CreateWorkspaceRequest, DeleteResponse,
+    DeleteWorkspaceRequest, GetInvitationResponse, GetOrganizationResponse, HandoffInitRequest,
+    HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse, Issue, IssueAssignee,
+    IssueRelationship, IssueTag, ListAttachmentsResponse, ListInvitationsResponse,
+    ListIssueAssigneesResponse, ListIssueRelationshipsResponse, ListIssueTagsResponse,
+    ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse,
+    ListProjectStatusesResponse, ListProjectsResponse, ListPullRequestsResponse,
+    ListTagsResponse, LocalLoginRequest, LocalLoginResponse, MutationResponse, Organization,
+    ProfileResponse, PullRequest, RevokeInvitationRequest, SearchIssuesRequest, Tag,
+    TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest,
+    UpdateMemberRoleResponse, UpdateOrganizationRequest, UpdatePullRequestApiRequest,
+    UpdateTagRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
@@ -865,6 +866,39 @@ impl RemoteClient {
     /// Gets a single tag by ID.
     pub async fn get_tag(&self, tag_id: Uuid) -> Result<Tag, RemoteClientError> {
         self.get_authed(&format!("/v1/tags/{tag_id}")).await
+    }
+
+    /// Creates a tag in a project.
+    pub async fn create_tag(
+        &self,
+        request: &CreateTagRequest,
+    ) -> Result<MutationResponse<Tag>, RemoteClientError> {
+        self.post_authed("/v1/tags", Some(request)).await
+    }
+
+    /// Updates a tag.
+    pub async fn update_tag(
+        &self,
+        tag_id: Uuid,
+        request: &UpdateTagRequest,
+    ) -> Result<MutationResponse<Tag>, RemoteClientError> {
+        self.patch_authed(&format!("/v1/tags/{tag_id}"), request)
+            .await
+    }
+
+    /// Deletes a tag.
+    pub async fn delete_tag(&self, tag_id: Uuid) -> Result<DeleteResponse, RemoteClientError> {
+        let res = self
+            .send(
+                reqwest::Method::DELETE,
+                &format!("/v1/tags/{tag_id}"),
+                true,
+                None::<&()>,
+            )
+            .await?;
+        res.json::<DeleteResponse>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
     }
 
     // ── Issue Tags ─────────────────────────────────────────────────────
