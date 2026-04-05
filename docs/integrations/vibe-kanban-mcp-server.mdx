@@ -86,11 +86,14 @@ Many tools accept an optional `project_id` or `organization_id` parameter. When 
 | `list_issues` | List issues in a project | None | `project_id`<br/>`status`<br/>`priority`<br/>`search`<br/>`simple_id`<br/>`parent_issue_id`<br/>`assignee_user_id`<br/>`tag_id`<br/>`tag_name`<br/>`limit`<br/>`offset` | Paginated list of issues with PR info |
 | `create_issue` | Create a new issue | `title` | `project_id`<br/>`description`<br/>`priority`<br/>`parent_issue_id` | Created issue ID |
 | `get_issue` | Get detailed issue information | `issue_id` | None | Full issue details with tags, relationships, sub-issues, and PRs |
-| `update_issue` | Update an existing issue | `issue_id` | `title`<br/>`description`<br/>`status`<br/>`priority`<br/>`parent_issue_id` | Updated issue details |
+| `update_issue` | Update an issue's title, description, status, or priority. Use `list_project_statuses` to find valid status names | `issue_id` | `title`<br/>`description`<br/>`status`<br/>`priority`<br/>`parent_issue_id` | Updated issue details |
 | `delete_issue` | Delete an issue | `issue_id` | None | Deletion confirmation |
 | `list_issue_priorities` | List allowed priority values | None | None | List of priorities: urgent, high, medium, low |
+| `list_project_statuses` | List available statuses for a project (e.g. Backlog, In Progress, Done) | None | `project_id` | List of statuses with IDs, names, colours, and sort order |
 
 <Tip>
+Use `list_project_statuses` to discover valid status names before calling `update_issue` with a status change. Status names are case-insensitive.
+
 For `update_issue`, the `parent_issue_id` field supports three states: omit it entirely to leave the parent unchanged, pass `null` to un-nest the issue from its parent, or pass a UUID to set a new parent.
 </Tip>
 
@@ -107,6 +110,9 @@ For `update_issue`, the `parent_issue_id` field supports three states: omit it e
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |
 |------|---------|-------------------|-------------------|---------|
 | `list_tags` | List tags for a project | None | `project_id` | List of tags with IDs, names, and colours |
+| `create_tag` | Create a new project tag for labelling issues | `name`<br/>`color` | `project_id` | Created tag with ID, name, and colour |
+| `update_tag` | Update a project tag's name or colour | `tag_id` | `name`<br/>`color` | Updated tag details |
+| `delete_tag` | Delete a project tag definition | `tag_id` | None | Deletion confirmation |
 | `list_issue_tags` | List tags attached to an issue | `issue_id` | None | List of issue-tag relations |
 | `add_issue_tag` | Attach a tag to an issue | `issue_id`<br/>`tag_id` | None | Issue-tag relation ID |
 | `remove_issue_tag` | Remove a tag from an issue | `issue_tag_id` | None | Removal confirmation |
@@ -129,12 +135,14 @@ Supported relationship types: `blocking`, `related`, `has_duplicate`.
 | `update_setup_script` | Update a repository's setup script | `repo_id`<br/>`script` | None | Update confirmation |
 | `update_cleanup_script` | Update a repository's cleanup script | `repo_id`<br/>`script` | None | Update confirmation |
 | `update_dev_server_script` | Update a repository's dev server script | `repo_id`<br/>`script` | None | Update confirmation |
+| `list_branches` | List all branches for a repository | `repo_id` | None | List of branches with name, current/remote flags, and last commit date |
 
 ### Workspace Management
 
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |
 |------|---------|-------------------|-------------------|---------|
 | `list_workspaces` | List local workspaces | None | `archived`<br/>`pinned`<br/>`branch`<br/>`name_search`<br/>`limit`<br/>`offset` | Paginated list of workspaces |
+| `get_workspace` | Get detailed information about a workspace | None | `workspace_id` | Workspace details including branch, archived/pinned state, timestamps |
 | `update_workspace` | Update a workspace's properties | None | `workspace_id`<br/>`archived`<br/>`pinned`<br/>`name` | Updated workspace details |
 | `delete_workspace` | Delete a local workspace | None | `workspace_id`<br/>`delete_remote`<br/>`delete_branches` | Deletion confirmation |
 | `link_workspace_issue` | Link a workspace to a remote issue | `workspace_id`<br/>`issue_id` | None | Link confirmation |
@@ -148,6 +156,19 @@ Supported relationship types: `blocking`, `related`, `has_duplicate`.
 | `list_sessions` | List sessions for a workspace | None | `workspace_id` | Session list |
 | `run_session_prompt` | Run a coding-agent prompt inside an existing session | `session_id`<br/>`prompt` | None | Execution details |
 | `get_execution` | Inspect execution status and final message | `execution_id` | None | Execution details |
+| `stop_execution` | Stop a running execution process | `execution_id` | None | Stop confirmation |
+
+### Git & Pull Requests
+
+| Tool | Purpose | Required Parameters | Optional Parameters | Returns |
+|------|---------|-------------------|-------------------|---------|
+| `git_status` | Get branch status for all repos in a workspace | None | `workspace_id` | Per-repo ahead/behind counts, uncommitted changes, conflict info |
+| `git_push` | Push a workspace branch to its remote | `repo_id` | `workspace_id` | Push confirmation or force-push-required error |
+| `create_pull_request` | Create a PR from a workspace branch (auto-pushes first) | `repo_id`<br/>`title` | `workspace_id`<br/>`body`<br/>`draft`<br/>`target_branch` | PR URL |
+
+<Tip>
+Use `git_status` before `create_pull_request` to verify there are no uncommitted changes. The PR creation endpoint automatically pushes the branch before opening the PR.
+</Tip>
 
 The `repositories` parameter is an array of objects with:
 - `repo_id`: The repository ID (UUID)
