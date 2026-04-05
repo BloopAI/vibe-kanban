@@ -63,12 +63,16 @@ impl McpServer {
             + Self::issue_relationships_tools_router()
             + Self::task_attempts_tools_router()
             + Self::session_tools_router()
+            + Self::git_tools_router()
+            + Self::pull_requests_tools_router()
     }
 
     pub fn orchestrator_mode_router() -> rmcp::handler::server::tool::ToolRouter<Self> {
         let mut router = Self::context_tools_router()
             + Self::workspaces_tools_router()
-            + Self::session_tools_router();
+            + Self::session_tools_router()
+            + Self::git_tools_router()
+            + Self::pull_requests_tools_router();
         router.remove_route("list_workspaces");
         router.remove_route("delete_workspace");
         router
@@ -417,11 +421,16 @@ mod tests {
     fn orchestrator_mode_exposes_only_scoped_workflow_tools() {
         let actual = tool_names(McpServer::orchestrator_mode_router());
         let expected = BTreeSet::from([
+            "create_pull_request".to_string(),
             "create_session".to_string(),
             "get_context".to_string(),
             "get_execution".to_string(),
+            "get_workspace".to_string(),
+            "git_push".to_string(),
+            "git_status".to_string(),
             "list_sessions".to_string(),
             "run_session_prompt".to_string(),
+            "stop_execution".to_string(),
             "update_session".to_string(),
             "update_workspace".to_string(),
         ]);
