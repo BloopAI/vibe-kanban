@@ -78,6 +78,39 @@ struct ListReposResponse {
     count: usize,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct ListBranchesRequest {
+    #[schemars(description = "Repository ID. Use `list_repos` to find repo IDs.")]
+    repo_id: Uuid,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitBranch {
+    name: String,
+    is_current: bool,
+    is_remote: bool,
+    last_commit_date: String,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct BranchSummary {
+    #[schemars(description = "Branch name")]
+    name: String,
+    #[schemars(description = "Whether this is the currently checked-out branch")]
+    is_current: bool,
+    #[schemars(description = "Whether this is a remote-tracking branch")]
+    is_remote: bool,
+    #[schemars(description = "Last commit date on this branch")]
+    last_commit_date: String,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct ListBranchesResponse {
+    repo_id: String,
+    branches: Vec<BranchSummary>,
+    count: usize,
+}
+
 #[tool_router(router = repos_tools_router, vis = "pub")]
 impl McpServer {
     #[tool(description = "List all repositories.")]
@@ -102,6 +135,36 @@ impl McpServer {
         };
 
         McpServer::success(&response)
+    }
+
+    #[tool(
+        description = "List all branches for a repository, including whether each is the current branch, whether it's a remote-tracking branch, and the last commit date. Useful for choosing a branch when creating a workspace with `start_workspace`."
+    )]
+    async fn list_branches(
+        &self,
+        Parameters(ListBranchesRequest { repo_id }): Parameters<ListBranchesRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!("/api/repos/{}/branches", repo_id));
+        let branches: Vec<GitBranch> = match self.send_json(self.client.get(&url)).await {
+            Ok(b) => b,
+            Err(e) => return Ok(Self::tool_error(e)),
+        };
+
+        let branch_summaries: Vec<BranchSummary> = branches
+            .into_iter()
+            .map(|b| BranchSummary {
+                name: b.name,
+                is_current: b.is_current,
+                is_remote: b.is_remote,
+                last_commit_date: b.last_commit_date,
+            })
+            .collect();
+
+        McpServer::success(&ListBranchesResponse {
+            repo_id: repo_id.to_string(),
+            count: branch_summaries.len(),
+            branches: branch_summaries,
+        })
     }
 
     #[tool(
