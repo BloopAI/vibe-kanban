@@ -140,6 +140,18 @@ struct GetExecutionResponse {
     final_message: Option<String>,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct StopExecutionRequest {
+    #[schemars(description = "The execution process ID to stop")]
+    execution_id: Uuid,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct StopExecutionResponse {
+    success: bool,
+    execution_id: String,
+}
+
 #[tool_router(router = session_tools_router, vis = "pub")]
 impl McpServer {
     #[tool(description = "Create a new session in a workspace.")]
@@ -352,6 +364,24 @@ impl McpServer {
             is_finished,
             execution: execution_process_value,
             final_message: None,
+        })
+    }
+
+    #[tool(
+        description = "Stop a running execution process (coding agent, setup script, dev server, etc.). Use `get_execution` to check if a process is still running before stopping it."
+    )]
+    async fn stop_execution(
+        &self,
+        Parameters(StopExecutionRequest { execution_id }): Parameters<StopExecutionRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!("/api/execution-processes/{}/stop", execution_id));
+        if let Err(e) = self.send_empty_json(self.client.post(&url)).await {
+            return Ok(Self::tool_error(e));
+        }
+
+        Self::success(&StopExecutionResponse {
+            success: true,
+            execution_id: execution_id.to_string(),
         })
     }
 }
