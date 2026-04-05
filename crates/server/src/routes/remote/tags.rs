@@ -1,6 +1,4 @@
-use api_types::{
-    CreateTagRequest, ListTagsResponse, MutationResponse, Tag, UpdateTagRequest,
-};
+use api_types::{CreateTagRequest, ListTagsResponse, MutationResponse, Tag, UpdateTagRequest};
 use axum::{
     Router,
     extract::{Json, Path, Query, State},
