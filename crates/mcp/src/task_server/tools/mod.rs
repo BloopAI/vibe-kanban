@@ -42,6 +42,7 @@ mod issue_assignees;
 mod issue_relationships;
 mod issue_tags;
 mod organizations;
+mod pull_requests;
 mod remote_issues;
 mod remote_projects;
 mod repos;
