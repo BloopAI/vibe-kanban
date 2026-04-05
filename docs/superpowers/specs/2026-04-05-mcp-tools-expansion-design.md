@@ -2,18 +2,18 @@
 
 ## Problem
 
-The Vibe Kanban MCP server exposes 34 tools but the local backend has ~100+ API endpoints. Key agent workflows are broken or missing:
+The Vibe Kanban MCP server exposes 34 tools but the local backend has ~100+ API endpoints. **External agents** (Claude Code, Cursor, Amp, etc.) calling into Vibe Kanban via the MCP server are missing key capabilities:
 
-1. **Agents cannot create pull requests** — the most critical gap. After finishing work, agents have no way to open a PR or attach it to the workspace.
-2. **Agents cannot update issue status** — `update_issue` exists but agents don't know valid status names. There is no `list_project_statuses` tool, so the agent guesses and fails.
-3. **No git operations** — agents can't check branch status or push before creating PRs.
-4. **No execution control** — agents can't stop hung processes.
-5. **No branch discovery** — agents can't list branches when setting up workspaces.
-6. **No local tag management** — agents can't CRUD local content tags (the `@tagname` snippets).
+1. **Cannot create pull requests** — the most critical gap. After finishing work, external agents have no way to open a PR or attach it to the workspace through the MCP interface.
+2. **Cannot update issue status** — `update_issue` exists but agents don't know valid status names. There is no `list_project_statuses` tool, so the agent guesses and fails.
+3. **No git operations** — external agents can't check branch status or push before creating PRs.
+4. **No execution control** — external agents can't stop hung processes.
+5. **No branch discovery** — external agents can't list branches when setting up workspaces.
+6. **No project tag management** — external agents can create/list issues but can't manage project-level tags (bug, feature, documentation, etc.) used to label issues.
 
 ## Scope
 
-11 new tools + 1 improved description. No changes to existing tool behavior.
+10 new MCP tools + 3 new local server proxy routes + 1 improved description. No changes to existing tool behavior.
 
 ### New Tools
 
@@ -77,39 +77,36 @@ The Vibe Kanban MCP server exposes 34 tools but the local backend has ~100+ API 
   - `workspace_id` (optional in context) — Workspace ID. Optional if running inside that workspace context.
 - Response: Full workspace object: `{ id, branch, name, archived, pinned, setup_completed_at, created_at, updated_at }`
 
-#### Local Tags (4 tools)
+#### Project Tags (3 tools)
 
-**`list_local_tags`**
+Project-level tags (e.g. "bug", "feature", "documentation") are used to label issues. The MCP server already has `list_tags`, `add_issue_tag`, and `remove_issue_tag` — but cannot create, update, or delete the tag definitions themselves.
 
-- Description: "List local content tags (reusable text snippets that can be referenced with @tagname in issue descriptions). These are different from issue tags — local tags store content like prompt templates or shared context."
-- Backend: `GET /api/tags?search={q}`
+The local backend currently only proxies `list` and `get` for tags. Create/update/delete need new proxy routes in `crates/server/src/routes/remote/tags.rs` before MCP tools can call them.
+
+**`create_tag`**
+
+- Description: "Create a new project tag for labeling issues (e.g. 'bug', 'feature', 'documentation'). Use `list_tags` to see existing tags. `project_id` is optional if running inside a workspace linked to a remote project."
+- Backend: `POST /api/remote/tags` (new proxy route → remote `POST /v1/tags`)
 - Params:
-  - `search` (optional) — Search string to filter tags by name (case-insensitive substring match).
-- Response: Array of `{ id, tag_name, content, created_at, updated_at }`
+  - `project_id` (optional in context) — Project ID. Optional if running inside a workspace linked to a remote project.
+  - `name` (required) — Tag name (e.g. 'bug', 'feature', 'documentation').
+  - `color` (required) — Tag color as a hex string (e.g. '#ef4444').
+- Response: `{ id, project_id, name, color }`
 
-**`create_local_tag`**
+**`update_tag`**
 
-- Description: "Create a local content tag. Tags can be referenced in issue descriptions using @tagname syntax and will be expanded to their content automatically."
-- Backend: `POST /api/tags`
-- Params:
-  - `tag_name` (required) — Name for the tag (used as @tagname in references).
-  - `content` (required) — The text content of the tag.
-- Response: `{ id, tag_name, content }`
-
-**`update_local_tag`**
-
-- Description: "Update an existing local content tag's name or content. Use `list_local_tags` to find tag IDs."
-- Backend: `PUT /api/tags/{id}`
+- Description: "Update a project tag's name or color. Use `list_tags` to find tag IDs."
+- Backend: `PUT /api/remote/tags/{tag_id}` (new proxy route → remote `PUT /v1/tags/{tag_id}`)
 - Params:
   - `tag_id` (required) — The tag ID to update.
-  - `tag_name` (optional) — New name for the tag.
-  - `content` (optional) — New content for the tag.
-- Response: `{ id, tag_name, content }`
+  - `name` (optional) — New tag name.
+  - `color` (optional) — New tag color as a hex string.
+- Response: `{ id, project_id, name, color }`
 
-**`delete_local_tag`**
+**`delete_tag`**
 
-- Description: "Delete a local content tag. Use `list_local_tags` to find tag IDs."
-- Backend: `DELETE /api/tags/{id}`
+- Description: "Delete a project tag. This removes the tag definition — it will no longer appear on any issues. Use `list_tags` to find tag IDs."
+- Backend: `DELETE /api/remote/tags/{tag_id}` (new proxy route → remote `DELETE /v1/tags/{tag_id}`)
 - Params:
   - `tag_id` (required) — The tag ID to delete.
 - Response: `{ success: true }`
@@ -136,23 +133,34 @@ To:
 
 ## Tool Router Registration
 
-All 11 new tools register in the **global mode** router. For **orchestrator mode**:
+All 10 new tools register in the **global mode** router. For **orchestrator mode**:
 
 - `git_status`, `git_push`, `create_pull_request`, `get_workspace` — add to orchestrator (agents in scoped sessions need these to ship work)
 - `stop_execution` — already has `get_execution` in orchestrator, add `stop_execution` too
-- `list_branches`, local tag tools, `list_project_statuses` — global only (orchestrator sessions don't need these)
+- `list_branches`, project tag tools, `list_project_statuses` — global only (orchestrator sessions don't need these)
 
 ## File Organization
 
-New files in `crates/mcp/src/task_server/tools/`:
+### New proxy routes in local server
+
+Add create/update/delete for project tags in `crates/server/src/routes/remote/tags.rs`:
+
+| Route | Handler | Remote endpoint |
+|-------|---------|----------------|
+| `POST /api/remote/tags` | `create_tag` | `POST /v1/tags` |
+| `PUT /api/remote/tags/{tag_id}` | `update_tag` | `PUT /v1/tags/{tag_id}` |
+| `DELETE /api/remote/tags/{tag_id}` | `delete_tag` | `DELETE /v1/tags/{tag_id}` |
+
+Follow the exact same pattern as `crates/server/src/routes/remote/issue_tags.rs` (which already proxies create/delete for issue-tag relations).
+
+### New MCP tool files in `crates/mcp/src/task_server/tools/`:
 
 | File | Tools |
 |------|-------|
 | `pull_requests.rs` | `create_pull_request` |
 | `git.rs` | `git_status`, `git_push` |
-| `local_tags.rs` | `list_local_tags`, `create_local_tag`, `update_local_tag`, `delete_local_tag` |
 
-Existing files modified:
+### Existing MCP files modified:
 
 | File | Changes |
 |------|---------|
@@ -160,6 +168,7 @@ Existing files modified:
 | `repos.rs` | Add `list_branches` |
 | `workspaces.rs` | Add `get_workspace` |
 | `remote_issues.rs` | Improve `update_issue` description, add `list_project_statuses` |
+| `issue_tags.rs` | Add `create_tag`, `update_tag`, `delete_tag` |
 | `mod.rs` | Register new routers in `global_mode_router()` and `orchestrator_mode_router()` |
 
 ## Documentation Updates
@@ -167,7 +176,7 @@ Existing files modified:
 Update `docs/integrations/vibe-kanban-mcp-server.mdx` with:
 
 - New tools added to the tool reference table
-- Updated tool count (34 → 45 global, 7 → 12 orchestrator)
+- Updated tool count (34 → 44 global, 7 → 12 orchestrator)
 - Updated `update_issue` description in the docs
 
 ## Out of Scope
@@ -176,5 +185,6 @@ Update `docs/integrations/vibe-kanban-mcp-server.mdx` with:
 - Auth/config/relay/migration endpoints (internal to app)
 - Attachments (complex multi-step upload flow)
 - Scratch pads (internal UI state)
+- Local content tags (`/api/tags` — `@tagname` snippets, not issue labels)
 - `git_merge`, `git_rebase`, `change_target_branch` (human-driven operations)
 - `get_pull_request_info`, `list_pull_requests` (can add later if needed)
