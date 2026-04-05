@@ -96,6 +96,32 @@ struct McpDeleteWorkspaceResponse {
     delete_branches: bool,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct McpGetWorkspaceRequest {
+    #[schemars(description = "Workspace ID. Optional if running inside that workspace context.")]
+    workspace_id: Option<Uuid>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct WorkspaceDetails {
+    #[schemars(description = "Workspace ID")]
+    id: String,
+    #[schemars(description = "Workspace branch name")]
+    branch: String,
+    #[schemars(description = "Whether the workspace is archived")]
+    archived: bool,
+    #[schemars(description = "Whether the workspace is pinned")]
+    pinned: bool,
+    #[schemars(description = "Optional workspace display name")]
+    name: Option<String>,
+    #[schemars(description = "When setup completed, if applicable")]
+    setup_completed_at: Option<String>,
+    #[schemars(description = "Creation timestamp")]
+    created_at: String,
+    #[schemars(description = "Last update timestamp")]
+    updated_at: String,
+}
+
 #[tool_router(router = workspaces_tools_router, vis = "pub")]
 impl McpServer {
     #[tool(description = "List local workspaces with optional filters and pagination.")]
@@ -163,6 +189,39 @@ impl McpServer {
             limit,
             offset,
             workspaces: workspace_summaries,
+        })
+    }
+
+    #[tool(
+        description = "Get detailed information about a single workspace including its branch name, archived/pinned state, and timestamps. `workspace_id` is optional if running inside that workspace context."
+    )]
+    async fn get_workspace(
+        &self,
+        Parameters(McpGetWorkspaceRequest { workspace_id }): Parameters<McpGetWorkspaceRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let workspace_id = match self.resolve_workspace_id(workspace_id) {
+            Ok(id) => id,
+            Err(e) => return Ok(Self::tool_error(e)),
+        };
+        if let Err(e) = self.scope_allows_workspace(workspace_id) {
+            return Ok(Self::tool_error(e));
+        }
+
+        let url = self.url(&format!("/api/workspaces/{}", workspace_id));
+        let workspace: Workspace = match self.send_json(self.client.get(&url)).await {
+            Ok(ws) => ws,
+            Err(e) => return Ok(Self::tool_error(e)),
+        };
+
+        Self::success(&WorkspaceDetails {
+            id: workspace.id.to_string(),
+            branch: workspace.branch,
+            archived: workspace.archived,
+            pinned: workspace.pinned,
+            name: workspace.name,
+            setup_completed_at: workspace.setup_completed_at.map(|t| t.to_rfc3339()),
+            created_at: workspace.created_at.to_rfc3339(),
+            updated_at: workspace.updated_at.to_rfc3339(),
         })
     }
 
