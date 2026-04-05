@@ -37,6 +37,7 @@ impl ToolError {
 }
 
 mod context;
+mod git;
 mod issue_assignees;
 mod issue_relationships;
 mod issue_tags;
