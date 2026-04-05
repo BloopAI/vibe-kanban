@@ -250,6 +250,35 @@ struct McpListIssuePrioritiesResponse {
     priorities: Vec<String>,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct McpListProjectStatusesRequest {
+    #[schemars(
+        description = "Project ID. Optional if running inside a workspace linked to a remote project."
+    )]
+    project_id: Option<Uuid>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct ProjectStatusSummary {
+    #[schemars(description = "Status ID")]
+    id: String,
+    #[schemars(description = "Status name (e.g. 'Backlog', 'In Progress', 'Done')")]
+    name: String,
+    #[schemars(description = "Status color")]
+    color: String,
+    #[schemars(description = "Display order")]
+    sort_order: i32,
+    #[schemars(description = "Whether this status is hidden from the board")]
+    hidden: bool,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct McpListProjectStatusesResponse {
+    project_id: String,
+    statuses: Vec<ProjectStatusSummary>,
+    count: usize,
+}
+
 #[tool_router(router = remote_issues_tools_router, vis = "pub")]
 impl McpServer {
     #[tool(
@@ -481,7 +510,7 @@ impl McpServer {
     }
 
     #[tool(
-        description = "Update an existing issue's title, description, or status. `issue_id` is required. `title`, `description`, and `status` are optional."
+        description = "Update an existing issue's title, description, status, or priority. `issue_id` is required; all other fields are optional. To change status, pass the status name as a string (e.g. 'In Progress', 'Done') — use `list_project_statuses` to discover valid names for the project. To change priority, pass one of: 'urgent', 'high', 'medium', 'low'."
     )]
     async fn update_issue(
         &self,
@@ -562,6 +591,43 @@ impl McpServer {
                 .iter()
                 .map(|s| s.to_string())
                 .collect(),
+        })
+    }
+
+    #[tool(
+        description = "List all available statuses for a project (e.g. 'Backlog', 'Todo', 'In Progress', 'Done'). Use this to discover valid status names before calling `update_issue` with a status change. `project_id` is optional if running inside a workspace linked to a remote project."
+    )]
+    async fn list_project_statuses(
+        &self,
+        Parameters(McpListProjectStatusesRequest { project_id }): Parameters<
+            McpListProjectStatusesRequest,
+        >,
+    ) -> Result<CallToolResult, ErrorData> {
+        let project_id = match self.resolve_project_id(project_id) {
+            Ok(id) => id,
+            Err(e) => return Ok(Self::tool_error(e)),
+        };
+
+        let statuses = match self.fetch_project_statuses(project_id).await {
+            Ok(s) => s,
+            Err(e) => return Ok(Self::tool_error(e)),
+        };
+
+        let status_summaries: Vec<ProjectStatusSummary> = statuses
+            .into_iter()
+            .map(|s| ProjectStatusSummary {
+                id: s.id.to_string(),
+                name: s.name,
+                color: s.color,
+                sort_order: s.sort_order,
+                hidden: s.hidden,
+            })
+            .collect();
+
+        Self::success(&McpListProjectStatusesResponse {
+            project_id: project_id.to_string(),
+            count: status_summaries.len(),
+            statuses: status_summaries,
         })
     }
 

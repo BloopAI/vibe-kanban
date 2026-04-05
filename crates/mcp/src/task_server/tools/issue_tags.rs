@@ -1,5 +1,6 @@
 use api_types::{
-    CreateIssueTagRequest, IssueTag, ListIssueTagsResponse, ListTagsResponse, MutationResponse,
+    CreateIssueTagRequest, CreateTagRequest, IssueTag, ListIssueTagsResponse, ListTagsResponse,
+    MutationResponse, Tag, UpdateTagRequest,
 };
 use rmcp::{
     ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
@@ -83,6 +84,50 @@ struct McpRemoveIssueTagRequest {
 struct McpRemoveIssueTagResponse {
     success: bool,
     issue_tag_id: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct McpCreateTagRequest {
+    #[schemars(
+        description = "Project ID. Optional if running inside a workspace linked to a remote project."
+    )]
+    project_id: Option<Uuid>,
+    #[schemars(description = "Tag name (e.g. 'bug', 'feature', 'documentation')")]
+    name: String,
+    #[schemars(description = "Tag color as a hex string (e.g. '#ef4444')")]
+    color: String,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct McpCreateTagResponse {
+    tag: TagSummary,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct McpUpdateTagRequest {
+    #[schemars(description = "The tag ID to update. Use `list_tags` to find tag IDs.")]
+    tag_id: Uuid,
+    #[schemars(description = "New tag name")]
+    name: Option<String>,
+    #[schemars(description = "New tag color as a hex string")]
+    color: Option<String>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct McpUpdateTagResponse {
+    tag: TagSummary,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct McpDeleteTagRequest {
+    #[schemars(description = "The tag ID to delete. Use `list_tags` to find tag IDs.")]
+    tag_id: Uuid,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct McpDeleteTagResponse {
+    success: bool,
+    tag_id: String,
 }
 
 #[tool_router(router = issue_tags_tools_router, vis = "pub")]
@@ -187,6 +232,92 @@ impl McpServer {
         McpServer::success(&McpRemoveIssueTagResponse {
             success: true,
             issue_tag_id: issue_tag_id.to_string(),
+        })
+    }
+
+    #[tool(
+        description = "Create a new project tag for labeling issues (e.g. 'bug', 'feature', 'documentation'). Use `list_tags` to see existing tags. `project_id` is optional if running inside a workspace linked to a remote project."
+    )]
+    async fn create_tag(
+        &self,
+        Parameters(McpCreateTagRequest {
+            project_id,
+            name,
+            color,
+        }): Parameters<McpCreateTagRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let project_id = match self.resolve_project_id(project_id) {
+            Ok(id) => id,
+            Err(e) => return Ok(Self::tool_error(e)),
+        };
+
+        let payload = CreateTagRequest {
+            id: None,
+            project_id,
+            name,
+            color,
+        };
+
+        let url = self.url("/api/remote/tags");
+        let response: MutationResponse<Tag> =
+            match self.send_json(self.client.post(&url).json(&payload)).await {
+                Ok(r) => r,
+                Err(e) => return Ok(Self::tool_error(e)),
+            };
+
+        Self::success(&McpCreateTagResponse {
+            tag: TagSummary {
+                id: response.data.id.to_string(),
+                project_id: response.data.project_id.to_string(),
+                name: response.data.name,
+                color: response.data.color,
+            },
+        })
+    }
+
+    #[tool(description = "Update a project tag's name or color. Use `list_tags` to find tag IDs.")]
+    async fn update_tag(
+        &self,
+        Parameters(McpUpdateTagRequest {
+            tag_id,
+            name,
+            color,
+        }): Parameters<McpUpdateTagRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let payload = UpdateTagRequest { name, color };
+
+        let url = self.url(&format!("/api/remote/tags/{}", tag_id));
+        let response: MutationResponse<Tag> =
+            match self.send_json(self.client.put(&url).json(&payload)).await {
+                Ok(r) => r,
+                Err(e) => return Ok(Self::tool_error(e)),
+            };
+
+        Self::success(&McpUpdateTagResponse {
+            tag: TagSummary {
+                id: response.data.id.to_string(),
+                project_id: response.data.project_id.to_string(),
+                name: response.data.name,
+                color: response.data.color,
+            },
+        })
+    }
+
+    #[tool(
+        description = "Delete a project tag. This removes the tag definition — it will no longer appear on any issues. Use `list_tags` to find tag IDs."
+    )]
+    async fn delete_tag(
+        &self,
+        Parameters(McpDeleteTagRequest { tag_id }): Parameters<McpDeleteTagRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!("/api/remote/tags/{}", tag_id));
+        if let Err(e) = self.send_empty_json(self.client.delete(&url)).await {
+            return Ok(Self::tool_error(e));
+        }
+
+        Self::success(&McpDeleteTagResponse {
+            success: true,
+            tag_id: tag_id.to_string(),
         })
     }
 }
