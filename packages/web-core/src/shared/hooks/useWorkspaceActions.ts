@@ -83,7 +83,11 @@ export function useWorkspaceActions({
   );
 
   const deleteWorkspace = useCallback(
-    async (localWorkspaceId: string, linkedIssueSimpleId?: string | null) => {
+    async (
+      localWorkspaceId: string,
+      linkedIssueSimpleId?: string | null,
+      isLinkedToIssue?: boolean
+    ) => {
       const localWorkspace = localWorkspacesById.get(localWorkspaceId);
       if (!localWorkspace) {
         ConfirmDialog.show({
@@ -101,7 +105,7 @@ export function useWorkspaceActions({
           findWorkspace(localWorkspaceId)?.prs.some(
             (pr) => pr.status === 'open'
           ) ?? false,
-        isLinkedToIssue: linkedIssueSimpleId != null,
+        isLinkedToIssue: isLinkedToIssue ?? linkedIssueSimpleId != null,
         linkedIssueSimpleId: linkedIssueSimpleId ?? undefined,
       });
 

@@ -131,7 +131,7 @@ export function IssueWorkspacesSectionContainer({
 
   const handleDeleteWorkspace = useCallback(
     (localWorkspaceId: string) =>
-      deleteWorkspace(localWorkspaceId, getIssue(issueId)?.simple_id),
+      deleteWorkspace(localWorkspaceId, getIssue(issueId)?.simple_id, true),
     [deleteWorkspace, getIssue, issueId]
   );
 
