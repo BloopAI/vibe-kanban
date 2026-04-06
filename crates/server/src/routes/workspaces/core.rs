@@ -235,30 +235,37 @@ pub async fn wait_for_workspace(
 
     loop {
         for id in &request.workspace_ids {
-            if let Some(ws) = Workspace::find_by_id_with_status(pool, *id).await? {
-                if !ws.is_running {
+            // Use a lightweight read-only status check to avoid the write
+            // side-effect (name auto-generation) of find_by_id_with_status
+            // on every poll iteration.
+            if let Some((is_running, is_errored)) = Workspace::check_status(pool, *id).await? {
+                if !is_running {
                     // Only treat as completed if at least one execution process has
                     // been created. Otherwise the workspace hasn't started yet and we
                     // should keep polling.
                     let has_executions =
-                        ExecutionProcess::has_any_execution_for_workspace(pool, ws.workspace.id)
-                            .await?;
+                        ExecutionProcess::has_any_execution_for_workspace(pool, *id).await?;
 
                     if has_executions {
-                        let completed_at = ExecutionProcess::latest_completed_at_for_workspace(
-                            pool,
-                            ws.workspace.id,
-                        )
-                        .await?;
+                        // Now fetch full workspace data (with name auto-generation)
+                        // only once, for the final response.
+                        let ws = Workspace::find_by_id_with_status(pool, *id).await?;
 
-                        let status = if ws.is_errored { "failed" } else { "completed" };
+                        let completed_at =
+                            ExecutionProcess::latest_completed_at_for_workspace(pool, *id).await?;
+
+                        let status = if is_errored { "failed" } else { "completed" };
+
+                        let (branch, name) = ws
+                            .map(|w| (w.workspace.branch.clone(), w.workspace.name.clone()))
+                            .unwrap_or_default();
 
                         return Ok(ResponseJson(ApiResponse::success(
                             WaitForWorkspaceResponse {
-                                completed_workspace_id: ws.workspace.id,
+                                completed_workspace_id: *id,
                                 status: status.to_string(),
-                                branch: ws.workspace.branch.clone(),
-                                name: ws.workspace.name.clone(),
+                                branch,
+                                name,
                                 completed_at,
                             },
                         )));
@@ -269,9 +276,9 @@ pub async fn wait_for_workspace(
 
         if tokio::time::Instant::now() + poll_interval > deadline {
             let first_id = request.workspace_ids[0];
-            let branch = Workspace::find_by_id(pool, first_id)
-                .await?
-                .map(|w| w.branch.clone())
+            let ws = Workspace::find_by_id(pool, first_id).await?;
+            let (branch, name) = ws
+                .map(|w| (w.branch.clone(), w.name.clone()))
                 .unwrap_or_default();
 
             return Ok(ResponseJson(ApiResponse::success(
@@ -279,7 +286,7 @@ pub async fn wait_for_workspace(
                     completed_workspace_id: first_id,
                     status: "timeout".to_string(),
                     branch,
-                    name: None,
+                    name,
                     completed_at: None,
                 },
             )));

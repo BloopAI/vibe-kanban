@@ -122,6 +122,8 @@ struct McpWaitForWorkspaceResponse {
     status: String,
     #[schemars(description = "The branch name of the completed workspace")]
     branch: String,
+    #[schemars(description = "Optional display name of the workspace")]
+    name: Option<String>,
     #[schemars(description = "Timestamp when the workspace completed (if available)")]
     completed_at: Option<String>,
 }
