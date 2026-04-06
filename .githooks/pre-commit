@@ -7,8 +7,8 @@ set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
-# Staged files (added, copied, modified, renamed).
-STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+# Staged files (added, copied, modified, renamed, deleted).
+STAGED=$(git diff --cached --name-only --diff-filter=ACMRD)
 
 has_staged() {
   echo "$STAGED" | grep -qE "$1"
@@ -25,7 +25,7 @@ if command -v cargo &>/dev/null && command -v python3 &>/dev/null; then
   SCOPE_EXIT=0
   SCOPE=$(echo "$STAGED" | python3 "$REPO_ROOT/scripts/affected-crates.py" --stdin) || SCOPE_EXIT=$?
 
-  if [ "$SCOPE_EXIT" -eq 2 ]; then
+  if [ "$SCOPE_EXIT" -eq 10 ]; then
     # Global file changed (Cargo.lock, rust-toolchain, etc.) — full workspace.
     echo "pre-commit: global Rust file changed, checking full workspace..."
     SCOPE="--workspace"
@@ -56,19 +56,27 @@ fi
 if command -v pnpm &>/dev/null; then
   # Package directory -> pnpm filter name.
   # Only local-web and ui have an eslint "lint" script.
-  declare -A PKG_FILTER=(
-    [packages/local-web]="@vibe/local-web"
-    [packages/web-core]="@vibe/web-core"
-    [packages/remote-web]="@vibe/remote-web"
-    [packages/ui]="@vibe/ui"
-  )
-  declare -A PKG_HAS_LINT=(
-    [packages/local-web]=1
-    [packages/ui]=1
-  )
+  # Avoid associative arrays (require bash 4+; macOS ships bash 3.2).
+  PKG_DIRS="packages/local-web packages/web-core packages/remote-web packages/ui"
+
+  pkg_filter() {
+    case "$1" in
+      packages/local-web)  echo "@vibe/local-web" ;;
+      packages/web-core)   echo "@vibe/web-core" ;;
+      packages/remote-web) echo "@vibe/remote-web" ;;
+      packages/ui)         echo "@vibe/ui" ;;
+    esac
+  }
+
+  pkg_has_lint() {
+    case "$1" in
+      packages/local-web|packages/ui) return 0 ;;
+      *) return 1 ;;
+    esac
+  }
 
   AFFECTED_PKGS=()
-  for pkg_dir in "${!PKG_FILTER[@]}"; do
+  for pkg_dir in $PKG_DIRS; do
     if has_staged "^${pkg_dir}/"; then
       AFFECTED_PKGS+=("$pkg_dir")
     fi
@@ -76,7 +84,7 @@ if command -v pnpm &>/dev/null; then
 
   if [ ${#AFFECTED_PKGS[@]} -gt 0 ]; then
     for pkg_dir in "${AFFECTED_PKGS[@]}"; do
-      filter="${PKG_FILTER[$pkg_dir]}"
+      filter=$(pkg_filter "$pkg_dir")
 
       echo "pre-commit: prettier --check ($filter)..."
       pnpm --filter "$filter" run format:check || FAILED=1
@@ -84,7 +92,7 @@ if command -v pnpm &>/dev/null; then
       echo "pre-commit: tsc --noEmit ($filter)..."
       pnpm --filter "$filter" run check || FAILED=1
 
-      if [ "${PKG_HAS_LINT[$pkg_dir]:-}" = "1" ]; then
+      if pkg_has_lint "$pkg_dir"; then
         echo "pre-commit: eslint ($filter)..."
         pnpm --filter "$filter" run lint || FAILED=1
       fi

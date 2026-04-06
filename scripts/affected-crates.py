@@ -8,9 +8,9 @@ Usage:
 Exit codes:
     0  — printed -p flags (possibly none)
     1  — error
-    2  — full workspace run needed (Cargo.lock, rust-toolchain.toml, etc.)
+    10 — full workspace run needed (Cargo.lock, rust-toolchain.toml, etc.)
 
-When exit code is 2 the caller should run cargo commands with --workspace.
+When exit code is 10 the caller should run cargo commands with --workspace.
 """
 from __future__ import annotations
 
@@ -40,7 +40,11 @@ def _build_maps(meta: dict) -> tuple[str, dict[str, str], dict[str, set[str]]]:
         if pkg["id"] not in ws_member_ids:
             continue
         manifest = pkg["manifest_path"]
-        rel = manifest.removeprefix(ws_root + "/").removesuffix("/Cargo.toml")
+        rel = manifest.removeprefix(ws_root + "/")
+        if rel == "Cargo.toml":
+            rel = ""
+        else:
+            rel = rel.removesuffix("/Cargo.toml")
         dir_to_pkg[rel] = pkg["name"]
 
     # Build reverse-dependency adjacency list (workspace packages only).
@@ -118,7 +122,7 @@ def main() -> int:
     result = affected_packages(files, dir_to_pkg, rdeps)
 
     if result is None:
-        return 2  # caller should use --workspace
+        return 10  # caller should use --workspace
 
     if result:
         print(" ".join(f"-p {name}" for name in sorted(result)))
