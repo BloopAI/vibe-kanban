@@ -11,5 +11,5 @@ pub(crate) use local::{LocalAuthError, auth_methods_response, is_local_provider,
 pub use middleware::RequestContext;
 pub(crate) use middleware::require_session;
 pub use oauth_token_validator::{OAuthTokenValidationError, OAuthTokenValidator};
-pub use provider::{ProviderRegistry, ProviderTokenDetails};
 pub(crate) use provider::{GitHubOAuthProvider, GoogleOAuthProvider};
+pub use provider::{ProviderRegistry, ProviderTokenDetails};
