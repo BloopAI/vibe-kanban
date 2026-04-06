@@ -412,7 +412,10 @@ const CreatePRDialogImpl = create<CreatePRDialogProps>(
                   <Checkbox
                     id="pr-draft"
                     checked={isDraft}
-                    onCheckedChange={setIsDraft}
+                    onCheckedChange={(checked: boolean) => {
+                      setIsDraft(checked);
+                      if (checked) setSquashMerge(false);
+                    }}
                     className="h-5 w-5"
                   />
                   <Label htmlFor="pr-draft" className="cursor-pointer text-sm">
@@ -424,13 +427,19 @@ const CreatePRDialogImpl = create<CreatePRDialogProps>(
                     id="pr-squash-merge"
                     checked={squashMerge}
                     onCheckedChange={setSquashMerge}
+                    disabled={isDraft}
                     className="h-5 w-5"
                   />
                   <Label
                     htmlFor="pr-squash-merge"
-                    className="cursor-pointer text-sm"
+                    className={`text-sm ${isDraft ? 'cursor-not-allowed text-muted-foreground' : 'cursor-pointer'}`}
                   >
                     {t('createPrDialog.squashMergeLabel')}
+                    {isDraft && (
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        ({t('createPrDialog.squashMergeDraftHint')})
+                      </span>
+                    )}
                   </Label>
                 </div>
                 {ghCliHelp?.variant && (

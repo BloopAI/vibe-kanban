@@ -366,6 +366,7 @@
     "selectBaseBranch": "Select base branch",
     "draftLabel": "Create as draft",
     "squashMergeLabel": "Also squash-merge the PR",
+    "squashMergeDraftHint": "cannot merge draft PRs",
     "autoGenerateLabel": "Auto-generate PR description with AI",
     "creating": "Creating...",
     "createButton": "Create PR",

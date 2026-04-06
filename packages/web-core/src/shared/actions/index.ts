@@ -1,6 +1,11 @@
 import { forwardRef, createElement } from 'react';
 import type { Icon, IconProps } from '@phosphor-icons/react';
-import type { ExecutorConfig, Merge, Workspace } from 'shared/types';
+import type {
+  ExecutorConfig,
+  Merge,
+  SquashMergeError,
+  Workspace,
+} from 'shared/types';
 import type { QueryClient } from '@tanstack/react-query';
 import {
   CopyIcon,
@@ -182,8 +187,35 @@ async function executeCreatePR(
     });
     invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
     if (!mergeResult.success) {
-      throw new Error(mergeResult.message || 'Failed to squash-merge PR');
+      throw new Error(
+        getSquashMergeErrorMessage(mergeResult.error) ||
+          'Failed to squash-merge PR'
+      );
     }
+  }
+}
+
+function getSquashMergeErrorMessage(
+  error: SquashMergeError | undefined
+): string | undefined {
+  if (!error) return undefined;
+  switch (error.type) {
+    case 'no_pr_attached':
+      return 'No pull request is attached to this workspace.';
+    case 'pr_not_open':
+      return 'The pull request is not open and cannot be merged.';
+    case 'unpushed_commits':
+      return 'There are unpushed commits. Push your changes before merging.';
+    case 'cli_not_installed':
+      return `Git CLI for ${error.provider} is not installed.`;
+    case 'cli_not_logged_in':
+      return `Git CLI for ${error.provider} is not authenticated. Please log in and try again.`;
+    case 'unsupported_provider':
+      return 'This git provider does not support squash-merge.';
+    case 'merge_failed':
+      return `Merge failed: ${error.message}`;
+    default:
+      return undefined;
   }
 }
 

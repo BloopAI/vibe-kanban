@@ -970,7 +970,18 @@ pub async fn squash_merge_pr(
             }
 
             // Archive workspace if not pinned and no other open PRs
-            let open_pr_count = Merge::count_open_prs_for_workspace(pool, workspace.id).await?;
+            let open_pr_count = match Merge::count_open_prs_for_workspace(pool, workspace.id).await
+            {
+                Ok(count) => count,
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to count open PRs for workspace {}: {}. Skipping auto-archive.",
+                        workspace.id,
+                        e
+                    );
+                    1 // default to not archiving
+                }
+            };
             if open_pr_count == 0
                 && !workspace.pinned
                 && let Err(e) = deployment.container().archive_workspace(workspace.id).await
