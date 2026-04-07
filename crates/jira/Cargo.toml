@@ -1,0 +1,13 @@
+[package]
+name = "jira"
+version = "0.1.41"
+edition = "2024"
+
+[dependencies]
+backon = "1.5.1"
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }

@@ -4153,6 +4153,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "jira"
+version = "0.1.41"
+dependencies = [
+ "backon",
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "jni"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

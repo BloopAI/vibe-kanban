@@ -22,6 +22,7 @@ members = [
     "crates/utils",
     "crates/git",
     "crates/git-host",
+    "crates/jira",
     "crates/local-deployment",
     "crates/deployment",
     "crates/review",
