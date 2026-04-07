@@ -2,7 +2,7 @@
 //!
 //! Uses `reqwest` directly instead of shelling out to a CLI binary.
 //! Authentication is via a personal access token supplied through the
-//! `GITEA_TOKEN` env var, or read from the `tea` CLI config as a fallback.
+//! `GITEA_TOKEN` env var.
 
 use chrono::{DateTime, Utc};
 use db::models::merge::MergeStatus;
@@ -85,7 +85,7 @@ struct GiteaReviewComment {
     user: Option<GiteaUser>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 struct GiteaUser {
     login: String,
 }
@@ -96,12 +96,6 @@ struct CreatePrPayload {
     body: String,
     head: String,
     base: String,
-}
-
-#[derive(Deserialize)]
-struct GiteaVersionResponse {
-    #[allow(dead_code)]
-    version: String,
 }
 
 // ---------------------------------------------------------------------------
@@ -183,8 +177,7 @@ impl GiteaClient {
         })
     }
 
-    /// Resolve the API token from `GITEA_TOKEN` env var, or fall back to
-    /// reading the `tea` CLI config.
+    /// Resolve the API token from the `GITEA_TOKEN` env var.
     fn resolve_token() -> Result<String, GiteaApiError> {
         if let Ok(token) = std::env::var("GITEA_TOKEN")
             && !token.is_empty()
@@ -192,63 +185,11 @@ impl GiteaClient {
             return Ok(token);
         }
 
-        // Try reading from tea CLI config
-        if let Some(token) = Self::read_tea_config_token() {
-            return Ok(token);
-        }
-
         Err(GiteaApiError::NoToken)
-    }
-
-    /// Attempt to read a token from `~/.config/tea/config.yml`.
-    fn read_tea_config_token() -> Option<String> {
-        let home = std::env::var("HOME")
-            .or_else(|_| std::env::var("USERPROFILE"))
-            .ok()?;
-        let config_path = std::path::Path::new(&home)
-            .join(".config")
-            .join("tea")
-            .join("config.yml");
-        let content = std::fs::read_to_string(config_path).ok()?;
-
-        // Simple YAML parsing — look for "token:" line
-        for line in content.lines() {
-            let trimmed = line.trim();
-            if let Some(rest) = trimmed.strip_prefix("token:") {
-                let token = rest.trim().trim_matches('"').trim_matches('\'');
-                if !token.is_empty() {
-                    return Some(token.to_string());
-                }
-            }
-        }
-
-        None
     }
 
     fn api_url(&self, path: &str) -> String {
         format!("{}/api/v1{}", self.base_url, path)
-    }
-
-    /// Check if the given base URL hosts a Gitea/Forgejo instance by probing
-    /// `/api/v1/version`.
-    pub async fn probe_instance(base_url: &str) -> bool {
-        let url = format!("{}/api/v1/version", base_url.trim_end_matches('/'));
-        let Ok(client) = Client::builder().build() else {
-            return false;
-        };
-        let Ok(resp) = client
-            .get(&url)
-            .timeout(std::time::Duration::from_secs(5))
-            .send()
-            .await
-        else {
-            return false;
-        };
-        if !resp.status().is_success() {
-            return false;
-        }
-        // Gitea and Forgejo both return {"version":"..."} from this endpoint
-        resp.json::<GiteaVersionResponse>().await.is_ok()
     }
 
     // -----------------------------------------------------------------------
@@ -278,7 +219,7 @@ impl GiteaClient {
             .await
             .map_err(|e| GiteaApiError::RequestFailed(e.to_string()))?;
 
-        self.check_response_status(&resp)?;
+        let resp = self.check_response(resp).await?;
 
         let pr: GiteaPullRequest = resp
             .json()
@@ -306,7 +247,7 @@ impl GiteaClient {
             .await
             .map_err(|e| GiteaApiError::RequestFailed(e.to_string()))?;
 
-        self.check_response_status(&resp)?;
+        let resp = self.check_response(resp).await?;
 
         let pr: GiteaPullRequest = resp
             .json()
@@ -333,7 +274,7 @@ impl GiteaClient {
             .await
             .map_err(|e| GiteaApiError::RequestFailed(e.to_string()))?;
 
-        self.check_response_status(&resp)?;
+        let resp = self.check_response(resp).await?;
 
         let prs: Vec<GiteaPullRequest> = resp
             .json()
@@ -376,7 +317,7 @@ impl GiteaClient {
             .await
             .map_err(|e| GiteaApiError::RequestFailed(e.to_string()))?;
 
-        self.check_response_status(&comments_resp)?;
+        let comments_resp = self.check_response(comments_resp).await?;
 
         let general_comments: Vec<GiteaComment> = comments_resp
             .json()
@@ -396,7 +337,7 @@ impl GiteaClient {
             .await
             .map_err(|e| GiteaApiError::RequestFailed(e.to_string()))?;
 
-        self.check_response_status(&reviews_resp)?;
+        let reviews_resp = self.check_response(reviews_resp).await?;
 
         let reviews: Vec<GiteaReview> = reviews_resp
             .json()
@@ -418,7 +359,7 @@ impl GiteaClient {
                 .await
                 .map_err(|e| GiteaApiError::RequestFailed(e.to_string()))?;
 
-            self.check_response_status(&resp)?;
+            let resp = self.check_response(resp).await?;
 
             let comments: Vec<GiteaReviewComment> = resp
                 .json()
@@ -476,18 +417,31 @@ impl GiteaClient {
     // Helpers
     // -----------------------------------------------------------------------
 
-    fn check_response_status(&self, resp: &reqwest::Response) -> Result<(), GiteaApiError> {
-        match resp.status() {
-            s if s.is_success() => Ok(()),
-            StatusCode::UNAUTHORIZED => Err(GiteaApiError::AuthFailed(
-                "Gitea API returned 401 Unauthorized".to_string(),
-            )),
-            StatusCode::FORBIDDEN => Err(GiteaApiError::InsufficientPermissions(
-                "Gitea API returned 403 Forbidden — check token scopes".to_string(),
-            )),
-            status => Err(GiteaApiError::RequestFailed(format!(
-                "Gitea API returned {status}"
-            ))),
+    /// Check the response status and return the response on success.
+    /// On error, reads the response body for Gitea's error detail.
+    async fn check_response(
+        &self,
+        resp: reqwest::Response,
+    ) -> Result<reqwest::Response, GiteaApiError> {
+        if resp.status().is_success() {
+            return Ok(resp);
+        }
+
+        let status = resp.status();
+        let body = resp
+            .text()
+            .await
+            .unwrap_or_else(|_| "(could not read response body)".to_string());
+        let detail = if body.is_empty() {
+            status.to_string()
+        } else {
+            format!("{status}: {body}")
+        };
+
+        match status {
+            StatusCode::UNAUTHORIZED => Err(GiteaApiError::AuthFailed(detail)),
+            StatusCode::FORBIDDEN => Err(GiteaApiError::InsufficientPermissions(detail)),
+            _ => Err(GiteaApiError::RequestFailed(detail)),
         }
     }
 
@@ -545,14 +499,6 @@ pub fn parse_pr_url(pr_url: &str) -> Option<(String, String, String, i64)> {
     };
 
     Some((base_url, owner, repo, number))
-}
-
-impl Clone for GiteaUser {
-    fn clone(&self) -> Self {
-        Self {
-            login: self.login.clone(),
-        }
-    }
 }
 
 #[cfg(test)]
