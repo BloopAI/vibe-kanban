@@ -8,8 +8,8 @@ use crate::types::ProviderKind;
 /// - GitHub.com: `https://github.com/owner/repo` or `git@github.com:owner/repo.git`
 /// - GitHub Enterprise: URLs containing `github.` (e.g., `https://github.company.com/owner/repo`)
 /// - Azure DevOps: `https://dev.azure.com/org/project/_git/repo` or legacy `https://org.visualstudio.com/...`
-/// - Gitea/Forgejo: instances registered via `GITEA_URL` env var, or URLs containing
-///   `/pulls/` (Gitea PR URL pattern), or `gitea.` / `forgejo.` in the hostname
+/// - Gitea/Forgejo: instances registered via `GITEA_URL` env var, or well-known
+///   hostnames (`gitea.*`, `forgejo.*`, `codeberg.org`)
 pub(crate) fn detect_provider_from_url(url: &str) -> ProviderKind {
     let url_lower = url.to_lowercase();
 
@@ -48,11 +48,6 @@ pub(crate) fn detect_provider_from_url(url: &str) -> ProviderKind {
         }
     }
 
-    // Gitea PR URL pattern: /pulls/ in path (GitHub uses /pull/, Azure uses /pullrequest/)
-    if url_lower.contains("/pulls/") {
-        return ProviderKind::Gitea;
-    }
-
     // Well-known Gitea/Forgejo hostnames
     if url_lower.contains("gitea.") || url_lower.contains("forgejo.") {
         return ProviderKind::Gitea;
@@ -84,9 +79,15 @@ pub(crate) fn gitea_base_url(url: &str) -> String {
         }
     }
 
-    // Derive from URL
-    if let Ok(parsed) = url::Url::parse(url) {
-        let mut base = format!("{}://{}", parsed.scheme(), parsed.host_str().unwrap_or(""));
+    // Derive from URL — force HTTPS for non-HTTP schemes (ssh://, git://)
+    if let Ok(parsed) = url::Url::parse(url)
+        && let Some(host) = parsed.host_str()
+    {
+        let scheme = match parsed.scheme() {
+            "http" | "https" => parsed.scheme(),
+            _ => "https",
+        };
+        let mut base = format!("{scheme}://{host}");
         if let Some(port) = parsed.port() {
             base.push_str(&format!(":{port}"));
         }
@@ -229,10 +230,11 @@ mod tests {
     }
 
     #[test]
-    fn test_gitea_pr_url_pattern() {
+    fn test_unknown_url_with_pulls_not_detected_as_gitea() {
+        // /pulls/ alone should NOT trigger Gitea detection — prevents token leakage
         assert_eq!(
-            detect_provider_from_url("https://git.example.com/owner/repo/pulls/42"),
-            ProviderKind::Gitea
+            detect_provider_from_url("https://evil.com/x/y/pulls/1"),
+            ProviderKind::Unknown
         );
     }
 
@@ -303,6 +305,19 @@ mod tests {
     #[test]
     fn test_gitea_base_url_from_ssh() {
         let base = super::gitea_base_url("git@gitea.example.com:owner/repo.git");
+        assert_eq!(base, "https://gitea.example.com");
+    }
+
+    #[test]
+    fn test_gitea_base_url_from_ssh_scheme() {
+        // ssh:// URLs should produce https:// base, not ssh://
+        let base = super::gitea_base_url("ssh://git@gitea.example.com/owner/repo.git");
+        assert_eq!(base, "https://gitea.example.com");
+    }
+
+    #[test]
+    fn test_gitea_base_url_from_git_scheme() {
+        let base = super::gitea_base_url("git://gitea.example.com/owner/repo.git");
         assert_eq!(base, "https://gitea.example.com");
     }
 
