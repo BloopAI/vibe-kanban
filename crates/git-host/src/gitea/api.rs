@@ -21,6 +21,8 @@ use crate::types::{CreatePrRequest, PullRequestDetail, UnifiedPrComment};
 pub enum GiteaApiError {
     #[error("Gitea authentication failed: {0}")]
     AuthFailed(String),
+    #[error("Gitea insufficient permissions: {0}")]
+    InsufficientPermissions(String),
     #[error("Gitea API request failed: {0}")]
     RequestFailed(String),
     #[error("Gitea returned unexpected response: {0}")]
@@ -65,12 +67,9 @@ struct GiteaComment {
 
 #[derive(Debug, Deserialize)]
 struct GiteaReview {
-    #[allow(dead_code)]
     id: i64,
     #[allow(dead_code)]
     body: String,
-    #[serde(default)]
-    comments: Vec<GiteaReviewComment>,
     user: Option<GiteaUser>,
 }
 
@@ -384,7 +383,7 @@ impl GiteaClient {
             .await
             .map_err(|e| GiteaApiError::UnexpectedResponse(e.to_string()))?;
 
-        // Fetch review comments
+        // Fetch reviews list (does NOT include inline comments)
         let reviews_url = self.api_url(&format!(
             "/repos/{}/{}/pulls/{}/reviews",
             info.owner, info.repo, pr_number
@@ -404,6 +403,33 @@ impl GiteaClient {
             .await
             .map_err(|e| GiteaApiError::UnexpectedResponse(e.to_string()))?;
 
+        // Fetch inline comments for each review via /reviews/{id}/comments
+        let mut review_comments: Vec<(GiteaReviewComment, Option<GiteaUser>)> = Vec::new();
+        for review in &reviews {
+            let comments_url = self.api_url(&format!(
+                "/repos/{}/{}/pulls/{}/reviews/{}/comments",
+                info.owner, info.repo, pr_number, review.id
+            ));
+            let resp = self
+                .client
+                .get(&comments_url)
+                .header(header::AUTHORIZATION, format!("token {}", self.token))
+                .send()
+                .await
+                .map_err(|e| GiteaApiError::RequestFailed(e.to_string()))?;
+
+            self.check_response_status(&resp)?;
+
+            let comments: Vec<GiteaReviewComment> = resp
+                .json()
+                .await
+                .map_err(|e| GiteaApiError::UnexpectedResponse(e.to_string()))?;
+
+            for c in comments {
+                review_comments.push((c, review.user.clone()));
+            }
+        }
+
         // Convert to unified comments
         let mut unified: Vec<UnifiedPrComment> = Vec::new();
 
@@ -422,26 +448,24 @@ impl GiteaClient {
             });
         }
 
-        for review in reviews {
-            for c in review.comments {
-                let author = c
-                    .user
-                    .or(review.user.clone())
-                    .map(|u| u.login)
-                    .unwrap_or_else(|| "unknown".to_string());
-                unified.push(UnifiedPrComment::Review {
-                    id: c.id,
-                    author,
-                    author_association: None,
-                    body: c.body,
-                    created_at: c.created_at,
-                    url: c.html_url,
-                    path: c.path.unwrap_or_default(),
-                    line: c.line,
-                    side: None,
-                    diff_hunk: c.diff_hunk,
-                });
-            }
+        for (c, review_user) in review_comments {
+            let author = c
+                .user
+                .or(review_user)
+                .map(|u| u.login)
+                .unwrap_or_else(|| "unknown".to_string());
+            unified.push(UnifiedPrComment::Review {
+                id: c.id,
+                author,
+                author_association: None,
+                body: c.body,
+                created_at: c.created_at,
+                url: c.html_url,
+                path: c.path.unwrap_or_default(),
+                line: c.line,
+                side: None,
+                diff_hunk: c.diff_hunk,
+            });
         }
 
         unified.sort_by_key(|c| c.created_at());
@@ -455,8 +479,11 @@ impl GiteaClient {
     fn check_response_status(&self, resp: &reqwest::Response) -> Result<(), GiteaApiError> {
         match resp.status() {
             s if s.is_success() => Ok(()),
-            StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err(GiteaApiError::AuthFailed(
-                format!("Gitea API returned {}", resp.status()),
+            StatusCode::UNAUTHORIZED => Err(GiteaApiError::AuthFailed(
+                "Gitea API returned 401 Unauthorized".to_string(),
+            )),
+            StatusCode::FORBIDDEN => Err(GiteaApiError::InsufficientPermissions(
+                "Gitea API returned 403 Forbidden — check token scopes".to_string(),
             )),
             status => Err(GiteaApiError::RequestFailed(format!(
                 "Gitea API returned {status}"

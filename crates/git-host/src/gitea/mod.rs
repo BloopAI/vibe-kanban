@@ -39,14 +39,15 @@ impl From<GiteaApiError> for GitHostError {
     fn from(error: GiteaApiError) -> Self {
         match &error {
             GiteaApiError::AuthFailed(msg) => GitHostError::AuthFailed(msg.clone()),
+            GiteaApiError::InsufficientPermissions(msg) => {
+                GitHostError::InsufficientPermissions(msg.clone())
+            }
             GiteaApiError::NoToken => GitHostError::AuthFailed(
                 "No Gitea token found — set the GITEA_TOKEN environment variable".to_string(),
             ),
             GiteaApiError::RequestFailed(msg) => {
                 let lower = msg.to_ascii_lowercase();
-                if lower.contains("403") || lower.contains("forbidden") {
-                    GitHostError::InsufficientPermissions(msg.clone())
-                } else if lower.contains("404") || lower.contains("not found") {
+                if lower.contains("404") || lower.contains("not found") {
                     GitHostError::RepoNotFoundOrNoAccess(msg.clone())
                 } else {
                     GitHostError::PullRequest(msg.clone())
