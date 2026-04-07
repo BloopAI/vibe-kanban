@@ -418,7 +418,7 @@ export type CreateAndStartWorkspaceResponse = { workspace: Workspace, execution_
 
 export type UnifiedPrComment = { "comment_type": "general", id: string, author: string, author_association: string | null, body: string, created_at: string, url: string | null, } | { "comment_type": "review", id: bigint, author: string, author_association: string | null, body: string, created_at: string, url: string | null, path: string, line: bigint | null, side: string | null, diff_hunk: string | null, };
 
-export type ProviderKind = "git_hub" | "azure_dev_ops" | "unknown";
+export type ProviderKind = "git_hub" | "azure_dev_ops" | "gitea" | "unknown";
 
 export type PullRequestDetail = { number: bigint, url: string, status: MergeStatus, merged_at: string | null, merge_commit_sha: string | null, title: string, base_branch: string, head_branch: string, };
 
