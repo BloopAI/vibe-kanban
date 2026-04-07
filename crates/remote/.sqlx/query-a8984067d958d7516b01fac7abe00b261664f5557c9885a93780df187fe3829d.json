@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id           AS \"id!: Uuid\",\n                name         AS \"name!\",\n                slug         AS \"slug!\",\n                is_personal  AS \"is_personal!\",\n                issue_prefix AS \"issue_prefix!\",\n                created_at   AS \"created_at!\",\n                updated_at   AS \"updated_at!\"\n            FROM organizations\n            WHERE id = $1\n            ",
+  "query": "\n            INSERT INTO organizations (name, slug)\n            VALUES ($1, $2)\n            RETURNING\n                id           AS \"id!: Uuid\",\n                name         AS \"name!\",\n                slug         AS \"slug!\",\n                is_personal  AS \"is_personal!\",\n                created_at   AS \"created_at!\",\n                updated_at   AS \"updated_at!\"\n            ",
   "describe": {
     "columns": [
       {
@@ -25,23 +25,19 @@
       },
       {
         "ordinal": 4,
-        "name": "issue_prefix!",
-        "type_info": "Varchar"
-      },
-      {
-        "ordinal": 5,
         "name": "created_at!",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 6,
+        "ordinal": 5,
         "name": "updated_at!",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Text",
+        "Text"
       ]
     },
     "nullable": [
@@ -50,9 +46,8 @@
       false,
       false,
       false,
-      false,
       false
     ]
   },
-  "hash": "f20260cbe7dff433f5aefa4fe14fa9bc89a6ad97d550420c768e326de6ae5ae6"
+  "hash": "a8984067d958d7516b01fac7abe00b261664f5557c9885a93780df187fe3829d"
 }

@@ -11,6 +11,7 @@ pub struct Project {
     pub organization_id: Uuid,
     pub name: String,
     pub color: String,
+    pub issue_prefix: String,
     pub sort_order: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
