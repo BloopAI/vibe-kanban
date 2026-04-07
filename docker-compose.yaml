@@ -1,0 +1,122 @@
+services:
+  remote-db:
+    image: postgres:17-alpine
+    container_name: vk-postgres
+    command: ["postgres", "-c", "wal_level=logical"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_DB: remote
+      POSTGRES_USER: remote
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - remote-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U remote -d remote"]
+      start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  electric:
+    image: electricsql/electric:latest
+    container_name: vk-electric
+    working_dir: /app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://electric_sync:${ELECTRIC_ROLE_PASSWORD}@remote-db:5432/remote?sslmode=disable
+      PG_PROXY_PORT: 65432
+      LOGICAL_PUBLISHER_HOST: electric
+      AUTH_MODE: insecure
+      ELECTRIC_INSECURE: true
+      ELECTRIC_MANUAL_TABLE_PUBLISHING: true
+      ELECTRIC_USAGE_REPORTING: false
+      ELECTRIC_FEATURE_FLAGS: allow_subqueries,tagged_subqueries
+    volumes:
+      - electric-data:/app/persistent
+    depends_on:
+      remote-db:
+        condition: service_healthy
+      remote-server:
+        condition: service_healthy
+
+  remote-server:
+    image: ghcr.io/harryy2510/vibe-kanban-remote:latest
+    container_name: vk-server
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      remote-db:
+        condition: service_healthy
+    extra_hosts:
+      - ${RELAY_DOMAIN}:host-gateway
+      - ${CLIENT_DOMAIN}:host-gateway
+    environment:
+      RUST_LOG: info,remote=info
+      SERVER_DATABASE_URL: postgres://remote:${DB_PASSWORD}@remote-db:5432/remote
+      SERVER_LISTEN_ADDR: 0.0.0.0:8081
+      ELECTRIC_URL: http://electric:3000
+      SERVER_PUBLIC_BASE_URL: https://${SERVER_DOMAIN}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8081/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  relay-server:
+    image: ghcr.io/harryy2510/vibe-kanban-relay:latest
+    container_name: vk-relay
+    restart: unless-stopped
+    depends_on:
+      remote-db:
+        condition: service_healthy
+    extra_hosts:
+      - ${SERVER_DOMAIN}:host-gateway
+      - ${CLIENT_DOMAIN}:host-gateway
+    environment:
+      RUST_LOG: info
+      SERVER_DATABASE_URL: postgres://remote:${DB_PASSWORD}@remote-db:5432/remote
+      RELAY_LISTEN_ADDR: 0.0.0.0:8082
+      VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  vibe-kanban:
+    image: node:24
+    container_name: vk-client
+    command: npx vibe-kanban@https://github.com/BloopAI/vibe-kanban/releases/download/v0.1.40-20260401153532/vibe-kanban-0.1.40.tgz
+    restart: on-failure:10
+    env_file: .env
+    depends_on:
+      remote-server:
+        condition: service_healthy
+    extra_hosts:
+      - ${SERVER_DOMAIN}:host-gateway
+      - ${RELAY_DOMAIN}:host-gateway
+    volumes:
+      - /home/ubuntu/workspace:/workspace
+      - /home/ubuntu/.ssh:/root/.ssh:ro
+      - vk-cache:/root/.npm
+      - vk-bin:/root/.vibe-kanban
+    environment:
+      VK_SHARED_API_BASE: https://${SERVER_DOMAIN}
+      VK_SHARED_RELAY_API_BASE: https://${RELAY_DOMAIN}
+      PORT: "4040"
+      HOST: 0.0.0.0
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4040').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  remote-db-data:
+  electric-data:
+  vk-cache:
+  vk-bin:

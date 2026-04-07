@@ -1,0 +1,17 @@
+version = 1
+
+[defaults]
+restart_policy = "on_failure"
+max_restarts = 10
+stop_timeout_secs = 5
+
+[[apps]]
+name = "vibe-kanban"
+command = "bunx vibe-kanban@https://github.com/BloopAI/vibe-kanban/releases/download/v0.1.41-20260403182044/vibe-kanban-0.1.41.tgz"
+health_cmd = "curl -fsS http://localhost:4040"
+
+[apps.env]
+VK_SHARED_API_BASE = "https://server-vibe.hariom.cc"
+VK_SHARED_RELAY_API_BASE = "https://relay-vibe.hariom.cc"
+PORT = "4040"
+HOST = "0.0.0.0"
