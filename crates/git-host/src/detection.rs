@@ -36,16 +36,16 @@ pub(crate) fn detect_provider_from_url(url: &str) -> ProviderKind {
     }
 
     // Gitea/Forgejo: explicit GITEA_URL match
-    if let Ok(gitea_url) = std::env::var("GITEA_URL")
-        && url_lower.contains(
-            gitea_url
-                .to_lowercase()
-                .trim_start_matches("https://")
-                .trim_start_matches("http://")
-                .trim_end_matches('/'),
-        )
-    {
-        return ProviderKind::Gitea;
+    if let Ok(gitea_url) = std::env::var("GITEA_URL") {
+        let gitea_host = gitea_url
+            .to_lowercase()
+            .trim_start_matches("https://")
+            .trim_start_matches("http://")
+            .trim_end_matches('/')
+            .to_string();
+        if !gitea_host.is_empty() && url_lower.contains(&gitea_host) {
+            return ProviderKind::Gitea;
+        }
     }
 
     // Gitea PR URL pattern: /pulls/ in path (GitHub uses /pull/, Azure uses /pullrequest/)
@@ -68,13 +68,20 @@ pub(crate) fn detect_provider_from_url(url: &str) -> ProviderKind {
 
 /// Extract the base URL for a Gitea instance from a remote or PR URL.
 ///
-/// Prefers `GITEA_URL` env var when set, otherwise derives it from the URL.
+/// Uses `GITEA_URL` env var only when the URL matches the configured instance.
+/// Otherwise derives the base URL from the URL itself.
 pub(crate) fn gitea_base_url(url: &str) -> String {
-    // Prefer explicit env var
-    if let Ok(gitea_url) = std::env::var("GITEA_URL")
-        && !gitea_url.is_empty()
-    {
-        return gitea_url.trim_end_matches('/').to_string();
+    // Use env var only if the URL actually matches the configured instance
+    if let Ok(gitea_url) = std::env::var("GITEA_URL") {
+        let gitea_host = gitea_url
+            .to_lowercase()
+            .trim_start_matches("https://")
+            .trim_start_matches("http://")
+            .trim_end_matches('/')
+            .to_string();
+        if !gitea_host.is_empty() && url.to_lowercase().contains(&gitea_host) {
+            return gitea_url.trim_end_matches('/').to_string();
+        }
     }
 
     // Derive from URL
@@ -297,5 +304,61 @@ mod tests {
     fn test_gitea_base_url_from_ssh() {
         let base = super::gitea_base_url("git@gitea.example.com:owner/repo.git");
         assert_eq!(base, "https://gitea.example.com");
+    }
+
+    // Edge-case tests for GITEA_URL handling (Bugbot findings)
+    //
+    // SAFETY: These tests manipulate env vars which is unsafe in Rust 2024.
+    // They must run single-threaded (--test-threads=1) to avoid races.
+
+    unsafe fn set_gitea_url(val: &str) {
+        std::env::set_var("GITEA_URL", val);
+    }
+
+    unsafe fn remove_gitea_url() {
+        std::env::remove_var("GITEA_URL");
+    }
+
+    #[test]
+    fn test_empty_gitea_url_does_not_match_all() {
+        // str::contains("") is always true in Rust — ensure we guard against that
+        unsafe { set_gitea_url("") };
+        assert_eq!(
+            detect_provider_from_url("https://gitlab.com/owner/repo"),
+            ProviderKind::Unknown,
+        );
+        assert_eq!(
+            detect_provider_from_url("https://bitbucket.org/owner/repo"),
+            ProviderKind::Unknown,
+        );
+        unsafe { remove_gitea_url() };
+    }
+
+    #[test]
+    fn test_scheme_only_gitea_url_does_not_match_all() {
+        unsafe { set_gitea_url("https://") };
+        assert_eq!(
+            detect_provider_from_url("https://gitlab.com/owner/repo"),
+            ProviderKind::Unknown,
+        );
+        unsafe { remove_gitea_url() };
+    }
+
+    #[test]
+    fn test_gitea_base_url_derives_from_url_when_env_differs() {
+        // GITEA_URL points to one instance, but URL is for Codeberg —
+        // should derive base URL from the URL, not the env var
+        unsafe { set_gitea_url("https://gitea.company.com") };
+        let base = super::gitea_base_url("https://codeberg.org/owner/repo.git");
+        assert_eq!(base, "https://codeberg.org");
+        unsafe { remove_gitea_url() };
+    }
+
+    #[test]
+    fn test_gitea_base_url_uses_env_when_matching() {
+        unsafe { set_gitea_url("https://gitea.company.com") };
+        let base = super::gitea_base_url("https://gitea.company.com/owner/repo.git");
+        assert_eq!(base, "https://gitea.company.com");
+        unsafe { remove_gitea_url() };
     }
 }
