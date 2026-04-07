@@ -65,5 +65,11 @@
     "node": ">=20",
     "pnpm": ">=8"
   },
-  "packageManager": "pnpm@10.13.1"
+  "packageManager": "pnpm@10.13.1",
+  "workspaces": [
+    "packages/*"
+  ],
+  "patchedDependencies": {
+    "@pierre/diffs@1.1.4@1.1.4": "patches/@pierre__diffs@1.1.4.patch"
+  }
 }
