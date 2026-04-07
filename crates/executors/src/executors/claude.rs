@@ -184,6 +184,11 @@ impl ClaudeCode {
         if let Some(agent) = &self.agent {
             builder = builder.extend_params(["--agent", agent]);
         }
+        // Pass user-installed plugin directories so skills are available in workspace sessions
+        // See: https://github.com/BloopAI/vibe-kanban/issues/2626
+        for dir in Self::discover_plugin_dirs() {
+            builder = builder.extend_params(["--plugin-dir", &dir.to_string_lossy()]);
+        }
         builder = builder.extend_params([
             "--verbose",
             "--output-format=stream-json",
@@ -203,6 +208,56 @@ impl ClaudeCode {
         } else {
             PermissionMode::BypassPermissions
         }
+    }
+
+    /// Scan ~/.claude/settings.json for enabled plugins and resolve their cache paths.
+    /// Returns plugin directories that should be passed as --plugin-dir to Claude Code.
+    /// See: https://github.com/BloopAI/vibe-kanban/issues/2626
+    fn discover_plugin_dirs() -> Vec<PathBuf> {
+        let home = match dirs::home_dir() {
+            Some(h) => h,
+            None => return vec![],
+        };
+        let settings_path = home.join(".claude").join("settings.json");
+        let settings_content = match std::fs::read_to_string(&settings_path) {
+            Ok(c) => c,
+            Err(_) => return vec![],
+        };
+        let settings: serde_json::Value = match serde_json::from_str(&settings_content) {
+            Ok(v) => v,
+            Err(_) => return vec![],
+        };
+        let enabled = match settings.get("enabledPlugins").and_then(|v| v.as_object()) {
+            Some(m) => m,
+            None => return vec![],
+        };
+        let cache_dir = home.join(".claude").join("plugins").join("cache");
+        let mut dirs = Vec::new();
+        for (key, val) in enabled {
+            if val.as_bool() != Some(true) {
+                continue;
+            }
+            // key format: "plugin-name@marketplace-name"
+            let parts: Vec<&str> = key.splitn(2, '@').collect();
+            if parts.len() != 2 {
+                continue;
+            }
+            let (plugin_name, marketplace) = (parts[0], parts[1]);
+            let plugin_base = cache_dir.join(marketplace).join(plugin_name);
+            // Find the latest version directory (sorted descending so newest is first)
+            if let Ok(entries) = std::fs::read_dir(&plugin_base) {
+                let mut versions: Vec<PathBuf> = entries
+                    .filter_map(|e| e.ok())
+                    .map(|e| e.path())
+                    .filter(|p| p.is_dir())
+                    .collect();
+                versions.sort();
+                if let Some(plugin_dir) = versions.pop() {
+                    dirs.push(plugin_dir);
+                }
+            }
+        }
+        dirs
     }
 
     pub fn get_hooks(&self, commit_reminder: bool) -> Option<serde_json::Value> {
