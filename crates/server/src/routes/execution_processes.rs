@@ -6,13 +6,14 @@ use axum::{
     response::{IntoResponse, Json as ResponseJson},
     routing::{get, post},
 };
+use chrono::{DateTime, Utc};
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessStatus},
     execution_process_repo_state::ExecutionProcessRepoState,
 };
 use deployment::Deployment;
 use futures_util::{StreamExt, TryStreamExt};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use services::services::container::ContainerService;
 use utils::{log_msg::LogMsg, response::ApiResponse};
 use uuid::Uuid;
@@ -283,6 +284,88 @@ async fn get_execution_process_repo_states(
     Ok(ResponseJson(ApiResponse::success(repo_states)))
 }
 
+#[derive(Debug, Deserialize)]
+pub struct WaitForExecutionsRequest {
+    pub execution_ids: Vec<Uuid>,
+    #[serde(default = "default_timeout_seconds")]
+    pub timeout_seconds: u64,
+}
+
+fn default_timeout_seconds() -> u64 {
+    1800
+}
+
+#[derive(Debug, Serialize)]
+pub struct WaitForExecutionsResponse {
+    pub completed_execution_id: Uuid,
+    pub session_id: Uuid,
+    pub status: String,
+    pub completed_at: Option<DateTime<Utc>>,
+}
+
+/// Long-poll endpoint: holds the connection open until any of the requested executions
+/// reaches a terminal state (not running) or the timeout elapses.
+async fn wait_for_executions(
+    State(deployment): State<DeploymentImpl>,
+    axum::Json(request): axum::Json<WaitForExecutionsRequest>,
+) -> Result<ResponseJson<ApiResponse<WaitForExecutionsResponse>>, ApiError> {
+    use std::time::Duration;
+
+    if request.execution_ids.is_empty() {
+        return Err(ApiError::BadRequest(
+            "execution_ids must not be empty".to_string(),
+        ));
+    }
+
+    let pool = &deployment.db().pool;
+    let deadline =
+        tokio::time::Instant::now() + Duration::from_secs(request.timeout_seconds.min(3600));
+    let poll_interval = Duration::from_millis(500);
+
+    loop {
+        for id in &request.execution_ids {
+            if let Some(ep) = ExecutionProcess::find_by_id(pool, *id).await? {
+                if ep.status != ExecutionProcessStatus::Running {
+                    let status = match ep.status {
+                        ExecutionProcessStatus::Completed => "completed",
+                        ExecutionProcessStatus::Failed => "failed",
+                        ExecutionProcessStatus::Killed => "killed",
+                        ExecutionProcessStatus::Running => unreachable!(),
+                    };
+
+                    return Ok(ResponseJson(ApiResponse::success(
+                        WaitForExecutionsResponse {
+                            completed_execution_id: ep.id,
+                            session_id: ep.session_id,
+                            status: status.to_string(),
+                            completed_at: ep.completed_at,
+                        },
+                    )));
+                }
+            }
+        }
+
+        if tokio::time::Instant::now() + poll_interval > deadline {
+            let first_id = request.execution_ids[0];
+            let session_id = ExecutionProcess::find_by_id(pool, first_id)
+                .await?
+                .map(|ep| ep.session_id)
+                .unwrap_or(first_id);
+
+            return Ok(ResponseJson(ApiResponse::success(
+                WaitForExecutionsResponse {
+                    completed_execution_id: first_id,
+                    session_id,
+                    status: "timeout".to_string(),
+                    completed_at: None,
+                },
+            )));
+        }
+
+        tokio::time::sleep(poll_interval).await;
+    }
+}
+
 pub(super) fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let workspace_id_router = Router::new()
         .route("/", get(get_execution_process_by_id))
@@ -296,6 +379,7 @@ pub(super) fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         ));
 
     let workspaces_router = Router::new()
+        .route("/wait", post(wait_for_executions))
         .route(
             "/stream/session/ws",
             get(stream_execution_processes_by_session_ws),
