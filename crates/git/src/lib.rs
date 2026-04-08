@@ -610,14 +610,21 @@ impl GitService {
         let task_repo = self.open_repo(task_worktree_path)?;
         let base_repo = self.open_repo(base_worktree_path)?;
 
-        // Check if base branch is ahead of task branch - this indicates the base has moved
-        // ahead since the task was created, which should block the merge
+        // Check if base branch is ahead of task branch. This blocks the
+        // Squash strategy because applying a squashed diff on top of a moved
+        // base would either silently shadow upstream changes or surface them
+        // as a confusing conflict at an unexpected moment. The Rebase and
+        // Merge strategies, however, are explicitly designed to handle a
+        // diverged base — Rebase by replaying the task commits onto the new
+        // base tip, and Merge (--no-ff) by recording a merge commit that has
+        // both histories as parents — so the guard would defeat their entire
+        // purpose if applied unconditionally.
         let (_, task_behind) =
             self.get_branch_status(base_worktree_path, task_branch_name, base_branch_name)?;
 
-        if task_behind > 0 {
+        if task_behind > 0 && matches!(strategy, MergeStrategy::Squash) {
             return Err(GitServiceError::BranchesDiverged(format!(
-                "Cannot merge: base branch '{base_branch_name}' is {task_behind} commits ahead of task branch '{task_branch_name}'. The base branch has moved forward since the task was created.",
+                "Cannot squash-merge: base branch '{base_branch_name}' is {task_behind} commits ahead of task branch '{task_branch_name}'. Rebase the task branch first, or pick the Rebase / Merge commit strategy instead.",
             )));
         }
 

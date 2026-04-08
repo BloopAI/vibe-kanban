@@ -208,9 +208,13 @@ async function performGuardedMerge(
     return;
   }
 
-  // Check if branch is behind - need to rebase first
+  // Check if branch is behind - only the Squash strategy needs to be
+  // rebased first. Rebase and Merge (--no-ff) handle a diverged base
+  // natively (Rebase replays task commits onto base, Merge records a
+  // merge commit with both histories), so prompting the user to rebase
+  // first would defeat the purpose of those strategies.
   const commitsBehind = repoStatus?.commits_behind ?? 0;
-  if (commitsBehind > 0) {
+  if (commitsBehind > 0 && strategy === 'squash') {
     // Prompt user to rebase first
     const confirmRebase = await ConfirmDialog.show({
       title: 'Rebase Required',
