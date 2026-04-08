@@ -55,7 +55,7 @@ export function ExportPage({
               />
             </div>
             <p className="text-sm text-low">
-              Export your cloud data before the service shuts down.
+              You have 30 days to export your cloud data before shutdown.
             </p>
           </header>
           <ExportLayout

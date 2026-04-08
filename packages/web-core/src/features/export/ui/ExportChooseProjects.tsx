@@ -1,10 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  CheckCircleIcon,
-  CircleIcon,
-  ImageIcon,
-  WarningIcon,
-} from '@phosphor-icons/react';
+import { CheckCircleIcon, CircleIcon, ImageIcon } from '@phosphor-icons/react';
 
 export interface ExportOrganization {
   id: string;
@@ -42,7 +37,7 @@ export function ExportChooseProjects({
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(
     new Set()
   );
-  const [includeAttachments, setIncludeAttachments] = useState(false);
+  const [includeAttachments, setIncludeAttachments] = useState(true);
 
   // Select all projects by default when they load
   useEffect(() => {
@@ -86,9 +81,10 @@ export function ExportChooseProjects({
   return (
     <div className="p-double space-y-double">
       <div className="space-y-base">
-        <h2 className="text-lg font-semibold text-high">Choose projects</h2>
+        <h2 className="text-lg font-semibold text-high">Export projects</h2>
         <p className="text-sm text-normal">
-          Select which projects to include in your export.
+          All projects are selected by default. Deselect anything you do not
+          need.
         </p>
       </div>
 
@@ -165,17 +161,14 @@ export function ExportChooseProjects({
         <div className="space-y-half">
           <div className="flex items-center gap-half">
             <ImageIcon className="size-icon-sm text-normal" />
-            <span className="text-sm font-medium text-high">Attachments</span>
+            <span className="text-sm font-medium text-high">
+              Include attachments
+            </span>
           </div>
           <p className="text-xs text-low">
-            Download images and files attached to issues.
+            Include files attached to issues. Turn this off for a smaller
+            export.
           </p>
-          {includeAttachments && (
-            <div className="flex items-center gap-half text-xs text-warning">
-              <WarningIcon className="size-icon-xs shrink-0" />
-              <span>This may increase the download size and time.</span>
-            </div>
-          )}
         </div>
       </label>
 
