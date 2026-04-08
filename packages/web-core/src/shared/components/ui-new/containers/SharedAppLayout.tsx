@@ -177,8 +177,8 @@ export function SharedAppLayout() {
   );
   const isWorkspacesActive = isLocalWorkspacesDestination(currentDestination);
   const isExportActive = currentDestination?.kind === 'export';
-  const showProjectExportBanner =
-    isSignedIn && isProjectDestination(currentDestination);
+  const showCloudShutdownBanner =
+    isExportActive || (isSignedIn && isProjectDestination(currentDestination));
   const isWorkspaceSidebarPreviewEnabled =
     !isMobile && isWorkspacesActive && !isLeftSidebarVisible;
   const activeProjectId = projectDestination?.projectId ?? null;
@@ -322,7 +322,7 @@ export function SharedAppLayout() {
             ? 'flex fixed inset-0 pb-[env(safe-area-inset-bottom)]'
             : cn(
                 'grid grid-cols-[auto_1fr] h-screen',
-                showProjectExportBanner
+                showCloudShutdownBanner
                   ? 'grid-rows-[auto_auto_1fr]'
                   : 'grid-rows-[auto_1fr]'
               )
@@ -330,7 +330,7 @@ export function SharedAppLayout() {
       >
         {!isMobile && (
           <>
-            {showProjectExportBanner && (
+            {showCloudShutdownBanner && (
               <div className="col-span-2">
                 <CloudShutdownExportBanner onClick={handleExportClick} />
               </div>
@@ -424,7 +424,7 @@ export function SharedAppLayout() {
 
         {isMobile && (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-            {showProjectExportBanner && (
+            {showCloudShutdownBanner && (
               <CloudShutdownExportBanner onClick={handleExportClick} />
             )}
             <NavbarContainer

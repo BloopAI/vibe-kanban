@@ -62,7 +62,9 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
   const { isSignedIn } = useAuth();
   const isWorkspaceContextRoute = location.pathname.includes("/workspaces");
   const isProjectRoute = /^\/projects\/[^/]+/.test(location.pathname);
-  const showProjectExportBanner = isSignedIn && isProjectRoute;
+  const isExportRoute = location.pathname === "/export";
+  const showCloudShutdownBanner =
+    isExportRoute || (isSignedIn && isProjectRoute);
 
   useCommandBarShortcut(
     () => CommandBarDialog.show(),
@@ -272,7 +274,7 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
           : "h-screen",
       )}
     >
-      {showProjectExportBanner && (
+      {showCloudShutdownBanner && (
         <CloudShutdownExportBanner onClick={handleExportClick} />
       )}
 

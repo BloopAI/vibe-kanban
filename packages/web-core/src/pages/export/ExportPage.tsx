@@ -61,7 +61,8 @@ export function ExportPage({
               />
             </div>
             <p className="text-sm text-low">
-              You have 30 days to export your cloud data before shutdown.
+              Your export downloads as a ZIP containing CSV files, plus
+              attachments if included.
             </p>
           </header>
           <ExportLayout
