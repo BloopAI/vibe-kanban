@@ -30,6 +30,7 @@ pub struct DirectMerge {
     pub repo_id: Uuid,
     pub merge_commit: String,
     pub target_branch_name: String,
+    pub merge_strategy: String,
     pub created_at: DateTime<Utc>,
 }
 
@@ -60,6 +61,7 @@ struct DirectMergeRow {
     repo_id: Uuid,
     merge_commit: Option<String>,
     target_branch_name: String,
+    merge_strategy: String,
     created_at: DateTime<Utc>,
 }
 
@@ -78,19 +80,21 @@ impl Merge {
         repo_id: Uuid,
         target_branch_name: &str,
         merge_commit: &str,
+        merge_strategy: &str,
     ) -> Result<DirectMerge, sqlx::Error> {
         let id = Uuid::new_v4();
         let now = Utc::now();
 
         sqlx::query!(
-            "INSERT INTO merges (id, workspace_id, repo_id, merge_type, merge_commit, created_at, target_branch_name)
-            VALUES (?, ?, ?, 'direct', ?, ?, ?)",
+            "INSERT INTO merges (id, workspace_id, repo_id, merge_type, merge_commit, created_at, target_branch_name, merge_strategy)
+            VALUES (?, ?, ?, 'direct', ?, ?, ?, ?)",
             id,
             workspace_id,
             repo_id,
             merge_commit,
             now,
             target_branch_name,
+            merge_strategy,
         )
         .execute(pool)
         .await?;
@@ -101,6 +105,7 @@ impl Merge {
             repo_id,
             merge_commit: merge_commit.to_string(),
             target_branch_name: target_branch_name.to_string(),
+            merge_strategy: merge_strategy.to_string(),
             created_at: now,
         })
     }
@@ -119,6 +124,7 @@ impl Merge {
                 repo_id AS "repo_id!: Uuid",
                 merge_commit,
                 target_branch_name,
+                merge_strategy,
                 created_at AS "created_at!: DateTime<Utc>"
             FROM merges
             WHERE workspace_id = ? AND merge_type = 'direct'
@@ -163,6 +169,7 @@ impl Merge {
                 repo_id AS "repo_id!: Uuid",
                 merge_commit,
                 target_branch_name,
+                merge_strategy,
                 created_at AS "created_at!: DateTime<Utc>"
             FROM merges
             WHERE workspace_id = ? AND repo_id = ? AND merge_type = 'direct'
@@ -205,6 +212,7 @@ impl From<DirectMergeRow> for DirectMerge {
                 .merge_commit
                 .expect("direct merge must have merge_commit"),
             target_branch_name: row.target_branch_name,
+            merge_strategy: row.merge_strategy,
             created_at: row.created_at,
         }
     }

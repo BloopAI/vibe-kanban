@@ -168,6 +168,7 @@ fn generate_types_content() -> String {
         git_host::ProviderKind::decl(),
         git_host::PullRequestDetail::decl(),
         git::GitRemote::decl(),
+        git::MergeStrategy::decl(),
         server::routes::repo::ListPrsError::decl(),
         server::routes::remote::pull_requests::LinkPrToIssueRequest::decl(),
         server::routes::workspaces::pr::CreateWorkspaceFromPrBody::decl(),
