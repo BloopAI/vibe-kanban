@@ -1010,9 +1010,57 @@ export const Actions = {
       });
 
       if (confirmResult === 'confirmed') {
-        await workspacesApi.merge(workspaceId, { repo_id: repoId });
+        await workspacesApi.merge(workspaceId, {
+          repo_id: repoId,
+          strategy: 'squash',
+        });
         invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
       }
+    },
+  },
+
+  GitMergeSquash: {
+    id: 'git-merge-squash',
+    label: 'Squash and merge',
+    icon: GitMergeIcon,
+    requiresTarget: ActionTargetType.GIT,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: async (ctx, workspaceId, repoId) => {
+      await workspacesApi.merge(workspaceId, {
+        repo_id: repoId,
+        strategy: 'squash',
+      });
+      invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+    },
+  },
+
+  GitMergeRebase: {
+    id: 'git-merge-rebase',
+    label: 'Rebase and merge',
+    icon: GitMergeIcon,
+    requiresTarget: ActionTargetType.GIT,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: async (ctx, workspaceId, repoId) => {
+      await workspacesApi.merge(workspaceId, {
+        repo_id: repoId,
+        strategy: 'rebase',
+      });
+      invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+    },
+  },
+
+  GitMergeCommit: {
+    id: 'git-merge-commit',
+    label: 'Create a merge commit',
+    icon: GitMergeIcon,
+    requiresTarget: ActionTargetType.GIT,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: async (ctx, workspaceId, repoId) => {
+      await workspacesApi.merge(workspaceId, {
+        repo_id: repoId,
+        strategy: 'merge',
+      });
+      invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
     },
   },
 
