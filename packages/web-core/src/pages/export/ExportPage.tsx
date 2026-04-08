@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ThemeMode } from 'shared/types';
 import { useTheme } from '@/shared/hooks/useTheme';
 import { ExportLayout } from '@/features/export/ui/ExportLayout';
@@ -6,6 +7,11 @@ import type {
   ExportOrganization,
   ExportProject,
 } from '@/features/export/ui/ExportChooseProjects';
+import { useAuth } from '@/shared/hooks/auth/useAuth';
+import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
+import { useOrganizationProjects } from '@/shared/hooks/useOrganizationProjects';
+import { makeRequest as makeRemoteRequest } from '@/shared/lib/remoteApi';
+import { LoginRequiredPrompt } from '@/shared/dialogs/shared/LoginRequiredPrompt';
 
 function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
   if (theme === ThemeMode.SYSTEM) {
@@ -70,5 +76,85 @@ export function ExportPage({
         </div>
       </div>
     </div>
+  );
+}
+
+export function ExportPageContainer() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const { data: orgsData, isLoading: orgsLoading } = useUserOrganizations();
+  const organizations = useMemo<ExportOrganization[]>(
+    () =>
+      (orgsData?.organizations ?? []).map((organization) => ({
+        id: organization.id,
+        name: organization.name,
+      })),
+    [orgsData?.organizations]
+  );
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (organizations.length === 0) {
+      return;
+    }
+
+    const hasSelectedOrg = selectedOrgId
+      ? organizations.some((organization) => organization.id === selectedOrgId)
+      : false;
+
+    if (!hasSelectedOrg) {
+      setSelectedOrgId(organizations[0].id);
+    }
+  }, [organizations, selectedOrgId]);
+
+  const { data: projectData = [], isLoading: projectsLoading } =
+    useOrganizationProjects(selectedOrgId);
+  const projects = useMemo<ExportProject[]>(
+    () =>
+      projectData.map((project) => ({
+        id: project.id,
+        name: project.name,
+      })),
+    [projectData]
+  );
+
+  const exportFn = useCallback(async (request: ExportRequest) => {
+    return makeRemoteRequest('/v1/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+  }, []);
+
+  if (!isLoaded) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-primary">
+        <p className="text-sm text-low">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-primary p-base">
+        <LoginRequiredPrompt
+          className="max-w-md"
+          title="Sign in to export your cloud data"
+          description="Sign in to choose the organizations and projects available to your account."
+          actionLabel="Sign in"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <ExportPage
+      exportFn={exportFn}
+      organizations={organizations}
+      orgsLoading={orgsLoading}
+      projects={projects}
+      projectsLoading={projectsLoading}
+      selectedOrgId={selectedOrgId}
+      onOrgChange={setSelectedOrgId}
+    />
   );
 }

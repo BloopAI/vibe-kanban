@@ -92,7 +92,49 @@ function ProjectMutationsRegistration({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function ProjectKanbanLayout({ projectName }: { projectName: string }) {
+function ProjectExportBanner() {
+  const appNavigation = useAppNavigation();
+
+  return (
+    <div className="border-b border-border bg-secondary px-base py-base">
+      <div className="flex flex-col gap-base rounded-sm border border-border bg-primary p-base sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-normal">
+          Cloud is shutting down. Export your data within 30 days.
+        </p>
+        <button
+          type="button"
+          onClick={() => appNavigation.goToExport()}
+          className="w-full rounded-sm bg-brand px-base py-half text-sm font-medium text-on-brand hover:bg-brand-hover sm:w-auto"
+        >
+          Export data
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ProjectKanbanBoard({
+  showExportBanner,
+}: {
+  showExportBanner: boolean;
+}) {
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col">
+      {showExportBanner && <ProjectExportBanner />}
+      <div className="min-h-0 flex-1">
+        <KanbanContainer />
+      </div>
+    </div>
+  );
+}
+
+function ProjectKanbanLayout({
+  projectName,
+  showExportBanner,
+}: {
+  projectName: string;
+  showExportBanner: boolean;
+}) {
   const { issueId, isPanelOpen } = useCurrentKanbanRouteState();
   const isMobile = useIsMobile();
   const { getIssue } = useProjectContext();
@@ -112,7 +154,7 @@ function ProjectKanbanLayout({ projectName }: { projectName: string }) {
       </div>
     ) : (
       <div className="h-full w-full overflow-hidden bg-primary">
-        <KanbanContainer />
+        <ProjectKanbanBoard showExportBanner={showExportBanner} />
       </div>
     );
   }
@@ -143,7 +185,7 @@ function ProjectKanbanLayout({ projectName }: { projectName: string }) {
         minSize="20%"
         className="min-w-0 h-full overflow-hidden bg-primary"
       >
-        <KanbanContainer />
+        <ProjectKanbanBoard showExportBanner={showExportBanner} />
       </Panel>
 
       {isRightPanelOpen && (
@@ -170,7 +212,13 @@ function ProjectKanbanLayout({ projectName }: { projectName: string }) {
 /**
  * Inner component that renders the Kanban board once we have the org context
  */
-function ProjectKanbanInner({ projectId }: { projectId: string }) {
+function ProjectKanbanInner({
+  projectId,
+  showExportBanner,
+}: {
+  projectId: string;
+  showExportBanner: boolean;
+}) {
   const { t } = useTranslation('common');
   const { projects, isLoading } = useOrgContext();
 
@@ -195,7 +243,10 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
   return (
     <ProjectProvider projectId={projectId}>
       <ProjectMutationsRegistration>
-        <ProjectKanbanLayout projectName={project.name} />
+        <ProjectKanbanLayout
+          projectName={project.name}
+          showExportBanner={showExportBanner}
+        />
       </ProjectMutationsRegistration>
     </ProjectProvider>
   );
@@ -243,7 +294,11 @@ function useFindProjectById(projectId: string | undefined) {
  * Note: This component is rendered inside SharedAppLayout which provides
  * NavbarContainer, AppBar, and SyncErrorProvider.
  */
-export function ProjectKanban() {
+export function ProjectKanban({
+  showExportBanner = false,
+}: {
+  showExportBanner?: boolean;
+}) {
   const { projectId, hostId, hasInvalidWorkspaceCreateDraftId } =
     useCurrentKanbanRouteState();
   const appNavigation = useAppNavigation();
@@ -315,7 +370,10 @@ export function ProjectKanban() {
 
   return (
     <OrgProvider organizationId={organizationId}>
-      <ProjectKanbanInner projectId={projectId} />
+      <ProjectKanbanInner
+        projectId={projectId}
+        showExportBanner={showExportBanner}
+      />
     </OrgProvider>
   );
 }

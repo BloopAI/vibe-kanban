@@ -2,7 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DropResult } from '@hello-pangea/dnd';
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
 import { siDiscord, siGithub } from 'simple-icons';
-import { XIcon, PlusIcon, LayoutIcon, KanbanIcon } from '@phosphor-icons/react';
+import {
+  XIcon,
+  PlusIcon,
+  LayoutIcon,
+  KanbanIcon,
+  DownloadSimpleIcon,
+} from '@phosphor-icons/react';
 import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
 import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
@@ -168,6 +174,7 @@ export function SharedAppLayout() {
     [currentDestination]
   );
   const isWorkspacesActive = isLocalWorkspacesDestination(currentDestination);
+  const isExportActive = currentDestination?.kind === 'export';
   const isWorkspaceSidebarPreviewEnabled =
     !isMobile && isWorkspacesActive && !isLeftSidebarVisible;
   const activeProjectId = projectDestination?.projectId ?? null;
@@ -191,6 +198,10 @@ export function SharedAppLayout() {
   const handleWorkspacesClick = useCallback(() => {
     void navigate({ to: '/workspaces' });
   }, [navigate]);
+
+  const handleExportClick = useCallback(() => {
+    appNavigation.goToExport();
+  }, [appNavigation]);
 
   const handleProjectClick = useCallback(
     (projectId: string) => {
@@ -328,6 +339,7 @@ export function SharedAppLayout() {
               hosts={remoteCloudHosts}
               activeHostId={activeHostId}
               onCreateProject={handleCreateProject}
+              onExportClick={handleExportClick}
               onWorkspacesClick={handleWorkspacesClick}
               onHostClick={handleHostClick}
               onPairHostClick={handlePairHostClick}
@@ -335,6 +347,7 @@ export function SharedAppLayout() {
               onProjectsDragEnd={handleProjectsDragEnd}
               isSavingProjectOrder={isSavingProjectOrder}
               isWorkspacesActive={isWorkspacesActive}
+              isExportActive={isExportActive}
               activeProjectId={activeProjectId}
               isSignedIn={isSignedIn}
               isLoadingProjects={isLoading}
@@ -445,6 +458,24 @@ export function SharedAppLayout() {
 
             {/* Divider */}
             <div className="border-t border-border mx-4" />
+
+            {/* Export link */}
+            {isSignedIn && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleExportClick();
+                  setIsDrawerOpen(false);
+                }}
+                className="flex items-center gap-2 px-4 py-3 text-sm text-normal hover:bg-secondary cursor-pointer"
+              >
+                <DownloadSimpleIcon className="h-4 w-4" />
+                Export data
+              </button>
+            )}
+
+            {/* Divider */}
+            {isSignedIn && <div className="border-t border-border mx-4" />}
 
             {/* Project list */}
             <div className="flex-1 overflow-y-auto p-2">
