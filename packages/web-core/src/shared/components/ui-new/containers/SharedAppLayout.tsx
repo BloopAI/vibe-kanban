@@ -35,10 +35,6 @@ import {
   isLocalWorkspacesDestination,
 } from '@/shared/lib/routes/appNavigation';
 import {
-  CreateOrganizationDialog,
-  type CreateOrganizationResult,
-} from '@/shared/dialogs/org/CreateOrganizationDialog';
-import {
   CreateRemoteProjectDialog,
   type CreateRemoteProjectResult,
 } from '@/shared/dialogs/org/CreateRemoteProjectDialog';
@@ -252,19 +248,6 @@ export function SharedAppLayout() {
     [isSavingProjectOrder, orderedProjects, updateManyProjects]
   );
 
-  const handleCreateOrg = useCallback(async () => {
-    try {
-      const result: CreateOrganizationResult =
-        await CreateOrganizationDialog.show();
-
-      if (result.action === 'created' && result.organizationId) {
-        setSelectedOrgId(result.organizationId);
-      }
-    } catch {
-      // Dialog cancelled
-    }
-  }, [setSelectedOrgId]);
-
   const handleCreateProject = useCallback(async () => {
     if (!selectedOrgId) return;
 
@@ -343,7 +326,6 @@ export function SharedAppLayout() {
             />
             {/* Desktop navbar. */}
             <NavbarContainer
-              onCreateOrg={handleCreateOrg}
               onOrgSelect={setSelectedOrgId}
               onOpenDrawer={() => setIsDrawerOpen(true)}
             />
@@ -376,7 +358,6 @@ export function SharedAppLayout() {
                   organizations={organizations}
                   selectedOrgId={selectedOrgId ?? ''}
                   onOrgSelect={setSelectedOrgId}
-                  onCreateOrg={handleCreateOrg}
                 />
               }
               starCount={starCount}
@@ -429,7 +410,6 @@ export function SharedAppLayout() {
             )}
             <NavbarContainer
               mobileMode={isMobile}
-              onCreateOrg={handleCreateOrg}
               onOrgSelect={setSelectedOrgId}
               onOpenDrawer={() => setIsDrawerOpen(true)}
             />

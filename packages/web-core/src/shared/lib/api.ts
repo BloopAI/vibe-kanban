@@ -48,8 +48,6 @@ import {
   ListOrganizationsResponse,
   OrganizationMemberWithProfile,
   ListMembersResponse,
-  CreateOrganizationRequest,
-  CreateOrganizationResponse,
   CreateInvitationRequest,
   CreateInvitationResponse,
   RevokeInvitationRequest,
@@ -1361,17 +1359,6 @@ export const organizationsApi = {
     return handleRemoteResponse<ListOrganizationsResponse>(response);
   },
 
-  createOrganization: async (
-    data: CreateOrganizationRequest
-  ): Promise<CreateOrganizationResponse> => {
-    const response = await makeRemoteRequest('/v1/organizations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    return handleRemoteResponse<CreateOrganizationResponse>(response);
-  },
-
   createInvitation: async (
     orgId: string,
     data: CreateInvitationRequest
@@ -1445,25 +1432,6 @@ export const organizationsApi = {
       `/v1/organizations/${orgId}/billing`
     );
     return handleRemoteResponse<OrganizationBillingStatusResponse>(response);
-  },
-
-  createCheckoutSession: async (
-    orgId: string,
-    successUrl: string,
-    cancelUrl: string
-  ): Promise<{ url: string }> => {
-    const response = await makeRemoteRequest(
-      `/v1/organizations/${orgId}/billing/checkout`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          success_url: successUrl,
-          cancel_url: cancelUrl,
-        }),
-      }
-    );
-    return handleRemoteResponse<{ url: string }>(response);
   },
 
   createPortalSession: async (

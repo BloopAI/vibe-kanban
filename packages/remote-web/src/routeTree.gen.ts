@@ -9,14 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UpgradeRouteImport } from './routes/upgrade'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ExportRouteImport } from './routes/export'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as UpgradeSuccessRouteImport } from './routes/upgrade_.success'
-import { Route as UpgradeCompleteRouteImport } from './routes/upgrade_.complete'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 import { Route as LoginCompleteRouteImport } from './routes/login_.complete'
 import { Route as AccountCompleteRouteImport } from './routes/account_.complete'
@@ -32,11 +29,6 @@ import { Route as ProjectsProjectIdHostsHostIdWorkspacesCreateDraftIdRouteImport
 import { Route as ProjectsProjectIdIssuesIssueIdHostsHostIdWorkspacesWorkspaceIdRouteImport } from './routes/projects.$projectId_.issues.$issueId_.hosts.$hostId.workspaces.$workspaceId'
 import { Route as ProjectsProjectIdIssuesIssueIdHostsHostIdWorkspacesCreateDraftIdRouteImport } from './routes/projects.$projectId_.issues.$issueId_.hosts.$hostId.workspaces.create.$draftId'
 
-const UpgradeRoute = UpgradeRouteImport.update({
-  id: '/upgrade',
-  path: '/upgrade',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -60,16 +52,6 @@ const AccountRoute = AccountRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UpgradeSuccessRoute = UpgradeSuccessRouteImport.update({
-  id: '/upgrade_/success',
-  path: '/upgrade/success',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UpgradeCompleteRoute = UpgradeCompleteRouteImport.update({
-  id: '/upgrade_/complete',
-  path: '/upgrade/complete',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
@@ -162,12 +144,9 @@ export interface FileRoutesByFullPath {
   '/export': typeof ExportRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
-  '/upgrade': typeof UpgradeRoute
   '/account/complete': typeof AccountCompleteRoute
   '/login/complete': typeof LoginCompleteRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
-  '/upgrade/complete': typeof UpgradeCompleteRoute
-  '/upgrade/success': typeof UpgradeSuccessRoute
   '/account/organizations/$orgId': typeof AccountOrganizationsOrgIdRoute
   '/hosts/$hostId/workspaces': typeof HostsHostIdWorkspacesRouteWithChildren
   '/invitations/$token/accept': typeof InvitationsTokenAcceptRoute
@@ -186,12 +165,9 @@ export interface FileRoutesByTo {
   '/export': typeof ExportRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
-  '/upgrade': typeof UpgradeRoute
   '/account/complete': typeof AccountCompleteRoute
   '/login/complete': typeof LoginCompleteRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
-  '/upgrade/complete': typeof UpgradeCompleteRoute
-  '/upgrade/success': typeof UpgradeSuccessRoute
   '/account/organizations/$orgId': typeof AccountOrganizationsOrgIdRoute
   '/hosts/$hostId/workspaces': typeof HostsHostIdWorkspacesRouteWithChildren
   '/invitations/$token/accept': typeof InvitationsTokenAcceptRoute
@@ -211,12 +187,9 @@ export interface FileRoutesById {
   '/export': typeof ExportRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
-  '/upgrade': typeof UpgradeRoute
   '/account_/complete': typeof AccountCompleteRoute
   '/login_/complete': typeof LoginCompleteRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
-  '/upgrade_/complete': typeof UpgradeCompleteRoute
-  '/upgrade_/success': typeof UpgradeSuccessRoute
   '/account_/organizations/$orgId': typeof AccountOrganizationsOrgIdRoute
   '/hosts/$hostId/workspaces': typeof HostsHostIdWorkspacesRouteWithChildren
   '/invitations/$token/accept': typeof InvitationsTokenAcceptRoute
@@ -237,12 +210,9 @@ export interface FileRouteTypes {
     | '/export'
     | '/login'
     | '/notifications'
-    | '/upgrade'
     | '/account/complete'
     | '/login/complete'
     | '/projects/$projectId'
-    | '/upgrade/complete'
-    | '/upgrade/success'
     | '/account/organizations/$orgId'
     | '/hosts/$hostId/workspaces'
     | '/invitations/$token/accept'
@@ -261,12 +231,9 @@ export interface FileRouteTypes {
     | '/export'
     | '/login'
     | '/notifications'
-    | '/upgrade'
     | '/account/complete'
     | '/login/complete'
     | '/projects/$projectId'
-    | '/upgrade/complete'
-    | '/upgrade/success'
     | '/account/organizations/$orgId'
     | '/hosts/$hostId/workspaces'
     | '/invitations/$token/accept'
@@ -285,12 +252,9 @@ export interface FileRouteTypes {
     | '/export'
     | '/login'
     | '/notifications'
-    | '/upgrade'
     | '/account_/complete'
     | '/login_/complete'
     | '/projects/$projectId'
-    | '/upgrade_/complete'
-    | '/upgrade_/success'
     | '/account_/organizations/$orgId'
     | '/hosts/$hostId/workspaces'
     | '/invitations/$token/accept'
@@ -310,12 +274,9 @@ export interface RootRouteChildren {
   ExportRoute: typeof ExportRoute
   LoginRoute: typeof LoginRoute
   NotificationsRoute: typeof NotificationsRoute
-  UpgradeRoute: typeof UpgradeRoute
   AccountCompleteRoute: typeof AccountCompleteRoute
   LoginCompleteRoute: typeof LoginCompleteRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
-  UpgradeCompleteRoute: typeof UpgradeCompleteRoute
-  UpgradeSuccessRoute: typeof UpgradeSuccessRoute
   AccountOrganizationsOrgIdRoute: typeof AccountOrganizationsOrgIdRoute
   HostsHostIdWorkspacesRoute: typeof HostsHostIdWorkspacesRouteWithChildren
   InvitationsTokenAcceptRoute: typeof InvitationsTokenAcceptRoute
@@ -330,13 +291,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/upgrade': {
-      id: '/upgrade'
-      path: '/upgrade'
-      fullPath: '/upgrade'
-      preLoaderRoute: typeof UpgradeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/notifications': {
       id: '/notifications'
       path: '/notifications'
@@ -370,20 +324,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/upgrade_/success': {
-      id: '/upgrade_/success'
-      path: '/upgrade/success'
-      fullPath: '/upgrade/success'
-      preLoaderRoute: typeof UpgradeSuccessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/upgrade_/complete': {
-      id: '/upgrade_/complete'
-      path: '/upgrade/complete'
-      fullPath: '/upgrade/complete'
-      preLoaderRoute: typeof UpgradeCompleteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects/$projectId': {
@@ -507,12 +447,9 @@ const rootRouteChildren: RootRouteChildren = {
   ExportRoute: ExportRoute,
   LoginRoute: LoginRoute,
   NotificationsRoute: NotificationsRoute,
-  UpgradeRoute: UpgradeRoute,
   AccountCompleteRoute: AccountCompleteRoute,
   LoginCompleteRoute: LoginCompleteRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
-  UpgradeCompleteRoute: UpgradeCompleteRoute,
-  UpgradeSuccessRoute: UpgradeSuccessRoute,
   AccountOrganizationsOrgIdRoute: AccountOrganizationsOrgIdRoute,
   HostsHostIdWorkspacesRoute: HostsHostIdWorkspacesRouteWithChildren,
   InvitationsTokenAcceptRoute: InvitationsTokenAcceptRoute,

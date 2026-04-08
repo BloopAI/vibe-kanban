@@ -104,12 +104,6 @@ async fn create_invitation(
 
     ensure_admin_access(&state.pool, org_id, user.id).await?;
 
-    state
-        .billing()
-        .can_add_member(org_id)
-        .await
-        .map_err(|e| e.to_error_response("Cannot invite more members"))?;
-
     let token = Uuid::new_v4().to_string();
     let expires_at = Utc::now() + Duration::days(7);
 
@@ -288,16 +282,12 @@ async fn accept_invitation(
     let invitation_repo = InvitationRepository::new(&state.pool);
 
     let (org, role) = invitation_repo
-        .accept_invitation(&token, user.id, state.billing())
+        .accept_invitation(&token, user.id)
         .await
         .map_err(|e| match e {
             IdentityError::InvitationError(msg) => ErrorResponse::new(StatusCode::BAD_REQUEST, msg),
             IdentityError::NotFound => {
                 ErrorResponse::new(StatusCode::NOT_FOUND, "Invitation not found")
-            }
-            #[cfg(feature = "vk-billing")]
-            IdentityError::Billing(billing_err) => {
-                billing_err.to_error_response("Cannot accept invitation")
             }
             _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
         })?;
@@ -455,8 +445,6 @@ async fn remove_member(
     tx.commit()
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
-
-    state.billing().on_member_count_changed(org_id).await;
 
     audit::emit(
         AuditEvent::system(AuditAction::MemberRemove)

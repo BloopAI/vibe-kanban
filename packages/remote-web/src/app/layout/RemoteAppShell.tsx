@@ -32,10 +32,6 @@ import {
   useRelayAppBarHosts,
 } from "@remote/shared/hooks/useRelayAppBarHosts";
 import {
-  CreateOrganizationDialog,
-  type CreateOrganizationResult,
-} from "@/shared/dialogs/org/CreateOrganizationDialog";
-import {
   CreateRemoteProjectDialog,
   type CreateRemoteProjectResult,
 } from "@/shared/dialogs/org/CreateRemoteProjectDialog";
@@ -212,19 +208,6 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
     }
   }, [activeOrganizationId, navigate, projectsQuery]);
 
-  const handleCreateOrg = useCallback(async () => {
-    try {
-      const result: CreateOrganizationResult =
-        await CreateOrganizationDialog.show();
-
-      if (result.action === "created" && result.organizationId) {
-        setSelectedOrgId(result.organizationId);
-      }
-    } catch {
-      // Dialog cancelled
-    }
-  }, [setSelectedOrgId]);
-
   const handleHostClick = useCallback(
     (hostId: string, status: AppBarHostStatus) => {
       if (status === "online") {
@@ -255,16 +238,9 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
         organizations={organizations}
         selectedOrgId={selectedOrgId ?? ""}
         onOrgSelect={setSelectedOrgId}
-        onCreateOrg={handleCreateOrg}
       />
     );
-  }, [
-    isMobile,
-    organizations,
-    selectedOrgId,
-    setSelectedOrgId,
-    handleCreateOrg,
-  ]);
+  }, [isMobile, organizations, selectedOrgId, setSelectedOrgId]);
   return (
     <div
       className={cn(
@@ -307,7 +283,6 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
                 organizations={organizations}
                 selectedOrgId={selectedOrgId ?? ""}
                 onOrgSelect={setSelectedOrgId}
-                onCreateOrg={handleCreateOrg}
               />
             }
             starCount={starCount}

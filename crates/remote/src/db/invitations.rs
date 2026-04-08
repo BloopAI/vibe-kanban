@@ -10,7 +10,7 @@ use super::{
     organization_members::{add_member, assert_admin},
     organizations::{Organization, OrganizationRepository, is_personal_org},
 };
-use crate::{billing::BillingService, db::organization_members::is_member};
+use crate::db::organization_members::is_member;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Invitation {
@@ -194,7 +194,6 @@ impl<'a> InvitationRepository<'a> {
         &self,
         token: &str,
         user_id: Uuid,
-        billing: &BillingService,
     ) -> Result<(Organization, MemberRole), IdentityError> {
         let mut tx = super::begin_tx(self.pool).await?;
 
@@ -256,8 +255,6 @@ impl<'a> InvitationRepository<'a> {
             ));
         }
 
-        billing.can_add_member(invitation.organization_id).await?;
-
         add_member(
             &mut *tx,
             invitation.organization_id,
@@ -278,10 +275,6 @@ impl<'a> InvitationRepository<'a> {
         .await?;
 
         tx.commit().await?;
-
-        billing
-            .on_member_count_changed(invitation.organization_id)
-            .await;
 
         let organization = OrganizationRepository::new(self.pool)
             .fetch_organization(invitation.organization_id)

@@ -247,7 +247,6 @@ Date: 2026-02-21
 | `dialogs/git/ForcePushDialog.tsx` | `keep-app` | `frontend-app` | Feature component tied to app domain/data. |
 | `dialogs/global/OAuthDialog.tsx` | `keep-app` | `frontend-app` | Feature component tied to app domain/data. |
 | `dialogs/global/ReleaseNotesDialog.tsx` | `keep-app` | `frontend-app` | Feature component tied to app domain/data. |
-| `dialogs/org/CreateOrganizationDialog.tsx` | `keep-app` | `frontend-app` | Feature component tied to app domain/data. |
 | `dialogs/org/CreateRemoteProjectDialog.tsx` | `keep-app` | `frontend-app` | Feature component tied to app domain/data. |
 | `dialogs/org/DeleteRemoteProjectDialog.tsx` | `keep-app` | `frontend-app` | Feature component tied to app domain/data. |
 | `dialogs/org/InviteMemberDialog.tsx` | `keep-app` | `frontend-app` | Feature component tied to app domain/data. |

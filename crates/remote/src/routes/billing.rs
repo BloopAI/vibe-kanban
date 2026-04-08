@@ -12,10 +12,7 @@ use super::{error::ErrorResponse, organization_members::ensure_admin_access};
 use crate::{
     AppState,
     auth::RequestContext,
-    billing::{
-        BillingError, BillingStatus, BillingStatusResponse, CreateCheckoutRequest,
-        CreatePortalRequest,
-    },
+    billing::{BillingError, BillingStatus, BillingStatusResponse, CreatePortalRequest},
     db::organization_members,
 };
 
@@ -83,26 +80,11 @@ pub async fn create_portal_session(
     Ok(Json(session))
 }
 
-pub async fn create_checkout_session(
-    State(state): State<AppState>,
-    Extension(ctx): Extension<RequestContext>,
-    Path(org_id): Path<Uuid>,
-    Json(payload): Json<CreateCheckoutRequest>,
-) -> Result<impl IntoResponse, ErrorResponse> {
-    ensure_admin_access(&state.pool, org_id, ctx.user.id)
-        .await
-        .map_err(|_| ErrorResponse::new(StatusCode::FORBIDDEN, "Admin access required"))?;
-
-    let billing = state.billing().provider().ok_or_else(|| {
-        ErrorResponse::new(StatusCode::SERVICE_UNAVAILABLE, "Billing not configured")
-    })?;
-
-    let session = billing
-        .create_checkout_session(org_id, &payload.success_url, &payload.cancel_url)
-        .await
-        .map_err(billing_error)?;
-
-    Ok(Json(session))
+pub async fn create_checkout_session() -> Result<StatusCode, ErrorResponse> {
+    Err(ErrorResponse::new(
+        StatusCode::GONE,
+        "New subscriptions are disabled because Vibe Kanban Cloud is shutting down",
+    ))
 }
 
 pub async fn handle_webhook(

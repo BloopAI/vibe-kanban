@@ -115,12 +115,10 @@ function toNavbarSectionItems(
 
 export function NavbarContainer({
   mobileMode = false,
-  onCreateOrg,
   onOrgSelect,
   onOpenDrawer,
 }: {
   mobileMode?: boolean;
-  onCreateOrg?: () => void;
   onOrgSelect?: (orgId: string) => void;
   onOpenDrawer?: () => void;
 }) {
@@ -305,16 +303,9 @@ export function NavbarContainer({
         organizations={orgsData?.organizations ?? []}
         selectedOrgId={selectedOrgId ?? ''}
         onOrgSelect={onOrgSelect ?? (() => {})}
-        onCreateOrg={onCreateOrg ?? (() => {})}
       />
     );
-  }, [
-    mobileMode,
-    orgsData?.organizations,
-    selectedOrgId,
-    onCreateOrg,
-    onOrgSelect,
-  ]);
+  }, [mobileMode, orgsData?.organizations, selectedOrgId, onOrgSelect]);
 
   const syncErrors = useMemo(() => {
     const errors = syncErrorContext?.errors ? [...syncErrorContext.errors] : [];
