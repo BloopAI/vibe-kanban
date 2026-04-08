@@ -534,16 +534,11 @@
     "yes": "Yes",
     "no": "No"
   },
-  "migration": {
-    "allProjectsMigrated": "すべてのプロジェクトはすでにクラウドに移行済みです。",
-    "continueToProjects": "プロジェクトに進む"
-  },
   "appBar": {
     "kanban": {
       "tooltip": "サインインしてプロジェクトを表示",
       "title": "カンバンボード",
-      "description": "サインインしてカンバンボードでコーディングエージェントを整理しましょう。",
-      "migrateOldProjects": "古いプロジェクトを移行"
+      "description": "サインインしてカンバンボードでコーディングエージェントを整理しましょう。"
     }
   },
   "errors": {

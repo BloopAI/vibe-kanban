@@ -125,8 +125,6 @@ function destinationToRemoteTarget(
       return { to: "/" } as const;
     case "onboarding-sign-in":
       return { to: "/" } as const;
-    case "migrate":
-      return { to: "/" } as const;
     case "workspaces":
       if (effectiveHostId) {
         return {
@@ -232,7 +230,6 @@ export function createRemoteHostAppNavigation(hostId: string): AppNavigation {
       navigateTo({ kind: "onboarding" }, transition),
     goToOnboardingSignIn: (transition) =>
       navigateTo({ kind: "onboarding-sign-in" }, transition),
-    goToMigrate: (transition) => navigateTo({ kind: "migrate" }, transition),
     goToWorkspaces: (transition) =>
       navigateTo({ kind: "workspaces", hostId }, transition),
     goToWorkspacesCreate: (transition) =>
@@ -304,7 +301,6 @@ function createRemoteFallbackAppNavigation(): AppNavigation {
       navigateTo({ kind: "onboarding" }, transition),
     goToOnboardingSignIn: (transition) =>
       navigateTo({ kind: "onboarding-sign-in" }, transition),
-    goToMigrate: (transition) => navigateTo({ kind: "migrate" }, transition),
     goToWorkspaces: (transition) =>
       navigateTo({ kind: "workspaces" }, transition),
     goToWorkspacesCreate: (transition) =>

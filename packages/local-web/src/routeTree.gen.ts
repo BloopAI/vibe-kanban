@@ -15,7 +15,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as OnboardingSignInRouteImport } from './routes/onboarding_.sign-in'
 import { Route as AppWorkspacesRouteImport } from './routes/_app.workspaces'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
-import { Route as AppMigrateRouteImport } from './routes/_app.migrate'
 import { Route as WorkspacesWorkspaceIdVscodeRouteImport } from './routes/workspaces.$workspaceId.vscode'
 import { Route as AppWorkspacesElectricTestRouteImport } from './routes/_app.workspaces_.electric-test'
 import { Route as AppWorkspacesCreateRouteImport } from './routes/_app.workspaces_.create'
@@ -60,11 +59,6 @@ const AppWorkspacesRoute = AppWorkspacesRouteImport.update({
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppMigrateRoute = AppMigrateRouteImport.update({
-  id: '/migrate',
-  path: '/migrate',
   getParentRoute: () => AppRoute,
 } as any)
 const WorkspacesWorkspaceIdVscodeRoute =
@@ -169,7 +163,6 @@ const AppProjectsProjectIdIssuesIssueIdHostsHostIdWorkspacesCreateDraftIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
-  '/migrate': typeof AppMigrateRoute
   '/notifications': typeof AppNotificationsRoute
   '/workspaces': typeof AppWorkspacesRoute
   '/onboarding/sign-in': typeof OnboardingSignInRoute
@@ -193,7 +186,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
-  '/migrate': typeof AppMigrateRoute
   '/notifications': typeof AppNotificationsRoute
   '/workspaces': typeof AppWorkspacesRoute
   '/onboarding/sign-in': typeof OnboardingSignInRoute
@@ -219,7 +211,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/onboarding': typeof OnboardingRoute
-  '/_app/migrate': typeof AppMigrateRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/workspaces': typeof AppWorkspacesRoute
   '/onboarding_/sign-in': typeof OnboardingSignInRoute
@@ -245,7 +236,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/onboarding'
-    | '/migrate'
     | '/notifications'
     | '/workspaces'
     | '/onboarding/sign-in'
@@ -269,7 +259,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/onboarding'
-    | '/migrate'
     | '/notifications'
     | '/workspaces'
     | '/onboarding/sign-in'
@@ -294,7 +283,6 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/onboarding'
-    | '/_app/migrate'
     | '/_app/notifications'
     | '/_app/workspaces'
     | '/onboarding_/sign-in'
@@ -367,13 +355,6 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof AppNotificationsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/migrate': {
-      id: '/_app/migrate'
-      path: '/migrate'
-      fullPath: '/migrate'
-      preLoaderRoute: typeof AppMigrateRouteImport
       parentRoute: typeof AppRoute
     }
     '/workspaces/$workspaceId/vscode': {
@@ -492,7 +473,6 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
-  AppMigrateRoute: typeof AppMigrateRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppWorkspacesRoute: typeof AppWorkspacesRoute
   AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRoute
@@ -512,7 +492,6 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppMigrateRoute: AppMigrateRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppWorkspacesRoute: AppWorkspacesRoute,
   AppProjectsProjectIdRoute: AppProjectsProjectIdRoute,

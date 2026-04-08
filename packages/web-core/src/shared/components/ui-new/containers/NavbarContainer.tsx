@@ -171,46 +171,37 @@ export function NavbarContainer({
     [executeAction, selectedWorkspace?.id]
   );
 
-  const isMigratePage = actionCtx.layoutMode === 'migrate';
-
-  // Filter visible actions for each section (empty on migrate page)
   const leftItems = useMemo(
     () =>
-      isMigratePage
-        ? []
-        : toNavbarSectionItems(
-            filterNavbarItems(NavbarActionGroups.left, actionCtx),
-            actionCtx,
-            handleExecuteAction
-          ),
-    [actionCtx, handleExecuteAction, isMigratePage]
+      toNavbarSectionItems(
+        filterNavbarItems(NavbarActionGroups.left, actionCtx),
+        actionCtx,
+        handleExecuteAction
+      ),
+    [actionCtx, handleExecuteAction]
   );
 
   const rightItems = useMemo(
     () =>
-      isMigratePage
-        ? []
-        : toNavbarSectionItems(
-            filterNavbarItems(NavbarActionGroups.right, actionCtx),
-            actionCtx,
-            handleExecuteAction
-          ),
-    [actionCtx, handleExecuteAction, isMigratePage]
+      toNavbarSectionItems(
+        filterNavbarItems(NavbarActionGroups.right, actionCtx),
+        actionCtx,
+        handleExecuteAction
+      ),
+    [actionCtx, handleExecuteAction]
   );
 
   const navbarTitle = isCreateMode
     ? 'Create Workspace'
-    : isMigratePage
-      ? 'Migrate'
-      : isOnProjectPage
-        ? orgName
-        : selectedWorkspace?.branch;
+    : isOnProjectPage
+      ? orgName
+      : selectedWorkspace?.branch;
 
   // Breadcrumbs: Project / Issue / Workspace (only on workspace pages with linked project)
   const linkedProjectId = linkedRemoteWorkspace?.project_id ?? null;
   const linkedIssueId = linkedRemoteWorkspace?.issue_id ?? null;
   const shouldResolveBreadcrumbData =
-    !isOnProjectPage && !isCreateMode && !isMigratePage && !!linkedProjectId;
+    !isOnProjectPage && !isCreateMode && !!linkedProjectId;
   const shouldResolveIssueBreadcrumb =
     shouldResolveBreadcrumbData && !!linkedIssueId;
 

@@ -128,30 +128,24 @@ export function RemoteDesktopNavbar() {
     [executeAction, selectedWorkspace?.id],
   );
 
-  const isMigratePage = actionCtx.layoutMode === "migrate";
-
   const leftItems = useMemo(
     () =>
-      isMigratePage
-        ? []
-        : toNavbarSectionItems(
-            filterNavbarItems(NavbarActionGroups.left, actionCtx),
-            actionCtx,
-            handleExecuteAction,
-          ),
-    [actionCtx, handleExecuteAction, isMigratePage],
+      toNavbarSectionItems(
+        filterNavbarItems(NavbarActionGroups.left, actionCtx),
+        actionCtx,
+        handleExecuteAction,
+      ),
+    [actionCtx, handleExecuteAction],
   );
 
   const rightItems = useMemo(
     () =>
-      isMigratePage
-        ? []
-        : toNavbarSectionItems(
-            filterNavbarItems(NavbarActionGroups.right, actionCtx),
-            actionCtx,
-            handleExecuteAction,
-          ),
-    [actionCtx, handleExecuteAction, isMigratePage],
+      toNavbarSectionItems(
+        filterNavbarItems(NavbarActionGroups.right, actionCtx),
+        actionCtx,
+        handleExecuteAction,
+      ),
+    [actionCtx, handleExecuteAction],
   );
 
   const handleOpenSettings = useCallback(() => {

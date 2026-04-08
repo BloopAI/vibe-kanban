@@ -55,7 +55,6 @@ import { useRemoteCloudHostsAppBarModel } from '@/shared/hooks/useRemoteCloudHos
 export function SharedAppLayout() {
   const appNavigation = useAppNavigation();
   const currentDestination = useCurrentAppDestination();
-  const isMigrateRoute = currentDestination?.kind === 'migrate';
   const isMobile = useIsMobile();
   const mobileFontScale = useUiPreferencesStore((s) => s.mobileFontScale);
   const isLeftSidebarVisible = useUiPreferencesStore(
@@ -146,12 +145,6 @@ export function SharedAppLayout() {
 
   // Navigate to the first ordered project when org changes
   useEffect(() => {
-    // Skip auto-navigation when on migration flow
-    if (isMigrateRoute) {
-      prevOrgIdRef.current = selectedOrgId;
-      return;
-    }
-
     if (
       prevOrgIdRef.current !== null &&
       prevOrgIdRef.current !== selectedOrgId &&
@@ -167,7 +160,7 @@ export function SharedAppLayout() {
     } else if (prevOrgIdRef.current === null && selectedOrgId) {
       prevOrgIdRef.current = selectedOrgId;
     }
-  }, [selectedOrgId, sortedProjects, isLoading, isMigrateRoute, appNavigation]);
+  }, [selectedOrgId, sortedProjects, isLoading, appNavigation]);
 
   // Navigation state for AppBar active indicators
   const projectDestination = useMemo(
@@ -280,21 +273,6 @@ export function SharedAppLayout() {
     }
   }, []);
 
-  const handleMigrate = useCallback(async () => {
-    if (!isSignedIn) {
-      try {
-        const didSignIn = await OAuthDialog.show({});
-        if (didSignIn) {
-          appNavigation.goToMigrate();
-        }
-      } catch {
-        // Dialog cancelled
-      }
-    } else {
-      appNavigation.goToMigrate();
-    }
-  }, [isSignedIn, appNavigation]);
-
   const openRelaySettings = useCallback((hostId?: string) => {
     void SettingsDialog.show({
       initialSection: 'relay',
@@ -327,12 +305,10 @@ export function SharedAppLayout() {
           'bg-primary',
           isMobile
             ? 'flex fixed inset-0 pb-[env(safe-area-inset-bottom)]'
-            : !isMigrateRoute
-              ? 'grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] h-screen'
-              : 'flex h-screen'
+            : 'grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] h-screen'
         )}
       >
-        {!isMobile && !isMigrateRoute && (
+        {!isMobile && (
           <>
             {/* Row 1, col 1: corner spacer — seamless with AppBar bg */}
             <div
@@ -363,7 +339,6 @@ export function SharedAppLayout() {
               isSignedIn={isSignedIn}
               isLoadingProjects={isLoading}
               onSignIn={handleSignIn}
-              onMigrate={handleMigrate}
               onHoverStart={() => setIsAppBarHovered(true)}
               onHoverEnd={() => setIsAppBarHovered(false)}
               notificationBell={
@@ -420,7 +395,7 @@ export function SharedAppLayout() {
           </>
         )}
 
-        {(isMobile || isMigrateRoute) && (
+        {isMobile && (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
             <NavbarContainer
               mobileMode={isMobile}
@@ -509,7 +484,7 @@ export function SharedAppLayout() {
                   <p className="mt-1 text-xs text-low">
                     Sign in to organise your coding agents with kanban boards.
                   </p>
-                  <div className="mt-4 flex flex-col gap-2">
+                  <div className="mt-4">
                     <button
                       type="button"
                       onClick={() => {
@@ -519,16 +494,6 @@ export function SharedAppLayout() {
                       className="w-full px-3 py-2 rounded-md text-sm font-medium bg-brand text-on-brand hover:bg-brand-hover cursor-pointer"
                     >
                       Sign in
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleMigrate();
-                        setIsDrawerOpen(false);
-                      }}
-                      className="w-full px-3 py-2 rounded-md text-sm text-normal bg-secondary hover:bg-panel border border-border cursor-pointer"
-                    >
-                      Migrate old projects
                     </button>
                   </div>
                 </div>

@@ -538,16 +538,11 @@
     "refreshPage": "Refresh Page",
     "remoteAuthUnavailable": "Remote authentication is temporarily unavailable. Some remote features may not work until it recovers."
   },
-  "migration": {
-    "allProjectsMigrated": "All your projects have already been migrated to the cloud.",
-    "continueToProjects": "Continue to Projects"
-  },
   "appBar": {
     "kanban": {
       "tooltip": "Sign in to view projects",
       "title": "Kanban Boards",
-      "description": "Sign in to organise your coding agents with kanban boards.",
-      "migrateOldProjects": "Migrate old projects"
+      "description": "Sign in to organise your coding agents with kanban boards."
     }
   },
   "askQuestion": {

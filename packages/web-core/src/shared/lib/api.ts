@@ -87,9 +87,6 @@ import {
   CreateWorkspaceFromPrBody,
   CreateWorkspaceFromPrResponse,
   CreateFromPrError,
-  MigrationRequest,
-  MigrationResponse,
-  Project,
   CreateAndStartWorkspaceRequest,
   CreateAndStartWorkspaceResponse,
   RelayPairedClient,
@@ -1609,22 +1606,6 @@ export const queueApi = {
   getStatus: async (sessionId: string): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`);
     return handleApiResponse<QueueStatus>(response);
-  },
-};
-
-// Migration API
-export const migrationApi = {
-  listProjects: async (): Promise<Project[]> => {
-    const response = await makeRequest('/api/migration/projects');
-    return handleApiResponse<Project[]>(response);
-  },
-
-  start: async (data: MigrationRequest): Promise<MigrationResponse> => {
-    const response = await makeRequest('/api/migration/start', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<MigrationResponse>(response);
   },
 };
 

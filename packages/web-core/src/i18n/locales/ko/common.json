@@ -534,16 +534,11 @@
     "yes": "Yes",
     "no": "No"
   },
-  "migration": {
-    "allProjectsMigrated": "모든 프로젝트가 이미 클라우드로 마이그레이션되었습니다.",
-    "continueToProjects": "프로젝트로 계속"
-  },
   "appBar": {
     "kanban": {
       "tooltip": "프로젝트를 보려면 로그인하세요",
       "title": "칸반 보드",
-      "description": "로그인하여 칸반 보드로 코딩 에이전트를 정리하세요.",
-      "migrateOldProjects": "이전 프로젝트 마이그레이션"
+      "description": "로그인하여 칸반 보드로 코딩 에이전트를 정리하세요."
     }
   },
   "errors": {

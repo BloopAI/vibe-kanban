@@ -534,16 +534,11 @@
     "yes": "Yes",
     "no": "No"
   },
-  "migration": {
-    "allProjectsMigrated": "Tous vos projets ont déjà été migrés vers le cloud.",
-    "continueToProjects": "Continuer vers les projets"
-  },
   "appBar": {
     "kanban": {
       "tooltip": "Connectez-vous pour voir les projets",
       "title": "Tableaux Kanban",
-      "description": "Connectez-vous pour organiser vos agents de codage avec des tableaux kanban.",
-      "migrateOldProjects": "Migrer les anciens projets"
+      "description": "Connectez-vous pour organiser vos agents de codage avec des tableaux kanban."
     }
   },
   "errors": {

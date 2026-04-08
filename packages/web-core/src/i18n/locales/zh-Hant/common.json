@@ -534,16 +534,11 @@
     "yes": "Yes",
     "no": "No"
   },
-  "migration": {
-    "allProjectsMigrated": "您的所有專案已遷移到雲端。",
-    "continueToProjects": "繼續前往專案"
-  },
   "appBar": {
     "kanban": {
       "tooltip": "登入以查看專案",
       "title": "看板",
-      "description": "登入以使用看板管理您的編碼代理。",
-      "migrateOldProjects": "遷移舊專案"
+      "description": "登入以使用看板管理您的編碼代理。"
     }
   },
   "errors": {
