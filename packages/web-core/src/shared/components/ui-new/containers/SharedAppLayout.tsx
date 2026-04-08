@@ -58,21 +58,7 @@ import { AppBarNotificationBellContainer } from '@/pages/workspaces/AppBarNotifi
 import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebarContainer';
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
 import { useRemoteCloudHostsAppBarModel } from '@/shared/hooks/useRemoteCloudHosts';
-
-function ProjectExportBanner({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'w-full border-b border-border bg-brand px-base py-half text-center',
-        'text-sm font-medium text-on-brand hover:bg-brand-hover'
-      )}
-    >
-      Cloud is shutting down. Export your data within 30 days.
-    </button>
-  );
-}
+import { CloudShutdownExportBanner } from '@/shared/components/CloudShutdownExportBanner';
 
 export function SharedAppLayout() {
   const appNavigation = useAppNavigation();
@@ -346,7 +332,7 @@ export function SharedAppLayout() {
           <>
             {showProjectExportBanner && (
               <div className="col-span-2">
-                <ProjectExportBanner onClick={handleExportClick} />
+                <CloudShutdownExportBanner onClick={handleExportClick} />
               </div>
             )}
             {/* Desktop corner spacer. */}
@@ -439,7 +425,7 @@ export function SharedAppLayout() {
         {isMobile && (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
             {showProjectExportBanner && (
-              <ProjectExportBanner onClick={handleExportClick} />
+              <CloudShutdownExportBanner onClick={handleExportClick} />
             )}
             <NavbarContainer
               mobileMode={isMobile}
