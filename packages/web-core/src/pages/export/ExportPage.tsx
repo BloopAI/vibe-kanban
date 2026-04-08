@@ -61,8 +61,8 @@ export function ExportPage({
               />
             </div>
             <p className="text-sm text-low">
-              Your export downloads as a ZIP containing CSV files, plus
-              attachments if included.
+              Download your project and issue data to CSV files. Optionally
+              downloads your file attachments too.
             </p>
           </header>
           <ExportLayout

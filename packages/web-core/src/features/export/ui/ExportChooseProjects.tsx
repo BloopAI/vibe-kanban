@@ -82,10 +82,6 @@ export function ExportChooseProjects({
     <div className="p-double space-y-double">
       <div className="space-y-base">
         <h2 className="text-lg font-semibold text-high">Export projects</h2>
-        <p className="text-sm text-normal">
-          All projects are selected by default. Deselect anything you do not
-          need.
-        </p>
       </div>
 
       {organizations.length > 1 && (
