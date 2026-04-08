@@ -1,13 +1,13 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ExportPage as ExportPageUI } from '@vibe/web-core/pages/export/ExportPage';
+import { useState, useEffect, useCallback } from "react";
+import { ExportPage as ExportPageUI } from "@/pages/export/ExportPage";
 import {
   authenticatedFetch,
   listOrganizations,
   listOrganizationProjects,
-} from '@remote/shared/lib/api';
-import type { ExportRequest } from '@vibe/web-core/features/export/ui/ExportDownload';
+} from "@remote/shared/lib/api";
+import type { ExportRequest } from "@/features/export/ui/ExportDownload";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 export default function ExportPage() {
   const [organizations, setOrganizations] = useState<
@@ -67,8 +67,8 @@ export default function ExportPage() {
 
   const exportFn = useCallback(async (request: ExportRequest) => {
     return authenticatedFetch(`${API_BASE}/v1/export`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     });
   }, []);

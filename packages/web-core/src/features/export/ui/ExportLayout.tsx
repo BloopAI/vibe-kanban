@@ -25,7 +25,6 @@ interface ExportLayoutProps {
 interface ExportData {
   orgId: string;
   projectIds: string[];
-  includeComments: boolean;
   includeAttachments: boolean;
 }
 
@@ -48,18 +47,14 @@ export function ExportLayout({
     setExportData({
       orgId,
       projectIds,
-      includeComments: true,
       includeAttachments: false,
     });
     setCurrentStep('options');
   };
 
-  const handleOptionsContinue = (
-    includeComments: boolean,
-    includeAttachments: boolean
-  ) => {
+  const handleOptionsContinue = (includeAttachments: boolean) => {
     if (exportData) {
-      setExportData({ ...exportData, includeComments, includeAttachments });
+      setExportData({ ...exportData, includeAttachments });
     }
     setCurrentStep('download');
   };
@@ -87,7 +82,6 @@ export function ExportLayout({
       case 'options':
         return (
           <ExportOptions
-            includeComments={exportData?.includeComments ?? true}
             includeAttachments={exportData?.includeAttachments ?? false}
             onContinue={handleOptionsContinue}
             onBack={() => setCurrentStep('choose-projects')}
@@ -101,7 +95,6 @@ export function ExportLayout({
           <ExportDownload
             orgId={exportData.orgId}
             projectIds={exportData.projectIds}
-            includeComments={exportData.includeComments}
             includeAttachments={exportData.includeAttachments}
             onExportMore={() => setCurrentStep('choose-projects')}
             exportFn={exportFn}
@@ -114,10 +107,7 @@ export function ExportLayout({
 
   return (
     <div className="space-y-double">
-      <ExportSidebar
-        currentStep={currentStep}
-        onStepChange={setCurrentStep}
-      />
+      <ExportSidebar currentStep={currentStep} onStepChange={setCurrentStep} />
       <div className="rounded-sm border border-border bg-panel">
         {renderContent()}
       </div>

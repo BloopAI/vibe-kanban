@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                p.id               AS \"id!: Uuid\",\n                p.organization_id  AS \"organization_id!: Uuid\",\n                p.name             AS \"name!\",\n                p.color            AS \"color!\",\n                p.sort_order       AS \"sort_order!\",\n                p.created_at       AS \"created_at!: DateTime<Utc>\",\n                p.updated_at       AS \"updated_at!: DateTime<Utc>\"\n            FROM projects p\n            INNER JOIN organization_member_metadata omm\n                ON omm.organization_id = p.organization_id\n               AND omm.user_id = $2\n            WHERE p.organization_id = $1\n            ORDER BY p.sort_order ASC, p.created_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "color!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "sort_order!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6764a29ac71ce7dac8d69d7f8b9b56cf0eb934773aca2177385369d6d53df20a"
+}

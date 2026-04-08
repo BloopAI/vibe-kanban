@@ -1,5 +1,9 @@
-use api_types::{AttachmentWithBlob, Issue, IssueComment, User};
-use sqlx::{PgPool, Row};
+use api_types::{
+    AttachmentWithBlob, Issue, IssueAssignee, IssuePriority, Project, ProjectStatus, User,
+};
+use chrono::{DateTime, Utc};
+use serde_json::Value;
+use sqlx::PgPool;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -12,88 +16,166 @@ pub enum ExportError {
 pub struct ExportRepository;
 
 impl ExportRepository {
+    /// Fetch all projects the user can export from the organization.
+    pub async fn list_accessible_projects_by_organization(
+        pool: &PgPool,
+        organization_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Vec<Project>, ExportError> {
+        let records = sqlx::query_as!(
+            Project,
+            r#"
+            SELECT
+                p.id               AS "id!: Uuid",
+                p.organization_id  AS "organization_id!: Uuid",
+                p.name             AS "name!",
+                p.color            AS "color!",
+                p.sort_order       AS "sort_order!",
+                p.created_at       AS "created_at!: DateTime<Utc>",
+                p.updated_at       AS "updated_at!: DateTime<Utc>"
+            FROM projects p
+            INNER JOIN organization_member_metadata omm
+                ON omm.organization_id = p.organization_id
+               AND omm.user_id = $2
+            WHERE p.organization_id = $1
+            ORDER BY p.sort_order ASC, p.created_at DESC
+            "#,
+            organization_id,
+            user_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(records)
+    }
+
+    /// Fetch selected projects the user can export from the organization.
+    pub async fn list_accessible_projects_by_ids(
+        pool: &PgPool,
+        organization_id: Uuid,
+        user_id: Uuid,
+        project_ids: &[Uuid],
+    ) -> Result<Vec<Project>, ExportError> {
+        let records = sqlx::query_as!(
+            Project,
+            r#"
+            SELECT
+                p.id               AS "id!: Uuid",
+                p.organization_id  AS "organization_id!: Uuid",
+                p.name             AS "name!",
+                p.color            AS "color!",
+                p.sort_order       AS "sort_order!",
+                p.created_at       AS "created_at!: DateTime<Utc>",
+                p.updated_at       AS "updated_at!: DateTime<Utc>"
+            FROM projects p
+            INNER JOIN organization_member_metadata omm
+                ON omm.organization_id = p.organization_id
+               AND omm.user_id = $3
+            WHERE p.organization_id = $1
+              AND p.id = ANY($2)
+            ORDER BY p.sort_order ASC, p.created_at DESC
+            "#,
+            organization_id,
+            project_ids,
+            user_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(records)
+    }
+
     /// Fetch all issues for the given project IDs (no pagination).
     pub async fn list_all_issues_by_projects(
         pool: &PgPool,
         project_ids: &[Uuid],
     ) -> Result<Vec<Issue>, ExportError> {
-        let rows = sqlx::query(
+        let issues = sqlx::query_as!(
+            Issue,
             r#"
             SELECT
-                id, project_id, issue_number, simple_id, status_id,
-                title, description, priority, start_date, target_date,
-                completed_at, sort_order, parent_issue_id, parent_issue_sort_order,
-                extension_metadata, creator_user_id, created_at, updated_at
+                id                  AS "id!: Uuid",
+                project_id          AS "project_id!: Uuid",
+                issue_number        AS "issue_number!",
+                simple_id           AS "simple_id!",
+                status_id           AS "status_id!: Uuid",
+                title               AS "title!",
+                description         AS "description?",
+                priority            AS "priority: IssuePriority",
+                start_date          AS "start_date?: DateTime<Utc>",
+                target_date         AS "target_date?: DateTime<Utc>",
+                completed_at        AS "completed_at?: DateTime<Utc>",
+                sort_order          AS "sort_order!",
+                parent_issue_id     AS "parent_issue_id?: Uuid",
+                parent_issue_sort_order AS "parent_issue_sort_order?",
+                extension_metadata  AS "extension_metadata!: Value",
+                creator_user_id     AS "creator_user_id?: Uuid",
+                created_at          AS "created_at!: DateTime<Utc>",
+                updated_at          AS "updated_at!: DateTime<Utc>"
             FROM issues
             WHERE project_id = ANY($1)
             ORDER BY project_id, issue_number ASC
             "#,
+            project_ids
         )
-        .bind(project_ids)
         .fetch_all(pool)
         .await?;
-
-        let mut issues = Vec::with_capacity(rows.len());
-        for row in rows {
-            issues.push(Issue {
-                id: row.get("id"),
-                project_id: row.get("project_id"),
-                issue_number: row.get("issue_number"),
-                simple_id: row.get("simple_id"),
-                status_id: row.get("status_id"),
-                title: row.get("title"),
-                description: row.get("description"),
-                priority: row.get("priority"),
-                start_date: row.get("start_date"),
-                target_date: row.get("target_date"),
-                completed_at: row.get("completed_at"),
-                sort_order: row.get("sort_order"),
-                parent_issue_id: row.get("parent_issue_id"),
-                parent_issue_sort_order: row.get("parent_issue_sort_order"),
-                extension_metadata: row.get("extension_metadata"),
-                creator_user_id: row.get("creator_user_id"),
-                created_at: row.get("created_at"),
-                updated_at: row.get("updated_at"),
-            });
-        }
 
         Ok(issues)
     }
 
-    /// Fetch all comments for issues in the given project IDs.
-    pub async fn list_comments_by_projects(
+    /// Fetch all statuses for the given project IDs.
+    pub async fn list_statuses_by_projects(
         pool: &PgPool,
         project_ids: &[Uuid],
-    ) -> Result<Vec<IssueComment>, ExportError> {
-        let rows = sqlx::query(
+    ) -> Result<Vec<ProjectStatus>, ExportError> {
+        let records = sqlx::query_as!(
+            ProjectStatus,
             r#"
             SELECT
-                ic.id, ic.issue_id, ic.author_id, ic.parent_id,
-                ic.message, ic.created_at, ic.updated_at
-            FROM issue_comments ic
-            INNER JOIN issues i ON i.id = ic.issue_id
-            WHERE i.project_id = ANY($1)
-            ORDER BY ic.created_at ASC
+                id              AS "id!: Uuid",
+                project_id      AS "project_id!: Uuid",
+                name            AS "name!",
+                color           AS "color!",
+                sort_order      AS "sort_order!",
+                hidden          AS "hidden!",
+                created_at      AS "created_at!: DateTime<Utc>"
+            FROM project_statuses
+            WHERE project_id = ANY($1)
+            ORDER BY project_id, sort_order ASC
             "#,
+            project_ids
         )
-        .bind(project_ids)
         .fetch_all(pool)
         .await?;
 
-        let mut comments = Vec::with_capacity(rows.len());
-        for row in rows {
-            comments.push(IssueComment {
-                id: row.get("id"),
-                issue_id: row.get("issue_id"),
-                author_id: row.get("author_id"),
-                parent_id: row.get("parent_id"),
-                message: row.get("message"),
-                created_at: row.get("created_at"),
-                updated_at: row.get("updated_at"),
-            });
-        }
+        Ok(records)
+    }
 
-        Ok(comments)
+    /// Fetch all assignees for issues in the given project IDs.
+    pub async fn list_assignees_by_projects(
+        pool: &PgPool,
+        project_ids: &[Uuid],
+    ) -> Result<Vec<IssueAssignee>, ExportError> {
+        let records = sqlx::query_as!(
+            IssueAssignee,
+            r#"
+            SELECT
+                ia.id          AS "id!: Uuid",
+                ia.issue_id    AS "issue_id!: Uuid",
+                ia.user_id     AS "user_id!: Uuid",
+                ia.assigned_at AS "assigned_at!: DateTime<Utc>"
+            FROM issue_assignees ia
+            INNER JOIN issues i ON i.id = ia.issue_id
+            WHERE i.project_id = ANY($1)
+            ORDER BY ia.assigned_at ASC
+            "#,
+            project_ids
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(records)
     }
 
     /// Fetch all attachments (with blob metadata) for issues in the given project IDs.
@@ -101,13 +183,24 @@ impl ExportRepository {
         pool: &PgPool,
         project_ids: &[Uuid],
     ) -> Result<Vec<AttachmentWithBlob>, ExportError> {
-        let rows = sqlx::query(
+        let attachments = sqlx::query_as!(
+            AttachmentWithBlob,
             r#"
             SELECT
-                a.id, a.blob_id, a.issue_id, a.comment_id,
-                a.created_at, a.expires_at,
-                b.blob_path, b.thumbnail_blob_path, b.original_name,
-                b.mime_type, b.size_bytes, b.hash, b.width, b.height
+                a.id                    AS "id!: Uuid",
+                a.blob_id               AS "blob_id!: Uuid",
+                a.issue_id              AS "issue_id?: Uuid",
+                a.comment_id            AS "comment_id?: Uuid",
+                a.created_at            AS "created_at!: DateTime<Utc>",
+                a.expires_at            AS "expires_at?: DateTime<Utc>",
+                b.blob_path             AS "blob_path!",
+                b.thumbnail_blob_path   AS "thumbnail_blob_path?",
+                b.original_name         AS "original_name!",
+                b.mime_type             AS "mime_type?",
+                b.size_bytes            AS "size_bytes!",
+                b.hash                  AS "hash!",
+                b.width                 AS "width?",
+                b.height                AS "height?"
             FROM attachments a
             INNER JOIN blobs b ON b.id = a.blob_id
             INNER JOIN issues i ON i.id = a.issue_id
@@ -115,30 +208,10 @@ impl ExportRepository {
               AND a.expires_at IS NULL
             ORDER BY a.created_at ASC
             "#,
+            project_ids
         )
-        .bind(project_ids)
         .fetch_all(pool)
         .await?;
-
-        let mut attachments = Vec::with_capacity(rows.len());
-        for row in rows {
-            attachments.push(AttachmentWithBlob {
-                id: row.get("id"),
-                blob_id: row.get("blob_id"),
-                issue_id: row.get("issue_id"),
-                comment_id: row.get("comment_id"),
-                created_at: row.get("created_at"),
-                expires_at: row.get("expires_at"),
-                blob_path: row.get("blob_path"),
-                thumbnail_blob_path: row.get("thumbnail_blob_path"),
-                original_name: row.get("original_name"),
-                mime_type: row.get("mime_type"),
-                size_bytes: row.get("size_bytes"),
-                hash: row.get("hash"),
-                width: row.get("width"),
-                height: row.get("height"),
-            });
-        }
 
         Ok(attachments)
     }
@@ -148,32 +221,25 @@ impl ExportRepository {
         pool: &PgPool,
         organization_id: Uuid,
     ) -> Result<Vec<User>, ExportError> {
-        let rows = sqlx::query(
+        let users = sqlx::query_as!(
+            User,
             r#"
             SELECT
-                u.id, u.email, u.first_name, u.last_name,
-                u.username, u.created_at, u.updated_at
+                u.id          AS "id!: Uuid",
+                u.email       AS "email!",
+                u.first_name  AS "first_name?",
+                u.last_name   AS "last_name?",
+                u.username    AS "username?",
+                u.created_at  AS "created_at!: DateTime<Utc>",
+                u.updated_at  AS "updated_at!: DateTime<Utc>"
             FROM users u
             INNER JOIN organization_member_metadata omm ON omm.user_id = u.id
             WHERE omm.organization_id = $1
             "#,
+            organization_id
         )
-        .bind(organization_id)
         .fetch_all(pool)
         .await?;
-
-        let mut users = Vec::with_capacity(rows.len());
-        for row in rows {
-            users.push(User {
-                id: row.get("id"),
-                email: row.get("email"),
-                first_name: row.get("first_name"),
-                last_name: row.get("last_name"),
-                username: row.get("username"),
-                created_at: row.get("created_at"),
-                updated_at: row.get("updated_at"),
-            });
-        }
 
         Ok(users)
     }

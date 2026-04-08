@@ -10,9 +10,7 @@ export function ExportIntroduction({ onContinue }: ExportIntroductionProps) {
       <div className="space-y-base">
         <div className="flex items-center gap-base">
           <DownloadSimpleIcon className="size-icon text-brand" weight="fill" />
-          <h2 className="text-lg font-semibold text-high">
-            Export your data
-          </h2>
+          <h2 className="text-lg font-semibold text-high">Export your data</h2>
         </div>
         <p className="text-sm text-normal">
           The Vibe Kanban cloud service is shutting down. You can export all
@@ -22,31 +20,17 @@ export function ExportIntroduction({ onContinue }: ExportIntroductionProps) {
       </div>
 
       <div className="space-y-half">
-        <h3 className="text-sm font-medium text-high">
-          What&apos;s included:
-        </h3>
+        <h3 className="text-sm font-medium text-high">What&apos;s included:</h3>
         <ul className="text-sm text-normal space-y-half list-disc pl-double">
           <li>
             <strong>Issues</strong> &mdash; titles, descriptions, statuses,
-            priorities, assignees, labels, dates
+            priorities, assignees, dates
           </li>
           <li>
             <strong>Projects</strong> &mdash; project names and metadata
           </li>
           <li>
-            <strong>Tags &amp; relationships</strong> &mdash; labels, blocking
-            and related issue links
-          </li>
-          <li>
-            <strong>Pull requests</strong> &mdash; linked PRs with status and
-            URLs
-          </li>
-          <li>
             <strong>Users</strong> &mdash; team member names and emails
-          </li>
-          <li>
-            <strong>Comments</strong> (optional) &mdash; issue discussion
-            threads
           </li>
           <li>
             <strong>Attachments</strong> (optional) &mdash; images and files

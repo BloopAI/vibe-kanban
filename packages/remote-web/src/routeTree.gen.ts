@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UpgradeRouteImport } from './routes/upgrade'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ExportRouteImport } from './routes/export'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UpgradeSuccessRouteImport } from './routes/upgrade_.success'
@@ -44,6 +45,11 @@ const NotificationsRoute = NotificationsRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExportRoute = ExportRouteImport.update({
+  id: '/export',
+  path: '/export',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountRoute = AccountRouteImport.update({
@@ -153,6 +159,7 @@ const ProjectsProjectIdIssuesIssueIdHostsHostIdWorkspacesCreateDraftIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/export': typeof ExportRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/upgrade': typeof UpgradeRoute
@@ -176,6 +183,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/export': typeof ExportRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/upgrade': typeof UpgradeRoute
@@ -200,6 +208,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/export': typeof ExportRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/upgrade': typeof UpgradeRoute
@@ -225,6 +234,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/export'
     | '/login'
     | '/notifications'
     | '/upgrade'
@@ -248,6 +258,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
+    | '/export'
     | '/login'
     | '/notifications'
     | '/upgrade'
@@ -271,6 +282,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account'
+    | '/export'
     | '/login'
     | '/notifications'
     | '/upgrade'
@@ -295,6 +307,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
+  ExportRoute: typeof ExportRoute
   LoginRoute: typeof LoginRoute
   NotificationsRoute: typeof NotificationsRoute
   UpgradeRoute: typeof UpgradeRoute
@@ -336,6 +349,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/export': {
+      id: '/export'
+      path: '/export'
+      fullPath: '/export'
+      preLoaderRoute: typeof ExportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account': {
@@ -484,6 +504,7 @@ const HostsHostIdWorkspacesRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
+  ExportRoute: ExportRoute,
   LoginRoute: LoginRoute,
   NotificationsRoute: NotificationsRoute,
   UpgradeRoute: UpgradeRoute,

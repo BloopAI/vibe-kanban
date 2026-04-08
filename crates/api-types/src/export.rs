@@ -7,6 +7,5 @@ pub struct ExportRequest {
     pub organization_id: Uuid,
     /// If empty, exports all projects in the organization.
     pub project_ids: Vec<Uuid>,
-    pub include_comments: bool,
     pub include_attachments: bool,
 }

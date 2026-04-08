@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     io::{Cursor, Write},
 };
 
@@ -17,21 +17,8 @@ use tracing::instrument;
 use uuid::Uuid;
 use zip::{ZipWriter, write::SimpleFileOptions};
 
-use super::{
-    error::ErrorResponse,
-    organization_members::{ensure_member_access, ensure_project_access},
-};
-use crate::{
-    AppState,
-    auth::RequestContext,
-    db::{
-        export::ExportRepository, issue_assignees::IssueAssigneeRepository,
-        issue_relationships::IssueRelationshipRepository, issue_tags::IssueTagRepository,
-        project_statuses::ProjectStatusRepository, projects::ProjectRepository,
-        pull_request_issues::PullRequestIssueRepository, pull_requests::PullRequestRepository,
-        tags::TagRepository,
-    },
-};
+use super::{error::ErrorResponse, organization_members::ensure_member_access};
+use crate::{AppState, auth::RequestContext, db::export::ExportRepository};
 
 pub(super) fn router() -> Router<AppState> {
     Router::new().route("/export", post(export_data))
@@ -48,29 +35,37 @@ async fn export_data(
     // Verify org membership
     ensure_member_access(pool, payload.organization_id, ctx.user.id).await?;
 
-    // Determine which projects to export
+    let requested_project_ids: HashSet<_> = payload.project_ids.iter().copied().collect();
+
+    // Determine which projects to export. The export repository applies the
+    // organization membership filter directly to the project query.
     let projects = if payload.project_ids.is_empty() {
-        ProjectRepository::list_by_organization(pool, payload.organization_id).await
+        ExportRepository::list_accessible_projects_by_organization(
+            pool,
+            payload.organization_id,
+            ctx.user.id,
+        )
+        .await
     } else {
-        // Verify access to each project
-        for &project_id in &payload.project_ids {
-            ensure_project_access(pool, ctx.user.id, project_id).await?;
-        }
-        ProjectRepository::list_by_organization(pool, payload.organization_id).await
+        ExportRepository::list_accessible_projects_by_ids(
+            pool,
+            payload.organization_id,
+            ctx.user.id,
+            &payload.project_ids,
+        )
+        .await
     }
     .map_err(|error| {
         tracing::error!(?error, "failed to list projects for export");
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list projects")
     })?;
 
-    let projects: Vec<_> = if payload.project_ids.is_empty() {
-        projects
-    } else {
-        projects
-            .into_iter()
-            .filter(|p| payload.project_ids.contains(&p.id))
-            .collect()
-    };
+    if !payload.project_ids.is_empty() && projects.len() != requested_project_ids.len() {
+        return Err(ErrorResponse::new(
+            StatusCode::FORBIDDEN,
+            "one or more projects are not accessible",
+        ));
+    }
 
     if projects.is_empty() {
         return Err(ErrorResponse::new(
@@ -82,17 +77,7 @@ async fn export_data(
     let project_ids: Vec<Uuid> = projects.iter().map(|p| p.id).collect();
 
     // Fetch all data in parallel
-    let (
-        issues,
-        users,
-        all_statuses,
-        all_tags,
-        assignees,
-        issue_tags,
-        relationships,
-        pull_requests,
-        pr_issues,
-    ) = tokio::try_join!(
+    let (issues, users, all_statuses, assignees, attachments) = tokio::try_join!(
         async {
             ExportRepository::list_all_issues_by_projects(pool, &project_ids)
                 .await
@@ -104,110 +89,29 @@ async fn export_data(
                 .map_err(|e| e.to_string())
         },
         async {
-            let mut all = Vec::new();
-            for pid in &project_ids {
-                let statuses = ProjectStatusRepository::list_by_project(pool, *pid)
-                    .await
-                    .map_err(|e| e.to_string())?;
-                all.extend(statuses);
-            }
-            Ok::<_, String>(all)
+            ExportRepository::list_statuses_by_projects(pool, &project_ids)
+                .await
+                .map_err(|e| e.to_string())
         },
         async {
-            let mut all = Vec::new();
-            for pid in &project_ids {
-                let tags = TagRepository::list_by_project(pool, *pid)
-                    .await
-                    .map_err(|e| e.to_string())?;
-                all.extend(tags);
-            }
-            Ok::<_, String>(all)
+            ExportRepository::list_assignees_by_projects(pool, &project_ids)
+                .await
+                .map_err(|e| e.to_string())
         },
         async {
-            let mut all = Vec::new();
-            for pid in &project_ids {
-                let a = IssueAssigneeRepository::list_by_project(pool, *pid)
+            if payload.include_attachments {
+                ExportRepository::list_attachments_by_projects(pool, &project_ids)
                     .await
-                    .map_err(|e| e.to_string())?;
-                all.extend(a);
+                    .map_err(|e| e.to_string())
+            } else {
+                Ok(Vec::new())
             }
-            Ok::<_, String>(all)
-        },
-        async {
-            let mut all = Vec::new();
-            for pid in &project_ids {
-                let it = IssueTagRepository::list_by_project(pool, *pid)
-                    .await
-                    .map_err(|e| e.to_string())?;
-                all.extend(it);
-            }
-            Ok::<_, String>(all)
-        },
-        async {
-            let mut all = Vec::new();
-            for pid in &project_ids {
-                let r = IssueRelationshipRepository::list_by_project(pool, *pid)
-                    .await
-                    .map_err(|e| e.to_string())?;
-                all.extend(r);
-            }
-            Ok::<_, String>(all)
-        },
-        async {
-            let mut all = Vec::new();
-            for pid in &project_ids {
-                let prs = PullRequestRepository::list_by_project(pool, *pid)
-                    .await
-                    .map_err(|e| e.to_string())?;
-                all.extend(prs);
-            }
-            Ok::<_, String>(all)
-        },
-        async {
-            let mut all = Vec::new();
-            for pid in &project_ids {
-                let pris = PullRequestIssueRepository::list_by_project(pool, *pid)
-                    .await
-                    .map_err(|e| e.to_string())?;
-                all.extend(pris);
-            }
-            Ok::<_, String>(all)
         },
     )
     .map_err(|error| {
         tracing::error!(%error, "failed to fetch export data");
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to fetch data")
     })?;
-
-    // Optionally fetch comments
-    let comments = if payload.include_comments {
-        ExportRepository::list_comments_by_projects(pool, &project_ids)
-            .await
-            .map_err(|error| {
-                tracing::error!(?error, "failed to fetch comments for export");
-                ErrorResponse::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "failed to fetch comments",
-                )
-            })?
-    } else {
-        Vec::new()
-    };
-
-    // Optionally fetch attachments metadata
-    let attachments = if payload.include_attachments {
-        ExportRepository::list_attachments_by_projects(pool, &project_ids)
-            .await
-            .map_err(|error| {
-                tracing::error!(?error, "failed to fetch attachments for export");
-                ErrorResponse::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "failed to fetch attachments",
-                )
-            })?
-    } else {
-        Vec::new()
-    };
 
     // Build lookup maps
     let project_map: HashMap<Uuid, &str> =
@@ -216,7 +120,6 @@ async fn export_data(
         .iter()
         .map(|s| (s.id, s.name.as_str()))
         .collect();
-    let tag_map: HashMap<Uuid, &str> = all_tags.iter().map(|t| (t.id, t.name.as_str())).collect();
     let user_map: HashMap<Uuid, String> = users
         .iter()
         .map(|u| {
@@ -245,14 +148,6 @@ async fn export_data(
         }
     }
 
-    // Build issue tag map: issue_id -> comma-separated tag names
-    let mut issue_tag_map: HashMap<Uuid, Vec<&str>> = HashMap::new();
-    for it in &issue_tags {
-        if let Some(name) = tag_map.get(&it.tag_id) {
-            issue_tag_map.entry(it.issue_id).or_default().push(name);
-        }
-    }
-
     // Create ZIP archive
     let buf = Cursor::new(Vec::new());
     let mut zip = ZipWriter::new(buf);
@@ -271,7 +166,6 @@ async fn export_data(
                 "Priority",
                 "Project",
                 "Assignee(s)",
-                "Labels",
                 "Creator",
                 "Created",
                 "Updated",
@@ -286,10 +180,6 @@ async fn export_data(
                 let status_name = status_map.get(&issue.status_id).copied().unwrap_or("");
                 let project_name = project_map.get(&issue.project_id).copied().unwrap_or("");
                 let assignees_str = assignee_map
-                    .get(&issue.id)
-                    .map(|v| v.join(", "))
-                    .unwrap_or_default();
-                let labels_str = issue_tag_map
                     .get(&issue.id)
                     .map(|v| v.join(", "))
                     .unwrap_or_default();
@@ -317,7 +207,6 @@ async fn export_data(
                     &priority,
                     project_name,
                     &assignees_str,
-                    &labels_str,
                     creator,
                     &issue.created_at.to_rfc3339(),
                     &issue.updated_at.to_rfc3339(),
@@ -363,112 +252,6 @@ async fn export_data(
             .map_err(|e| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
 
-    // -- tags.csv --
-    {
-        let mut csv_buf = Vec::new();
-        {
-            let mut wtr = csv::Writer::from_writer(&mut csv_buf);
-            wtr.write_record(["Project", "Tag Name", "Color"])
-                .map_err(|e| csv_error(&e))?;
-            for tag in &all_tags {
-                let project_name = project_map.get(&tag.project_id).copied().unwrap_or("");
-                wtr.write_record([project_name, &tag.name, &tag.color])
-                    .map_err(|e| csv_error(&e))?;
-            }
-            wtr.flush().map_err(|e| {
-                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-            })?;
-        }
-        zip.start_file("tags.csv", options)
-            .map_err(|e| zip_error(&e))?;
-        zip.write_all(&csv_buf)
-            .map_err(|e| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    }
-
-    // -- relationships.csv --
-    if !relationships.is_empty() {
-        let mut csv_buf = Vec::new();
-        {
-            let mut wtr = csv::Writer::from_writer(&mut csv_buf);
-            wtr.write_record(["Issue ID", "Related Issue ID", "Type", "Created"])
-                .map_err(|e| csv_error(&e))?;
-            for rel in &relationships {
-                let issue_sid = issue_simple_id_map
-                    .get(&rel.issue_id)
-                    .copied()
-                    .unwrap_or("");
-                let related_sid = issue_simple_id_map
-                    .get(&rel.related_issue_id)
-                    .copied()
-                    .unwrap_or("");
-                wtr.write_record([
-                    issue_sid,
-                    related_sid,
-                    &format!("{:?}", rel.relationship_type),
-                    &rel.created_at.to_rfc3339(),
-                ])
-                .map_err(|e| csv_error(&e))?;
-            }
-            wtr.flush().map_err(|e| {
-                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-            })?;
-        }
-        zip.start_file("relationships.csv", options)
-            .map_err(|e| zip_error(&e))?;
-        zip.write_all(&csv_buf)
-            .map_err(|e| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    }
-
-    // -- pull_requests.csv --
-    if !pull_requests.is_empty() {
-        // Build PR ID -> issue simple IDs mapping via the join table
-        let mut pr_issue_map: HashMap<Uuid, Vec<&str>> = HashMap::new();
-        for pri in &pr_issues {
-            if let Some(sid) = issue_simple_id_map.get(&pri.issue_id) {
-                pr_issue_map
-                    .entry(pri.pull_request_id)
-                    .or_default()
-                    .push(sid);
-            }
-        }
-
-        let mut csv_buf = Vec::new();
-        {
-            let mut wtr = csv::Writer::from_writer(&mut csv_buf);
-            wtr.write_record([
-                "Issue ID(s)",
-                "PR URL",
-                "PR Number",
-                "Status",
-                "Merged At",
-                "Target Branch",
-            ])
-            .map_err(|e| csv_error(&e))?;
-            for pr in &pull_requests {
-                let issue_sids = pr_issue_map
-                    .get(&pr.id)
-                    .map(|v| v.join(", "))
-                    .unwrap_or_default();
-                wtr.write_record([
-                    &issue_sids,
-                    &pr.url,
-                    &pr.number.to_string(),
-                    &format!("{:?}", pr.status),
-                    &optional_date(pr.merged_at),
-                    &pr.target_branch_name,
-                ])
-                .map_err(|e| csv_error(&e))?;
-            }
-            wtr.flush().map_err(|e| {
-                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-            })?;
-        }
-        zip.start_file("pull_requests.csv", options)
-            .map_err(|e| zip_error(&e))?;
-        zip.write_all(&csv_buf)
-            .map_err(|e| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    }
-
     // -- users.csv --
     {
         let mut csv_buf = Vec::new();
@@ -491,42 +274,6 @@ async fn export_data(
             })?;
         }
         zip.start_file("users.csv", options)
-            .map_err(|e| zip_error(&e))?;
-        zip.write_all(&csv_buf)
-            .map_err(|e| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    }
-
-    // -- comments.csv (optional) --
-    if payload.include_comments && !comments.is_empty() {
-        let mut csv_buf = Vec::new();
-        {
-            let mut wtr = csv::Writer::from_writer(&mut csv_buf);
-            wtr.write_record(["Issue ID", "Author", "Message", "Created", "Updated"])
-                .map_err(|e| csv_error(&e))?;
-            for comment in &comments {
-                let issue_sid = issue_simple_id_map
-                    .get(&comment.issue_id)
-                    .copied()
-                    .unwrap_or("");
-                let author = comment
-                    .author_id
-                    .and_then(|uid| user_map.get(&uid))
-                    .map(|s| s.as_str())
-                    .unwrap_or("");
-                wtr.write_record([
-                    issue_sid,
-                    author,
-                    &comment.message,
-                    &comment.created_at.to_rfc3339(),
-                    &comment.updated_at.to_rfc3339(),
-                ])
-                .map_err(|e| csv_error(&e))?;
-            }
-            wtr.flush().map_err(|e| {
-                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-            })?;
-        }
-        zip.start_file("comments.csv", options)
             .map_err(|e| zip_error(&e))?;
         zip.write_all(&csv_buf)
             .map_err(|e| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;

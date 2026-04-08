@@ -9,14 +9,12 @@ import {
 export interface ExportRequest {
   organization_id: string;
   project_ids: string[];
-  include_comments: boolean;
   include_attachments: boolean;
 }
 
 interface ExportDownloadProps {
   orgId: string;
   projectIds: string[];
-  includeComments: boolean;
   includeAttachments: boolean;
   onExportMore: () => void;
   exportFn: (request: ExportRequest) => Promise<Response>;
@@ -25,7 +23,6 @@ interface ExportDownloadProps {
 export function ExportDownload({
   orgId,
   projectIds,
-  includeComments,
   includeAttachments,
   onExportMore,
   exportFn,
@@ -45,7 +42,6 @@ export function ExportDownload({
       const response = await exportFn({
         organization_id: orgId,
         project_ids: projectIds,
-        include_comments: includeComments,
         include_attachments: includeAttachments,
       });
 
@@ -78,7 +74,7 @@ export function ExportDownload({
     } finally {
       setIsExporting(false);
     }
-  }, [orgId, projectIds, includeComments, includeAttachments, filename]);
+  }, [orgId, projectIds, includeAttachments, filename]);
 
   useEffect(() => {
     if (hasStartedRef.current) {
@@ -155,9 +151,7 @@ export function ExportDownload({
               weight="fill"
             />
             <div className="text-center space-y-half">
-              <p className="text-sm font-medium text-high">
-                Export complete!
-              </p>
+              <p className="text-sm font-medium text-high">Export complete!</p>
               <p className="text-xs text-low">
                 Your download should start automatically. If not, click the
                 button below.
