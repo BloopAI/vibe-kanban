@@ -26,5 +26,5 @@ export function LocalProjectKanban() {
     ProjectsGuideDialog.show().finally(() => ProjectsGuideDialog.hide());
   }, [config, isLoaded, isSignedIn, loading, updateAndSaveConfig]);
 
-  return <ProjectKanban showExportBanner />;
+  return <ProjectKanban />;
 }

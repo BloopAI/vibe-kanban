@@ -113,7 +113,7 @@ const appBarItemBaseClassName =
   'flex items-center justify-center w-10 h-10 rounded-lg text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand';
 
 type AppBarSection = {
-  key: 'local' | 'remote' | 'projects';
+  key: 'local' | 'remote' | 'projects' | 'export';
   label: string;
   items: AppBarSectionItem[];
 };
@@ -309,18 +309,6 @@ export function AppBar({
   }
 
   if (isSignedIn) {
-    if (onExportClick) {
-      projectSectionItems.push({
-        key: 'export-data',
-        kind: 'icon-button',
-        label: 'Export data',
-        icon: DownloadSimpleIcon,
-        isActive: isExportActive,
-        onClick: onExportClick,
-        wrapperClassName: 'pt-base',
-      });
-    }
-
     projectSectionItems.push({
       key: 'create-project',
       kind: 'icon-button',
@@ -328,7 +316,7 @@ export function AppBar({
       icon: PlusIcon,
       onClick: onCreateProject,
       className: 'bg-primary text-muted hover:text-normal hover:bg-tertiary',
-      wrapperClassName: onExportClick ? undefined : 'pt-base',
+      wrapperClassName: 'pt-base',
     });
   }
 
@@ -337,6 +325,23 @@ export function AppBar({
       key: 'projects',
       label: 'Projects',
       items: projectSectionItems,
+    });
+  }
+
+  if (isSignedIn && onExportClick) {
+    sections.push({
+      key: 'export',
+      label: 'Export',
+      items: [
+        {
+          key: 'export-data',
+          kind: 'icon-button',
+          label: 'Export data',
+          icon: DownloadSimpleIcon,
+          isActive: isExportActive,
+          onClick: onExportClick,
+        },
+      ],
     });
   }
 

@@ -31,6 +31,7 @@ import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestinatio
 import {
   getDestinationHostId,
   getProjectDestination,
+  isProjectDestination,
   isLocalWorkspacesDestination,
 } from '@/shared/lib/routes/appNavigation';
 import {
@@ -57,6 +58,21 @@ import { AppBarNotificationBellContainer } from '@/pages/workspaces/AppBarNotifi
 import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebarContainer';
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
 import { useRemoteCloudHostsAppBarModel } from '@/shared/hooks/useRemoteCloudHosts';
+
+function ProjectExportBanner({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'w-full border-b border-border bg-brand px-base py-half text-center',
+        'text-sm font-medium text-on-brand hover:bg-brand-hover'
+      )}
+    >
+      Cloud is shutting down. Export your data within 30 days.
+    </button>
+  );
+}
 
 export function SharedAppLayout() {
   const appNavigation = useAppNavigation();
@@ -175,6 +191,8 @@ export function SharedAppLayout() {
   );
   const isWorkspacesActive = isLocalWorkspacesDestination(currentDestination);
   const isExportActive = currentDestination?.kind === 'export';
+  const showProjectExportBanner =
+    isSignedIn && isProjectDestination(currentDestination);
   const isWorkspaceSidebarPreviewEnabled =
     !isMobile && isWorkspacesActive && !isLeftSidebarVisible;
   const activeProjectId = projectDestination?.projectId ?? null;
@@ -316,24 +334,34 @@ export function SharedAppLayout() {
           'bg-primary',
           isMobile
             ? 'flex fixed inset-0 pb-[env(safe-area-inset-bottom)]'
-            : 'grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] h-screen'
+            : cn(
+                'grid grid-cols-[auto_1fr] h-screen',
+                showProjectExportBanner
+                  ? 'grid-rows-[auto_auto_1fr]'
+                  : 'grid-rows-[auto_1fr]'
+              )
         )}
       >
         {!isMobile && (
           <>
-            {/* Row 1, col 1: corner spacer — seamless with AppBar bg */}
+            {showProjectExportBanner && (
+              <div className="col-span-2">
+                <ProjectExportBanner onClick={handleExportClick} />
+              </div>
+            )}
+            {/* Desktop corner spacer. */}
             <div
               data-tauri-drag-region
               className="bg-secondary"
               style={isTauriMac() ? { minWidth: 56 } : undefined}
             />
-            {/* Row 1, col 2: Navbar stretches full width */}
+            {/* Desktop navbar. */}
             <NavbarContainer
               onCreateOrg={handleCreateOrg}
               onOrgSelect={setSelectedOrgId}
               onOpenDrawer={() => setIsDrawerOpen(true)}
             />
-            {/* Row 2, col 1: AppBar sidebar */}
+            {/* Desktop AppBar sidebar. */}
             <AppBar
               projects={orderedProjects}
               hosts={remoteCloudHosts}
@@ -373,7 +401,7 @@ export function SharedAppLayout() {
               githubIconPath={siGithub.path}
               discordIconPath={siDiscord.path}
             />
-            {/* Row 2, col 2: Content */}
+            {/* Desktop content. */}
             <div className="relative min-h-0 overflow-hidden">
               {isWorkspaceSidebarPreviewEnabled && (
                 <div className="absolute inset-y-0 left-0 z-20 flex items-center">
@@ -410,6 +438,9 @@ export function SharedAppLayout() {
 
         {isMobile && (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+            {showProjectExportBanner && (
+              <ProjectExportBanner onClick={handleExportClick} />
+            )}
             <NavbarContainer
               mobileMode={isMobile}
               onCreateOrg={handleCreateOrg}
@@ -461,17 +492,20 @@ export function SharedAppLayout() {
 
             {/* Export link */}
             {isSignedIn && (
-              <button
-                type="button"
-                onClick={() => {
-                  handleExportClick();
-                  setIsDrawerOpen(false);
-                }}
-                className="flex items-center gap-2 px-4 py-3 text-sm text-normal hover:bg-secondary cursor-pointer"
-              >
-                <DownloadSimpleIcon className="h-4 w-4" />
-                Export data
-              </button>
+              <div className="px-4 py-3">
+                <p className="mb-2 text-xs font-medium text-low">Export</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleExportClick();
+                    setIsDrawerOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-sm text-normal hover:bg-secondary cursor-pointer"
+                >
+                  <DownloadSimpleIcon className="h-4 w-4" />
+                  Export data
+                </button>
+              </div>
             )}
 
             {/* Divider */}

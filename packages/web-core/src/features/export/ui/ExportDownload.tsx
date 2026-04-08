@@ -171,7 +171,7 @@ export function ExportDownload({
               onClick={onExportMore}
               className="w-full rounded-sm border border-border bg-secondary px-base py-half text-sm font-medium text-normal hover:bg-primary transition-colors"
             >
-              Export different projects
+              Export more projects
             </button>
           </div>
         </div>
