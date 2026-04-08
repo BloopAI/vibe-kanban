@@ -663,6 +663,11 @@ impl GitCli {
 
     /// Checkout base branch and create a true merge commit (--no-ff) from
     /// `from_branch`. Returns the new HEAD sha on the base branch.
+    ///
+    /// On failure (e.g. a merge conflict), runs a best-effort
+    /// `git merge --abort` so the base worktree is not left in a
+    /// merge-in-progress state with `MERGE_HEAD` and a dirty index, which
+    /// would block subsequent git operations.
     pub fn merge_no_ff_commit(
         &self,
         repo_path: &Path,
@@ -671,11 +676,17 @@ impl GitCli {
         message: &str,
     ) -> Result<String, GitCliError> {
         self.git(repo_path, ["checkout", base_branch]).map(|_| ())?;
-        self.git(
-            repo_path,
-            ["merge", "--no-ff", "--no-edit", "-m", message, from_branch],
-        )
-        .map(|_| ())?;
+        if let Err(e) = self
+            .git(
+                repo_path,
+                ["merge", "--no-ff", "--no-edit", "-m", message, from_branch],
+            )
+            .map(|_| ())
+        {
+            // Best-effort cleanup so we don't leave the worktree mid-merge.
+            let _ = self.git(repo_path, ["merge", "--abort"]);
+            return Err(e);
+        }
         let sha = self
             .git(repo_path, ["rev-parse", "HEAD"])?
             .trim()
