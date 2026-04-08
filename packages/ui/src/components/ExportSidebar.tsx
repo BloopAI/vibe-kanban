@@ -1,7 +1,6 @@
 import {
   BookOpenIcon,
   FolderIcon,
-  GearIcon,
   DownloadSimpleIcon,
   CheckCircleIcon,
 } from '@phosphor-icons/react';
@@ -10,7 +9,6 @@ import { cn } from '../lib/cn';
 export type ExportStep =
   | 'introduction'
   | 'choose-projects'
-  | 'options'
   | 'download';
 
 interface ExportSidebarProps {
@@ -25,7 +23,6 @@ const steps: Array<{
 }> = [
   { id: 'introduction', label: 'Introduction', icon: BookOpenIcon },
   { id: 'choose-projects', label: 'Choose projects', icon: FolderIcon },
-  { id: 'options', label: 'Options', icon: GearIcon },
   { id: 'download', label: 'Download', icon: DownloadSimpleIcon },
 ];
 
@@ -36,7 +33,7 @@ export function ExportSidebar({
   const currentIndex = steps.findIndex((s) => s.id === currentStep);
 
   return (
-    <nav className="grid gap-half sm:grid-cols-2 lg:grid-cols-4">
+    <nav className="grid gap-half sm:grid-cols-3">
       {steps.map((step, index) => {
         const Icon = step.icon;
         const isActive = currentStep === step.id;

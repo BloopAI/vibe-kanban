@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
-import { CheckCircleIcon, CircleIcon } from '@phosphor-icons/react';
+import {
+  CheckCircleIcon,
+  CircleIcon,
+  ImageIcon,
+  WarningIcon,
+} from '@phosphor-icons/react';
 
 export interface ExportOrganization {
   id: string;
@@ -18,7 +23,11 @@ interface ExportChooseProjectsProps {
   projectsLoading: boolean;
   selectedOrgId: string | null;
   onOrgChange: (orgId: string) => void;
-  onContinue: (orgId: string, projectIds: string[]) => void;
+  onContinue: (
+    orgId: string,
+    projectIds: string[],
+    includeAttachments: boolean
+  ) => void;
 }
 
 export function ExportChooseProjects({
@@ -33,6 +42,7 @@ export function ExportChooseProjects({
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(
     new Set()
   );
+  const [includeAttachments, setIncludeAttachments] = useState(false);
 
   // Select all projects by default when they load
   useEffect(() => {
@@ -63,7 +73,11 @@ export function ExportChooseProjects({
 
   const handleContinue = () => {
     if (selectedOrgId && selectedProjectIds.size > 0) {
-      onContinue(selectedOrgId, Array.from(selectedProjectIds));
+      onContinue(
+        selectedOrgId,
+        Array.from(selectedProjectIds),
+        includeAttachments
+      );
     }
   };
 
@@ -141,12 +155,36 @@ export function ExportChooseProjects({
         </div>
       )}
 
+      <label className="flex items-start gap-base cursor-pointer">
+        <input
+          type="checkbox"
+          checked={includeAttachments}
+          onChange={(e) => setIncludeAttachments(e.target.checked)}
+          className="mt-0.5 rounded border-border"
+        />
+        <div className="space-y-half">
+          <div className="flex items-center gap-half">
+            <ImageIcon className="size-icon-sm text-normal" />
+            <span className="text-sm font-medium text-high">Attachments</span>
+          </div>
+          <p className="text-xs text-low">
+            Download images and files attached to issues.
+          </p>
+          {includeAttachments && (
+            <div className="flex items-center gap-half text-xs text-warning">
+              <WarningIcon className="size-icon-xs shrink-0" />
+              <span>This may increase the download size and time.</span>
+            </div>
+          )}
+        </div>
+      </label>
+
       <button
         onClick={handleContinue}
         disabled={selectedProjectIds.size === 0}
         className="w-full rounded-sm bg-brand px-base py-half text-sm font-medium text-white hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Continue
+        Export
       </button>
     </div>
   );

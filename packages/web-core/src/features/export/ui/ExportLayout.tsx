@@ -9,7 +9,6 @@ import {
   type ExportOrganization,
   type ExportProject,
 } from './ExportChooseProjects';
-import { ExportOptions } from './ExportOptions';
 import { ExportDownload, type ExportRequest } from './ExportDownload';
 
 interface ExportLayoutProps {
@@ -42,20 +41,14 @@ export function ExportLayout({
 
   const handleChooseProjectsContinue = (
     orgId: string,
-    projectIds: string[]
+    projectIds: string[],
+    includeAttachments: boolean
   ) => {
     setExportData({
       orgId,
       projectIds,
-      includeAttachments: false,
+      includeAttachments,
     });
-    setCurrentStep('options');
-  };
-
-  const handleOptionsContinue = (includeAttachments: boolean) => {
-    if (exportData) {
-      setExportData({ ...exportData, includeAttachments });
-    }
     setCurrentStep('download');
   };
 
@@ -77,14 +70,6 @@ export function ExportLayout({
             selectedOrgId={selectedOrgId}
             onOrgChange={onOrgChange}
             onContinue={handleChooseProjectsContinue}
-          />
-        );
-      case 'options':
-        return (
-          <ExportOptions
-            includeAttachments={exportData?.includeAttachments ?? false}
-            onContinue={handleOptionsContinue}
-            onBack={() => setCurrentStep('choose-projects')}
           />
         );
       case 'download':

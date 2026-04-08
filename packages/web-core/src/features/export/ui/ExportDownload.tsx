@@ -49,23 +49,23 @@ export function ExportDownload({
         throw new Error(`Export failed (${response.status})`);
       }
 
-      // Extract filename from Content-Disposition header
+      let downloadFilename = 'vibe-kanban-export.zip';
       const disposition = response.headers.get('content-disposition');
       if (disposition) {
         const match = disposition.match(/filename="?([^"]+)"?/);
         if (match) {
-          setFilename(match[1]);
+          downloadFilename = match[1];
         }
       }
+      setFilename(downloadFilename);
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       setDownloadUrl(url);
 
-      // Auto-trigger download
       const a = document.createElement('a');
       a.href = url;
-      a.download = filename;
+      a.download = downloadFilename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -74,7 +74,7 @@ export function ExportDownload({
     } finally {
       setIsExporting(false);
     }
-  }, [orgId, projectIds, includeAttachments, filename]);
+  }, [orgId, projectIds, includeAttachments, exportFn]);
 
   useEffect(() => {
     if (hasStartedRef.current) {
@@ -84,7 +84,6 @@ export function ExportDownload({
     void startExport();
   }, [startExport]);
 
-  // Clean up object URL on unmount
   useEffect(() => {
     return () => {
       if (downloadUrl) {
