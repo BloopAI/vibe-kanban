@@ -704,6 +704,16 @@ impl GitCli {
     /// rebase in the task worktree (where `from_branch` lives) and then perform
     /// the fast-forward in the base worktree.
     ///
+    /// The function is best-effort atomic: if either step fails, the task
+    /// branch is rolled back to the tip it had before the call so the
+    /// repository is not left in a partially-modified state.
+    /// - If `git rebase` fails, `git rebase --abort` cleans up.
+    /// - If the subsequent `git merge --ff-only` fails (e.g. because the
+    ///   base branch was concurrently moved), the task branch is reset back
+    ///   to its pre-rebase tip via `git reset --hard`. This is safe because
+    ///   `git rebase` refuses to start with a dirty index, so a successful
+    ///   rebase implies the worktree was clean at the call boundary.
+    ///
     /// Returns the new HEAD sha on the base branch.
     pub fn merge_rebase(
         &self,
@@ -712,6 +722,13 @@ impl GitCli {
         base_branch: &str,
         from_branch: &str,
     ) -> Result<String, GitCliError> {
+        // Capture the original task branch tip so we can roll the rebase back
+        // if the subsequent fast-forward step fails.
+        let original_task_tip = self
+            .git(task_repo_path, ["rev-parse", from_branch])?
+            .trim()
+            .to_string();
+
         // Rebase the task branch onto base, in the task worktree where
         // from_branch is already checked out.
         if let Err(e) = self
@@ -722,9 +739,22 @@ impl GitCli {
             let _ = self.git(task_repo_path, ["rebase", "--abort"]);
             return Err(e);
         }
+
         // Fast-forward base to the rebased task tip in the base worktree.
-        self.git(base_repo_path, ["merge", "--ff-only", from_branch])
-            .map(|_| ())?;
+        if let Err(e) = self
+            .git(base_repo_path, ["merge", "--ff-only", from_branch])
+            .map(|_| ())
+        {
+            // The rebase succeeded but the fast-forward failed. Roll the task
+            // branch back to its pre-rebase tip so the repository returns to
+            // its pre-call state.
+            let _ = self.git(
+                task_repo_path,
+                ["reset", "--hard", &original_task_tip],
+            );
+            return Err(e);
+        }
+
         let sha = self
             .git(base_repo_path, ["rev-parse", "HEAD"])?
             .trim()
