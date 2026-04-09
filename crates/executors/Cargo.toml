@@ -40,9 +40,9 @@ sqlx = "0.8.6"
 axum = { workspace = true }
 shlex = "1.3.0"
 agent-client-protocol = "0.4"
-codex-protocol = { git = "https://github.com/openai/codex.git", package = "codex-protocol", rev = "80d6a3868ef1414e0fb1c2e28a369f2ef4fa4dcc" }
-codex-app-server-protocol = { git = "https://github.com/openai/codex.git", package = "codex-app-server-protocol", rev = "80d6a3868ef1414e0fb1c2e28a369f2ef4fa4dcc" }
-codex-mcp-types = { git = "https://github.com/openai/codex.git", package = "mcp-types", rev = "80d6a3868ef1414e0fb1c2e28a369f2ef4fa4dcc" }
+codex-protocol = { git = "https://github.com/openai/codex.git", package = "codex-protocol", rev = "98debeda8aa19336a063645b7414498ad56f17ee" }
+codex-app-server-protocol = { git = "https://github.com/openai/codex.git", package = "codex-app-server-protocol", rev = "98debeda8aa19336a063645b7414498ad56f17ee" }
+codex-mcp-types = { git = "https://github.com/openai/codex.git", package = "mcp-types", rev = "98debeda8aa19336a063645b7414498ad56f17ee" }
 sha2 = "0.10"
 derivative = "2.2.0"
 icu_provider = { version = "2.1.1", default-features = false, features = ["sync"] }

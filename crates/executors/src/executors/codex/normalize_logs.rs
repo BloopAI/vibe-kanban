@@ -14,7 +14,7 @@ use codex_app_server_protocol::{
 };
 use codex_mcp_types::ContentBlock;
 use codex_protocol::{
-    config_types::ReasoningEffort,
+    openai_models::ReasoningEffort,
     plan_tool::{StepStatus, UpdatePlanArgs},
     protocol::{
         AgentMessageDeltaEvent, AgentMessageEvent, AgentReasoningDeltaEvent, AgentReasoningEvent,
@@ -447,6 +447,7 @@ impl CodexNormalizer {
             EventMsg::StreamError(StreamErrorEvent {
                 message,
                 codex_error_info,
+                ..
             }) => {
                 let idx = entry_index.next();
                 let entry = NormalizedEntry {
@@ -654,7 +655,7 @@ impl CodexNormalizer {
                     web_search_state.to_normalized_entry(),
                 )]
             }
-            EventMsg::WebSearchEnd(WebSearchEndEvent { call_id, query }) => {
+            EventMsg::WebSearchEnd(WebSearchEndEvent { call_id, query, .. }) => {
                 self.state.assistant = None;
                 self.state.thinking = None;
                 if let Some(mut entry) = self.state.web_searches.remove(&call_id) {
@@ -766,7 +767,7 @@ impl CodexNormalizer {
             // Events we don't need to handle
             EventMsg::AgentReasoningRawContent(..)
             | EventMsg::AgentReasoningRawContentDelta(..)
-            | EventMsg::TaskStarted(..)
+            | EventMsg::TurnStarted(..)
             | EventMsg::UserMessage(..)
             | EventMsg::TurnDiff(..)
             | EventMsg::GetHistoryEntryResponse(..)
@@ -787,7 +788,11 @@ impl CodexNormalizer {
             | EventMsg::ShutdownComplete
             | EventMsg::EnteredReviewMode(..)
             | EventMsg::ExitedReviewMode(..)
-            | EventMsg::TaskComplete(..) => vec![],
+            | EventMsg::TurnComplete(..) => vec![],
+            other => {
+                tracing::debug!(event = ?other, "ignoring unhandled codex event");
+                vec![]
+            }
         }
     }
 }

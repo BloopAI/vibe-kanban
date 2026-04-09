@@ -14,7 +14,7 @@ use codex_app_server_protocol::{
     NewConversationResponse, RequestId, ResumeConversationParams, ResumeConversationResponse,
     SendUserMessageParams, SendUserMessageResponse, ServerNotification, ServerRequest,
 };
-use codex_protocol::{ConversationId, protocol::ReviewDecision};
+use codex_protocol::{ThreadId, protocol::ReviewDecision};
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{self, Value};
 use tokio::{
@@ -33,7 +33,7 @@ pub struct AppServerClient {
     rpc: OnceLock<JsonRpcPeer>,
     log_writer: LogWriter,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
-    conversation_id: Mutex<Option<ConversationId>>,
+    conversation_id: Mutex<Option<ThreadId>>,
     pending_feedback: Mutex<VecDeque<String>>,
     auto_approve: bool,
 }
@@ -71,6 +71,7 @@ impl AppServerClient {
                     title: None,
                     version: env!("CARGO_PKG_VERSION").to_string(),
                 },
+                capabilities: None,
             },
         };
 
@@ -109,7 +110,7 @@ impl AppServerClient {
 
     pub async fn add_conversation_listener(
         &self,
-        conversation_id: codex_protocol::ConversationId,
+        conversation_id: codex_protocol::ThreadId,
     ) -> Result<AddConversationSubscriptionResponse, ExecutorError> {
         let request = ClientRequest::AddConversationListener {
             request_id: self.next_request_id(),
@@ -123,14 +124,14 @@ impl AppServerClient {
 
     pub async fn send_user_message(
         &self,
-        conversation_id: codex_protocol::ConversationId,
+        conversation_id: codex_protocol::ThreadId,
         message: String,
     ) -> Result<SendUserMessageResponse, ExecutorError> {
         let request = ClientRequest::SendUserMessage {
             request_id: self.next_request_id(),
             params: SendUserMessageParams {
                 conversation_id,
-                items: vec![InputItem::Text { text: message }],
+                items: vec![InputItem::Text { text: message, text_elements: vec![] }],
             },
         };
         self.send_request(request, "sendUserMessage").await
@@ -222,7 +223,10 @@ impl AppServerClient {
                 Ok(())
             }
             ServerRequest::CommandExecutionRequestApproval { .. }
-            | ServerRequest::FileChangeRequestApproval { .. } => {
+            | ServerRequest::FileChangeRequestApproval { .. }
+            | ServerRequest::ToolRequestUserInput { .. }
+            | ServerRequest::DynamicToolCall { .. }
+            | ServerRequest::ChatgptAuthTokensRefresh { .. } => {
                 // These are unreachable until switching to v2 APIs for starting the session.
                 // https://github.com/openai/codex/blob/cbd7d0d54330443887852b21636c816f60f1bde8/codex-rs/app-server-protocol/src/protocol/common.rs#L445
                 tracing::error!("received unsupported server request: {:?}", request);
@@ -254,7 +258,7 @@ impl AppServerClient {
 
     pub async fn register_session(
         &self,
-        conversation_id: &ConversationId,
+        conversation_id: &ThreadId,
     ) -> Result<(), ExecutorError> {
         {
             let mut guard = self.conversation_id.lock().await;
@@ -346,7 +350,7 @@ impl AppServerClient {
         }
     }
 
-    fn spawn_feedback_message(&self, conversation_id: ConversationId, feedback: String) {
+    fn spawn_feedback_message(&self, conversation_id: ThreadId, feedback: String) {
         let peer = self.rpc().clone();
         let request = ClientRequest::SendUserMessage {
             request_id: peer.next_request_id(),
@@ -354,6 +358,7 @@ impl AppServerClient {
                 conversation_id,
                 items: vec![InputItem::Text {
                     text: format!("User feedback: {feedback}"),
+                    text_elements: vec![],
                 }],
             },
         };
@@ -447,7 +452,7 @@ impl JsonRpcCallbacks for AppServerClient {
 
         let has_finished = method
             .strip_prefix("codex/event/")
-            .is_some_and(|suffix| suffix == "task_complete");
+            .is_some_and(|suffix| suffix == "task_complete" || suffix == "turn_complete");
 
         Ok(has_finished)
     }

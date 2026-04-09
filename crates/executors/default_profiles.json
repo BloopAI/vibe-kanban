@@ -71,35 +71,35 @@
     "CODEX": {
       "DEFAULT": {
         "CODEX": {
-          "model": "gpt-5.1-codex",
+          "model": "gpt-5.4",
           "sandbox": "danger-full-access",
           "append_prompt": "\n\n=== TASK COMPLETION REQUIREMENTS ===\n1. Work on ONE feature at a time\n2. For web apps: TEST IN BROWSER, not just API\n3. Create/update .vk_progress.md with status and remaining work\n4. Commit working code before ending session\n5. Do NOT mark complete until E2E verified\n6. Document incomplete work in progress file"
         }
       },
       "HIGH": {
         "CODEX": {
-          "model": "gpt-5.1-codex",
+          "model": "gpt-5.4",
           "sandbox": "danger-full-access",
           "model_reasoning_effort": "high"
         }
       },
       "APPROVALS": {
         "CODEX": {
-          "model": "gpt-5.1-codex",
+          "model": "gpt-5.4",
           "sandbox": "workspace-write",
           "ask_for_approval": "unless-trusted"
         }
       },
       "MAX": {
         "CODEX": {
-          "model": "gpt-5.1-codex-max",
+          "model": "gpt-5.4-mini",
           "sandbox": "danger-full-access"
         }
       },
       "NO_CONTEXT": {
         "CODEX": {
           "no_context": true,
-          "model": "gpt-5.1-codex",
+          "model": "gpt-5.4",
           "sandbox": "danger-full-access"
         }
       }
@@ -215,10 +215,10 @@
           "append_prompt": "\n\n=== TASK COMPLETION REQUIREMENTS ===\n1. Work on ONE feature at a time\n2. For web apps: TEST IN BROWSER, not just API\n3. Create/update .vk_progress.md with status and remaining work\n4. Commit working code before ending session\n5. Do NOT mark complete until E2E verified\n6. Document incomplete work in progress file"
         }
       },
-      "GPT_5_1_CODEX": {
+      "GPT_5_4": {
         "DROID": {
           "autonomy": "skip-permissions-unsafe",
-          "model": "gpt-5.1-codex"
+          "model": "gpt-5.4"
         }
       },
       "GPT_5_1": {
