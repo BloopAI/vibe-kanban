@@ -87,8 +87,9 @@ async fn run_stdio_server(base_url: &str) -> anyhow::Result<()> {
 
 /// Run the MCP server in HTTP mode
 async fn run_http_server(base_url: &str, port: u16) -> anyhow::Result<()> {
-    let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let bind_address = format!("{}:{}", host, port);
+    // Bind to 0.0.0.0 so the MCP server is reachable on all interfaces
+    // (localhost and any network IP). The parent node server controls access.
+    let bind_address = format!("0.0.0.0:{}", port);
 
     tracing::info!("[MCP] Starting HTTP server at http://{}/mcp", bind_address);
 
