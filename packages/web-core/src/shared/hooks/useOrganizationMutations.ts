@@ -1,14 +1,19 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { organizationsApi } from '@/shared/lib/api';
 import type {
+  CreateOrganizationRequest,
+  CreateOrganizationResponse,
   MemberRole,
-  UpdateMemberRoleResponse,
   CreateInvitationRequest,
   CreateInvitationResponse,
+  ListOrganizationsResponse,
+  UpdateMemberRoleResponse,
 } from 'shared/types';
 import { organizationKeys } from '@/shared/hooks/organizationKeys';
 
 interface UseOrganizationMutationsOptions {
+  onCreateSuccess?: (result: CreateOrganizationResponse) => void;
+  onCreateError?: (err: unknown) => void;
   onInviteSuccess?: (result: CreateInvitationResponse) => void;
   onInviteError?: (err: unknown) => void;
   onRevokeSuccess?: () => void;
@@ -25,6 +30,29 @@ export function useOrganizationMutations(
   options?: UseOrganizationMutationsOptions
 ) {
   const queryClient = useQueryClient();
+
+  const createOrganization = useMutation({
+    mutationKey: ['createOrganization'],
+    mutationFn: (data: CreateOrganizationRequest) =>
+      organizationsApi.createOrganization(data),
+    onSuccess: (result: CreateOrganizationResponse) => {
+      queryClient.setQueryData<ListOrganizationsResponse>(
+        organizationKeys.userList(),
+        (old) => {
+          if (!old) return { organizations: [result.organization] };
+          return {
+            organizations: [...old.organizations, result.organization],
+          };
+        }
+      );
+      queryClient.invalidateQueries({ queryKey: organizationKeys.userList() });
+      options?.onCreateSuccess?.(result);
+    },
+    onError: (err) => {
+      console.error('Failed to create organization:', err);
+      options?.onCreateError?.(err);
+    },
+  });
 
   const createInvitation = useMutation({
     mutationKey: ['createInvitation'],
@@ -136,6 +164,7 @@ export function useOrganizationMutations(
   });
 
   return {
+    createOrganization,
     createInvitation,
     revokeInvitation,
     removeMember,

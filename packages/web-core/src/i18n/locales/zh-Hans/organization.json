@@ -1,4 +1,15 @@
 {
+  "createDialog": {
+    "title": "Create New Organization",
+    "description": "Create a new organization to collaborate with your team.",
+    "nameLabel": "Organization Name",
+    "namePlaceholder": "e.g., Acme Corporation",
+    "slugLabel": "Slug",
+    "slugPlaceholder": "e.g., acme-corporation",
+    "slugHelper": "Used in URLs. Lowercase letters, numbers, and hyphens only.",
+    "creating": "Creating...",
+    "createButton": "Create Organization"
+  },
   "inviteDialog": {
     "title": "邀请成员",
     "description": "发送邀请加入您的组织。",
@@ -60,6 +71,7 @@
   },
   "personalOrg": {
     "cannotInvite": "个人组织不能添加其他成员。",
-    "exportPrompt": "请在关闭前导出您的云数据。"
+    "createOrgPrompt": "Create an organization to collaborate with others.",
+    "createOrgButton": "Create Organization"
   }
 }

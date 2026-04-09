@@ -1,4 +1,15 @@
 {
+  "createDialog": {
+    "title": "Create New Organization",
+    "description": "Create a new organization to collaborate with your team.",
+    "nameLabel": "Organization Name",
+    "namePlaceholder": "e.g., Acme Corporation",
+    "slugLabel": "Slug",
+    "slugPlaceholder": "e.g., acme-corporation",
+    "slugHelper": "Used in URLs. Lowercase letters, numbers, and hyphens only.",
+    "creating": "Creating...",
+    "createButton": "Create Organization"
+  },
   "inviteDialog": {
     "title": "Invite Member",
     "description": "Send an invitation to join your organization.",
@@ -60,6 +71,7 @@
   },
   "personalOrg": {
     "cannotInvite": "Las organizaciones personales no pueden tener miembros adicionales.",
-    "exportPrompt": "Exporta tus datos de la nube antes del cierre."
+    "createOrgPrompt": "Create an organization to collaborate with others.",
+    "createOrgButton": "Create Organization"
   }
 }

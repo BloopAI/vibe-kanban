@@ -45,6 +45,8 @@ import {
   GhCliSetupError,
   RunScriptError,
   StatusResponse,
+  CreateOrganizationRequest,
+  CreateOrganizationResponse,
   ListOrganizationsResponse,
   OrganizationMemberWithProfile,
   ListMembersResponse,
@@ -1358,6 +1360,17 @@ export const organizationsApi = {
   getUserOrganizations: async (): Promise<ListOrganizationsResponse> => {
     const response = await makeRemoteRequest('/v1/organizations');
     return handleRemoteResponse<ListOrganizationsResponse>(response);
+  },
+
+  createOrganization: async (
+    data: CreateOrganizationRequest
+  ): Promise<CreateOrganizationResponse> => {
+    const response = await makeRemoteRequest('/v1/organizations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return handleRemoteResponse<CreateOrganizationResponse>(response);
   },
 
   createInvitation: async (
