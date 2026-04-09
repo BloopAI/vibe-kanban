@@ -45,15 +45,22 @@ export interface DesktopBundleInfo {
 
 type ProgressCallback = (downloaded: number, total: number) => void;
 
-function getProxyUrl(): string | undefined {
-  return (
-    process.env.HTTPS_PROXY ||
-    process.env.https_proxy ||
-    process.env.HTTP_PROXY ||
-    process.env.http_proxy ||
-    process.env.ALL_PROXY ||
-    process.env.all_proxy
-  );
+function getHttpProxyUrl(): string | undefined {
+  const candidates = [
+    process.env.HTTPS_PROXY,
+    process.env.https_proxy,
+    process.env.HTTP_PROXY,
+    process.env.http_proxy,
+    process.env.ALL_PROXY,
+    process.env.all_proxy,
+  ];
+  for (const url of candidates) {
+    if (!url) continue;
+    // Only support HTTP proxies (CONNECT tunneling); skip SOCKS URLs
+    if (url.startsWith('socks')) continue;
+    return url;
+  }
+  return undefined;
 }
 
 function isNoProxy(hostname: string): boolean {
@@ -78,7 +85,7 @@ function httpsGet(
   callback: (res: http.IncomingMessage) => void,
 ): { on: (event: string, cb: (err: Error) => void) => void } {
   const target = new URL(url);
-  const proxyUrl = getProxyUrl();
+  const proxyUrl = getHttpProxyUrl();
 
   if (!proxyUrl || isNoProxy(target.hostname)) {
     return https.get(url, callback);
