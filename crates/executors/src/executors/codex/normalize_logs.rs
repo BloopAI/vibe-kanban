@@ -450,11 +450,17 @@ impl CodexNormalizer {
                 ..
             }) => {
                 let idx = entry_index.next();
+                // Reconnect attempts are non-fatal retries — show as system messages, not errors
+                let entry_type = if message.contains("Reconnecting") {
+                    NormalizedEntryType::SystemMessage
+                } else {
+                    NormalizedEntryType::ErrorMessage {
+                        error_type: NormalizedEntryError::Other,
+                    }
+                };
                 let entry = NormalizedEntry {
                     timestamp: None,
-                    entry_type: NormalizedEntryType::ErrorMessage {
-                        error_type: NormalizedEntryError::Other,
-                    },
+                    entry_type,
                     content: format!("Stream error: {message} {codex_error_info:?}"),
                     metadata: None,
                 };

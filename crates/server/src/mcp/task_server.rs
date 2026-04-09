@@ -98,6 +98,7 @@ pub struct ListTasksRequest {
 pub struct TaskSummary {
     pub id: String,
     pub title: String,
+    pub description: Option<String>,
     pub status: String,
     pub created_at: String,
     pub updated_at: String,
@@ -111,6 +112,7 @@ impl TaskSummary {
         Self {
             id: task.id.to_string(),
             title: task.title.to_string(),
+            description: task.description.clone(),
             status: task.status.to_string(),
             created_at: task.created_at.to_rfc3339(),
             updated_at: task.updated_at.to_rfc3339(),
@@ -132,6 +134,9 @@ pub struct TaskDetails {
     pub has_in_progress_attempt: Option<bool>,
     pub has_merged_attempt: Option<bool>,
     pub last_attempt_failed: Option<bool>,
+    pub assignee_user_id: Option<String>,
+    pub assignee_name: Option<String>,
+    pub assignee_username: Option<String>,
 }
 
 impl TaskDetails {
@@ -146,6 +151,9 @@ impl TaskDetails {
             has_in_progress_attempt: None,
             has_merged_attempt: None,
             last_attempt_failed: None,
+            assignee_user_id: task.remote_assignee_user_id.map(|id| id.to_string()),
+            assignee_name: task.remote_assignee_name,
+            assignee_username: task.remote_assignee_username,
         }
     }
 }

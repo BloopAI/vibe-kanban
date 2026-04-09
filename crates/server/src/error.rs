@@ -131,7 +131,10 @@ impl IntoResponse for ApiError {
             ApiError::Deployment(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DeploymentError"),
             ApiError::Container(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ContainerError"),
             ApiError::Executor(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ExecutorError"),
-            ApiError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DatabaseError"),
+            ApiError::Database(db_err) => match db_err {
+                sqlx::Error::RowNotFound => (StatusCode::NOT_FOUND, "NotFound"),
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, "DatabaseError"),
+            },
             ApiError::Worktree(_) => (StatusCode::INTERNAL_SERVER_ERROR, "WorktreeError"),
             ApiError::Config(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ConfigError"),
             ApiError::Image(img_err) => match img_err {
