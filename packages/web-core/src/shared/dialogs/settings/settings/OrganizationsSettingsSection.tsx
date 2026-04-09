@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   SpinnerIcon,
@@ -66,6 +67,11 @@ export function OrganizationsSettingsSection() {
   const isAdmin = currentUserRole === MemberRoleEnum.ADMIN;
   const isPersonalOrg = selectedOrg?.is_personal ?? false;
   const currentUserId = userId;
+  const showBillingStatus =
+    Boolean(selectedOrgId) &&
+    isAdmin &&
+    !isPersonalOrg &&
+    Boolean(getRemoteApiUrl());
 
   // Fetch members
   const { data: members = [], isLoading: loadingMembers } =
@@ -78,6 +84,14 @@ export function OrganizationsSettingsSection() {
       isAdmin,
       isPersonal: isPersonalOrg,
     });
+
+  const { data: billingStatus } = useQuery({
+    queryKey: ['organization-billing-status', selectedOrgId],
+    queryFn: () => organizationsApi.getBillingStatus(selectedOrgId!),
+    enabled: showBillingStatus,
+    staleTime: 60_000,
+    retry: false,
+  });
 
   // Organization mutations
   const {
@@ -192,13 +206,6 @@ export function OrganizationsSettingsSection() {
 
     try {
       const returnUrl = window.location.href;
-      const billingStatus =
-        await organizationsApi.getBillingStatus(selectedOrgId);
-
-      if (billingStatus.status === 'requires_subscription') {
-        throw new Error('No active subscription found for this organization');
-      }
-
       const { url } = await organizationsApi.createPortalSession(
         selectedOrgId,
         returnUrl
@@ -427,7 +434,7 @@ export function OrganizationsSettingsSection() {
       )}
 
       {/* Billing CTA (admin only, non-personal orgs, when remote URL is configured) */}
-      {selectedOrg && isAdmin && !isPersonalOrg && getRemoteApiUrl() && (
+      {selectedOrg && billingStatus?.can_manage_billing && (
         <SettingsCard
           title={t('billing.title')}
           description={t('billing.description')}

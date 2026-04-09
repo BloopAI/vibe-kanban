@@ -1,5 +1,6 @@
 use api_types::{
-    GetOrganizationResponse, ListOrganizationsResponse, MemberRole, UpdateOrganizationRequest,
+    CreateOrganizationRequest, CreateOrganizationResponse, GetOrganizationResponse,
+    ListOrganizationsResponse, MemberRole, UpdateOrganizationRequest,
 };
 use axum::{
     Json, Router,
@@ -28,10 +29,52 @@ pub(super) fn router() -> Router<AppState> {
         .route("/organizations/{org_id}", delete(delete_organization))
 }
 
-async fn create_organization() -> Result<StatusCode, ErrorResponse> {
-    Err(ErrorResponse::new(
-        StatusCode::GONE,
-        "Creating new organizations is disabled because Vibe Kanban Cloud is shutting down",
+async fn create_organization(
+    State(state): State<AppState>,
+    axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
+    Json(payload): Json<CreateOrganizationRequest>,
+) -> Result<impl IntoResponse, ErrorResponse> {
+    let name = payload.name.trim();
+    let slug = payload.slug.trim();
+
+    if name.is_empty() || name.len() > 100 {
+        return Err(ErrorResponse::new(
+            StatusCode::BAD_REQUEST,
+            "Organization name must be between 1 and 100 characters",
+        ));
+    }
+
+    if slug.is_empty() || slug.len() > 100 {
+        return Err(ErrorResponse::new(
+            StatusCode::BAD_REQUEST,
+            "Organization slug must be between 1 and 100 characters",
+        ));
+    }
+
+    let org_repo = OrganizationRepository::new(&state.pool);
+    let organization = org_repo
+        .create_organization(name, slug, ctx.user.id)
+        .await
+        .map_err(|e| match e {
+            IdentityError::OrganizationConflict(msg) => {
+                ErrorResponse::new(StatusCode::CONFLICT, msg)
+            }
+            _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
+        })?;
+
+    if let Some(analytics) = state.analytics() {
+        analytics.track(
+            ctx.user.id,
+            "organization_created",
+            serde_json::json!({
+                "organization_id": organization.id,
+            }),
+        );
+    }
+
+    Ok((
+        StatusCode::CREATED,
+        Json(CreateOrganizationResponse { organization }),
     ))
 }
 

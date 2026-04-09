@@ -191,6 +191,7 @@ export type OrganizationBillingStatus =
 export interface OrganizationBillingStatusResponse {
   status: OrganizationBillingStatus;
   billing_enabled: boolean;
+  can_manage_billing: boolean;
   seat_info: {
     current_members: number;
     free_seats: number;
