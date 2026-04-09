@@ -16,11 +16,11 @@ import {
   Edit,
   ExternalLink,
   FolderOpen,
-  Github,
   MoreHorizontal,
   Terminal,
   Trash2,
 } from 'lucide-react';
+import GithubIcon from '@/components/ui/github-icon';
 import { Project } from 'shared/types';
 import { useEffect, useRef } from 'react';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
@@ -170,7 +170,7 @@ function ProjectCard({
                     handleGitHubSettings();
                   }}
                 >
-                  <Github className="mr-2 h-4 w-4" />
+                  <GithubIcon className="mr-2 h-4 w-4" />
                   {t('github.settings')}
                 </DropdownMenuItem>
                 <DropdownMenuItem

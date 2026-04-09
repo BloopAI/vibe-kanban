@@ -37,7 +37,7 @@ export function TemplateManager() {
         if (result === 'saved') {
           await fetchTemplates();
         }
-      } catch (error) {
+      } catch (_error) {
         // User cancelled - do nothing
       }
     },

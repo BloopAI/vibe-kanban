@@ -32,7 +32,7 @@ export function ReadyContent({
           if (!iframeDoc) {
             onFrameBlocked?.();
           }
-        } catch (e) {
+        } catch (_e) {
           // Cross-origin or X-Frame-Options blocking
           onFrameBlocked?.();
         }

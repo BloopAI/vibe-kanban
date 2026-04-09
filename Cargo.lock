@@ -66,7 +66,7 @@ dependencies = [
  "futures",
  "log",
  "parking_lot",
- "schemars 1.2.0",
+ "schemars 1.2.1",
  "serde",
  "serde_json",
 ]
@@ -79,7 +79,7 @@ checksum = "61be4454304d7df1a5b44c4ae55e707ffe72eac4dfb1ef8762510ce8d8f6d924"
 dependencies = [
  "anyhow",
  "derive_more 2.1.1",
- "schemars 1.2.0",
+ "schemars 1.2.1",
  "serde",
  "serde_json",
 ]
@@ -1778,7 +1778,7 @@ dependencies = [
  "mcp-types",
  "os_pipe",
  "regex",
- "schemars 1.2.0",
+ "schemars 1.2.1",
  "serde",
  "serde_json",
  "sha2",
@@ -1827,7 +1827,7 @@ checksum = "0ce92ff622d6dadf7349484f42c93271a0d49b7cc4d466a936405bacbe10aa78"
 dependencies = [
  "cfg-if",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2828,7 +2828,7 @@ checksum = "3640c1c38b8e4e43584d8df18be5fc6b0aa314ce6ebf51b53313d4306cca8e46"
 dependencies = [
  "hermit-abi",
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4608,7 +4608,7 @@ dependencies = [
  "pin-project-lite",
  "rand 0.9.2",
  "rmcp-macros",
- "schemars 1.2.0",
+ "schemars 1.2.1",
  "serde",
  "serde_json",
  "sse-stream",
@@ -4900,14 +4900,14 @@ dependencies = [
 
 [[package]]
 name = "schemars"
-version = "1.2.0"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54e910108742c57a770f492731f99be216a52fadd361b06c8fb59d74ccc267d2"
+checksum = "a2b42f36aa1cd011945615b92222f6bf73c599a102a300334cd7f8dbeec726cc"
 dependencies = [
  "chrono",
  "dyn-clone",
  "ref-cast",
- "schemars_derive 1.2.0",
+ "schemars_derive 1.2.1",
  "serde",
  "serde_json",
  "uuid",
@@ -4927,9 +4927,9 @@ dependencies = [
 
 [[package]]
 name = "schemars_derive"
-version = "1.2.0"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4908ad288c5035a8eb12cfdf0d49270def0a268ee162b75eeee0f85d155a7c45"
+checksum = "7d115b50f4aaeea07e79c1912f645c7513d81715d0420f8bc77a18c6260b307f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5111,7 +5111,7 @@ dependencies = [
  "indexmap 1.9.3",
  "indexmap 2.13.0",
  "schemars 0.9.0",
- "schemars 1.2.0",
+ "schemars 1.2.1",
  "serde_core",
  "serde_json",
  "serde_with_macros",
@@ -5194,7 +5194,7 @@ dependencies = [
  "reqwest",
  "rmcp",
  "rust-embed",
- "schemars 1.2.0",
+ "schemars 1.2.1",
  "secrecy",
  "serde",
  "serde_json",

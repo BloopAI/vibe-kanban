@@ -16,12 +16,12 @@ import {
   Edit,
   ExternalLink,
   FolderOpen,
-  Github,
   Link2,
   MoreHorizontal,
   Terminal,
   Trash2,
 } from 'lucide-react';
+import GithubIcon from '@/components/ui/github-icon';
 import type { MergedProject, Project } from 'shared/types';
 import { useEffect, useRef } from 'react';
 import { useNavigateWithSearch } from '@/hooks';
@@ -241,7 +241,7 @@ function UnifiedProjectCard({ project, isFocused, onRefresh, onEdit }: Props) {
                       handleGitHubSettings();
                     }}
                   >
-                    <Github className="mr-2 h-4 w-4" />
+                    <GithubIcon className="mr-2 h-4 w-4" />
                     {t('github.settings')}
                   </DropdownMenuItem>
                 </>

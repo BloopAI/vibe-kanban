@@ -17,7 +17,8 @@ import { useTranslation } from 'react-i18next';
 import { defineModal } from '@/lib/modals';
 import { projectsApi } from '@/lib/api';
 import type { Project } from 'shared/types';
-import { Github, Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
+import GithubIcon from '@/components/ui/github-icon';
 import { formatDistanceToNow } from 'date-fns';
 
 export type GitHubSettingsResult = {
@@ -163,7 +164,7 @@ const GitHubSettingsDialogImpl = NiceModal.create<GitHubSettingsDialogProps>(
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Github className="h-5 w-5" />
+              <GithubIcon className="h-5 w-5" />
               {t('github.title')}
             </DialogTitle>
             <DialogDescription>{t('github.description')}</DialogDescription>

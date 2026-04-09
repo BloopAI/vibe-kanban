@@ -8,7 +8,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { LogIn, Github, Loader2, Chrome } from 'lucide-react';
+import { LogIn, Loader2, Globe } from 'lucide-react';
+import GithubIcon from '@/components/ui/github-icon';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useState, useRef, useEffect } from 'react';
 import { useAuthMutations } from '@/hooks/auth/useAuthMutations';
@@ -172,7 +173,7 @@ const OAuthDialogImpl = NiceModal.create<NoProps>(() => {
                 className="w-full h-12 flex items-center justify-center gap-3"
                 onClick={() => handleProviderSelect('github')}
               >
-                <Github className="h-5 w-5" />
+                <GithubIcon className="h-5 w-5" />
                 <span>{t('oauth.continueWithGitHub')}</span>
               </Button>
 
@@ -181,7 +182,7 @@ const OAuthDialogImpl = NiceModal.create<NoProps>(() => {
                 className="w-full h-12 flex items-center justify-center gap-3"
                 onClick={() => handleProviderSelect('google')}
               >
-                <Chrome className="h-5 w-5" />
+                <Globe className="h-5 w-5" />
                 <span>{t('oauth.continueWithGoogle')}</span>
               </Button>
             </div>
