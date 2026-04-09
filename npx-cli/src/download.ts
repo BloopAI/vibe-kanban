@@ -1,4 +1,5 @@
 import https from 'https';
+import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -44,29 +45,101 @@ export interface DesktopBundleInfo {
 
 type ProgressCallback = (downloaded: number, total: number) => void;
 
+function getProxyUrl(): string | undefined {
+  return (
+    process.env.HTTPS_PROXY ||
+    process.env.https_proxy ||
+    process.env.HTTP_PROXY ||
+    process.env.http_proxy ||
+    process.env.ALL_PROXY ||
+    process.env.all_proxy
+  );
+}
+
+function isNoProxy(hostname: string): boolean {
+  const noProxy =
+    process.env.NO_PROXY || process.env.no_proxy || '';
+  if (!noProxy) return false;
+  return noProxy.split(',').some((entry) => {
+    const pattern = entry.trim().toLowerCase();
+    if (!pattern) return false;
+    const host = hostname.toLowerCase();
+    if (pattern === '*') return true;
+    if (host === pattern) return true;
+    if (pattern.startsWith('.') && host.endsWith(pattern)) return true;
+    if (host.endsWith('.' + pattern)) return true;
+    return false;
+  });
+}
+
+// Make an HTTPS GET request, tunneling through an HTTP proxy via CONNECT if configured.
+function httpsGet(
+  url: string,
+  callback: (res: http.IncomingMessage) => void,
+): { on: (event: string, cb: (err: Error) => void) => void } {
+  const target = new URL(url);
+  const proxyUrl = getProxyUrl();
+
+  if (!proxyUrl || isNoProxy(target.hostname)) {
+    return https.get(url, callback);
+  }
+
+  const proxy = new URL(proxyUrl);
+  const connectReq = http.request({
+    host: proxy.hostname,
+    port: parseInt(proxy.port || '80', 10),
+    method: 'CONNECT',
+    path: `${target.hostname}:${target.port || '443'}`,
+  });
+
+  connectReq.on('connect', (res, socket) => {
+    if (res.statusCode !== 200) {
+      socket.destroy();
+      connectReq.emit(
+        'error',
+        new Error(`Proxy CONNECT failed with status ${res.statusCode}`),
+      );
+      return;
+    }
+
+    // Pass the tunnel socket so TLS is established over it via tls.connect()
+    const opts = {
+      hostname: target.hostname,
+      path: target.pathname + target.search,
+      agent: false,
+      socket,
+      servername: target.hostname,
+    };
+    https
+      .get(opts, callback)
+      .on('error', (err) => connectReq.emit('error', err));
+  });
+
+  connectReq.end();
+  return connectReq;
+}
+
 function fetchJson<T>(url: string): Promise<T> {
   return new Promise((resolve, reject) => {
-    https
-      .get(url, (res) => {
-        if (res.statusCode === 301 || res.statusCode === 302) {
-          return fetchJson<T>(res.headers.location!)
-            .then(resolve)
-            .catch(reject);
+    httpsGet(url, (res) => {
+      if (res.statusCode === 301 || res.statusCode === 302) {
+        return fetchJson<T>(res.headers.location!)
+          .then(resolve)
+          .catch(reject);
+      }
+      if (res.statusCode !== 200) {
+        return reject(new Error(`HTTP ${res.statusCode} fetching ${url}`));
+      }
+      let data = '';
+      res.on('data', (chunk: string) => (data += chunk));
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data) as T);
+        } catch {
+          reject(new Error(`Failed to parse JSON from ${url}`));
         }
-        if (res.statusCode !== 200) {
-          return reject(new Error(`HTTP ${res.statusCode} fetching ${url}`));
-        }
-        let data = '';
-        res.on('data', (chunk: string) => (data += chunk));
-        res.on('end', () => {
-          try {
-            resolve(JSON.parse(data) as T);
-          } catch {
-            reject(new Error(`Failed to parse JSON from ${url}`));
-          }
-        });
-      })
-      .on('error', reject);
+      });
+    }).on('error', reject);
   });
 }
 
@@ -87,68 +160,66 @@ function downloadFile(
       } catch {}
     };
 
-    https
-      .get(url, (res) => {
-        if (res.statusCode === 301 || res.statusCode === 302) {
-          file.close();
-          cleanup();
-          return downloadFile(
-            res.headers.location!,
-            destPath,
-            expectedSha256,
-            onProgress
-          )
-            .then(resolve)
-            .catch(reject);
-        }
-
-        if (res.statusCode !== 200) {
-          file.close();
-          cleanup();
-          return reject(
-            new Error(`HTTP ${res.statusCode} downloading ${url}`)
-          );
-        }
-
-        const totalSize = parseInt(
-          res.headers['content-length'] || '0',
-          10
-        );
-        let downloadedSize = 0;
-
-        res.on('data', (chunk: Buffer) => {
-          downloadedSize += chunk.length;
-          hash.update(chunk);
-          if (onProgress) onProgress(downloadedSize, totalSize);
-        });
-        res.pipe(file);
-
-        file.on('finish', () => {
-          file.close();
-          const actualSha256 = hash.digest('hex');
-          if (expectedSha256 && actualSha256 !== expectedSha256) {
-            cleanup();
-            reject(
-              new Error(
-                `Checksum mismatch: expected ${expectedSha256}, got ${actualSha256}`
-              )
-            );
-          } else {
-            try {
-              fs.renameSync(tempPath, destPath);
-              resolve(destPath);
-            } catch (err) {
-              cleanup();
-              reject(err);
-            }
-          }
-        });
-      })
-      .on('error', (err) => {
+    httpsGet(url, (res) => {
+      if (res.statusCode === 301 || res.statusCode === 302) {
         file.close();
         cleanup();
-        reject(err);
+        return downloadFile(
+          res.headers.location!,
+          destPath,
+          expectedSha256,
+          onProgress
+        )
+          .then(resolve)
+          .catch(reject);
+      }
+
+      if (res.statusCode !== 200) {
+        file.close();
+        cleanup();
+        return reject(
+          new Error(`HTTP ${res.statusCode} downloading ${url}`)
+        );
+      }
+
+      const totalSize = parseInt(
+        res.headers['content-length'] || '0',
+        10
+      );
+      let downloadedSize = 0;
+
+      res.on('data', (chunk: Buffer) => {
+        downloadedSize += chunk.length;
+        hash.update(chunk);
+        if (onProgress) onProgress(downloadedSize, totalSize);
       });
+      res.pipe(file);
+
+      file.on('finish', () => {
+        file.close();
+        const actualSha256 = hash.digest('hex');
+        if (expectedSha256 && actualSha256 !== expectedSha256) {
+          cleanup();
+          reject(
+            new Error(
+              `Checksum mismatch: expected ${expectedSha256}, got ${actualSha256}`
+            )
+          );
+        } else {
+          try {
+            fs.renameSync(tempPath, destPath);
+            resolve(destPath);
+          } catch (err) {
+            cleanup();
+            reject(err);
+          }
+        }
+      });
+    }).on('error', (err) => {
+      file.close();
+      cleanup();
+      reject(err);
+    });
   });
 }
 
