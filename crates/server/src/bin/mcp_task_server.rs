@@ -1,3 +1,4 @@
+use axum::{body::Body, http::Request, http::StatusCode, middleware::Next, response::Response};
 use rmcp::transport::streamable_http_server::{
     StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
 };
@@ -85,6 +86,22 @@ async fn run_stdio_server(base_url: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Middleware that remaps 401 → 404 for unknown MCP sessions.
+///
+/// rmcp's LocalSessionManager returns 401 Unauthorized when a session ID is not found,
+/// but the MCP Streamable HTTP spec requires 404 so clients know to re-initialize.
+/// Without this, clients treat it as an auth failure and don't reconnect automatically.
+async fn remap_session_not_found(req: Request<Body>, next: Next) -> Response {
+    let response = next.run(req).await;
+    if response.status() == StatusCode::UNAUTHORIZED {
+        let (mut parts, body) = response.into_parts();
+        parts.status = StatusCode::NOT_FOUND;
+        Response::from_parts(parts, body)
+    } else {
+        response
+    }
+}
+
 /// Run the MCP server in HTTP mode
 async fn run_http_server(base_url: &str, port: u16) -> anyhow::Result<()> {
     // Bind to 0.0.0.0 so the MCP server is reachable on all interfaces
@@ -102,7 +119,9 @@ async fn run_http_server(base_url: &str, port: u16) -> anyhow::Result<()> {
         StreamableHttpServerConfig::default(),
     );
 
-    let router = axum::Router::new().nest_service("/mcp", service);
+    let router = axum::Router::new()
+        .nest_service("/mcp", service)
+        .layer(axum::middleware::from_fn(remap_session_not_found));
     let tcp_listener = tokio::net::TcpListener::bind(&bind_address).await?;
 
     tracing::info!("[MCP] HTTP server listening at http://{}/mcp", bind_address);
