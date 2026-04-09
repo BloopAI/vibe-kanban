@@ -1,9 +1,8 @@
 # Build configuration
 [build]
 incremental = true
-# NOTE: Shared Cargo target directory for dev builds is set via CARGO_TARGET_DIR
-# environment variable in scripts/setup-dev-environment.js (uses $HOME for portability).
-# Production builds use the default ./target/ directory.
+# NOTE: Dev and production builds use the default ./target/ directory.
+# CARGO_TARGET_DIR can still be overridden via environment variable if needed.
 
 # Set macOS deployment target to avoid linker warnings
 # Use Rust project defaults: 10.12 for x86_64, 11.0 for aarch64

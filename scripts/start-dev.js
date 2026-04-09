@@ -65,6 +65,29 @@ function cleanupPidFile() {
   }
 }
 
+/**
+ * Ensure vks-mcp-server binary exists in the dev target dir.
+ * Builds it if missing so the backend can spawn it on startup.
+ */
+function ensureMcpBinary() {
+  const cargoTargetDir = process.env.CARGO_TARGET_DIR || path.join(__dirname, '..', 'target');
+  const mcpBinary = path.join(cargoTargetDir, 'debug', 'vks-mcp-server');
+  if (fs.existsSync(mcpBinary)) return;
+
+  console.log('vks-mcp-server not found, building...');
+  try {
+    execSync('cargo build --bin vks-mcp-server', {
+      stdio: 'inherit',
+      env: { ...process.env, CARGO_TARGET_DIR: cargoTargetDir },
+    });
+    console.log('vks-mcp-server built successfully');
+  } catch (e) {
+    console.warn('Warning: Failed to build vks-mcp-server:', e.message);
+  }
+}
+
+ensureMcpBinary();
+
 // Get ports from setup script
 const frontendPort = getPort('frontend');
 const backendPort = getPort('backend');

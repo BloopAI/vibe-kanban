@@ -337,10 +337,6 @@ if (require.main === module) {
         console.log(`export DISABLE_WORKTREE_ORPHAN_CLEANUP=1`);
         console.log(`export DISABLE_WORKTREE_EXPIRED_CLEANUP=1`);
 
-        // Share Cargo build cache across dev instances to save disk space
-        // Uses $HOME for portability (shell expands it). Production builds use ./target/
-        console.log(`export CARGO_TARGET_DIR="\${HOME}/Code/.vibe-kanban-target"`);
-
         // Pass through all OTHER VK_* environment variables from .env
         // (config/tuning vars like VK_SQLITE_MAX_CONNECTIONS are safe to inherit)
         for (const [key, value] of Object.entries(process.env)) {
