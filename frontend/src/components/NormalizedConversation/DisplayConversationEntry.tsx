@@ -1061,27 +1061,27 @@ function DisplayConversationEntry({
     return (
       <div className="px-4 py-1.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground font-mono">
-          <span title="Total input tokens">↓ {fmtNum(tu.input_tokens)}</span>
+          <span title={t('conversation.tokenUsage.inputTitle')}>↓ {fmtNum(tu.input_tokens)}</span>
           {tu.cached_input_tokens > 0n && (
-            <span title="Cached input tokens" className="opacity-60">
-              cache {fmtNum(tu.cached_input_tokens)}
+            <span title={t('conversation.tokenUsage.cachedTitle')} className="opacity-60">
+              {t('conversation.tokenUsage.cache')} {fmtNum(tu.cached_input_tokens)}
             </span>
           )}
-          <span title="Total output tokens">↑ {fmtNum(tu.output_tokens)}</span>
+          <span title={t('conversation.tokenUsage.outputTitle')}>↑ {fmtNum(tu.output_tokens)}</span>
           {tu.reasoning_tokens > 0n && (
-            <span title="Reasoning tokens" className="opacity-60">
-              think {fmtNum(tu.reasoning_tokens)}
+            <span title={t('conversation.tokenUsage.reasoningTitle')} className="opacity-60">
+              {t('conversation.tokenUsage.think')} {fmtNum(tu.reasoning_tokens)}
             </span>
           )}
-          <span title="Last response tokens" className="opacity-70">
-            last {fmtNum(tu.last_total_tokens)}
+          <span title={t('conversation.tokenUsage.lastTitle')} className="opacity-70">
+            {t('conversation.tokenUsage.last')} {fmtNum(tu.last_total_tokens)}
           </span>
           {pct !== null && (
             <span
-              title={`Context used: ${pct}% of ${fmtNum(tu.context_window!)} tokens`}
+              title={t('conversation.tokenUsage.contextTitle', { pct, tokens: fmtNum(tu.context_window!) })}
               className={pct >= 90 ? 'text-red-500' : pct >= 70 ? 'text-amber-500' : ''}
             >
-              ctx {pct}%
+              {t('conversation.tokenUsage.ctx')} {pct}%
             </span>
           )}
         </div>

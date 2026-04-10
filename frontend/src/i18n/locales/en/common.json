@@ -62,6 +62,18 @@
       "expandMessage": "Expand message",
       "collapseMessage": "Collapse message",
       "editMessage": "Edit message"
+    },
+    "tokenUsage": {
+      "inputTitle": "Total input tokens",
+      "cachedTitle": "Cached input tokens",
+      "cache": "cache",
+      "outputTitle": "Total output tokens",
+      "reasoningTitle": "Reasoning tokens",
+      "think": "think",
+      "lastTitle": "Last response tokens",
+      "last": "last",
+      "contextTitle": "Context used: {{pct}}% of {{tokens}} tokens",
+      "ctx": "ctx"
     }
   },
   "branchSelector": {

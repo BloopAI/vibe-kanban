@@ -846,12 +846,23 @@ impl CodexNormalizer {
                     content: String::new(),
                     metadata: None,
                 };
+                // Retain for potential future use (e.g. per-turn delta calculations).
                 self.state.token_usage_info = Some(info);
                 if let Some(index) = self.state.token_usage_index {
+                    tracing::debug!(
+                        event = "TokenCount",
+                        entry_index = index,
+                        "normalizer: updated token usage entry in-place"
+                    );
                     vec![ConversationPatch::replace(index, entry)]
                 } else {
                     let index = entry_index.next();
                     self.state.token_usage_index = Some(index);
+                    tracing::debug!(
+                        event = "TokenCount",
+                        entry_index = index,
+                        "normalizer: added initial token usage entry"
+                    );
                     vec![ConversationPatch::add_normalized_entry(index, entry)]
                 }
             }

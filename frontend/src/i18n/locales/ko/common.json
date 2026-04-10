@@ -63,6 +63,18 @@
       "expandMessage": "메시지 펼치기",
       "collapseMessage": "메시지 접기",
       "editMessage": "메시지 편집"
+    },
+    "tokenUsage": {
+      "inputTitle": "총 입력 토큰 수",
+      "cachedTitle": "캐시된 입력 토큰 수",
+      "cache": "캐시",
+      "outputTitle": "총 출력 토큰 수",
+      "reasoningTitle": "추론 토큰 수",
+      "think": "사고",
+      "lastTitle": "마지막 응답 토큰 수",
+      "last": "마지막",
+      "contextTitle": "컨텍스트 사용량: {{pct}}% / {{tokens}} 토큰",
+      "ctx": "ctx"
     }
   },
   "language": {
