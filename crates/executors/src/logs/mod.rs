@@ -220,6 +220,23 @@ pub enum NormalizedEntryType {
         total_cost_usd: Option<f64>,
         is_error: bool,
     },
+    /// Token usage snapshot from the executor (Codex TokenCount event).
+    /// Updated in-place after each turn; shows cumulative totals plus context window.
+    TokenUsage {
+        /// Cumulative input tokens across all turns
+        input_tokens: i64,
+        /// Cumulative cached input tokens (counts toward context, not re-billed)
+        cached_input_tokens: i64,
+        /// Cumulative output tokens across all turns
+        output_tokens: i64,
+        /// Cumulative reasoning tokens (subset of output)
+        reasoning_tokens: i64,
+        /// Total tokens this turn (last turn only, for per-turn insight)
+        last_total_tokens: i64,
+        /// Model context window size (tokens), if reported
+        #[serde(skip_serializing_if = "Option::is_none")]
+        context_window: Option<i64>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

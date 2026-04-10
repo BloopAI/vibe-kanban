@@ -1046,6 +1046,49 @@ function DisplayConversationEntry({
     );
   }
 
+  if (entry.entry_type.type === 'token_usage') {
+    const tu = entry.entry_type;
+    const fmtNum = (n: bigint) =>
+      Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
+    const pct =
+      tu.context_window && tu.context_window > 0n
+        ? Math.min(
+            100,
+            Math.round((Number(tu.input_tokens + tu.output_tokens) / Number(tu.context_window)) * 100)
+          )
+        : null;
+
+    return (
+      <div className="px-4 py-1.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground font-mono">
+          <span title="Total input tokens">↓ {fmtNum(tu.input_tokens)}</span>
+          {tu.cached_input_tokens > 0n && (
+            <span title="Cached input tokens" className="opacity-60">
+              cache {fmtNum(tu.cached_input_tokens)}
+            </span>
+          )}
+          <span title="Total output tokens">↑ {fmtNum(tu.output_tokens)}</span>
+          {tu.reasoning_tokens > 0n && (
+            <span title="Reasoning tokens" className="opacity-60">
+              think {fmtNum(tu.reasoning_tokens)}
+            </span>
+          )}
+          <span title="Last response tokens" className="opacity-70">
+            last {fmtNum(tu.last_total_tokens)}
+          </span>
+          {pct !== null && (
+            <span
+              title={`Context used: ${pct}% of ${fmtNum(tu.context_window!)} tokens`}
+              className={pct >= 90 ? 'text-red-500' : pct >= 70 ? 'text-amber-500' : ''}
+            >
+              ctx {pct}%
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (entry.entry_type.type === 'result_message') {
     return (
       <div className="px-4 py-2 text-sm">
