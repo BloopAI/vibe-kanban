@@ -713,6 +713,10 @@ impl LocalContainerService {
                 log_batcher.finish(exec_id).await;
             }
 
+            // Cancel pending approvals before removing the MsgStore so the background
+            // timeout watchers see Denied (not TimedOut) and skip the MsgStore update.
+            container.approvals.cancel_for_process(exec_id);
+
             // Signal the normalizer that no more log lines are coming, then await completion.
             // push_finished() MUST come before awaiting the normalization handle: the normalizer's
             // stdout_lines_stream() blocks indefinitely until push_finished() closes the channel,
@@ -1651,6 +1655,10 @@ impl ContainerService for LocalContainerService {
         if let Some(log_batcher) = self.log_batcher() {
             log_batcher.finish(execution_process.id).await;
         }
+
+        // Cancel pending approvals before removing the MsgStore so the background
+        // timeout watchers see Denied (not TimedOut) and skip the MsgStore update.
+        self.approvals.cancel_for_process(execution_process.id);
 
         // Signal the normalizer that no more log lines are coming, then await completion.
         // push_finished() MUST come before awaiting the normalization handle: the normalizer's

@@ -223,7 +223,7 @@ impl ProtocolPeer {
                                         .send_hook_response(request_id, permission_response)
                                         .await
                                     {
-                                        tracing::error!("Failed to send question answer: {e}");
+                                        tracing::warn!("Failed to send question answer (process likely exited): {e}");
                                     }
                                 }
                                 Err(e) => {

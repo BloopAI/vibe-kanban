@@ -418,6 +418,35 @@ impl Approvals {
         });
     }
 
+    /// Cancel all pending approvals for a process that is exiting.
+    ///
+    /// Resolves each pending approval with `Denied` (not `TimedOut`) so the
+    /// background timeout watcher's `is_timeout` guard is false — it won't try
+    /// to update the MsgStore after it has already been removed from the map.
+    /// Must be called before the MsgStore is removed from the container.
+    pub fn cancel_for_process(&self, execution_process_id: Uuid) {
+        let to_cancel: Vec<String> = self
+            .pending
+            .iter()
+            .filter(|entry| entry.value().execution_process_id == execution_process_id)
+            .map(|entry| entry.key().clone())
+            .collect();
+
+        for id in to_cancel {
+            if let Some((_, approval)) = self.pending.remove(&id) {
+                let status = ApprovalStatus::Denied {
+                    reason: Some("Process exited".to_string()),
+                };
+                self.completed.insert(id, status.clone());
+                // Send the cancellation; ignore error if receiver already dropped
+                let _ = approval.response_tx.send(ApprovalResponseData {
+                    status,
+                    answers: None,
+                });
+            }
+        }
+    }
+
     async fn msg_store_by_id(&self, execution_process_id: &Uuid) -> Option<Arc<MsgStore>> {
         let map = self.msg_stores.read().await;
         map.get(execution_process_id).cloned()
