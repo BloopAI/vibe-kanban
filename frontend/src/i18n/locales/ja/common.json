@@ -63,6 +63,18 @@
       "expandMessage": "メッセージを展開",
       "collapseMessage": "メッセージを折りたたむ",
       "editMessage": "メッセージを編集"
+    },
+    "tokenUsage": {
+      "inputTitle": "合計入力トークン数",
+      "cachedTitle": "キャッシュされた入力トークン数",
+      "cache": "キャッシュ",
+      "outputTitle": "合計出力トークン数",
+      "reasoningTitle": "推論トークン数",
+      "think": "思考",
+      "lastTitle": "最後のレスポンスのトークン数",
+      "last": "最後",
+      "contextTitle": "コンテキスト使用量: {{pct}}% / {{tokens}} トークン",
+      "ctx": "ctx"
     }
   },
   "language": {

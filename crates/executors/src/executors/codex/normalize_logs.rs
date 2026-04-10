@@ -830,10 +830,41 @@ impl CodexNormalizer {
                 vec![ConversationPatch::add_normalized_entry(idx, entry)]
             }
             EventMsg::TokenCount(payload) => {
-                if let Some(info) = payload.info {
-                    self.state.token_usage_info = Some(info);
+                let Some(info) = payload.info else {
+                    return vec![];
+                };
+                let entry = NormalizedEntry {
+                    timestamp: None,
+                    entry_type: NormalizedEntryType::TokenUsage {
+                        input_tokens: info.total_token_usage.input_tokens,
+                        cached_input_tokens: info.total_token_usage.cached_input_tokens,
+                        output_tokens: info.total_token_usage.output_tokens,
+                        reasoning_tokens: info.total_token_usage.reasoning_output_tokens,
+                        last_total_tokens: info.last_token_usage.total_tokens,
+                        context_window: info.model_context_window,
+                    },
+                    content: String::new(),
+                    metadata: None,
+                };
+                // Retain for potential future use (e.g. per-turn delta calculations).
+                self.state.token_usage_info = Some(info);
+                if let Some(index) = self.state.token_usage_index {
+                    tracing::debug!(
+                        event = "TokenCount",
+                        entry_index = index,
+                        "normalizer: updated token usage entry in-place"
+                    );
+                    vec![ConversationPatch::replace(index, entry)]
+                } else {
+                    let index = entry_index.next();
+                    self.state.token_usage_index = Some(index);
+                    tracing::debug!(
+                        event = "TokenCount",
+                        entry_index = index,
+                        "normalizer: added initial token usage entry"
+                    );
+                    vec![ConversationPatch::add_normalized_entry(index, entry)]
                 }
-                vec![]
             }
             // Events we don't need to handle
             EventMsg::AgentReasoningRawContent(..)
@@ -1056,6 +1087,8 @@ struct LogState {
     patches: HashMap<String, PatchState>,
     web_searches: HashMap<String, WebSearchState>,
     token_usage_info: Option<TokenUsageInfo>,
+    /// Entry index for the token usage display entry (replaced in-place each turn)
+    token_usage_index: Option<usize>,
 }
 
 enum StreamingTextKind {
@@ -1074,6 +1107,7 @@ impl LogState {
             patches: HashMap::new(),
             web_searches: HashMap::new(),
             token_usage_info: None,
+            token_usage_index: None,
         }
     }
 

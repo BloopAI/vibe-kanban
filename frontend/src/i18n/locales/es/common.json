@@ -63,6 +63,18 @@
       "expandMessage": "Expandir mensaje",
       "collapseMessage": "Contraer mensaje",
       "editMessage": "Editar mensaje"
+    },
+    "tokenUsage": {
+      "inputTitle": "Total de tokens de entrada",
+      "cachedTitle": "Tokens de entrada en caché",
+      "cache": "caché",
+      "outputTitle": "Total de tokens de salida",
+      "reasoningTitle": "Tokens de razonamiento",
+      "think": "razonar",
+      "lastTitle": "Tokens de la última respuesta",
+      "last": "último",
+      "contextTitle": "Contexto usado: {{pct}}% de {{tokens}} tokens",
+      "ctx": "ctx"
     }
   },
   "language": {

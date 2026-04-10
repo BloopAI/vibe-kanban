@@ -893,7 +893,31 @@ export type CommandRunResult = { exit_status: CommandExitStatus | null, output: 
 
 export type NormalizedEntry = { timestamp: string | null, entry_type: NormalizedEntryType, content: string, metadata: Record<string, unknown> | null, };
 
-export type NormalizedEntryType = { "type": "user_message" } | { "type": "user_feedback", denied_tool: string, } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, status: ToolStatus, } | { "type": "system_message" } | { "type": "error_message", error_type: NormalizedEntryError, } | { "type": "thinking" } | { "type": "loading" } | { "type": "next_action", failed: boolean, execution_processes: number, needs_setup: boolean, } | { "type": "execution_start", process_id: string, process_name: string, started_at: string, } | { "type": "execution_end", process_id: string, process_name: string, started_at: string, ended_at: string, duration_seconds: bigint, status: string, } | { "type": "result_message", subtype: string, duration_ms: bigint, num_turns: bigint, total_cost_usd: number | null, is_error: boolean, };
+export type NormalizedEntryType = { "type": "user_message" } | { "type": "user_feedback", denied_tool: string, } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, status: ToolStatus, } | { "type": "system_message" } | { "type": "error_message", error_type: NormalizedEntryError, } | { "type": "thinking" } | { "type": "loading" } | { "type": "next_action", failed: boolean, execution_processes: number, needs_setup: boolean, } | { "type": "execution_start", process_id: string, process_name: string, started_at: string, } | { "type": "execution_end", process_id: string, process_name: string, started_at: string, ended_at: string, duration_seconds: bigint, status: string, } | { "type": "result_message", subtype: string, duration_ms: bigint, num_turns: bigint, total_cost_usd: number | null, is_error: boolean, } | { "type": "token_usage", 
+/**
+ * Cumulative input tokens across all turns
+ */
+input_tokens: bigint, 
+/**
+ * Cumulative cached input tokens (counts toward context, not re-billed)
+ */
+cached_input_tokens: bigint, 
+/**
+ * Cumulative output tokens across all turns
+ */
+output_tokens: bigint, 
+/**
+ * Cumulative reasoning tokens (subset of output)
+ */
+reasoning_tokens: bigint, 
+/**
+ * Total tokens this turn (last turn only, for per-turn insight)
+ */
+last_total_tokens: bigint, 
+/**
+ * Model context window size (tokens), if reported
+ */
+context_window: bigint | null, };
 
 export type FileChange = { "action": "write", content: string, } | { "action": "delete" } | { "action": "rename", new_path: string, } | { "action": "edit", 
 /**
