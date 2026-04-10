@@ -22,7 +22,10 @@ permissions:
   id-token: write  # Required for OIDC trusted publishing
 
 env:
-  NODE_VERSION: 22
+  # Node 22.22.2 regresses `npm install -g npm@...` with
+  # `Cannot find module 'promise-retry'`. Pin a known-good patch until the
+  # upstream Node/npm regression is resolved.
+  NODE_VERSION: 22.22.1
   PNPM_VERSION: 10.13.1
 
 jobs:
