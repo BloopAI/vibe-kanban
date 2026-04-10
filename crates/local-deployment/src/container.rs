@@ -713,8 +713,15 @@ impl LocalContainerService {
                 log_batcher.finish(exec_id).await;
             }
 
-            // Await normalization completion before signaling finished
-            // This ensures all log entries are processed before push_finished()
+            // Signal the normalizer that no more log lines are coming, then await completion.
+            // push_finished() MUST come before awaiting the normalization handle: the normalizer's
+            // stdout_lines_stream() blocks indefinitely until push_finished() closes the channel,
+            // so waiting first causes a guaranteed deadlock that always fires the timeout.
+            let msg_arc = msg_stores.write().await.remove(&exec_id);
+            if let Some(ref arc) = msg_arc {
+                arc.push_finished();
+            }
+
             let timeout_secs = normalization_timeout_secs();
             if let Some(norm_handle) = container.take_normalization_handle(&exec_id).await {
                 let span = tracing::info_span!(
@@ -751,10 +758,9 @@ impl LocalContainerService {
                 }
             }
 
-            // Cleanup msg store
-            if let Some(msg_arc) = msg_stores.write().await.remove(&exec_id) {
-                msg_arc.push_finished();
-                match Arc::try_unwrap(msg_arc) {
+            // Drop the MsgStore; after normalization completes all internal clones are released
+            if let Some(arc) = msg_arc {
+                match Arc::try_unwrap(arc) {
                     Ok(inner) => drop(inner),
                     Err(arc) => tracing::error!(
                         "There are still {} strong Arcs to MsgStore for {}",
@@ -1646,8 +1652,14 @@ impl ContainerService for LocalContainerService {
             log_batcher.finish(execution_process.id).await;
         }
 
-        // Await normalization completion before signaling finished
-        // This ensures all log entries are processed before push_finished()
+        // Signal the normalizer that no more log lines are coming, then await completion.
+        // push_finished() MUST come before awaiting the normalization handle: the normalizer's
+        // stdout_lines_stream() blocks indefinitely until push_finished() closes the channel,
+        // so waiting first causes a guaranteed deadlock that always fires the timeout.
+        if let Some(msg) = self.msg_stores.write().await.remove(&execution_process.id) {
+            msg.push_finished();
+        }
+
         let timeout_secs = normalization_timeout_secs();
         if let Some(norm_handle) = self.take_normalization_handle(&execution_process.id).await {
             let span = tracing::info_span!(
@@ -1679,11 +1691,6 @@ impl ContainerService for LocalContainerService {
                     );
                 }
             }
-        }
-
-        // Mark the process finished in the MsgStore
-        if let Some(msg) = self.msg_stores.write().await.remove(&execution_process.id) {
-            msg.push_finished();
         }
 
         // Run normalization to populate log_entries with JsonPatch entries for REST pagination
