@@ -539,6 +539,13 @@ impl LocalContainerService {
                 Err(_) => (None, ExecutionProcessStatus::Failed),
             };
 
+            // Update executor session summary *before* marking execution as
+            // complete so that `wait_execution` callers always see the summary
+            // when they subsequently call `get_execution`.
+            if let Err(e) = container.update_executor_session_summary(&exec_id).await {
+                tracing::warn!("Failed to update executor session summary: {}", e);
+            }
+
             if !ExecutionProcess::was_stopped(&db.pool, exec_id).await
                 && let Err(e) =
                     ExecutionProcess::update_completion(&db.pool, exec_id, status, exit_code).await
@@ -547,10 +554,6 @@ impl LocalContainerService {
             }
 
             if let Ok(ctx) = ExecutionProcess::load_context(&db.pool, exec_id).await {
-                // Update executor session summary if available
-                if let Err(e) = container.update_executor_session_summary(&exec_id).await {
-                    tracing::warn!("Failed to update executor session summary: {}", e);
-                }
 
                 let success = matches!(
                     ctx.execution_process.status,

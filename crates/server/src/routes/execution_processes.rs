@@ -8,6 +8,7 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use db::models::{
+    coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessStatus},
     execution_process_repo_state::ExecutionProcessRepoState,
 };
@@ -40,6 +41,24 @@ async fn get_execution_process_by_id(
     State(_deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(execution_process)))
+}
+
+#[derive(Debug, Serialize)]
+struct ExecutionSummaryResponse {
+    summary: Option<String>,
+}
+
+async fn get_execution_summary(
+    Extension(execution_process): Extension<ExecutionProcess>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<ExecutionSummaryResponse>>, ApiError> {
+    let pool = &deployment.db().pool;
+    let summary = CodingAgentTurn::find_by_execution_process_id(pool, execution_process.id)
+        .await?
+        .and_then(|turn| turn.summary);
+    Ok(ResponseJson(ApiResponse::success(
+        ExecutionSummaryResponse { summary },
+    )))
 }
 
 async fn stream_raw_logs_ws(
@@ -371,6 +390,7 @@ pub(super) fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/", get(get_execution_process_by_id))
         .route("/stop", post(stop_execution_process))
         .route("/repo-states", get(get_execution_process_repo_states))
+        .route("/summary", get(get_execution_summary))
         .route("/raw-logs/ws", get(stream_raw_logs_ws))
         .route("/normalized-logs/ws", get(stream_normalized_logs_ws))
         .layer(from_fn_with_state(
