@@ -454,6 +454,12 @@ impl JsonRpcCallbacks for AppServerClient {
             .strip_prefix("codex/event/")
             .is_some_and(|suffix| suffix == "task_complete" || suffix == "turn_complete");
 
+        if has_finished {
+            tracing::debug!(event = "ExecutorFinished", method = method, "codex: received finish signal");
+        } else {
+            tracing::trace!(event = "CodexEvent", method = method, "codex: received protocol event");
+        }
+
         Ok(has_finished)
     }
 

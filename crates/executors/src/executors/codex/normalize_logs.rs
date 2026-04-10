@@ -241,33 +241,84 @@ impl CodexNormalizer {
                 // Return model params entry
                 let entry = create_model_params_entry(payload.model, payload.reasoning_effort);
                 let idx = entry_index.next();
+                tracing::debug!(event = "SessionConfigured", entry_index = idx, "normalizer: assigned entry");
                 vec![ConversationPatch::add_normalized_entry(idx, entry)]
             }
             EventMsg::AgentMessageDelta(AgentMessageDeltaEvent { delta }) => {
+                let thinking_was_some = self.state.thinking.is_some();
+                let assistant_was_some = self.state.assistant.is_some();
                 self.state.thinking = None;
                 let (entry, index, is_new) = self.state.assistant_message_append(delta);
+                tracing::debug!(
+                    event = "AgentMessageDelta",
+                    entry_index = index,
+                    is_new_entry = is_new,
+                    thinking_cleared = thinking_was_some,
+                    assistant_preexisted = assistant_was_some,
+                    next_counter = entry_index.current(),
+                    "normalizer: streaming assistant delta"
+                );
                 vec![upsert_patch(index, entry, is_new)]
             }
             EventMsg::AgentReasoningDelta(AgentReasoningDeltaEvent { delta }) => {
+                let assistant_was_some = self.state.assistant.is_some();
+                let thinking_was_some = self.state.thinking.is_some();
                 self.state.assistant = None;
                 let (entry, index, is_new) = self.state.thinking_append(delta);
+                tracing::debug!(
+                    event = "AgentReasoningDelta",
+                    entry_index = index,
+                    is_new_entry = is_new,
+                    assistant_cleared = assistant_was_some,
+                    thinking_preexisted = thinking_was_some,
+                    next_counter = entry_index.current(),
+                    "normalizer: streaming reasoning delta"
+                );
                 vec![upsert_patch(index, entry, is_new)]
             }
             EventMsg::AgentMessage(AgentMessageEvent { message }) => {
+                let thinking_was_some = self.state.thinking.is_some();
+                let assistant_was_some = self.state.assistant.is_some();
                 self.state.thinking = None;
                 let (entry, index, is_new) = self.state.assistant_message(message);
                 let patch = upsert_patch(index, entry, is_new);
                 self.state.assistant = None;
+                tracing::debug!(
+                    event = "AgentMessage",
+                    entry_index = index,
+                    is_new_entry = is_new,
+                    thinking_cleared = thinking_was_some,
+                    assistant_preexisted = assistant_was_some,
+                    next_counter = entry_index.current(),
+                    "normalizer: complete assistant message — ORDER MARKER"
+                );
                 vec![patch]
             }
             EventMsg::AgentReasoning(AgentReasoningEvent { text }) => {
+                let assistant_was_some = self.state.assistant.is_some();
+                let thinking_was_some = self.state.thinking.is_some();
                 self.state.assistant = None;
                 let (entry, index, is_new) = self.state.thinking(text);
                 let patch = upsert_patch(index, entry, is_new);
                 self.state.thinking = None;
+                tracing::debug!(
+                    event = "AgentReasoning",
+                    entry_index = index,
+                    is_new_entry = is_new,
+                    assistant_cleared = assistant_was_some,
+                    thinking_preexisted = thinking_was_some,
+                    next_counter = entry_index.current(),
+                    "normalizer: complete reasoning block — ORDER MARKER"
+                );
                 vec![patch]
             }
             EventMsg::AgentReasoningSectionBreak(AgentReasoningSectionBreakEvent { .. }) => {
+                tracing::debug!(
+                    event = "AgentReasoningSectionBreak",
+                    assistant_was_some = self.state.assistant.is_some(),
+                    thinking_was_some = self.state.thinking.is_some(),
+                    "normalizer: section break — clearing both states"
+                );
                 self.state.assistant = None;
                 self.state.thinking = None;
                 vec![]
@@ -361,6 +412,13 @@ impl CodexNormalizer {
                     return vec![];
                 }
                 let index = entry_index.next();
+                tracing::debug!(
+                    event = "ExecCommandBegin",
+                    call_id = %call_id,
+                    entry_index = index,
+                    command = %command_text,
+                    "normalizer: tool-use start"
+                );
                 self.state.commands.insert(
                     call_id.clone(),
                     CommandState {
@@ -426,6 +484,13 @@ impl CodexNormalizer {
                         tracing::error!("missing entry index for existing command state");
                         return vec![];
                     };
+                    tracing::debug!(
+                        event = "ExecCommandEnd",
+                        call_id = %call_id,
+                        entry_index = index,
+                        exit_code = exit_code,
+                        "normalizer: tool-use finish"
+                    );
                     vec![ConversationPatch::replace(
                         index,
                         command_state.to_normalized_entry(),
