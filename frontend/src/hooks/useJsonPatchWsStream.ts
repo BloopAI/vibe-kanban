@@ -217,6 +217,15 @@ export const useJsonPatchWsStream = <T extends object>(
         // Clear connecting guard - connection established
         connectingRef.current = false;
 
+        // Expose the initial (empty) state as soon as the connection is open.
+        // This unblocks consumers that gate on `data !== undefined` (e.g. isLoading
+        // checks) so they don't spin forever if the server is slow to send its first
+        // snapshot message.
+        if (!dataRef.current) {
+          dataRef.current = initialData();
+        }
+        setData(dataRef.current);
+
         // Track connection state for debugging
         if (window.__WS_DEBUG__) {
           window.__WS_DEBUG__.connections[endpoint] = 'open';

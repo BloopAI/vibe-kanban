@@ -869,9 +869,11 @@ export const useConversationHistory = ({
 
       // WebSocket connected but no execution processes exist for this attempt.
       // Emit the empty next-action state so the UI exits the loading spinner.
+      // Do NOT set loadedInitialEntries here — when the WS is just slow to send
+      // its initial snapshot the process list can be transiently empty, and we
+      // need the effect to re-run once the real snapshot arrives (idListKey change).
       if (executionProcesses?.current.length === 0) {
         emitEntries(displayedExecutionProcesses.current, 'initial', false);
-        loadedInitialEntries.current = true;
         return;
       }
 
