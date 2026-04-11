@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { VList, VListHandle } from 'virtua';
 import { AlertCircle, Radio, Wifi, WifiOff } from 'lucide-react';
 import { useLogStream } from '@/hooks/useLogStream';
@@ -90,42 +90,26 @@ export function ProcessLogsViewerContent({
   sourceKey,
 }: ProcessLogsViewerContentProps) {
   const listRef = useRef<VListHandle>(null);
-  const didInitScroll = useRef(false);
   const prevLenRef = useRef(0);
-  const [atBottom, setAtBottom] = useState(true);
 
   useEffect(() => {
-    didInitScroll.current = false;
     prevLenRef.current = 0;
-    setAtBottom(true);
   }, [sourceKey]);
 
-  // Initial jump to bottom + auto-follow during streaming
+  // Always follow the latest entry — no atBottom gate needed for a raw logs panel
   useEffect(() => {
     const prev = prevLenRef.current;
     const grewBy = logs.length - prev;
     prevLenRef.current = logs.length;
 
     if (logs.length === 0) return;
+    if (grewBy <= 0) return;
 
-    if (!didInitScroll.current) {
-      didInitScroll.current = true;
-      requestAnimationFrame(() => {
-        listRef.current?.scrollToIndex(logs.length - 1, { align: 'end' });
-      });
-      return;
-    }
-
-    if (grewBy > 0 && atBottom) {
-      const smooth = grewBy < LARGE_BURST;
-      requestAnimationFrame(() => {
-        listRef.current?.scrollToIndex(logs.length - 1, {
-          align: 'end',
-          smooth,
-        });
-      });
-    }
-  }, [logs.length, atBottom]);
+    const smooth = grewBy < LARGE_BURST;
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToIndex(logs.length - 1, { align: 'end', smooth });
+    });
+  }, [logs.length]);
 
   return (
     <div className="h-full flex flex-col">
@@ -150,11 +134,6 @@ export function ProcessLogsViewerContent({
             className="flex-1 rounded-lg"
             data={logs}
             bufferSize={600}
-            onScroll={(offset) => {
-              const h = listRef.current;
-              if (!h) return;
-              setAtBottom(offset + h.viewportSize >= h.scrollSize - 2);
-            }}
           >
             {(entry, i) => (
               <RawLogText
