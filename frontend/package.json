@@ -79,7 +79,7 @@
     "react-resizable-panels": "^3.0.6",
     "react-router-dom": "^6.8.1",
     "react-use-websocket": "^4.7.0",
-    "react-virtuoso": "^4.14.0",
+    "virtua": "^0.49.0",
     "rfc6902": "^5.1.2",
     "simple-icons": "^15.16.0",
     "tailwind-merge": "^2.2.0",

@@ -1,4 +1,4 @@
-import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
+import { VList, VListHandle } from 'virtua';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import DisplayConversationEntry from '../NormalizedConversation/DisplayConversationEntry';
@@ -65,15 +65,14 @@ const ItemContent = ({
   return null;
 };
 
-const computeItemKey = (_index: number, data: PatchTypeWithKey) =>
-  `l-${data.patchKey}`;
+const LARGE_BURST = 10;
 
 const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
   const { t } = useTranslation('common');
   const [items, setItems] = useState<PatchTypeWithKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [atBottom, setAtBottom] = useState(true);
-  const [atTop, setAtTop] = useState(false);
+  const [atTop, setAtTop] = useState(true);
   const { setEntries, reset } = useEntries();
   const [paginationOverride, setPaginationOverride] = usePaginationOverride(
     attempt.id
@@ -83,6 +82,10 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
     setLoading(true);
     setItems([]);
     reset();
+    didInitScroll.current = false;
+    prevLenRef.current = 0;
+    setAtTop(true);
+    setAtBottom(true);
   }, [attempt.id, reset]);
 
   const onEntriesUpdated = (
@@ -100,7 +103,7 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
 
   useConversationHistory({ attempt, onEntriesUpdated });
 
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const listRef = useRef<VListHandle>(null);
   const didInitScroll = useRef(false);
   const prevLenRef = useRef(0);
   const messageListContext = useMemo(
@@ -109,72 +112,67 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
   );
 
   const scrollToBottom = useCallback(() => {
-    virtuosoRef.current?.scrollToIndex({
-      index: items.length - 1,
+    listRef.current?.scrollToIndex(items.length - 1, {
       align: 'end',
-      behavior: 'smooth',
+      smooth: true,
     });
   }, [items.length]);
 
   const scrollToTop = useCallback(() => {
-    virtuosoRef.current?.scrollToIndex({
-      index: 0,
-      align: 'start',
-      behavior: 'smooth',
-    });
+    listRef.current?.scrollToIndex(0, { align: 'start', smooth: true });
   }, []);
 
-  // Initial jump to bottom once data appears
-  useEffect(() => {
-    if (!didInitScroll.current && items.length > 0) {
-      didInitScroll.current = true;
-      requestAnimationFrame(() => {
-        virtuosoRef.current?.scrollToIndex({
-          index: items.length - 1,
-          align: 'end',
-        });
-      });
-    }
-  }, [items.length]);
-
-  // Handle large bursts - force scroll to bottom
+  // Initial jump to bottom + auto-follow during streaming
   useEffect(() => {
     const prev = prevLenRef.current;
     const grewBy = items.length - prev;
     prevLenRef.current = items.length;
 
-    const LARGE_BURST = 10;
-    if (grewBy >= LARGE_BURST && atBottom && items.length > 0) {
+    if (items.length === 0) return;
+
+    if (!didInitScroll.current) {
+      didInitScroll.current = true;
       requestAnimationFrame(() => {
-        virtuosoRef.current?.scrollToIndex({
-          index: items.length - 1,
+        listRef.current?.scrollToIndex(items.length - 1, { align: 'end' });
+      });
+      return;
+    }
+
+    if (grewBy > 0 && atBottom && !loading) {
+      const smooth = grewBy < LARGE_BURST;
+      requestAnimationFrame(() => {
+        listRef.current?.scrollToIndex(items.length - 1, {
           align: 'end',
+          smooth,
         });
       });
     }
-  }, [items.length, atBottom, items]);
+  }, [items.length, atBottom, loading]);
 
   return (
     <ApprovalFormProvider>
       <div className="relative flex-1 flex flex-col">
-        <Virtuoso<PatchTypeWithKey>
-          ref={virtuosoRef}
+        <VList
+          ref={listRef}
           className="flex-1"
           data={items}
-          itemContent={(_index, item) => (
-            <ItemContent data={item} context={messageListContext} />
-          )}
-          computeItemKey={computeItemKey}
-          components={{
-            Header: () => <div className="h-2"></div>,
-            Footer: () => <div className="h-2"></div>,
+          bufferSize={600}
+          style={{ paddingTop: 8, paddingBottom: 8 }}
+          onScroll={(offset) => {
+            const h = listRef.current;
+            if (!h) return;
+            setAtTop(offset <= 0);
+            setAtBottom(offset + h.viewportSize >= h.scrollSize - 2);
           }}
-          initialTopMostItemIndex={items.length > 0 ? items.length - 1 : 0}
-          atBottomStateChange={setAtBottom}
-          atTopStateChange={setAtTop}
-          followOutput={atBottom && !loading ? 'smooth' : false}
-          increaseViewportBy={{ top: 0, bottom: 600 }}
-        />
+        >
+          {(item) => (
+            <ItemContent
+              key={item.patchKey}
+              data={item}
+              context={messageListContext}
+            />
+          )}
+        </VList>
         {!atTop && items.length > 0 && !loading && (
           <Button
             variant="outline"

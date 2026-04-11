@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback, memo } from 'react';
-import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
+import { VList, VListHandle } from 'virtua';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button.tsx';
 import { ArrowDown, GitBranch as GitBranchIcon, Search } from 'lucide-react';
@@ -114,7 +114,7 @@ function BranchSelector({
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const listRef = useRef<VListHandle>(null);
 
   const effectivePlaceholder = placeholder ?? t('branchSelector.placeholder');
   const defaultDisabledTooltip = t('branchSelector.currentDisabled');
@@ -169,10 +169,7 @@ function BranchSelector({
           (next + delta + filteredBranches.length) % filteredBranches.length;
         if (!isBranchDisabled(filteredBranches[next])) {
           setHighlightedIndex(next);
-          virtuosoRef.current?.scrollIntoView({
-            index: next,
-            behavior: 'auto',
-          });
+          listRef.current?.scrollToIndex(next, { align: 'nearest' });
           return;
         }
       }
@@ -269,19 +266,19 @@ function BranchSelector({
               {t('branchSelector.empty')}
             </div>
           ) : (
-            <Virtuoso
-              ref={virtuosoRef}
+            <VList
+              ref={listRef}
               style={{ height: '16rem' }}
-              totalCount={filteredBranches.length}
-              computeItemKey={(idx) => filteredBranches[idx]?.name ?? idx}
-              itemContent={(idx) => {
-                const branch = filteredBranches[idx];
+              data={filteredBranches}
+            >
+              {(branch, idx) => {
                 const isDisabled = isBranchDisabled(branch);
                 const isHighlighted = idx === highlightedIndex;
                 const isSelected = selectedBranch === branch.name;
 
                 return (
                   <BranchRow
+                    key={branch.name}
                     branch={branch}
                     isSelected={isSelected}
                     isDisabled={isDisabled}
@@ -296,7 +293,7 @@ function BranchSelector({
                   />
                 );
               }}
-            />
+            </VList>
           )}
         </DropdownMenuContent>
       </TooltipProvider>

@@ -203,9 +203,6 @@ importers:
       react-use-websocket:
         specifier: ^4.7.0
         version: 4.13.0
-      react-virtuoso:
-        specifier: ^4.14.0
-        version: 4.14.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       rfc6902:
         specifier: ^5.1.2
         version: 5.1.2
@@ -218,6 +215,9 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@3.4.17)
+      virtua:
+        specifier: ^0.49.0
+        version: 0.49.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(solid-js@1.9.10)
       zod:
         specifier: ^4.1.12
         version: 4.1.12
@@ -3485,12 +3485,6 @@ packages:
   react-use-websocket@4.13.0:
     resolution: {integrity: sha512-anMuVoV//g2N76Wxqvqjjo1X48r9Np3y1/gMl7arX84tAPXdy5R7sB5lO5hvCzQRYjqXwV8XMAiEBOUbyrZFrw==}
 
-  react-virtuoso@4.14.0:
-    resolution: {integrity: sha512-fR+eiCvirSNIRvvCD7ueJPRsacGQvUbjkwgWzBZXVq+yWypoH7mRUvWJzGHIdoRaCZCT+6mMMMwIG2S1BW3uwA==}
-    peerDependencies:
-      react: '>=16 || >=17 || >= 18 || >= 19'
-      react-dom: '>=16 || >=17 || >= 18 || >=19'
-
   react@18.3.1:
     resolution: {integrity: sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==}
     engines: {node: '>=0.10.0'}
@@ -3847,6 +3841,26 @@ packages:
 
   validate.io-number@1.0.3:
     resolution: {integrity: sha512-kRAyotcbNaSYoDnXvb4MHg/0a1egJdLwS6oJ38TJY7aw9n93Fl/3blIXdyYvPOp55CNxywooG/3BcrwNrBpcSg==}
+
+  virtua@0.49.0:
+    resolution: {integrity: sha512-yra9TIPqkVIn+LOjCZO8e6C6UsCiCIHJXt3yfnCP02r2sLpgr6mlispn3SHtWZv2aK2tuZLo6Sp2v6qmSrSVfw==}
+    peerDependencies:
+      react: '>=16.14.0'
+      react-dom: '>=16.14.0'
+      solid-js: '>=1.0'
+      svelte: '>=5.0'
+      vue: '>=3.2'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
+      solid-js:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
 
   vite@5.4.19:
     resolution: {integrity: sha512-qO3aKv3HoQC8QKiNSTuUM1l9o/XX3+c+VTgLHbJWHZGeTPVAg2XwazI9UWzoxjIJCGCV2zU60uqMzjeLZuULqA==}
@@ -7262,11 +7276,6 @@ snapshots:
 
   react-use-websocket@4.13.0: {}
 
-  react-virtuoso@4.14.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-
   react@18.3.1:
     dependencies:
       loose-envify: 1.4.0
@@ -7640,6 +7649,12 @@ snapshots:
       validate.io-number: 1.0.3
 
   validate.io-number@1.0.3: {}
+
+  virtua@0.49.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(solid-js@1.9.10):
+    optionalDependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      solid-js: 1.9.10
 
   vite@5.4.19(lightningcss@1.32.0):
     dependencies:

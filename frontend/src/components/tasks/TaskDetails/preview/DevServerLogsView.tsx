@@ -64,7 +64,7 @@ export function DevServerLogsView({
       {showLogs && (
         <div className={height}>
           {logs ? (
-            <ProcessLogsViewerContent logs={logs} error={error ?? null} />
+            <ProcessLogsViewerContent logs={logs} error={error ?? null} sourceKey={latestDevServerProcess.id} />
           ) : (
             <ProcessLogsViewer processId={latestDevServerProcess.id} />
           )}
