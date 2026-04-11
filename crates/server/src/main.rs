@@ -9,7 +9,7 @@ use std::process::{Child, Command, Stdio};
 use strip_ansi_escapes::strip;
 use thiserror::Error;
 use utils::{
-    assets::asset_dir,
+    assets::{asset_dir, backup_dir, database_path},
     browser::open_browser,
     port_file::{InstanceInfo, InstancePorts, InstanceRegistry, write_port_file},
 };
@@ -26,6 +26,69 @@ pub enum VibeKanbanError {
     Other(#[from] AnyhowError),
 }
 
+/// Ensure all directories required by the current configuration exist.
+///
+/// This runs early in startup so missing directories are caught before any
+/// database connections or file operations are attempted.  Each path function
+/// already creates the directory when a custom env var is set; calling them
+/// here makes the failure visible immediately (rather than at first use) and
+/// also handles the `asset_dir` creation in a single, consistent place.
+fn ensure_configured_dirs() -> Result<(), VibeKanbanError> {
+    // asset_dir() creates itself inside the function; call it to ensure it exists.
+    let _ = asset_dir();
+
+    // database_path() creates its parent dir when VK_DATABASE_PATH is set.
+    let db = database_path();
+    if let Some(parent) = db.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent).map_err(|e| {
+                std::io::Error::new(
+                    e.kind(),
+                    format!("Failed to create database directory '{}': {}", parent.display(), e),
+                )
+            })?;
+        }
+    }
+
+    // backup_dir() creates itself when VK_BACKUP_DIR is set; also ensure the
+    // default path exists so first-run backups never fail.
+    let bd = backup_dir();
+    std::fs::create_dir_all(&bd).map_err(|e| {
+        std::io::Error::new(
+            e.kind(),
+            format!("Failed to create backup directory '{}': {}", bd.display(), e),
+        )
+    })?;
+
+    // VK_WORKTREE_DIR is created inside WorktreeManager::get_worktree_base_dir()
+    // when the env var is set.  Trigger it here so any failure surfaces at startup.
+    let worktree_dir = services::services::worktree_manager::WorktreeManager::get_worktree_base_dir();
+    std::fs::create_dir_all(&worktree_dir).map_err(|e| {
+        std::io::Error::new(
+            e.kind(),
+            format!(
+                "Failed to create worktree directory '{}': {}",
+                worktree_dir.display(),
+                e
+            ),
+        )
+    })?;
+
+    // VK_LOG_DIR — create it unconditionally so it is ready whether or not file
+    // logging is currently enabled (the user may enable it later without restart).
+    let log_dir = std::env::var("VK_LOG_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| asset_dir().join("logs"));
+    std::fs::create_dir_all(&log_dir).map_err(|e| {
+        std::io::Error::new(
+            e.kind(),
+            format!("Failed to create log directory '{}': {}", log_dir.display(), e),
+        )
+    })?;
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), VibeKanbanError> {
     // Load .env file if present (for development)
@@ -36,10 +99,11 @@ async fn main() -> Result<(), VibeKanbanError> {
     let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
     let _file_log_guard = file_logging::init_logging(&log_level);
 
-    // Create asset directory if it doesn't exist
-    if !asset_dir().exists() {
-        std::fs::create_dir_all(asset_dir())?;
-    }
+    // Ensure all configured directories exist at startup.
+    // These calls trigger directory creation for any paths set via environment
+    // variables (VK_DATABASE_PATH, VK_BACKUP_DIR, VK_WORKTREE_DIR, VK_LOG_DIR).
+    // Failures here produce clear errors before any DB connections are attempted.
+    ensure_configured_dirs()?;
 
     // Clean up stale instance registry entries from previous runs
     if let Err(e) = InstanceRegistry::cleanup_stale().await {

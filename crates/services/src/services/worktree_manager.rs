@@ -553,7 +553,12 @@ impl WorktreeManager {
     /// Default: `{temp_dir}/worktrees` (e.g., `/var/tmp/vibe-kanban/worktrees`)
     pub fn get_worktree_base_dir() -> std::path::PathBuf {
         if let Ok(dir) = std::env::var("VK_WORKTREE_DIR") {
-            return utils::path::expand_tilde(&dir);
+            let expanded = utils::path::expand_tilde(&dir);
+            if !expanded.exists() {
+                std::fs::create_dir_all(&expanded)
+                    .expect("Failed to create directory for VK_WORKTREE_DIR");
+            }
+            return expanded;
         }
         utils::path::get_vibe_kanban_temp_dir().join("worktrees")
     }

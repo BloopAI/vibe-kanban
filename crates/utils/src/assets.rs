@@ -42,9 +42,19 @@ pub fn credentials_path() -> std::path::PathBuf {
 /// Supports tilde expansion (e.g., `~/vibe-kanban/db.sqlite`).
 ///
 /// Default: `{asset_dir}/db.sqlite`
+///
+/// When a custom path is configured via `VK_DATABASE_PATH`, the parent directory
+/// is created automatically if it does not exist.
 pub fn database_path() -> std::path::PathBuf {
     if let Ok(path) = std::env::var("VK_DATABASE_PATH") {
-        return crate::path::expand_tilde(&path);
+        let expanded = crate::path::expand_tilde(&path);
+        if let Some(parent) = expanded.parent() {
+            if !parent.as_os_str().is_empty() && !parent.exists() {
+                std::fs::create_dir_all(parent)
+                    .expect("Failed to create parent directory for VK_DATABASE_PATH");
+            }
+        }
+        return expanded;
     }
     asset_dir().join("db.sqlite")
 }
@@ -55,9 +65,17 @@ pub fn database_path() -> std::path::PathBuf {
 /// Supports tilde expansion (e.g., `~/vibe-kanban/backups`).
 ///
 /// Default: `{asset_dir}/backups`
+///
+/// When a custom path is configured via `VK_BACKUP_DIR`, the directory is
+/// created automatically if it does not exist.
 pub fn backup_dir() -> std::path::PathBuf {
     if let Ok(path) = std::env::var("VK_BACKUP_DIR") {
-        return crate::path::expand_tilde(&path);
+        let expanded = crate::path::expand_tilde(&path);
+        if !expanded.exists() {
+            std::fs::create_dir_all(&expanded)
+                .expect("Failed to create directory for VK_BACKUP_DIR");
+        }
+        return expanded;
     }
     asset_dir().join("backups")
 }
