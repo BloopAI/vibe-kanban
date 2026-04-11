@@ -100,7 +100,6 @@ pub enum NormalizedEntryType {
 
 /// A question–answer pair from a completed AskUserQuestion interaction.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct AnsweredQuestion {
     pub question: String,
     pub answer: Vec<String>,
@@ -119,28 +118,6 @@ pub struct NormalizedEntry {
     pub content: String,
     #[ts(skip)]
     pub metadata: Option<serde_json::Value>,
-}
-
-impl NormalizedEntry {
-    pub fn with_tool_status(&self, status: ToolStatus) -> Option<Self> {
-        if let NormalizedEntryType::ToolUse {
-            tool_name,
-            action_type,
-            ..
-        } = &self.entry_type
-        {
-            Some(Self {
-                entry_type: NormalizedEntryType::ToolUse {
-                    tool_name: tool_name.clone(),
-                    action_type: action_type.clone(),
-                    status,
-                },
-                ..self.clone()
-            })
-        } else {
-            None
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
@@ -243,7 +220,6 @@ pub enum ActionType {
 
 /// A single question in an AskUserQuestion tool call.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct AskUserQuestionItem {
     pub question: String,
     pub header: String,
@@ -254,7 +230,6 @@ pub struct AskUserQuestionItem {
 
 /// An option for an AskUserQuestion question.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct AskUserQuestionOption {
     pub label: String,
     pub description: String,

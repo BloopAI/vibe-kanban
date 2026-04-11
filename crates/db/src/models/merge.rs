@@ -1,10 +1,10 @@
-use std::collections::HashMap;
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool, Type};
+use sqlx::{SqlitePool, Type};
 use ts_rs::TS;
 use uuid::Uuid;
+
+use super::pull_request::PullRequest;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, Type)]
 #[sqlx(type_name = "merge_status", rename_all = "snake_case")]
@@ -53,26 +53,13 @@ pub struct PullRequestInfo {
     pub merge_commit_sha: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
-pub enum MergeType {
-    Direct,
-    Pr,
-}
-
-#[derive(FromRow)]
-struct MergeRow {
+/// Row type for direct merges only (PR data now lives in pull_requests).
+struct DirectMergeRow {
     id: Uuid,
     workspace_id: Uuid,
     repo_id: Uuid,
-    merge_type: MergeType,
     merge_commit: Option<String>,
     target_branch_name: String,
-    pr_number: Option<i64>,
-    pr_url: Option<String>,
-    pr_status: Option<MergeStatus>,
-    pr_merged_at: Option<DateTime<Utc>>,
-    pr_merge_commit_sha: Option<String>,
     created_at: DateTime<Utc>,
 }
 
@@ -95,210 +82,71 @@ impl Merge {
         let id = Uuid::new_v4();
         let now = Utc::now();
 
-        sqlx::query_as!(
-            MergeRow,
-            r#"INSERT INTO merges (
-                id, workspace_id, repo_id, merge_type, merge_commit, created_at, target_branch_name
-            ) VALUES ($1, $2, $3, 'direct', $4, $5, $6)
-            RETURNING
-                id as "id!: Uuid",
-                workspace_id as "workspace_id!: Uuid",
-                repo_id as "repo_id!: Uuid",
-                merge_type as "merge_type!: MergeType",
-                merge_commit,
-                pr_number,
-                pr_url,
-                pr_status as "pr_status?: MergeStatus",
-                pr_merged_at as "pr_merged_at?: DateTime<Utc>",
-                pr_merge_commit_sha,
-                created_at as "created_at!: DateTime<Utc>",
-                target_branch_name as "target_branch_name!: String"
-            "#,
+        sqlx::query!(
+            "INSERT INTO merges (id, workspace_id, repo_id, merge_type, merge_commit, created_at, target_branch_name)
+            VALUES (?, ?, ?, 'direct', ?, ?, ?)",
             id,
             workspace_id,
             repo_id,
             merge_commit,
             now,
-            target_branch_name
-        )
-        .fetch_one(pool)
-        .await
-        .map(Into::into)
-    }
-    /// Create a new PR record (when PR is opened)
-    pub async fn create_pr(
-        pool: &SqlitePool,
-        workspace_id: Uuid,
-        repo_id: Uuid,
-        target_branch_name: &str,
-        pr_number: i64,
-        pr_url: &str,
-    ) -> Result<PrMerge, sqlx::Error> {
-        let id = Uuid::new_v4();
-        let now = Utc::now();
-
-        sqlx::query_as!(
-            MergeRow,
-            r#"INSERT INTO merges (
-                id, workspace_id, repo_id, merge_type, pr_number, pr_url, pr_status, created_at, target_branch_name
-            ) VALUES ($1, $2, $3, 'pr', $4, $5, 'open', $6, $7)
-            RETURNING
-                id as "id!: Uuid",
-                workspace_id as "workspace_id!: Uuid",
-                repo_id as "repo_id!: Uuid",
-                merge_type as "merge_type!: MergeType",
-                merge_commit,
-                pr_number,
-                pr_url,
-                pr_status as "pr_status?: MergeStatus",
-                pr_merged_at as "pr_merged_at?: DateTime<Utc>",
-                pr_merge_commit_sha,
-                created_at as "created_at!: DateTime<Utc>",
-                target_branch_name as "target_branch_name!: String"
-            "#,
-            id,
-            workspace_id,
-            repo_id,
-            pr_number,
-            pr_url,
-            now,
-            target_branch_name
-        )
-        .fetch_one(pool)
-        .await
-        .map(Into::into)
-    }
-
-    pub async fn find_all_pr(pool: &SqlitePool) -> Result<Vec<PrMerge>, sqlx::Error> {
-        let rows = sqlx::query_as!(
-            MergeRow,
-            r#"SELECT
-                id as "id!: Uuid",
-                workspace_id as "workspace_id!: Uuid",
-                repo_id as "repo_id!: Uuid",
-                merge_type as "merge_type!: MergeType",
-                merge_commit,
-                pr_number,
-                pr_url,
-                pr_status as "pr_status?: MergeStatus",
-                pr_merged_at as "pr_merged_at?: DateTime<Utc>",
-                pr_merge_commit_sha,
-                created_at as "created_at!: DateTime<Utc>",
-                target_branch_name as "target_branch_name!: String"
-               FROM merges
-               WHERE merge_type = 'pr'
-               ORDER BY created_at ASC"#,
-        )
-        .fetch_all(pool)
-        .await?;
-
-        Ok(rows.into_iter().map(Into::into).collect())
-    }
-
-    pub async fn get_open_prs(pool: &SqlitePool) -> Result<Vec<PrMerge>, sqlx::Error> {
-        let rows = sqlx::query_as!(
-            MergeRow,
-            r#"SELECT
-                id as "id!: Uuid",
-                workspace_id as "workspace_id!: Uuid",
-                repo_id as "repo_id!: Uuid",
-                merge_type as "merge_type!: MergeType",
-                merge_commit,
-                pr_number,
-                pr_url,
-                pr_status as "pr_status?: MergeStatus",
-                pr_merged_at as "pr_merged_at?: DateTime<Utc>",
-                pr_merge_commit_sha,
-                created_at as "created_at!: DateTime<Utc>",
-                target_branch_name as "target_branch_name!: String"
-               FROM merges
-               WHERE merge_type = 'pr' AND pr_status = 'open'
-               ORDER BY created_at DESC"#,
-        )
-        .fetch_all(pool)
-        .await?;
-
-        Ok(rows.into_iter().map(Into::into).collect())
-    }
-
-    pub async fn count_open_prs_for_workspace(
-        pool: &SqlitePool,
-        workspace_id: Uuid,
-    ) -> Result<i64, sqlx::Error> {
-        let count = sqlx::query_scalar!(
-            r#"SELECT COUNT(1) as "count!: i64"
-               FROM merges
-               WHERE workspace_id = $1
-                 AND merge_type = 'pr'
-                 AND pr_status = 'open'"#,
-            workspace_id
-        )
-        .fetch_one(pool)
-        .await?;
-
-        Ok(count)
-    }
-
-    /// Update PR status for a workspace
-    pub async fn update_status(
-        pool: &SqlitePool,
-        merge_id: Uuid,
-        pr_status: MergeStatus,
-        merge_commit_sha: Option<String>,
-    ) -> Result<(), sqlx::Error> {
-        let merged_at = if matches!(pr_status, MergeStatus::Merged) {
-            Some(Utc::now())
-        } else {
-            None
-        };
-
-        sqlx::query!(
-            r#"UPDATE merges
-            SET pr_status = $1,
-                pr_merge_commit_sha = $2,
-                pr_merged_at = $3
-            WHERE id = $4"#,
-            pr_status,
-            merge_commit_sha,
-            merged_at,
-            merge_id
+            target_branch_name,
         )
         .execute(pool)
         .await?;
 
-        Ok(())
+        Ok(DirectMerge {
+            id,
+            workspace_id,
+            repo_id,
+            merge_commit: merge_commit.to_string(),
+            target_branch_name: target_branch_name.to_string(),
+            created_at: now,
+        })
     }
-    /// Find all merges for a workspace (returns both direct and PR merges)
+
+    /// Find all merges for a workspace (returns both direct merges and PRs).
+    /// Direct merges come from the `merges` table, PRs from `pull_requests`.
     pub async fn find_by_workspace_id(
         pool: &SqlitePool,
         workspace_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
-        // Get raw data from database
-        let rows = sqlx::query_as!(
-            MergeRow,
+        let direct_rows = sqlx::query_as!(
+            DirectMergeRow,
             r#"SELECT
-                id as "id!: Uuid",
-                workspace_id as "workspace_id!: Uuid",
-                repo_id as "repo_id!: Uuid",
-                merge_type as "merge_type!: MergeType",
+                id AS "id!: Uuid",
+                workspace_id AS "workspace_id!: Uuid",
+                repo_id AS "repo_id!: Uuid",
                 merge_commit,
-                pr_number,
-                pr_url,
-                pr_status as "pr_status?: MergeStatus",
-                pr_merged_at as "pr_merged_at?: DateTime<Utc>",
-                pr_merge_commit_sha,
-                target_branch_name as "target_branch_name!: String",
-                created_at as "created_at!: DateTime<Utc>"
+                target_branch_name,
+                created_at AS "created_at!: DateTime<Utc>"
             FROM merges
-            WHERE workspace_id = $1
+            WHERE workspace_id = ? AND merge_type = 'direct'
             ORDER BY created_at DESC"#,
-            workspace_id
+            workspace_id,
         )
         .fetch_all(pool)
         .await?;
 
-        // Convert to appropriate types based on merge_type
-        Ok(rows.into_iter().map(Into::into).collect())
+        let pull_requests = PullRequest::find_by_workspace_id(pool, workspace_id).await?;
+
+        let mut merges: Vec<Merge> = direct_rows.into_iter().map(|row| row.into()).collect();
+        merges.extend(pull_requests.iter().map(|pr| pr.to_merge()));
+
+        // Sort by created_at descending (matching previous behavior)
+        merges.sort_by(|a, b| {
+            let a_time = match a {
+                Merge::Direct(d) => d.created_at,
+                Merge::Pr(p) => p.created_at,
+            };
+            let b_time = match b {
+                Merge::Direct(d) => d.created_at,
+                Merge::Pr(p) => p.created_at,
+            };
+            b_time.cmp(&a_time)
+        });
+
+        Ok(merges)
     }
 
     /// Find all merges for a workspace and specific repo
@@ -307,84 +155,48 @@ impl Merge {
         workspace_id: Uuid,
         repo_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
-        let rows = sqlx::query_as!(
-            MergeRow,
+        let direct_rows = sqlx::query_as!(
+            DirectMergeRow,
             r#"SELECT
-                id as "id!: Uuid",
-                workspace_id as "workspace_id!: Uuid",
-                repo_id as "repo_id!: Uuid",
-                merge_type as "merge_type!: MergeType",
+                id AS "id!: Uuid",
+                workspace_id AS "workspace_id!: Uuid",
+                repo_id AS "repo_id!: Uuid",
                 merge_commit,
-                pr_number,
-                pr_url,
-                pr_status as "pr_status?: MergeStatus",
-                pr_merged_at as "pr_merged_at?: DateTime<Utc>",
-                pr_merge_commit_sha,
-                target_branch_name as "target_branch_name!: String",
-                created_at as "created_at!: DateTime<Utc>"
+                target_branch_name,
+                created_at AS "created_at!: DateTime<Utc>"
             FROM merges
-            WHERE workspace_id = $1 AND repo_id = $2
+            WHERE workspace_id = ? AND repo_id = ? AND merge_type = 'direct'
             ORDER BY created_at DESC"#,
             workspace_id,
-            repo_id
+            repo_id,
         )
         .fetch_all(pool)
         .await?;
 
-        Ok(rows.into_iter().map(Into::into).collect())
-    }
+        let pull_requests =
+            PullRequest::find_by_workspace_and_repo_id(pool, workspace_id, repo_id).await?;
 
-    /// Get the latest PR for each workspace (for workspace summaries)
-    /// Returns a map of workspace_id -> PrMerge for workspaces that have PRs
-    pub async fn get_latest_pr_status_for_workspaces(
-        pool: &SqlitePool,
-        archived: bool,
-    ) -> Result<HashMap<Uuid, PrMerge>, sqlx::Error> {
-        // Get the latest PR for each workspace by using a subquery to find the max created_at
-        // Only consider PR merges (not direct merges)
-        let rows = sqlx::query_as!(
-            MergeRow,
-            r#"SELECT
-                m.id as "id!: Uuid",
-                m.workspace_id as "workspace_id!: Uuid",
-                m.repo_id as "repo_id!: Uuid",
-                m.merge_type as "merge_type!: MergeType",
-                m.merge_commit,
-                m.pr_number,
-                m.pr_url,
-                m.pr_status as "pr_status?: MergeStatus",
-                m.pr_merged_at as "pr_merged_at?: DateTime<Utc>",
-                m.pr_merge_commit_sha,
-                m.target_branch_name as "target_branch_name!: String",
-                m.created_at as "created_at!: DateTime<Utc>"
-            FROM merges m
-            INNER JOIN (
-                SELECT workspace_id, MAX(created_at) as max_created_at
-                FROM merges
-                WHERE merge_type = 'pr'
-                GROUP BY workspace_id
-            ) latest ON m.workspace_id = latest.workspace_id
-                AND m.created_at = latest.max_created_at
-            INNER JOIN workspaces w ON m.workspace_id = w.id
-            WHERE m.merge_type = 'pr' AND w.archived = $1"#,
-            archived
-        )
-        .fetch_all(pool)
-        .await?;
+        let mut merges: Vec<Merge> = direct_rows.into_iter().map(|row| row.into()).collect();
+        merges.extend(pull_requests.iter().map(|pr| pr.to_merge()));
 
-        Ok(rows
-            .into_iter()
-            .map(|row| {
-                let workspace_id = row.workspace_id;
-                (workspace_id, PrMerge::from(row))
-            })
-            .collect())
+        merges.sort_by(|a, b| {
+            let a_time = match a {
+                Merge::Direct(d) => d.created_at,
+                Merge::Pr(p) => p.created_at,
+            };
+            let b_time = match b {
+                Merge::Direct(d) => d.created_at,
+                Merge::Pr(p) => p.created_at,
+            };
+            b_time.cmp(&a_time)
+        });
+
+        Ok(merges)
     }
 }
 
-// Conversion implementations
-impl From<MergeRow> for DirectMerge {
-    fn from(row: MergeRow) -> Self {
+impl From<DirectMergeRow> for DirectMerge {
+    fn from(row: DirectMergeRow) -> Self {
         DirectMerge {
             id: row.id,
             workspace_id: row.workspace_id,
@@ -398,30 +210,8 @@ impl From<MergeRow> for DirectMerge {
     }
 }
 
-impl From<MergeRow> for PrMerge {
-    fn from(row: MergeRow) -> Self {
-        PrMerge {
-            id: row.id,
-            workspace_id: row.workspace_id,
-            repo_id: row.repo_id,
-            target_branch_name: row.target_branch_name,
-            pr_info: PullRequestInfo {
-                number: row.pr_number.expect("pr merge must have pr_number"),
-                url: row.pr_url.expect("pr merge must have pr_url"),
-                status: row.pr_status.expect("pr merge must have status"),
-                merged_at: row.pr_merged_at,
-                merge_commit_sha: row.pr_merge_commit_sha,
-            },
-            created_at: row.created_at,
-        }
-    }
-}
-
-impl From<MergeRow> for Merge {
-    fn from(row: MergeRow) -> Self {
-        match row.merge_type {
-            MergeType::Direct => Merge::Direct(DirectMerge::from(row)),
-            MergeType::Pr => Merge::Pr(PrMerge::from(row)),
-        }
+impl From<DirectMergeRow> for Merge {
+    fn from(row: DirectMergeRow) -> Self {
+        Merge::Direct(DirectMerge::from(row))
     }
 }

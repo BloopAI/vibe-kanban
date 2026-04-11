@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from "react";
+import { useParams } from "@tanstack/react-router";
 import WorkspacesUnavailablePage from "@remote/pages/WorkspacesUnavailablePage";
-import { useResolvedRelayWorkspaceHostId } from "@remote/shared/hooks/useResolvedRelayWorkspaceHostId";
 import { useRelayWorkspaceHostHealth } from "@remote/shared/hooks/useRelayWorkspaceHostHealth";
 import { useWorkspaceContext } from "@/shared/hooks/useWorkspaceContext";
 import { useMobileWorkspaceTitle } from "@remote/shared/stores/useMobileWorkspaceTitle";
@@ -24,10 +24,10 @@ function WorkspaceTitleSync() {
 export function RemoteWorkspacesPageShell({
   children,
 }: RemoteWorkspacesPageShellProps) {
-  const resolvedHostId = useResolvedRelayWorkspaceHostId();
-  const hostHealth = useRelayWorkspaceHostHealth(resolvedHostId);
+  const { hostId } = useParams({ strict: false });
+  const hostHealth = useRelayWorkspaceHostHealth(hostId ?? null);
 
-  if (!resolvedHostId) {
+  if (!hostId) {
     return <WorkspacesUnavailablePage />;
   }
 
@@ -35,7 +35,7 @@ export function RemoteWorkspacesPageShell({
     return (
       <WorkspacesUnavailablePage
         blockedHost={{
-          id: resolvedHostId,
+          id: hostId,
           name: null,
         }}
         isCheckingBlockedHost
@@ -47,7 +47,7 @@ export function RemoteWorkspacesPageShell({
     return (
       <WorkspacesUnavailablePage
         blockedHost={{
-          id: resolvedHostId,
+          id: hostId,
           name: null,
           errorMessage: hostHealth.errorMessage,
         }}

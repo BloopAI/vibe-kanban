@@ -1,12 +1,12 @@
 use api_types::{ListMembersResponse, ListOrganizationsResponse};
 use rmcp::{
-    ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
+    ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::McpServer;
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 struct OrganizationSummary {
@@ -62,14 +62,14 @@ struct McpListOrgMembersResponse {
 }
 
 #[tool_router(router = organizations_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(description = "List all the available organizations")]
     async fn list_organizations(&self) -> Result<CallToolResult, ErrorData> {
         let url = self.url("/api/organizations");
         let response: ListOrganizationsResponse = match self.send_json(self.client.get(&url)).await
         {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let org_summaries: Vec<OrganizationSummary> = response
@@ -83,7 +83,7 @@ impl TaskServer {
             })
             .collect();
 
-        TaskServer::success(&McpListOrganizationsResponse {
+        McpServer::success(&McpListOrganizationsResponse {
             count: org_summaries.len(),
             organizations: org_summaries,
         })
@@ -100,13 +100,13 @@ impl TaskServer {
     ) -> Result<CallToolResult, ErrorData> {
         let organization_id = match self.resolve_organization_id(organization_id) {
             Ok(id) => id,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let url = self.url(&format!("/api/organizations/{}/members", organization_id));
         let response: ListMembersResponse = match self.send_json(self.client.get(&url)).await {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let members: Vec<OrganizationMemberSummary> = response
@@ -124,7 +124,7 @@ impl TaskServer {
             })
             .collect();
 
-        TaskServer::success(&McpListOrgMembersResponse {
+        McpServer::success(&McpListOrgMembersResponse {
             organization_id: organization_id.to_string(),
             count: members.len(),
             members,

@@ -1,14 +1,14 @@
 {
   "createDialog": {
-    "title": "Créer une nouvelle organisation",
-    "description": "Créez une nouvelle organisation pour collaborer avec votre équipe.",
-    "nameLabel": "Nom de l'organisation",
-    "namePlaceholder": "ex: Acme Corporation",
-    "slugLabel": "Identifiant",
-    "slugPlaceholder": "ex: acme-corporation",
-    "slugHelper": "Utilisé dans les URLs. Uniquement des lettres minuscules, chiffres et tirets.",
-    "creating": "Création en cours...",
-    "createButton": "Créer l'organisation"
+    "title": "Create New Organization",
+    "description": "Create a new organization to collaborate with your team.",
+    "nameLabel": "Organization Name",
+    "namePlaceholder": "e.g., Acme Corporation",
+    "slugLabel": "Slug",
+    "slugPlaceholder": "e.g., acme-corporation",
+    "slugHelper": "Used in URLs. Lowercase letters, numbers, and hyphens only.",
+    "creating": "Creating...",
+    "createButton": "Create Organization"
   },
   "inviteDialog": {
     "title": "Inviter un membre",
@@ -19,10 +19,7 @@
     "rolePlaceholder": "Sélectionner un rôle",
     "roleHelper": "Les administrateurs peuvent gérer les membres et les paramètres de l'organisation.",
     "sending": "Envoi en cours...",
-    "sendButton": "Envoyer l'invitation",
-    "subscriptionRequired": "Abonnement requis pour ajouter plus de membres",
-    "upgradePrompt": "Mettez à niveau le plan de votre organisation pour inviter des membres supplémentaires.",
-    "upgradeButton": "Mettre à niveau"
+    "sendButton": "Envoyer l'invitation"
   },
   "roles": {
     "member": "Membre",
@@ -40,7 +37,6 @@
     "title": "Invitations en attente",
     "description": "Voir les invitations en attente pour {{orgName}}",
     "loading": "Chargement des invitations...",
-    "none": "Aucune invitation en attente",
     "invited": "Invité le {{date}}",
     "pending": "En attente"
   },
@@ -67,17 +63,6 @@
     "action": "Connexion"
   },
   "confirmRemoveMember": "Êtes-vous sûr de vouloir retirer ce membre de l'organisation ?",
-  "sharedProjects": {
-    "title": "Projets partagés",
-    "description": "Projets distants dans {{orgName}} et leurs liens vers des projets locaux",
-    "loading": "Chargement des projets...",
-    "noProjects": "Aucun projet partagé trouvé dans cette organisation",
-    "notLinked": "Non lié",
-    "linkedTo": "Lié à : {{projectName}}",
-    "linked": "Lié",
-    "linkProject": "Lier un projet...",
-    "noAvailableProjects": "Aucun projet disponible"
-  },
   "billing": {
     "title": "Facturation et abonnement",
     "description": "Gérez l'abonnement et les paramètres de facturation de votre organisation",
@@ -86,7 +71,7 @@
   },
   "personalOrg": {
     "cannotInvite": "Les organisations personnelles ne peuvent pas avoir de membres supplémentaires.",
-    "createOrgPrompt": "Créez une organisation pour collaborer avec d'autres.",
-    "createOrgButton": "Créer une organisation"
+    "createOrgPrompt": "Create an organization to collaborate with others.",
+    "createOrgButton": "Create Organization"
   }
 }

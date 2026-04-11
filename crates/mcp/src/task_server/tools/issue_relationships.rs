@@ -2,13 +2,13 @@ use api_types::{
     CreateIssueRelationshipRequest, IssueRelationship, IssueRelationshipType, MutationResponse,
 };
 use rmcp::{
-    ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
+    ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::McpServer;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpCreateIssueRelationshipRequest {
@@ -40,7 +40,7 @@ struct McpDeleteIssueRelationshipResponse {
 }
 
 #[tool_router(router = issue_relationships_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(
         description = "Create a relationship between two issues. Types: 'blocking', 'related', 'has_duplicate'."
     )]
@@ -63,10 +63,10 @@ impl TaskServer {
         let response: MutationResponse<IssueRelationship> =
             match self.send_json(self.client.post(&url).json(&payload)).await {
                 Ok(r) => r,
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(Self::tool_error(e)),
             };
 
-        TaskServer::success(&McpCreateIssueRelationshipResponse {
+        McpServer::success(&McpCreateIssueRelationshipResponse {
             relationship_id: response.data.id.to_string(),
         })
     }
@@ -83,10 +83,10 @@ impl TaskServer {
             relationship_id
         ));
         if let Err(e) = self.send_empty_json(self.client.delete(&url)).await {
-            return Ok(e);
+            return Ok(Self::tool_error(e));
         }
 
-        TaskServer::success(&McpDeleteIssueRelationshipResponse {
+        McpServer::success(&McpDeleteIssueRelationshipResponse {
             success: true,
             deleted_relationship_id: relationship_id.to_string(),
         })

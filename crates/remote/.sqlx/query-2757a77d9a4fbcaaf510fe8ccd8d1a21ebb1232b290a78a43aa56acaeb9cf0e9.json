@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM pull_requests WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2757a77d9a4fbcaaf510fe8ccd8d1a21ebb1232b290a78a43aa56acaeb9cf0e9"
+}

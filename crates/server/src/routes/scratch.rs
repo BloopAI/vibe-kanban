@@ -14,7 +14,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    routes::relay_ws::{SignedWebSocket, SignedWsUpgrade},
+    middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
 };
 
 /// Path parameters for scratch routes with composite key
@@ -46,7 +46,7 @@ pub async fn create_scratch(
     Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
     Json(payload): Json<CreateScratch>,
 ) -> Result<ResponseJson<ApiResponse<Scratch>>, ApiError> {
-    // Reject edits to draft_follow_up if a message is queued for this task attempt
+    // Reject edits to draft_follow_up if a message is queued for this workspace
     if matches!(scratch_type, ScratchType::DraftFollowUp)
         && deployment.queued_message_service().has_queued(id)
     {
@@ -70,7 +70,7 @@ pub async fn update_scratch(
     Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
     Json(payload): Json<UpdateScratch>,
 ) -> Result<ResponseJson<ApiResponse<Scratch>>, ApiError> {
-    // Reject edits to draft_follow_up if a message is queued for this task attempt
+    // Reject edits to draft_follow_up if a message is queued for this workspace
     if matches!(scratch_type, ScratchType::DraftFollowUp)
         && deployment.queued_message_service().has_queued(id)
     {
@@ -114,7 +114,7 @@ pub async fn stream_scratch_ws(
 }
 
 async fn handle_scratch_ws(
-    mut socket: SignedWebSocket,
+    mut socket: MaybeSignedWebSocket,
     deployment: DeploymentImpl,
     id: Uuid,
     scratch_type: ScratchType,

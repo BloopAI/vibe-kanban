@@ -14,6 +14,7 @@ export function MobileDrawer({ open, onClose, children }: MobileDrawerProps) {
     <>
       {/* Backdrop overlay */}
       <div
+        data-tauri-drag-region
         className={cn(
           'fixed inset-0 bg-black/50 z-[100]',
           'transition-opacity duration-200 ease-out',

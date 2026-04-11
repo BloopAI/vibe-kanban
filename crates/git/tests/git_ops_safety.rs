@@ -74,8 +74,6 @@ fn add_path(repo_path: &Path, path: &str) {
     git.git(repo_path, ["add", path]).unwrap();
 }
 
-use git::DiffTarget;
-
 // Non-conflicting setup used by several tests
 fn setup_repo_with_worktree(root: &TempDir) -> (PathBuf, PathBuf) {
     let repo_path = root.path().join("repo");
@@ -979,15 +977,7 @@ fn sparse_checkout_respected_in_worktree_diffs_and_commit() {
     write_file(&wt, "included/a.txt", "A-mod\n");
     let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
     // get worktree diffs vs main, ensure excluded/b.txt is NOT reported deleted
-    let diffs = s
-        .get_diffs(
-            DiffTarget::Worktree {
-                worktree_path: Path::new(&wt),
-                base_commit: &base_commit,
-            },
-            None,
-        )
-        .unwrap();
+    let diffs = s.get_diffs(Path::new(&wt), &base_commit, None).unwrap();
     assert!(
         diffs
             .iter()
@@ -998,30 +988,6 @@ fn sparse_checkout_respected_in_worktree_diffs_and_commit() {
             .iter()
             .any(|d| d.old_path.as_deref() == Some("excluded/b.txt")
                 || d.new_path.as_deref() == Some("excluded/b.txt"))
-    );
-
-    // commit and verify commit diffs also only include included/ changes
-    let _ = s.commit(&wt, "modify included").unwrap();
-    let head_sha = s.get_head_info(&wt).unwrap().oid;
-    let commit_diffs = s
-        .get_diffs(
-            DiffTarget::Commit {
-                repo_path: Path::new(&wt),
-                commit_sha: &head_sha,
-            },
-            None,
-        )
-        .unwrap();
-    assert!(
-        commit_diffs
-            .iter()
-            .any(|d| d.new_path.as_deref() == Some("included/a.txt"))
-    );
-    assert!(
-        commit_diffs
-            .iter()
-            .all(|d| d.new_path.as_deref() != Some("excluded/b.txt")
-                && d.old_path.as_deref() != Some("excluded/b.txt"))
     );
 }
 
@@ -1048,15 +1014,7 @@ fn worktree_diff_ignores_commits_where_base_branch_is_ahead() {
     write_file(&wt, "feature.txt", "feature change\n");
     let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
 
-    let diffs = s
-        .get_diffs(
-            DiffTarget::Worktree {
-                worktree_path: Path::new(&wt),
-                base_commit: &base_commit,
-            },
-            None,
-        )
-        .unwrap();
+    let diffs = s.get_diffs(Path::new(&wt), &base_commit, None).unwrap();
 
     assert!(
         diffs
@@ -1151,26 +1109,9 @@ fn merge_rename_vs_modify_conflict_does_not_move_ref() {
             assert_eq!(before, after, "main unchanged on conflict");
         }
         Ok(sha) => {
-            // ensure main advanced and result contains either renamed or modified content
+            // ensure main advanced
             let after = s.get_branch_oid(&repo_path, "main").unwrap();
             assert_eq!(after, sha);
-            let diffs = s
-                .get_diffs(
-                    DiffTarget::Commit {
-                        repo_path: Path::new(&repo_path),
-                        commit_sha: &after,
-                    },
-                    None,
-                )
-                .unwrap();
-            let has_renamed = diffs
-                .iter()
-                .any(|d| d.new_path.as_deref() == Some("conflict_renamed.txt"));
-            let has_modified = diffs.iter().any(|d| {
-                d.new_path.as_deref() == Some("conflict.txt")
-                    && d.new_content.as_deref() == Some("main change\n")
-            });
-            assert!(has_renamed || has_modified);
         }
     }
 }

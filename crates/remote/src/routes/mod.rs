@@ -1,11 +1,7 @@
-use axum::{
-    Json, Router,
-    http::header::HeaderName,
-    middleware,
-    routing::get,
-};
+use axum::{Json, Router, http::header::HeaderName, middleware, routing::get};
 use serde::Serialize;
 use tower_http::{
+    compression::CompressionLayer,
     cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, RequestId, SetRequestIdLayer},
     services::{ServeDir, ServeFile},
@@ -22,16 +18,17 @@ mod billing {
     use axum::Router;
 
     use crate::AppState;
-    pub fn public_router() -> Router<AppState> {
+    pub(super) fn public_router() -> Router<AppState> {
         Router::new()
     }
-    pub fn protected_router() -> Router<AppState> {
+    pub(super) fn protected_router() -> Router<AppState> {
         Router::new()
     }
 }
+pub mod attachments;
 pub(crate) mod electric_proxy;
 pub(crate) mod error;
-pub mod attachments;
+mod export;
 mod github_app;
 pub mod hosts;
 mod identity;
@@ -42,19 +39,18 @@ pub mod issue_followers;
 pub mod issue_relationships;
 pub mod issue_tags;
 pub mod issues;
-mod migration;
 pub mod notifications;
 mod oauth;
 pub(crate) mod organization_members;
 mod organizations;
 pub mod project_statuses;
 pub mod projects;
+pub mod pull_request_issues;
 mod pull_requests;
 mod review;
 pub mod tags;
 mod tokens;
 mod workspaces;
-
 
 pub fn router(state: AppState) -> Router {
     let trace_layer = TraceLayer::new_for_http()
@@ -69,14 +65,16 @@ pub fn router(state: AppState) -> Router {
                     "http_request",
                     method = %request.method(),
                     uri = %request.uri(),
-                    request_id = field::Empty
+                    request_id = field::Empty,
+                    user_id = field::Empty
                 )
             } else {
                 tracing::debug_span!(
                     "http_request",
                     method = %request.method(),
                     uri = %request.uri(),
-                    request_id = field::Empty
+                    request_id = field::Empty,
+                    user_id = field::Empty
                 )
             };
             if let Some(request_id) = request_id {
@@ -130,11 +128,12 @@ pub fn router(state: AppState) -> Router {
         .merge(issue_followers::router())
         .merge(issue_tags::router())
         .merge(issue_relationships::router())
+        .merge(pull_request_issues::router())
         .merge(pull_requests::router())
         .merge(notifications::router())
         .merge(workspaces::router())
         .merge(billing::protected_router())
-        .merge(migration::router())
+        .merge(export::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,
@@ -148,6 +147,7 @@ pub fn router(state: AppState) -> Router {
         .nest("/v1", v1_public)
         .nest("/v1", v1_protected)
         .fallback_service(spa)
+        .layer(CompressionLayer::new())
         .layer(middleware::from_fn(
             crate::middleware::version::add_version_headers,
         ))
@@ -196,5 +196,6 @@ pub fn all_mutation_definitions() -> Vec<crate::mutation_definition::MutationDef
         issue_relationships::mutation().definition(),
         issue_comments::mutation().definition(),
         issue_comment_reactions::mutation().definition(),
+        pull_request_issues::mutation().definition(),
     ]
 }

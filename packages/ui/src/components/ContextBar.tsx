@@ -1,4 +1,9 @@
-import type { CSSProperties, MouseEvent, ReactNode } from 'react';
+import {
+  forwardRef,
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
 import type { Icon } from '@phosphor-icons/react';
 import { cn } from '../lib/cn';
 import { Tooltip } from './Tooltip';
@@ -11,33 +16,33 @@ interface ContextBarButtonProps {
   disabled?: boolean;
 }
 
-function ContextBarButton({
-  icon: IconComponent,
-  label,
-  iconClassName,
-  onClick,
-  disabled,
-}: ContextBarButtonProps) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        'flex items-center justify-center transition-colors',
-        'drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]',
-        'text-low group-hover:text-normal',
-        disabled && 'opacity-40'
-      )}
-      aria-label={label}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      <IconComponent
-        className={cn('size-icon-base', iconClassName)}
-        weight="bold"
-      />
-    </button>
-  );
-}
+const ContextBarButton = forwardRef<HTMLButtonElement, ContextBarButtonProps>(
+  function ContextBarButton(
+    { icon: IconComponent, label, iconClassName, onClick, disabled },
+    ref
+  ) {
+    return (
+      <button
+        ref={ref}
+        type="button"
+        className={cn(
+          'flex items-center justify-center transition-colors',
+          'drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]',
+          'text-low group-hover:text-normal',
+          disabled && 'opacity-40'
+        )}
+        aria-label={label}
+        onClick={onClick}
+        disabled={disabled}
+      >
+        <IconComponent
+          className={cn('size-icon-base', iconClassName)}
+          weight="bold"
+        />
+      </button>
+    );
+  }
+);
 
 function DragHandle({
   onMouseDown,

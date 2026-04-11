@@ -2,13 +2,13 @@ use api_types::{
     CreateIssueTagRequest, IssueTag, ListIssueTagsResponse, ListTagsResponse, MutationResponse,
 };
 use rmcp::{
-    ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
+    ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::McpServer;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListTagsRequest {
@@ -86,7 +86,7 @@ struct McpRemoveIssueTagResponse {
 }
 
 #[tool_router(router = issue_tags_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(
         description = "List tags for a project. `project_id` is optional if running inside a workspace linked to a remote project."
     )]
@@ -96,13 +96,13 @@ impl TaskServer {
     ) -> Result<CallToolResult, ErrorData> {
         let project_id = match self.resolve_project_id(project_id) {
             Ok(id) => id,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let url = self.url(&format!("/api/remote/tags?project_id={}", project_id));
         let response: ListTagsResponse = match self.send_json(self.client.get(&url)).await {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let tags = response
@@ -116,7 +116,7 @@ impl TaskServer {
             })
             .collect::<Vec<_>>();
 
-        TaskServer::success(&McpListTagsResponse {
+        McpServer::success(&McpListTagsResponse {
             project_id: project_id.to_string(),
             count: tags.len(),
             tags,
@@ -131,7 +131,7 @@ impl TaskServer {
         let url = self.url(&format!("/api/remote/issue-tags?issue_id={}", issue_id));
         let response: ListIssueTagsResponse = match self.send_json(self.client.get(&url)).await {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let issue_tags = response
@@ -144,7 +144,7 @@ impl TaskServer {
             })
             .collect::<Vec<_>>();
 
-        TaskServer::success(&McpListIssueTagsResponse {
+        McpServer::success(&McpListIssueTagsResponse {
             issue_id: issue_id.to_string(),
             count: issue_tags.len(),
             issue_tags,
@@ -166,10 +166,10 @@ impl TaskServer {
         let response: MutationResponse<IssueTag> =
             match self.send_json(self.client.post(&url).json(&payload)).await {
                 Ok(r) => r,
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(Self::tool_error(e)),
             };
 
-        TaskServer::success(&McpAddIssueTagResponse {
+        McpServer::success(&McpAddIssueTagResponse {
             issue_tag_id: response.data.id.to_string(),
         })
     }
@@ -181,10 +181,10 @@ impl TaskServer {
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/remote/issue-tags/{}", issue_tag_id));
         if let Err(e) = self.send_empty_json(self.client.delete(&url)).await {
-            return Ok(e);
+            return Ok(Self::tool_error(e));
         }
 
-        TaskServer::success(&McpRemoveIssueTagResponse {
+        McpServer::success(&McpRemoveIssueTagResponse {
             success: true,
             issue_tag_id: issue_tag_id.to_string(),
         })

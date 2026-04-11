@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE auth_sessions\n            SET refresh_token_id = $3,\n                refresh_token_issued_at = NOW(),\n                previous_refresh_token_id = $2,\n                previous_refresh_token_grace_expires_at = NOW() + make_interval(secs => $4)\n            WHERE id = $1\n              AND refresh_token_id = $2\n            RETURNING user_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cabb4a76f2c871b52342d03f42083ef553be069f5c9e56cdfa7cca1f6eaf9961"
+}

@@ -29,7 +29,7 @@ export function AppBarButton({
         'transition-colors cursor-pointer',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
         isActive
-          ? 'bg-brand/20 text-brand'
+          ? 'bg-brand/20 text-brand hover:bg-brand/20'
           : 'bg-primary text-normal hover:bg-brand/10',
         className
       )}

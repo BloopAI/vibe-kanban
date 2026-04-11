@@ -3,6 +3,8 @@ import { useLocation } from "@tanstack/react-router";
 import { useWorkspaceContext } from "@/shared/hooks/useWorkspaceContext";
 import { useActions } from "@/shared/hooks/useActions";
 import { useSyncErrorContext } from "@/shared/hooks/useSyncErrorContext";
+import { useUserOrganizations } from "@/shared/hooks/useUserOrganizations";
+import { useOrganizationStore } from "@/shared/stores/useOrganizationStore";
 import { Navbar, type NavbarSectionItem } from "@vibe/ui/components/Navbar";
 import { NavbarActionGroups } from "@/shared/actions";
 import {
@@ -19,7 +21,7 @@ import {
 } from "@/shared/types/actions";
 import { useActionVisibilityContext } from "@/shared/hooks/useActionVisibilityContext";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
-import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
+import { CommandBarDialog } from "@/shared/dialogs/command-bar/CommandBarDialog";
 
 /**
  * Check if a NavbarItem is a divider
@@ -91,9 +93,9 @@ function toNavbarSectionItems(
 }
 
 /**
- * Desktop-only navbar for remote workspace pages.
+ * Desktop navbar for remote workspace and project pages.
  *
- * This component is ONLY mounted on workspace detail routes (/workspaces/:id)
+ * Mounted on workspace detail routes (/workspaces/:id) and project routes (/projects/:id)
  * where all required providers (ActionsProvider, WorkspaceProvider, etc.) are available.
  *
  * Mobile navbar is handled separately by RemoteNavbarContainer.
@@ -104,7 +106,14 @@ export function RemoteDesktopNavbar() {
   const syncErrorContext = useSyncErrorContext();
   const location = useLocation();
 
-  const isOnProjectPage = location.pathname.startsWith("/projects/");
+  const isOnProjectPage =
+    /^\/projects\/[^/]+/.test(location.pathname) ||
+    /^\/hosts\/[^/]+\/projects\/[^/]+/.test(location.pathname);
+
+  const { data: orgsData } = useUserOrganizations();
+  const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
+  const orgName =
+    orgsData?.organizations.find((o) => o.id === selectedOrgId)?.name ?? "";
 
   const actionCtx = useActionVisibilityContext();
 
@@ -119,44 +128,45 @@ export function RemoteDesktopNavbar() {
     [executeAction, selectedWorkspace?.id],
   );
 
-  const isMigratePage = actionCtx.layoutMode === "migrate";
-
   const leftItems = useMemo(
     () =>
-      isMigratePage
-        ? []
-        : toNavbarSectionItems(
-            filterNavbarItems(NavbarActionGroups.left, actionCtx),
-            actionCtx,
-            handleExecuteAction,
-          ),
-    [actionCtx, handleExecuteAction, isMigratePage],
+      toNavbarSectionItems(
+        filterNavbarItems(NavbarActionGroups.left, actionCtx),
+        actionCtx,
+        handleExecuteAction,
+      ),
+    [actionCtx, handleExecuteAction],
   );
 
   const rightItems = useMemo(
     () =>
-      isMigratePage
-        ? []
-        : toNavbarSectionItems(
-            filterNavbarItems(NavbarActionGroups.right, actionCtx),
-            actionCtx,
-            handleExecuteAction,
-          ),
-    [actionCtx, handleExecuteAction, isMigratePage],
+      toNavbarSectionItems(
+        filterNavbarItems(NavbarActionGroups.right, actionCtx),
+        actionCtx,
+        handleExecuteAction,
+      ),
+    [actionCtx, handleExecuteAction],
   );
 
   const handleOpenSettings = useCallback(() => {
-    SettingsDialog.show({ sections: REMOTE_SETTINGS_SECTIONS });
+    SettingsDialog.show();
   }, []);
+
+  const handleOpenCommandBar = useCallback(() => {
+    CommandBarDialog.show();
+  }, []);
+
+  const navbarTitle = isOnProjectPage ? orgName : selectedWorkspace?.branch;
 
   return (
     <Navbar
-      workspaceTitle={selectedWorkspace?.branch}
+      workspaceTitle={navbarTitle}
       leftItems={leftItems}
       rightItems={rightItems}
       syncErrors={syncErrorContext?.errors}
       isOnProjectPage={isOnProjectPage}
       onOpenSettings={handleOpenSettings}
+      onOpenCommandBar={handleOpenCommandBar}
     />
   );
 }

@@ -5,7 +5,11 @@ import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin';
-import { $createTextNode, KEY_ESCAPE_COMMAND } from 'lexical';
+import {
+  $createTextNode,
+  KEY_ESCAPE_COMMAND,
+  COMMAND_PRIORITY_NORMAL,
+} from 'lexical';
 import { TerminalIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { useTypeaheadOpen } from './TypeaheadOpenContext';
@@ -91,6 +95,7 @@ export function SlashCommandTypeaheadPlugin({
 
   return (
     <LexicalTypeaheadMenuPlugin<SlashCommandOption>
+      commandPriority={COMMAND_PRIORITY_NORMAL}
       triggerFn={(text) => {
         const match = /^(\s*)\/([^\s/]*)$/.exec(text);
         if (!match) return null;

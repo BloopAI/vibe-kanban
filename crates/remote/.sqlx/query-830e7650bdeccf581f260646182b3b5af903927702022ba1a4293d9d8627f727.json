@@ -1,0 +1,117 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH existing AS (\n                SELECT id FROM notifications\n                WHERE user_id = $3\n                  AND notification_type = $4\n                  AND issue_id IS NOT DISTINCT FROM $6\n                  AND comment_id IS NOT DISTINCT FROM $7\n                  AND created_at > NOW() - INTERVAL '1 minute'\n                ORDER BY created_at DESC\n                LIMIT 1\n            ),\n            updated AS (\n                UPDATE notifications\n                SET payload = $5,\n                    seen = FALSE,\n                    dismissed_at = NULL,\n                    created_at = $8\n                WHERE id = (SELECT id FROM existing)\n                RETURNING\n                    id,\n                    organization_id,\n                    user_id,\n                    notification_type,\n                    payload,\n                    issue_id,\n                    comment_id,\n                    seen,\n                    dismissed_at,\n                    created_at\n            ),\n            inserted AS (\n                INSERT INTO notifications (id, organization_id, user_id, notification_type, payload, issue_id, comment_id, created_at)\n                SELECT $1, $2, $3, $4, $5, $6, $7, $8\n                WHERE NOT EXISTS (SELECT 1 FROM existing)\n                RETURNING\n                    id,\n                    organization_id,\n                    user_id,\n                    notification_type,\n                    payload,\n                    issue_id,\n                    comment_id,\n                    seen,\n                    dismissed_at,\n                    created_at\n            )\n            SELECT\n                id as \"id!\",\n                organization_id as \"organization_id!\",\n                user_id as \"user_id!\",\n                notification_type as \"notification_type!: NotificationType\",\n                payload as \"payload!: sqlx::types::Json<NotificationPayload>\",\n                issue_id,\n                comment_id,\n                seen as \"seen!\",\n                dismissed_at,\n                created_at as \"created_at!\"\n            FROM updated\n            UNION ALL\n            SELECT\n                id as \"id!\",\n                organization_id as \"organization_id!\",\n                user_id as \"user_id!\",\n                notification_type as \"notification_type!: NotificationType\",\n                payload as \"payload!: sqlx::types::Json<NotificationPayload>\",\n                issue_id,\n                comment_id,\n                seen as \"seen!\",\n                dismissed_at,\n                created_at as \"created_at!\"\n            FROM inserted\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "notification_type!: NotificationType",
+        "type_info": {
+          "Custom": {
+            "name": "notification_type",
+            "kind": {
+              "Enum": [
+                "issue_comment_added",
+                "issue_status_changed",
+                "issue_assignee_changed",
+                "issue_deleted",
+                "issue_title_changed",
+                "issue_description_changed",
+                "issue_priority_changed",
+                "issue_unassigned",
+                "issue_comment_reaction"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "payload!: sqlx::types::Json<NotificationPayload>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "issue_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "comment_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "seen!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "dismissed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        {
+          "Custom": {
+            "name": "notification_type",
+            "kind": {
+              "Enum": [
+                "issue_comment_added",
+                "issue_status_changed",
+                "issue_assignee_changed",
+                "issue_deleted",
+                "issue_title_changed",
+                "issue_description_changed",
+                "issue_priority_changed",
+                "issue_unassigned",
+                "issue_comment_reaction"
+              ]
+            }
+          }
+        },
+        "Jsonb",
+        "Uuid",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "830e7650bdeccf581f260646182b3b5af903927702022ba1a4293d9d8627f727"
+}

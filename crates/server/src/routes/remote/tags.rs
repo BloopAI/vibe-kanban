@@ -12,11 +12,11 @@ use uuid::Uuid;
 use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize)]
-pub struct ListTagsQuery {
+pub(super) struct ListTagsQuery {
     pub project_id: Uuid,
 }
 
-pub fn router() -> Router<DeploymentImpl> {
+pub(super) fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/tags", get(list_tags))
         .route("/tags/{tag_id}", get(get_tag))

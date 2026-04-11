@@ -6,13 +6,13 @@ use std::{
     time::Duration,
 };
 
-use command_group::AsyncCommandGroup;
 use convert_case::{Case, Casing};
 use tokio::{
     fs,
     io::{AsyncBufReadExt, BufReader},
     process::Command,
 };
+use workspace_utils::command_ext::GroupSpawnNoWindowExt;
 
 use super::{ClaudeCode, ClaudeJson, ClaudePlugin, base_command};
 use crate::{
@@ -237,7 +237,7 @@ impl ClaudeCode {
             command.env_remove("ANTHROPIC_API_KEY");
         }
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
         let stdout = child.inner().stdout.take().ok_or_else(|| {
             ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
         })?;
@@ -279,49 +279,6 @@ impl ClaudeCode {
         };
 
         Ok(result)
-    }
-
-    pub async fn discover_available_slash_commands(
-        &self,
-        current_dir: &Path,
-    ) -> Result<Vec<SlashCommandDescription>, ExecutorError> {
-        let (names, plugins, _) = self
-            .discover_available_command_and_plugins(current_dir)
-            .await?;
-
-        let descriptions = Self::discover_custom_command_descriptions(current_dir, &plugins).await;
-
-        let builtin: HashSet<String> = Self::hardcoded_slash_commands()
-            .iter()
-            .map(|c| c.name.clone())
-            .collect();
-
-        let mut seen = HashSet::new();
-        let names = names
-            .into_iter()
-            .filter(|name| !name.is_empty() && !builtin.contains(name) && seen.insert(name.clone()))
-            .collect::<Vec<_>>();
-
-        let commands: Vec<SlashCommandDescription> = names
-            .into_iter()
-            .map(|name| SlashCommandDescription {
-                name: name.to_string(),
-                description: descriptions.get(&name).cloned(),
-            })
-            .collect();
-
-        Ok(commands)
-    }
-
-    pub async fn discover_available_agents(
-        &self,
-        current_dir: &Path,
-    ) -> Result<Vec<AgentInfo>, ExecutorError> {
-        let (_, _, agents) = self
-            .discover_available_command_and_plugins(current_dir)
-            .await?;
-
-        Ok(Self::map_discovered_agents(agents))
     }
 
     pub async fn discover_agents_and_slash_commands_initial(

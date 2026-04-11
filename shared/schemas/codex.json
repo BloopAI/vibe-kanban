@@ -127,6 +127,10 @@
         "null"
       ]
     },
+    "plan": {
+      "type": "boolean",
+      "default": false
+    },
     "base_command_override": {
       "title": "Base Command Override",
       "description": "Override the base command with a custom command",

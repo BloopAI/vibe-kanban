@@ -18,6 +18,11 @@ pub struct WorkspaceRepoInput {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
+pub struct CreateWorkspaceApiRequest {
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct LinkedIssueInfo {
     pub remote_project_id: Uuid,
     pub issue_id: Uuid,
@@ -30,7 +35,7 @@ pub struct CreateAndStartWorkspaceRequest {
     pub linked_issue: Option<LinkedIssueInfo>,
     pub executor_config: ExecutorConfig,
     pub prompt: String,
-    pub image_ids: Option<Vec<Uuid>>,
+    pub attachment_ids: Option<Vec<Uuid>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -43,5 +48,10 @@ pub struct CreateAndStartWorkspaceResponse {
 pub struct UpdateWorkspace {
     pub archived: Option<bool>,
     pub pinned: Option<bool>,
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct UpdateSession {
     pub name: Option<String>,
 }

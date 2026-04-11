@@ -15,7 +15,7 @@ export async function buildRelaySigningSessionRefreshPayload(
   privateKeyJwk: JsonWebKey
 ): Promise<RelaySigningSessionRefreshPayload> {
   const timestamp = Math.floor(Date.now() / 1000);
-  const nonce = crypto.randomUUID().replace(/-/g, '');
+  const nonce = crypto.randomUUID();
   const message = buildRelaySigningSessionRefreshMessage(
     timestamp,
     nonce,

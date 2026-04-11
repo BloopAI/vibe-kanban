@@ -6,7 +6,6 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowDownIcon, ArrowsOutIcon, XIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
@@ -16,10 +15,9 @@ import { ExecutionProcessesProvider } from '@/shared/providers/ExecutionProcesse
 import { ApprovalFeedbackProvider } from '@/features/workspace-chat/model/contexts/ApprovalFeedbackContext';
 import { EntriesProvider } from '@/features/workspace-chat/model/contexts/EntriesContext';
 import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/MessageEditContext';
-import { CreateModeProvider } from '@/integrations/CreateModeProvider';
+import { CreateModeProvider } from '@/features/create-mode/model/CreateModeProvider';
 import { useWorkspaceSessions } from '@/shared/hooks/useWorkspaceSessions';
-import { useAttempt } from '@/shared/hooks/useAttempt';
-import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
+import { useWorkspaceRecord } from '@/shared/hooks/useWorkspaceRecord';
 import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
 import { CreateChatBoxContainer } from '@/shared/components/CreateChatBoxContainer';
 import { KanbanIssuePanelContainer } from './KanbanIssuePanelContainer';
@@ -29,7 +27,13 @@ import {
 } from '@/features/workspace-chat/ui/ConversationListContainer';
 import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryUiContext';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
-import { toWorkspace } from '@/shared/lib/routes/navigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
+import {
+  buildKanbanIssueComposerKey,
+  closeKanbanIssueComposer,
+  useKanbanIssueComposer,
+} from '@/shared/stores/useKanbanIssueComposerStore';
 
 interface WorkspaceSessionPanelProps {
   workspaceId: string;
@@ -135,14 +139,14 @@ function WorkspaceSessionPanel({
   workspaceId,
   onClose,
 }: WorkspaceSessionPanelProps) {
-  const navigate = useNavigate();
-  const { issueId: routeIssueId, openIssue } = useKanbanNavigation();
+  const appNavigation = useAppNavigation();
   const { projectId, getIssue } = useProjectContext();
+  const routeState = useCurrentKanbanRouteState();
   const { workspaces: remoteWorkspaces } = useUserContext();
   const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
   const conversationListRef = useRef<ConversationListHandle>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
-  const { data: workspace, isLoading: isWorkspaceLoading } = useAttempt(
+  const { data: workspace, isLoading: isWorkspaceLoading } = useWorkspaceRecord(
     workspaceId,
     { enabled: !!workspaceId }
   );
@@ -174,7 +178,7 @@ function WorkspaceSessionPanel({
   );
 
   const linkedIssueId = linkedWorkspace?.issue_id ?? null;
-  const breadcrumbIssueId = routeIssueId ?? linkedIssueId;
+  const breadcrumbIssueId = routeState.issueId ?? linkedIssueId;
 
   const issueSimpleId = useMemo(() => {
     if (!breadcrumbIssueId) return null;
@@ -184,16 +188,16 @@ function WorkspaceSessionPanel({
   const workspaceBranch = workspace?.branch ?? workspaceSummary?.branch ?? null;
 
   const handleOpenIssuePanel = useCallback(() => {
-    if (breadcrumbIssueId) {
-      openIssue(breadcrumbIssueId);
+    if (projectId && breadcrumbIssueId) {
+      appNavigation.goToProjectIssue(projectId, breadcrumbIssueId);
       return;
     }
     onClose();
-  }, [breadcrumbIssueId, openIssue, onClose]);
+  }, [projectId, breadcrumbIssueId, appNavigation, onClose]);
 
   const handleOpenWorkspaceView = useCallback(() => {
-    navigate(toWorkspace(workspaceId));
-  }, [navigate, workspaceId]);
+    appNavigation.goToWorkspace(workspaceId);
+  }, [appNavigation, workspaceId]);
 
   const breadcrumbButtonClass =
     'min-w-0 text-sm text-normal truncate rounded-sm px-1 py-0.5 hover:bg-panel hover:text-high transition-colors';
@@ -207,9 +211,20 @@ function WorkspaceSessionPanel({
     conversationListRef.current?.scrollToPreviousUserMessage();
   }, []);
 
-  const handleScrollToBottom = useCallback(() => {
-    conversationListRef.current?.scrollToBottom();
+  const handleScrollToUserMessage = useCallback((patchKey: string) => {
+    conversationListRef.current?.scrollToEntryByPatchKey(patchKey);
   }, []);
+
+  const handleGetActiveTurnPatchKey = useCallback(() => {
+    return conversationListRef.current?.getVisibleUserMessagePatchKey() ?? null;
+  }, []);
+
+  const handleScrollToBottom = useCallback(
+    (behavior: 'auto' | 'smooth' = 'smooth') => {
+      conversationListRef.current?.scrollToBottom(behavior);
+    },
+    []
+  );
 
   const handleAtBottomChange = useCallback((atBottom: boolean) => {
     setIsAtBottom(atBottom);
@@ -268,11 +283,13 @@ function WorkspaceSessionPanel({
               {workspaceWithSession ? (
                 <div className="flex flex-1 min-h-0 overflow-hidden justify-center">
                   <div className="w-chat max-w-full h-full">
-                    <RetryUiProvider attemptId={workspaceWithSession.id}>
+                    <RetryUiProvider workspaceId={workspaceWithSession.id}>
                       <ConversationList
+                        key={`${workspaceId}-${selectedSessionId ?? 'new'}`}
                         ref={conversationListRef}
                         attempt={workspaceWithSession}
                         onAtBottomChange={handleAtBottomChange}
+                        sessionScopeId={selectedSessionId}
                       />
                     </RetryUiProvider>
                   </div>
@@ -286,7 +303,7 @@ function WorkspaceSessionPanel({
                   <div className="w-chat max-w-full relative">
                     <button
                       type="button"
-                      onClick={handleScrollToBottom}
+                      onClick={() => handleScrollToBottom('auto')}
                       className="absolute bottom-2 right-4 z-10 pointer-events-auto flex items-center justify-center size-8 rounded-full bg-secondary/80 backdrop-blur-sm border border-secondary text-low hover:text-normal hover:bg-secondary shadow-md transition-all"
                       aria-label="Scroll to bottom"
                       title="Scroll to bottom"
@@ -327,6 +344,8 @@ function WorkspaceSessionPanel({
                   showOpenWorkspaceButton
                   onScrollToPreviousMessage={handleScrollToPreviousMessage}
                   onScrollToBottom={handleScrollToBottom}
+                  onScrollToUserMessage={handleScrollToUserMessage}
+                  getActiveTurnPatchKey={handleGetActiveTurnPatchKey}
                 />
               </div>
             </div>
@@ -338,22 +357,64 @@ function WorkspaceSessionPanel({
 }
 
 export function ProjectRightSidebarContainer() {
-  const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const {
+    projectId,
     getIssue,
     isLoading: isProjectLoading,
     issuesById,
   } = useProjectContext();
-  const {
-    issueId,
-    workspaceId,
-    draftId,
-    isCreateMode,
-    isWorkspaceCreateMode,
-    openIssue,
-    openIssueWorkspace,
-    closePanel,
-  } = useKanbanNavigation();
+  const routeState = useCurrentKanbanRouteState();
+  const { issueId, workspaceId, draftId, isWorkspaceCreateMode, hostId } =
+    routeState;
+  const issueComposerKey = useMemo(() => {
+    if (!projectId) {
+      return null;
+    }
+
+    return buildKanbanIssueComposerKey(hostId, projectId);
+  }, [hostId, projectId]);
+  const issueComposer = useKanbanIssueComposer(issueComposerKey);
+  const isCreateMode = issueComposer !== null;
+  const openIssue = useCallback(
+    (targetIssueId: string) => {
+      if (!projectId) {
+        return;
+      }
+
+      if (isCreateMode && issueComposerKey) {
+        closeKanbanIssueComposer(issueComposerKey);
+      }
+
+      appNavigation.goToProjectIssue(projectId, targetIssueId);
+    },
+    [projectId, isCreateMode, issueComposerKey, appNavigation]
+  );
+  const openIssueWorkspace = useCallback(
+    (targetIssueId: string, targetWorkspaceId: string) => {
+      if (!projectId) {
+        return;
+      }
+
+      appNavigation.goToProjectIssueWorkspace(
+        projectId,
+        targetIssueId,
+        targetWorkspaceId
+      );
+    },
+    [projectId, appNavigation]
+  );
+  const closePanel = useCallback(() => {
+    if (!projectId) {
+      return;
+    }
+
+    if (isCreateMode && issueComposerKey) {
+      closeKanbanIssueComposer(issueComposerKey);
+    }
+
+    appNavigation.goToProject(projectId);
+  }, [projectId, isCreateMode, issueComposerKey, appNavigation]);
   const [expectedIssueId, setExpectedIssueId] = useState<string | null>(null);
 
   const markExpectedIssue = useCallback((nextIssueId: string) => {
@@ -398,6 +459,10 @@ export function ProjectRightSidebarContainer() {
   ]);
 
   const rightPanelState = useMemo<RightPanelState>(() => {
+    if (isCreateMode) {
+      return { kind: 'create-issue' };
+    }
+
     if (isWorkspaceCreateMode) {
       if (draftId) {
         return {
@@ -411,10 +476,6 @@ export function ProjectRightSidebarContainer() {
 
     if (workspaceId) {
       return { kind: 'issue-workspace', workspaceId };
-    }
-
-    if (isCreateMode) {
-      return { kind: 'create-issue' };
     }
 
     if (issueId) {
@@ -449,9 +510,9 @@ export function ProjectRightSidebarContainer() {
         return;
       }
 
-      navigate(toWorkspace(createdWorkspaceId));
+      appNavigation.goToWorkspace(createdWorkspaceId);
     },
-    [issueId, openIssueWorkspace, navigate]
+    [issueId, openIssueWorkspace, appNavigation]
   );
 
   useEffect(() => {

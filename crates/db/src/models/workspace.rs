@@ -11,6 +11,7 @@ const WORKSPACE_NAME_MAX_LEN: usize = 60;
 
 use super::{
     execution_process::ExecutorActionField,
+    session::Session,
     workspace_repo::{RepoWithTargetBranch, WorkspaceRepo},
 };
 
@@ -31,19 +32,25 @@ pub struct ContainerInfo {
     pub workspace_id: Uuid,
 }
 
+#[derive(Debug)]
+struct WorkspaceContainerRefRow {
+    id: Uuid,
+    container_ref: String,
+}
+
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct Workspace {
     pub id: Uuid,
     pub task_id: Option<Uuid>,
     pub container_ref: Option<String>,
     pub branch: String,
-    pub agent_working_dir: Option<String>,
     pub setup_completed_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub archived: bool,
     pub pinned: bool,
     pub name: Option<String>,
+    pub worktree_deleted: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -67,23 +74,17 @@ pub struct CreateFollowUpAttempt {
     pub prompt: String,
 }
 
-/// Context data for resume operations (simplified)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AttemptResumeContext {
-    pub execution_history: String,
-    pub cumulative_diffs: String,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkspaceContext {
     pub workspace: Workspace,
     pub workspace_repos: Vec<RepoWithTargetBranch>,
+    pub orchestrator_session_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateWorkspace {
     pub branch: String,
-    pub agent_working_dir: Option<String>,
+    pub name: Option<String>,
 }
 
 impl Workspace {
@@ -95,13 +96,13 @@ impl Workspace {
                           task_id AS "task_id: Uuid",
                           container_ref,
                           branch,
-                          agent_working_dir,
                           setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                           created_at AS "created_at!: DateTime<Utc>",
                           updated_at AS "updated_at!: DateTime<Utc>",
                           archived AS "archived!: bool",
                           pinned AS "pinned!: bool",
-                          name
+                          name,
+                          worktree_deleted AS "worktree_deleted!: bool"
                    FROM workspaces
                    ORDER BY created_at DESC"#
         )
@@ -123,10 +124,14 @@ impl Workspace {
 
         let workspace_repos =
             WorkspaceRepo::find_repos_with_target_branch_for_workspace(pool, workspace_id).await?;
+        let orchestrator_session_id = Session::find_first_by_workspace_id(pool, workspace_id)
+            .await?
+            .map(|session| session.id);
 
         Ok(WorkspaceContext {
             workspace,
             workspace_repos,
+            orchestrator_session_id,
         })
     }
 
@@ -148,12 +153,25 @@ impl Workspace {
         Ok(())
     }
 
-    pub async fn clear_container_ref(
+    pub async fn mark_worktree_deleted(
         pool: &SqlitePool,
         workspace_id: Uuid,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE workspaces SET container_ref = NULL, updated_at = datetime('now') WHERE id = ?",
+            "UPDATE workspaces SET worktree_deleted = TRUE, updated_at = datetime('now') WHERE id = ?",
+            workspace_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn clear_worktree_deleted(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE workspaces SET worktree_deleted = FALSE, updated_at = datetime('now') WHERE id = ?",
             workspace_id
         )
         .execute(pool)
@@ -180,13 +198,13 @@ impl Workspace {
                        task_id           AS "task_id: Uuid",
                        container_ref,
                        branch,
-                       agent_working_dir,
                        setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        created_at        AS "created_at!: DateTime<Utc>",
                        updated_at        AS "updated_at!: DateTime<Utc>",
                        archived          AS "archived!: bool",
                        pinned            AS "pinned!: bool",
-                       name
+                       name,
+                       worktree_deleted  AS "worktree_deleted!: bool"
                FROM    workspaces
                WHERE   id = $1"#,
             id
@@ -202,13 +220,13 @@ impl Workspace {
                        task_id           AS "task_id: Uuid",
                        container_ref,
                        branch,
-                       agent_working_dir,
                        setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        created_at        AS "created_at!: DateTime<Utc>",
                        updated_at        AS "updated_at!: DateTime<Utc>",
                        archived          AS "archived!: bool",
                        pinned            AS "pinned!: bool",
-                       name
+                       name,
+                       worktree_deleted  AS "worktree_deleted!: bool"
                FROM    workspaces
                WHERE   rowid = $1"#,
             rowid
@@ -245,17 +263,18 @@ impl Workspace {
                 w.task_id as "task_id: Uuid",
                 w.container_ref,
                 w.branch as "branch!",
-                w.agent_working_dir,
                 w.setup_completed_at as "setup_completed_at: DateTime<Utc>",
                 w.created_at as "created_at!: DateTime<Utc>",
                 w.updated_at as "updated_at!: DateTime<Utc>",
                 w.archived as "archived!: bool",
                 w.pinned as "pinned!: bool",
-                w.name
+                w.name,
+                w.worktree_deleted as "worktree_deleted!: bool"
             FROM workspaces w
             LEFT JOIN sessions s ON w.id = s.workspace_id
             LEFT JOIN execution_processes ep ON s.id = ep.session_id AND ep.completed_at IS NOT NULL
             WHERE w.container_ref IS NOT NULL
+                AND w.worktree_deleted = FALSE
                 AND w.id NOT IN (
                     SELECT DISTINCT s2.workspace_id
                     FROM sessions s2
@@ -296,15 +315,15 @@ impl Workspace {
     ) -> Result<Self, WorkspaceError> {
         Ok(sqlx::query_as!(
             Workspace,
-            r#"INSERT INTO workspaces (id, task_id, container_ref, branch, agent_working_dir, setup_completed_at)
+            r#"INSERT INTO workspaces (id, task_id, container_ref, branch, setup_completed_at, name)
                VALUES ($1, $2, $3, $4, $5, $6)
-               RETURNING id as "id!: Uuid", task_id as "task_id: Uuid", container_ref, branch, agent_working_dir, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name"#,
+               RETURNING id as "id!: Uuid", task_id as "task_id: Uuid", container_ref, branch, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name, worktree_deleted as "worktree_deleted!: bool""#,
             id,
             Option::<Uuid>::None,
             Option::<String>::None,
             data.branch,
-            data.agent_working_dir,
-            Option::<DateTime<Utc>>::None
+            Option::<DateTime<Utc>>::None,
+            data.name
         )
         .fetch_one(pool)
         .await?)
@@ -326,45 +345,47 @@ impl Workspace {
         Ok(())
     }
 
-    pub async fn resolve_container_ref(
-        pool: &SqlitePool,
-        container_ref: &str,
-    ) -> Result<ContainerInfo, sqlx::Error> {
-        let result = sqlx::query!(
-            r#"SELECT w.id as "workspace_id!: Uuid"
-               FROM workspaces w
-               WHERE w.container_ref = ?"#,
-            container_ref
-        )
-        .fetch_optional(pool)
-        .await?
-        .ok_or(sqlx::Error::RowNotFound)?;
-
-        Ok(ContainerInfo {
-            workspace_id: result.workspace_id,
-        })
-    }
-
-    /// Find workspace by path, also trying the parent directory.
-    /// Used by VSCode extension which may open a repo subfolder (single-repo case)
-    /// rather than the workspace root directory (multi-repo case).
+    /// Find workspace by path using container-ref path containment.
+    /// Used by clients that may open a repo subfolder rather than the workspace root.
     pub async fn resolve_container_ref_by_prefix(
         pool: &SqlitePool,
         path: &str,
     ) -> Result<ContainerInfo, sqlx::Error> {
-        // First try exact match
-        if let Ok(info) = Self::resolve_container_ref(pool, path).await {
-            return Ok(info);
-        }
+        let workspaces = sqlx::query_as!(
+            WorkspaceContainerRefRow,
+            r#"SELECT id as "id!: Uuid",
+                      container_ref as "container_ref!"
+               FROM workspaces
+               WHERE container_ref IS NOT NULL"#,
+        )
+        .fetch_all(pool)
+        .await?;
 
-        if let Some(parent) = std::path::Path::new(path).parent()
-            && let Some(parent_str) = parent.to_str()
-            && let Ok(info) = Self::resolve_container_ref(pool, parent_str).await
-        {
-            return Ok(info);
-        }
+        Self::best_matching_container_ref(
+            path,
+            workspaces
+                .iter()
+                .map(|ws| (ws.id, ws.container_ref.as_str())),
+        )
+        .map(|workspace_id| ContainerInfo { workspace_id })
+        .ok_or(sqlx::Error::RowNotFound)
+    }
 
-        Err(sqlx::Error::RowNotFound)
+    fn best_matching_container_ref<'a>(
+        path: &str,
+        candidates: impl Iterator<Item = (Uuid, &'a str)>,
+    ) -> Option<Uuid> {
+        let path = std::path::Path::new(path);
+
+        candidates
+            .filter(|(_, container_ref)| {
+                let container_ref = std::path::Path::new(container_ref);
+                path.starts_with(container_ref) || container_ref.starts_with(path)
+            })
+            .max_by_key(|(_, container_ref)| {
+                std::path::Path::new(container_ref).components().count()
+            })
+            .map(|(workspace_id, _)| workspace_id)
     }
 
     pub async fn set_archived(
@@ -486,13 +507,13 @@ impl Workspace {
                 w.task_id AS "task_id: Uuid",
                 w.container_ref,
                 w.branch,
-                w.agent_working_dir,
                 w.setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                 w.created_at AS "created_at!: DateTime<Utc>",
                 w.updated_at AS "updated_at!: DateTime<Utc>",
                 w.archived AS "archived!: bool",
                 w.pinned AS "pinned!: bool",
                 w.name,
+                w.worktree_deleted AS "worktree_deleted!: bool",
 
                 CASE WHEN EXISTS (
                     SELECT 1
@@ -528,13 +549,13 @@ impl Workspace {
                     task_id: rec.task_id,
                     container_ref: rec.container_ref,
                     branch: rec.branch,
-                    agent_working_dir: rec.agent_working_dir,
                     setup_completed_at: rec.setup_completed_at,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
                     archived: rec.archived,
                     pinned: rec.pinned,
                     name: rec.name,
+                    worktree_deleted: rec.worktree_deleted,
                 },
                 is_running: rec.is_running != 0,
                 is_errored: rec.is_errored != 0,
@@ -570,13 +591,6 @@ impl Workspace {
     }
 
     /// Count total workspaces across all projects
-    pub async fn count_all(pool: &SqlitePool) -> Result<i64, WorkspaceError> {
-        sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM workspaces"#)
-            .fetch_one(pool)
-            .await
-            .map_err(WorkspaceError::Database)
-    }
-
     pub async fn find_by_id_with_status(
         pool: &SqlitePool,
         id: Uuid,
@@ -587,13 +601,13 @@ impl Workspace {
                 w.task_id AS "task_id: Uuid",
                 w.container_ref,
                 w.branch,
-                w.agent_working_dir,
                 w.setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                 w.created_at AS "created_at!: DateTime<Utc>",
                 w.updated_at AS "updated_at!: DateTime<Utc>",
                 w.archived AS "archived!: bool",
                 w.pinned AS "pinned!: bool",
                 w.name,
+                w.worktree_deleted AS "worktree_deleted!: bool",
 
                 CASE WHEN EXISTS (
                     SELECT 1
@@ -632,13 +646,13 @@ impl Workspace {
                 task_id: rec.task_id,
                 container_ref: rec.container_ref,
                 branch: rec.branch,
-                agent_working_dir: rec.agent_working_dir,
                 setup_completed_at: rec.setup_completed_at,
                 created_at: rec.created_at,
                 updated_at: rec.updated_at,
                 archived: rec.archived,
                 pinned: rec.pinned,
                 name: rec.name,
+                worktree_deleted: rec.worktree_deleted,
             },
             is_running: rec.is_running != 0,
             is_errored: rec.is_errored != 0,
@@ -653,5 +667,46 @@ impl Workspace {
         }
 
         Ok(Some(ws))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use uuid::Uuid;
+
+    use super::Workspace;
+
+    #[test]
+    fn best_matching_container_ref_prefers_deepest_match() {
+        let broad_id = Uuid::new_v4();
+        let exact_id = Uuid::new_v4();
+        let selected = Workspace::best_matching_container_ref(
+            "/tmp/ws/repo/packages/app",
+            [(broad_id, "/tmp"), (exact_id, "/tmp/ws")].into_iter(),
+        );
+
+        assert_eq!(selected, Some(exact_id));
+    }
+
+    #[test]
+    fn best_matching_container_ref_supports_parent_request_path() {
+        let workspace_id = Uuid::new_v4();
+        let selected = Workspace::best_matching_container_ref(
+            "/tmp/ws/repo",
+            [(workspace_id, "/tmp/ws/repo/packages/app")].into_iter(),
+        );
+
+        assert_eq!(selected, Some(workspace_id));
+    }
+
+    #[test]
+    fn best_matching_container_ref_ignores_unrelated_paths() {
+        let workspace_id = Uuid::new_v4();
+        let selected = Workspace::best_matching_container_ref(
+            "/tmp/other/path",
+            [(workspace_id, "/tmp/ws")].into_iter(),
+        );
+
+        assert_eq!(selected, None);
     }
 }

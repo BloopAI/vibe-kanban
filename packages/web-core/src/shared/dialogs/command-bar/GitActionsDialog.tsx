@@ -8,10 +8,10 @@ import {
 } from '@vibe/ui/components/KeyboardDialog';
 import { Loader } from '@vibe/ui/components/Loader';
 import GitOperations from '@/shared/components/tasks/Toolbar/GitOperations';
-import { useTaskAttemptWithSession } from '@/shared/hooks/useTaskAttempt';
+import { useWorkspaceWithSession } from '@/shared/hooks/useWorkspace';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
-import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
-import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
+import { useWorkspaceExecution } from '@/shared/hooks/useWorkspaceExecution';
+import { useWorkspaceRepo } from '@/shared/hooks/useWorkspaceRepo';
 import { ExecutionProcessesProvider } from '@/shared/providers/ExecutionProcessesProvider';
 import {
   GitOperationsProvider,
@@ -23,7 +23,7 @@ import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/shared/lib/modals';
 
 export interface GitActionsDialogProps {
-  attemptId: string;
+  workspaceId: string;
 }
 
 interface GitActionsDialogContentProps {
@@ -35,9 +35,9 @@ function GitActionsDialogContent({ attempt }: GitActionsDialogContentProps) {
   const { data: branchStatus, error: branchStatusError } = useBranchStatus(
     attempt.id
   );
-  const { isAttemptRunning } = useAttemptExecution(attempt.id);
+  const { isAttemptRunning } = useWorkspaceExecution(attempt.id);
   const { error: gitError } = useGitOperationsError();
-  const { repos, selectedRepoId } = useAttemptRepo(attempt.id);
+  const { repos, selectedRepoId } = useWorkspaceRepo(attempt.id);
 
   const getSelectedRepoStatus = () => {
     const repoId = selectedRepoId ?? repos[0]?.id;
@@ -90,45 +90,47 @@ function GitActionsDialogContent({ attempt }: GitActionsDialogContentProps) {
   );
 }
 
-const GitActionsDialogImpl = create<GitActionsDialogProps>(({ attemptId }) => {
-  const modal = useModal();
-  const { t } = useTranslation('tasks');
+const GitActionsDialogImpl = create<GitActionsDialogProps>(
+  ({ workspaceId }) => {
+    const modal = useModal();
+    const { t } = useTranslation('tasks');
 
-  const { data: attempt } = useTaskAttemptWithSession(attemptId);
+    const { data: attempt } = useWorkspaceWithSession(workspaceId);
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      modal.hide();
-    }
-  };
+    const handleOpenChange = (open: boolean) => {
+      if (!open) {
+        modal.hide();
+      }
+    };
 
-  const isLoading = !attempt;
+    const isLoading = !attempt;
 
-  return (
-    <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{t('git.actions.title')}</DialogTitle>
-        </DialogHeader>
+    return (
+      <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('git.actions.title')}</DialogTitle>
+          </DialogHeader>
 
-        {isLoading ? (
-          <div className="py-8">
-            <Loader size={24} />
-          </div>
-        ) : (
-          <GitOperationsProvider attemptId={attempt.id}>
-            <ExecutionProcessesProvider
-              key={attempt.id}
-              sessionId={attempt.session?.id}
-            >
-              <GitActionsDialogContent attempt={attempt} />
-            </ExecutionProcessesProvider>
-          </GitOperationsProvider>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-});
+          {isLoading ? (
+            <div className="py-8">
+              <Loader size={24} />
+            </div>
+          ) : (
+            <GitOperationsProvider workspaceId={attempt.id}>
+              <ExecutionProcessesProvider
+                key={attempt.id}
+                sessionId={attempt.session?.id}
+              >
+                <GitActionsDialogContent attempt={attempt} />
+              </ExecutionProcessesProvider>
+            </GitOperationsProvider>
+          )}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+);
 
 export const GitActionsDialog = defineModal<GitActionsDialogProps, void>(
   GitActionsDialogImpl

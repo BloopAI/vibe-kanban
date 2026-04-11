@@ -9,12 +9,15 @@ import type {
 import type { ExecutorProfile } from 'shared/types';
 
 export interface UserSystemState {
+  appVersion: string | null;
+  previewProxyPort: number | null;
   config: Config | null;
   environment: Environment | null;
   profiles: Record<string, ExecutorProfile> | null;
   capabilities: Record<string, BaseAgentCapability[]> | null;
-  analyticsUserId: string | null;
+  machineId: string | null;
   loginStatus: LoginStatus | null;
+  remoteAuthDegraded: string | null;
 }
 
 export interface UserSystemContextType {
@@ -22,6 +25,8 @@ export interface UserSystemContextType {
   system: UserSystemState;
 
   // Hot path - config helpers (most frequently used)
+  appVersion: string | null;
+  previewProxyPort: number | null;
   config: Config | null;
   updateConfig: (updates: Partial<Config>) => void;
   updateAndSaveConfig: (updates: Partial<Config>) => Promise<boolean>;
@@ -31,8 +36,9 @@ export interface UserSystemContextType {
   environment: Environment | null;
   profiles: Record<string, ExecutorProfile> | null;
   capabilities: Record<string, BaseAgentCapability[]> | null;
-  analyticsUserId: string | null;
+  machineId: string | null;
   loginStatus: LoginStatus | null;
+  remoteAuthDegraded: string | null;
   setEnvironment: (env: Environment | null) => void;
   setProfiles: (profiles: Record<string, ExecutorProfile> | null) => void;
   setCapabilities: (caps: Record<string, BaseAgentCapability[]> | null) => void;

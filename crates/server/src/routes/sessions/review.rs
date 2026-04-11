@@ -108,7 +108,7 @@ pub async fn start_review(
             context,
             prompt,
             session_id: agent_session_id,
-            working_dir: workspace.agent_working_dir.clone(),
+            working_dir: session.agent_working_dir.clone(),
         }),
         None,
     );

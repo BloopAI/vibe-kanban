@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useJsonPatchWsStream } from '@/shared/hooks/useJsonPatchWsStream';
+import { useHostId } from '@/shared/providers/HostIdProvider';
 import type { ExecutionProcess } from 'shared/types';
 
 type ExecutionProcessState = {
@@ -24,15 +25,17 @@ export const useExecutionProcesses = (
   sessionId: string | undefined,
   opts?: { showSoftDeleted?: boolean }
 ): UseExecutionProcessesResult => {
+  const hostId = useHostId();
   const showSoftDeleted = opts?.showSoftDeleted;
   let endpoint: string | undefined;
 
   if (sessionId) {
+    const apiBasePath = hostId ? `/api/host/${hostId}` : '/api';
     const params = new URLSearchParams({ session_id: sessionId });
     if (typeof showSoftDeleted === 'boolean') {
       params.set('show_soft_deleted', String(showSoftDeleted));
     }
-    endpoint = `/api/execution-processes/stream/session/ws?${params.toString()}`;
+    endpoint = `${apiBasePath}/execution-processes/stream/session/ws?${params.toString()}`;
   }
 
   const initialData = useCallback(
@@ -47,12 +50,28 @@ export const useExecutionProcesses = (
       initialData
     );
 
-  const executionProcessesById = data?.execution_processes ?? {};
-  const executionProcesses = Object.values(executionProcessesById).sort(
+  const streamedExecutionProcesses = Object.values(
+    data?.execution_processes ?? {}
+  ).sort(
     (a, b) =>
       new Date(a.created_at as unknown as string).getTime() -
       new Date(b.created_at as unknown as string).getTime()
   );
+
+  // Guard against stale buffered stream data when switching sessions quickly.
+  const executionProcesses = sessionId
+    ? streamedExecutionProcesses.filter(
+        (executionProcess) => executionProcess.session_id === sessionId
+      )
+    : streamedExecutionProcesses;
+
+  const executionProcessesById = executionProcesses.reduce<
+    Record<string, ExecutionProcess>
+  >((processesById, executionProcess) => {
+    processesById[executionProcess.id] = executionProcess;
+    return processesById;
+  }, {});
+
   const isAttemptRunning = executionProcesses.some(
     (process) =>
       (process.run_reason === 'codingagent' ||

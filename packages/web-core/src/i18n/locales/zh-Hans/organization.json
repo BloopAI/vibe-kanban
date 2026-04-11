@@ -1,14 +1,14 @@
 {
   "createDialog": {
-    "title": "创建新组织",
-    "description": "创建新组织以与您的团队协作。",
-    "nameLabel": "组织名称",
-    "namePlaceholder": "例如：Acme 公司",
-    "slugLabel": "短标识",
-    "slugPlaceholder": "例如：acme-corporation",
-    "slugHelper": "用于 URL。仅限小写字母、数字和连字符。",
-    "creating": "创建中...",
-    "createButton": "创建组织"
+    "title": "Create New Organization",
+    "description": "Create a new organization to collaborate with your team.",
+    "nameLabel": "Organization Name",
+    "namePlaceholder": "e.g., Acme Corporation",
+    "slugLabel": "Slug",
+    "slugPlaceholder": "e.g., acme-corporation",
+    "slugHelper": "Used in URLs. Lowercase letters, numbers, and hyphens only.",
+    "creating": "Creating...",
+    "createButton": "Create Organization"
   },
   "inviteDialog": {
     "title": "邀请成员",
@@ -19,10 +19,7 @@
     "rolePlaceholder": "选择角色",
     "roleHelper": "管理员可以管理成员和组织设置。",
     "sending": "发送中...",
-    "sendButton": "发送邀请",
-    "subscriptionRequired": "添加更多成员需要订阅",
-    "upgradePrompt": "升级您的组织计划以邀请更多成员。",
-    "upgradeButton": "升级计划"
+    "sendButton": "发送邀请"
   },
   "roles": {
     "member": "成员",
@@ -40,7 +37,6 @@
     "title": "待处理邀请",
     "description": "查看 {{orgName}} 的待处理邀请",
     "loading": "加载邀请中...",
-    "none": "没有待处理的邀请",
     "invited": "邀请于 {{date}}",
     "pending": "待处理"
   },
@@ -67,17 +63,6 @@
     "action": "登录"
   },
   "confirmRemoveMember": "您确定要从组织中移除此成员吗？",
-  "sharedProjects": {
-    "title": "共享项目",
-    "description": "{{orgName}}中的远程项目及其与本地项目的链接",
-    "loading": "正在加载项目...",
-    "noProjects": "此组织中未找到共享项目",
-    "notLinked": "未链接",
-    "linkedTo": "已链接到：{{projectName}}",
-    "linked": "已链接",
-    "linkProject": "链接项目...",
-    "noAvailableProjects": "没有可用项目"
-  },
   "billing": {
     "title": "账单与订阅",
     "description": "管理您组织的订阅和账单设置",
@@ -86,7 +71,7 @@
   },
   "personalOrg": {
     "cannotInvite": "个人组织不能添加其他成员。",
-    "createOrgPrompt": "创建组织以与他人协作。",
-    "createOrgButton": "创建组织"
+    "createOrgPrompt": "Create an organization to collaborate with others.",
+    "createOrgButton": "Create Organization"
   }
 }

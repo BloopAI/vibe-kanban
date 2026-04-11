@@ -2,13 +2,13 @@ use api_types::{
     CreateIssueAssigneeRequest, IssueAssignee, ListIssueAssigneesResponse, MutationResponse,
 };
 use rmcp::{
-    ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
+    ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::McpServer;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListIssueAssigneesRequest {
@@ -61,7 +61,7 @@ struct McpUnassignIssueResponse {
 }
 
 #[tool_router(router = issue_assignees_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(description = "List assignees for an issue.")]
     async fn list_issue_assignees(
         &self,
@@ -76,7 +76,7 @@ impl TaskServer {
         let response: ListIssueAssigneesResponse = match self.send_json(self.client.get(&url)).await
         {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let assignees = response
@@ -90,7 +90,7 @@ impl TaskServer {
             })
             .collect::<Vec<_>>();
 
-        TaskServer::success(&McpListIssueAssigneesResponse {
+        McpServer::success(&McpListIssueAssigneesResponse {
             issue_id: issue_id.to_string(),
             count: assignees.len(),
             issue_assignees: assignees,
@@ -112,10 +112,10 @@ impl TaskServer {
         let response: MutationResponse<IssueAssignee> =
             match self.send_json(self.client.post(&url).json(&payload)).await {
                 Ok(r) => r,
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(Self::tool_error(e)),
             };
 
-        TaskServer::success(&McpAssignIssueResponse {
+        McpServer::success(&McpAssignIssueResponse {
             issue_assignee_id: response.data.id.to_string(),
         })
     }
@@ -132,10 +132,10 @@ impl TaskServer {
             issue_assignee_id
         ));
         if let Err(e) = self.send_empty_json(self.client.delete(&url)).await {
-            return Ok(e);
+            return Ok(Self::tool_error(e));
         }
 
-        TaskServer::success(&McpUnassignIssueResponse {
+        McpServer::success(&McpUnassignIssueResponse {
             success: true,
             issue_assignee_id: issue_assignee_id.to_string(),
         })

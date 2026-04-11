@@ -9,7 +9,6 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
-#[ts(export)]
 pub struct ExecutorDiscoveredOptions {
     pub model_selector: ModelSelectorConfig,
     pub slash_commands: Vec<SlashCommandDescription>,

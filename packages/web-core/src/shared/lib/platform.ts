@@ -13,3 +13,11 @@ export function isMac(): boolean {
 export function getModifierKey(): string {
   return isMac() ? '⌘' : 'Ctrl';
 }
+
+export function isTauriApp(): boolean {
+  return '__TAURI_INTERNALS__' in window;
+}
+
+export function isTauriMac(): boolean {
+  return isTauriApp() && isMac();
+}

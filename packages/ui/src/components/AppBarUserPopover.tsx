@@ -2,7 +2,6 @@ import {
   BuildingsIcon,
   CheckIcon,
   GearIcon,
-  PlusIcon,
   SignInIcon,
   SignOutIcon,
   UserIcon,
@@ -32,7 +31,6 @@ interface AppBarUserPopoverProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onOrgSelect: (orgId: string) => void;
-  onCreateOrg?: () => void;
   onOrgSettings?: (orgId: string) => void;
   onSettings?: () => void;
   onSignIn: () => void;
@@ -49,7 +47,6 @@ export function AppBarUserPopover({
   open,
   onOpenChange,
   onOrgSelect,
-  onCreateOrg,
   onOrgSettings,
   onSettings,
   onSignIn,
@@ -152,10 +149,6 @@ export function AppBarUserPopover({
             </span>
           </DropdownMenuItem>
         ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem icon={PlusIcon} onClick={onCreateOrg}>
-          {t('orgSwitcher.createOrganization')}
-        </DropdownMenuItem>
         {onSettings && (
           <>
             <DropdownMenuSeparator />

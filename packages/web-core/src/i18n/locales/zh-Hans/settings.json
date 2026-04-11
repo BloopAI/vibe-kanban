@@ -28,7 +28,11 @@
         "remote-projects": "项目",
         "remote-projectsDesc": "管理项目",
         "relay": "Remote Access",
-        "relayDesc": "Relay tunnel and enrollment"
+        "relayDesc": "Relay tunnel and enrollment",
+        "machineSettings": "Machine Settings",
+        "accountSettings": "Account Settings",
+        "pairOtherMachines": "Pair other machines",
+        "selectHost": "Select host"
       }
     },
     "general": {
@@ -428,6 +432,12 @@
       "description": "配置此仓库在工作区中使用时运行的脚本。",
       "loading": "加载仓库中...",
       "loadError": "加载仓库失败。",
+      "addRepo": {
+        "button": "添加仓库",
+        "dialogTitle": "选择 Git 仓库",
+        "dialogDescription": "选择一个现有的 git 仓库进行注册。",
+        "error": "注册仓库失败"
+      },
       "selector": {
         "label": "选择仓库",
         "placeholder": "选择要配置的仓库",
@@ -487,6 +497,22 @@
           "helper": "为此仓库启动开发服务器。脚本从仓库的工作树目录执行。"
         }
       },
+      "linkedProjects": {
+        "title": "关联项目",
+        "description": "在默认工作区配置中使用此仓库的项目。",
+        "loading": "正在检查项目…",
+        "none": "没有关联的项目"
+      },
+      "remove": {
+        "title": "移除仓库",
+        "description": "从 Vibe Kanban 取消关联此仓库。磁盘上的文件不会被删除。",
+        "button": "移除",
+        "confirm": "移除仓库",
+        "dialogTitle": "移除「{{name}}」？",
+        "dialogDescription": "这将从 Vibe Kanban 取消关联此仓库。您磁盘上的文件不受影响。您可以稍后重新添加。",
+        "success": "仓库移除成功。",
+        "error": "移除仓库失败。"
+      },
       "save": {
         "button": "保存仓库设置",
         "success": "仓库设置保存成功！",
@@ -509,6 +535,16 @@
         "loginRequired": "Log in to generate a pairing code.",
         "fetchError": "Failed to fetch pairing code.",
         "show": "Show pairing code"
+      },
+      "host": {
+        "label": "主机"
+      },
+      "client": {
+        "label": "客户端"
+      },
+      "overview": {
+        "available": "Available",
+        "unavailable": "Unavailable"
       }
     },
     "remoteProjects": {
@@ -541,6 +577,17 @@
         "statuses": {
           "label": "Project Statuses",
           "description": "Manage kanban columns for this project."
+        },
+        "defaultRepos": {
+          "label": "Default Repositories",
+          "description": "Repositories that are automatically added when creating workspaces from this project's issues.",
+          "empty": "No default repositories configured",
+          "addButton": "Add",
+          "addNew": "Add new repository...",
+          "branchLabel": "Branch",
+          "noBranches": "No branches found for this repository",
+          "fetchError": "Could not load repositories",
+          "saveError": "Failed to save default repositories"
         }
       },
       "loginRequired": {
@@ -548,6 +595,14 @@
         "description": "Sign in to manage your remote projects.",
         "action": "Sign in"
       }
+    },
+    "hostPicker": {
+      "thisMachine": "This machine",
+      "localHost": "Local host",
+      "remoteHost": "Remote host",
+      "noHostAvailable": "No host is available for host-specific settings yet.",
+      "pairMachineHint": "Pair a machine to open machine settings.",
+      "selectMachineHint": "Select a machine to open machine settings."
     }
   },
   "integrations": {

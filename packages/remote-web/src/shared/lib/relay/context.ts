@@ -4,24 +4,21 @@ import {
   savePairedRelayHost,
   subscribeRelayPairingChanges,
 } from "@/shared/lib/relayPairingStorage";
-import { createRelaySession } from "@/shared/lib/remoteApi";
 import {
-  createRelaySessionAuthCode,
-  establishRelaySessionBaseUrl,
-  getRelayApiUrl,
+  createRemoteSession,
   refreshRelaySigningSession,
 } from "@/shared/lib/relayBackendApi";
 import { buildRelaySigningSessionRefreshPayload } from "@/shared/lib/relaySigningSessionRefresh";
 
 import type { RelayHostContext } from "@remote/shared/lib/relay/types";
 
-const relaySessionBaseUrlCache = new Map<string, Promise<string>>();
+const remoteSessionIdCache = new Map<string, string>();
 
 subscribeRelayPairingChanges(({ hostId }) => {
-  relaySessionBaseUrlCache.delete(hostId);
+  remoteSessionIdCache.delete(hostId);
 });
 
-export async function resolveRelayHostContext(
+export async function resolveRemoteHostContext(
   hostId: string,
 ): Promise<RelayHostContext> {
   const pairedHost = await findPairedHost(hostId);
@@ -37,15 +34,15 @@ export async function resolveRelayHostContext(
     );
   }
 
-  const relaySessionBaseUrl = await getRelaySessionBaseUrl(hostId);
+  const browserSessionId = await getRemoteSessionId(hostId);
   return {
     pairedHost,
-    relaySessionBaseUrl,
+    sessionId: browserSessionId,
   };
 }
 
-export function invalidateRelaySessionBaseUrl(hostId: string): void {
-  relaySessionBaseUrlCache.delete(hostId);
+export function invalidateRemoteSessionId(hostId: string): void {
+  remoteSessionIdCache.delete(hostId);
 }
 
 export async function tryRefreshRelayHostSigningSession(
@@ -62,7 +59,8 @@ export async function tryRefreshRelayHostSigningSession(
       context.pairedHost.private_key_jwk,
     );
     const refreshed = await refreshRelaySigningSession(
-      context.relaySessionBaseUrl,
+      context.pairedHost.host_id,
+      context.sessionId,
       payload,
     );
     const updatedPairedHost: PairedRelayHost = {
@@ -81,26 +79,19 @@ export async function tryRefreshRelayHostSigningSession(
   }
 }
 
-async function getRelaySessionBaseUrl(hostId: string): Promise<string> {
-  const cached = relaySessionBaseUrlCache.get(hostId);
+async function getRemoteSessionId(hostId: string): Promise<string> {
+  const cached = remoteSessionIdCache.get(hostId);
   if (cached) {
     return cached;
   }
 
-  const created = createRelaySessionBaseUrl(hostId).catch((error) => {
-    relaySessionBaseUrlCache.delete(hostId);
+  const resp = await createRemoteSession(hostId).catch((error) => {
+    remoteSessionIdCache.delete(hostId);
     throw error;
   });
 
-  relaySessionBaseUrlCache.set(hostId, created);
-  return created;
-}
-
-async function createRelaySessionBaseUrl(hostId: string): Promise<string> {
-  const relaySession = await createRelaySession(hostId);
-  const authCode = await createRelaySessionAuthCode(relaySession.id);
-  const relayApiUrl = getRelayApiUrl();
-  return establishRelaySessionBaseUrl(relayApiUrl, hostId, authCode.code);
+  remoteSessionIdCache.set(hostId, resp.session_id);
+  return resp.session_id;
 }
 
 async function findPairedHost(hostId: string): Promise<PairedRelayHost | null> {

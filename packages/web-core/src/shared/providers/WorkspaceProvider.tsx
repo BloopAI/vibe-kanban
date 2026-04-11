@@ -1,20 +1,18 @@
-import { ReactNode, useMemo, useCallback, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from '@tanstack/react-router';
+import { ReactNode, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useParams } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWorkspaces } from '@/shared/hooks/useWorkspaces';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
-import { useAttempt } from '@/shared/hooks/useAttempt';
-import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
+import { useWorkspaceRecord } from '@/shared/hooks/useWorkspaceRecord';
+import { useWorkspaceRepo } from '@/shared/hooks/useWorkspaceRepo';
 import { useWorkspaceSessions } from '@/shared/hooks/useWorkspaceSessions';
 import { useGitHubComments } from '@/shared/hooks/useGitHubComments';
 import { useDiffStream } from '@/shared/hooks/useDiffStream';
-import { attemptsApi } from '@/shared/lib/api';
-import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
-import {
-  toWorkspace,
-  toWorkspacesCreate,
-} from '@/shared/lib/routes/navigation';
+import { workspacesApi } from '@/shared/lib/api';
+import { useWorkspaceDiffStore } from '@/shared/stores/useWorkspaceDiffStore';
 import type { DiffStats } from 'shared/types';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 
 import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 
@@ -24,27 +22,23 @@ interface WorkspaceProviderProps {
 
 export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const { workspaceId } = useParams({ strict: false });
-  const navigate = useNavigate();
-  const location = useLocation();
+  const appNavigation = useAppNavigation();
+  const currentDestination = useCurrentAppDestination();
   const queryClient = useQueryClient();
 
-  // Derive isCreateMode from URL path instead of prop to allow provider to persist across route changes
-  const isCreateMode = location.pathname === '/workspaces/create';
+  const isCreateMode = currentDestination?.kind === 'workspaces-create';
 
-  // Fetch workspaces for sidebar display
   const {
     workspaces: activeWorkspaces,
     archivedWorkspaces,
     isLoading: isLoadingList,
   } = useWorkspaces();
 
-  // Fetch real workspace data for the selected workspace
-  const { data: workspace, isLoading: isLoadingWorkspace } = useAttempt(
+  const { data: workspace, isLoading: isLoadingWorkspace } = useWorkspaceRecord(
     workspaceId,
     { enabled: !!workspaceId && !isCreateMode }
   );
 
-  // Fetch sessions for the current workspace
   const {
     sessions,
     selectedSession,
@@ -56,22 +50,18 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     startNewSession,
   } = useWorkspaceSessions(workspaceId, { enabled: !isCreateMode });
 
-  // Fetch repos for the current workspace
-  const { repos, isLoading: isReposLoading } = useAttemptRepo(workspaceId, {
+  const { repos, isLoading: isReposLoading } = useWorkspaceRepo(workspaceId, {
     enabled: !isCreateMode,
   });
 
-  // Get first repo ID for PR comments.
   // TODO: Support multiple repos - currently only fetches comments from the primary repo.
   const primaryRepoId = repos[0]?.id;
 
-  // Check if current workspace has a PR attached (from workspace summaries)
   const currentWorkspaceSummary = activeWorkspaces.find(
     (w) => w.id === workspaceId
   );
   const hasPrAttached = !!currentWorkspaceSummary?.prStatus;
 
-  // GitHub comments hook (fetching, normalization, and helpers)
   const {
     gitHubComments,
     isGitHubCommentsLoading,
@@ -87,7 +77,6 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     enabled: !isCreateMode && hasPrAttached,
   });
 
-  // Stream diffs for the current workspace
   const { diffs } = useDiffStream(workspaceId ?? null, !isCreateMode);
 
   const diffPaths = useMemo(
@@ -95,12 +84,6 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       new Set(diffs.map((d) => d.newPath || d.oldPath || '').filter(Boolean)),
     [diffs]
   );
-
-  // Sync diffPaths to store for expand/collapse all functionality
-  useEffect(() => {
-    useDiffViewStore.getState().setDiffPaths(Array.from(diffPaths));
-    return () => useDiffViewStore.getState().setDiffPaths([]);
-  }, [diffPaths]);
 
   const diffStats: DiffStats = useMemo(
     () => ({
@@ -111,39 +94,109 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     [diffs]
   );
 
+  const rafRef = useRef<number | null>(null);
+  const batchCountRef = useRef(0);
+
+  const latestDiffDataRef = useRef({
+    diffs,
+    diffPaths,
+    diffStats,
+    gitHubComments,
+    isGitHubCommentsLoading,
+    showGitHubComments,
+    setShowGitHubComments,
+    getGitHubCommentsForFile,
+    getGitHubCommentCountForFile,
+    getFilesWithGitHubComments,
+    getFirstCommentLineForFile,
+  });
+  latestDiffDataRef.current = {
+    diffs,
+    diffPaths,
+    diffStats,
+    gitHubComments,
+    isGitHubCommentsLoading,
+    showGitHubComments,
+    setShowGitHubComments,
+    getGitHubCommentsForFile,
+    getGitHubCommentCountForFile,
+    getFilesWithGitHubComments,
+    getFirstCommentLineForFile,
+  };
+
+  useEffect(() => {
+    batchCountRef.current++;
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        batchCountRef.current = 0;
+        useWorkspaceDiffStore
+          .getState()
+          .setWorkspaceDiffData(latestDiffDataRef.current);
+      });
+    }
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [
+    diffs,
+    diffPaths,
+    diffStats,
+    gitHubComments,
+    isGitHubCommentsLoading,
+    showGitHubComments,
+    setShowGitHubComments,
+    getGitHubCommentsForFile,
+    getGitHubCommentCountForFile,
+    getFilesWithGitHubComments,
+    getFirstCommentLineForFile,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      useWorkspaceDiffStore.getState().clearWorkspaceDiffData();
+    };
+  }, []);
+
   const isLoading = isLoadingList || isLoadingWorkspace;
+
+  useEffect(() => {
+    if (!workspaceId || isCreateMode) return;
+
+    workspacesApi
+      .markSeen(workspaceId)
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+      })
+      .catch((error) => {
+        console.warn('Failed to mark workspace as seen:', error);
+      });
+  }, [workspaceId, isCreateMode, queryClient]);
 
   const selectWorkspace = useCallback(
     (id: string) => {
-      // Fire-and-forget mark as seen (don't block navigation)
-      attemptsApi
-        .markSeen(id)
-        .then(() => {
-          // Invalidate summary cache to refresh unseen indicators
-          queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
-        })
-        .catch((error) => {
-          // Silently fail - this is not critical
-          console.warn('Failed to mark workspace as seen:', error);
-        });
-      navigate(toWorkspace(id));
+      appNavigation.goToWorkspace(id);
     },
-    [navigate, queryClient]
+    [appNavigation]
   );
 
   const navigateToCreate = useMemo(
     () => () => {
-      navigate(toWorkspacesCreate());
+      appNavigation.goToWorkspacesCreate();
     },
-    [navigate]
+    [appNavigation]
   );
 
-  const value = useMemo(
+  const coreValue = useMemo(
     () => ({
       workspaceId,
       workspace,
       activeWorkspaces,
       archivedWorkspaces,
+      isWorkspacesListLoading: isLoadingList,
       isLoading,
       isCreateMode,
       selectWorkspace,
@@ -158,23 +211,13 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       startNewSession,
       repos,
       isReposLoading,
-      gitHubComments,
-      isGitHubCommentsLoading,
-      showGitHubComments,
-      setShowGitHubComments,
-      getGitHubCommentsForFile,
-      getGitHubCommentCountForFile,
-      getFilesWithGitHubComments,
-      getFirstCommentLineForFile,
-      diffs,
-      diffPaths,
-      diffStats,
     }),
     [
       workspaceId,
       workspace,
       activeWorkspaces,
       archivedWorkspaces,
+      isLoadingList,
       isLoading,
       isCreateMode,
       selectWorkspace,
@@ -189,22 +232,11 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       startNewSession,
       repos,
       isReposLoading,
-      gitHubComments,
-      isGitHubCommentsLoading,
-      showGitHubComments,
-      setShowGitHubComments,
-      getGitHubCommentsForFile,
-      getGitHubCommentCountForFile,
-      getFilesWithGitHubComments,
-      getFirstCommentLineForFile,
-      diffs,
-      diffPaths,
-      diffStats,
     ]
   );
 
   return (
-    <WorkspaceContext.Provider value={value}>
+    <WorkspaceContext.Provider value={coreValue}>
       {children}
     </WorkspaceContext.Provider>
   );

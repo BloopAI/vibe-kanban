@@ -21,7 +21,7 @@ interface ChatCollapsedThinkingProps {
   onToggle: () => void;
   onHoverChange: (hovered: boolean) => void;
   className?: string;
-  taskAttemptId?: string;
+  workspaceId?: string;
   renderMarkdown: (props: ChatCollapsedThinkingRenderProps) => ReactNode;
 }
 
@@ -37,7 +37,7 @@ export function ChatCollapsedThinking({
   onToggle,
   onHoverChange,
   className,
-  taskAttemptId,
+  workspaceId,
   renderMarkdown,
 }: ChatCollapsedThinkingProps) {
   const { t } = useTranslation('common');
@@ -54,6 +54,7 @@ export function ChatCollapsedThinking({
         onMouseLeave={() => onHoverChange(false)}
         role="button"
         aria-expanded={expanded}
+        data-scroll-anchor-target=""
       >
         <span className="shrink-0 pt-0.5">
           {isHovered ? (
@@ -77,7 +78,7 @@ export function ChatCollapsedThinking({
             <div key={entry.expansionKey} className="text-sm text-low pl-base">
               {renderMarkdown({
                 content: entry.content,
-                workspaceId: taskAttemptId,
+                workspaceId: workspaceId,
                 className: 'text-sm',
               })}
             </div>

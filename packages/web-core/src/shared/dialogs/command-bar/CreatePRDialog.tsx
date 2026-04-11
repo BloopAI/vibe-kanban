@@ -14,7 +14,7 @@ import { Checkbox } from '@vibe/ui/components/Checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@vibe/ui/components/Alert';
 import BranchSelector from '@/shared/components/tasks/BranchSelector';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { attemptsApi } from '@/shared/lib/api';
+import { workspacesApi } from '@/shared/lib/api';
 import { useTranslation } from 'react-i18next';
 
 import { Workspace } from 'shared/types';
@@ -112,7 +112,7 @@ const CreatePRDialogImpl = create<CreatePRDialogProps>(
 
       const initializePRFields = async () => {
         try {
-          const firstUserMessage = await attemptsApi.getFirstUserMessage(
+          const firstUserMessage = await workspacesApi.getFirstUserMessage(
             attempt.id
           );
 
@@ -205,7 +205,7 @@ const CreatePRDialogImpl = create<CreatePRDialogProps>(
         setError(ui.message);
       };
 
-      const result = await attemptsApi.createPR(attempt.id, {
+      const result = await workspacesApi.createPR(attempt.id, {
         title: prTitle,
         body: prBody || null,
         target_branch: prBaseBranch || null,
@@ -228,7 +228,7 @@ const CreatePRDialogImpl = create<CreatePRDialogProps>(
 
       const showGhCliSetupDialog = async () => {
         const setupResult = await GhCliSetupDialog.show({
-          attemptId: attempt.id,
+          workspaceId: attempt.id,
         });
 
         handleGhCliSetupOutcome(setupResult, defaultGhCliErrorMessage);

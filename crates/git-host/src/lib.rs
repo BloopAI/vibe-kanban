@@ -7,12 +7,11 @@ pub mod github;
 use std::path::Path;
 
 use async_trait::async_trait;
-use db::models::merge::PullRequestInfo;
 use detection::detect_provider_from_url;
 use enum_dispatch::enum_dispatch;
 pub use types::{
-    CreatePrRequest, GitHostError, OpenPrInfo, PrComment, PrCommentAuthor, PrReviewComment,
-    ProviderKind, ReviewCommentUser, UnifiedPrComment,
+    CreatePrRequest, GitHostError, PrComment, PrCommentAuthor, PrReviewComment, ProviderKind,
+    PullRequestDetail, ReviewCommentUser, UnifiedPrComment,
 };
 
 use self::{azure::AzureDevOpsProvider, github::GitHubProvider};
@@ -25,16 +24,16 @@ pub trait GitHostProvider: Send + Sync {
         repo_path: &Path,
         remote_url: &str,
         request: &CreatePrRequest,
-    ) -> Result<PullRequestInfo, GitHostError>;
+    ) -> Result<PullRequestDetail, GitHostError>;
 
-    async fn get_pr_status(&self, pr_url: &str) -> Result<PullRequestInfo, GitHostError>;
+    async fn get_pr_status(&self, pr_url: &str) -> Result<PullRequestDetail, GitHostError>;
 
     async fn list_prs_for_branch(
         &self,
         repo_path: &Path,
         remote_url: &str,
         branch_name: &str,
-    ) -> Result<Vec<PullRequestInfo>, GitHostError>;
+    ) -> Result<Vec<PullRequestDetail>, GitHostError>;
 
     async fn get_pr_comments(
         &self,
@@ -47,7 +46,7 @@ pub trait GitHostProvider: Send + Sync {
         &self,
         repo_path: &Path,
         remote_url: &str,
-    ) -> Result<Vec<OpenPrInfo>, GitHostError>;
+    ) -> Result<Vec<PullRequestDetail>, GitHostError>;
 
     fn provider_kind(&self) -> ProviderKind;
 }

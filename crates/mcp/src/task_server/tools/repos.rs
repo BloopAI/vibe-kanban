@@ -1,12 +1,12 @@
 use db::models::repo::Repo;
 use rmcp::{
-    ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
+    ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::McpServer;
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 struct McpRepoSummary {
@@ -79,13 +79,13 @@ struct ListReposResponse {
 }
 
 #[tool_router(router = repos_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(description = "List all repositories.")]
     async fn list_repos(&self) -> Result<CallToolResult, ErrorData> {
         let url = self.url("/api/repos");
         let repos: Vec<Repo> = match self.send_json(self.client.get(&url)).await {
             Ok(rs) => rs,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let repo_summaries: Vec<McpRepoSummary> = repos
@@ -101,7 +101,7 @@ impl TaskServer {
             repos: repo_summaries,
         };
 
-        TaskServer::success(&response)
+        McpServer::success(&response)
     }
 
     #[tool(
@@ -114,9 +114,9 @@ impl TaskServer {
         let url = self.url(&format!("/api/repos/{}", repo_id));
         let repo: Repo = match self.send_json(self.client.get(&url)).await {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
-        TaskServer::success(&RepoDetails {
+        McpServer::success(&RepoDetails {
             id: repo.id.to_string(),
             name: repo.name,
             display_name: repo.display_name,
@@ -146,9 +146,9 @@ impl TaskServer {
         });
         let _repo: Repo = match self.send_json(self.client.put(&url).json(&payload)).await {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
-        TaskServer::success(&UpdateRepoScriptResponse {
+        McpServer::success(&UpdateRepoScriptResponse {
             success: true,
             repo_id: repo_id.to_string(),
             field: "setup_script".to_string(),
@@ -175,9 +175,9 @@ impl TaskServer {
         });
         let _repo: Repo = match self.send_json(self.client.put(&url).json(&payload)).await {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
-        TaskServer::success(&UpdateRepoScriptResponse {
+        McpServer::success(&UpdateRepoScriptResponse {
             success: true,
             repo_id: repo_id.to_string(),
             field: "cleanup_script".to_string(),
@@ -204,9 +204,9 @@ impl TaskServer {
         });
         let _repo: Repo = match self.send_json(self.client.put(&url).json(&payload)).await {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
-        TaskServer::success(&UpdateRepoScriptResponse {
+        McpServer::success(&UpdateRepoScriptResponse {
             success: true,
             repo_id: repo_id.to_string(),
             field: "dev_server_script".to_string(),

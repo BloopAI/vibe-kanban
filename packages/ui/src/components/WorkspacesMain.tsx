@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowDownIcon } from '@phosphor-icons/react';
+import { ArrowDownIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { cn } from '../lib/cn';
 
 export interface WorkspacesMainWorkspace {
@@ -10,19 +10,21 @@ export interface WorkspacesMainWorkspace {
 interface WorkspacesMainProps {
   workspaceWithSession: WorkspacesMainWorkspace | undefined;
   isLoading: boolean;
+  showLoadingOverlay?: boolean;
   containerRef: RefObject<HTMLElement>;
   conversationContent?: ReactNode;
   chatBoxContent: ReactNode;
   contextBarContent?: ReactNode;
   isAtBottom?: boolean;
   onAtBottomChange?: (atBottom: boolean) => void;
-  onScrollToBottom?: () => void;
+  onScrollToBottom?: (behavior?: 'auto' | 'smooth') => void;
   isMobile?: boolean;
 }
 
 export function WorkspacesMain({
   workspaceWithSession,
   isLoading,
+  showLoadingOverlay = false,
   containerRef,
   conversationContent,
   chatBoxContent,
@@ -45,14 +47,21 @@ export function WorkspacesMain({
       {/* Conversation content - conditional based on loading/workspace state */}
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-low">{t('common:workspaces.loading')}</p>
+          <SpinnerIcon className="size-6 animate-spin text-low" />
         </div>
       ) : !workspaceWithSession ? (
         <div className="flex-1 flex items-center justify-center">
           <p className="text-low">{t('common:workspaces.selectToStart')}</p>
         </div>
       ) : (
-        conversationContent
+        <>
+          {showLoadingOverlay && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-primary">
+              <SpinnerIcon className="size-6 animate-spin text-low" />
+            </div>
+          )}
+          {conversationContent}
+        </>
       )}
       {/* Scroll to bottom button */}
       {workspaceWithSession && !isAtBottom && (
@@ -60,7 +69,7 @@ export function WorkspacesMain({
           <div className="w-chat max-w-full relative">
             <button
               type="button"
-              onClick={onScrollToBottom}
+              onClick={() => onScrollToBottom?.('auto')}
               className="absolute bottom-2 right-4 z-10 pointer-events-auto flex items-center justify-center size-8 rounded-full bg-secondary/80 backdrop-blur-sm border border-secondary text-low hover:text-normal hover:bg-secondary shadow-md transition-all"
               aria-label="Scroll to bottom"
               title="Scroll to bottom"
@@ -71,7 +80,10 @@ export function WorkspacesMain({
         </div>
       )}
       {/* Chat box - always rendered to prevent flash during workspace switch */}
-      <div className="flex justify-center @container pl-px">
+      <div
+        className="flex justify-center @container pl-px"
+        data-chatbox-container="true"
+      >
         {chatBoxContent}
       </div>
       {/* Context Bar - floating toolbar */}

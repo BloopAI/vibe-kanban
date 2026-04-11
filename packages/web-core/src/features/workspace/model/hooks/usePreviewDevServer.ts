@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { attemptsApi, executionProcessesApi } from '@/shared/lib/api';
-import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
+import { workspacesApi, executionProcessesApi } from '@/shared/lib/api';
+import { useWorkspaceExecution } from '@/shared/hooks/useWorkspaceExecution';
 import {
   filterRunningDevServers,
   filterDevServerProcesses,
@@ -17,11 +17,11 @@ interface UsePreviewDevServerOptions {
 }
 
 export function usePreviewDevServer(
-  attemptId: string | undefined,
+  workspaceId: string | undefined,
   options?: UsePreviewDevServerOptions
 ) {
   const queryClient = useQueryClient();
-  const { attemptData } = useAttemptExecution(attemptId);
+  const { attemptData } = useWorkspaceExecution(workspaceId);
 
   const runningDevServers = useMemo(
     () => filterRunningDevServers(attemptData.processes),
@@ -37,14 +37,14 @@ export function usePreviewDevServer(
   );
 
   const startMutation = useMutation({
-    mutationKey: ['startDevServer', attemptId],
+    mutationKey: ['startDevServer', workspaceId],
     mutationFn: async () => {
-      if (!attemptId) return;
-      await attemptsApi.startDevServer(attemptId);
+      if (!workspaceId) return;
+      await workspacesApi.startDevServer(workspaceId);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ['executionProcesses', attemptId],
+        queryKey: ['executionProcesses', workspaceId],
       });
       queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
       options?.onStartSuccess?.();
@@ -56,7 +56,7 @@ export function usePreviewDevServer(
   });
 
   const stopMutation = useMutation({
-    mutationKey: ['stopDevServer', attemptId],
+    mutationKey: ['stopDevServer', workspaceId],
     mutationFn: async () => {
       if (runningDevServers.length === 0) return;
       await Promise.all(
@@ -67,7 +67,7 @@ export function usePreviewDevServer(
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ['executionProcesses', attemptId],
+        queryKey: ['executionProcesses', workspaceId],
       });
       for (const ds of runningDevServers) {
         queryClient.invalidateQueries({

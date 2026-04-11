@@ -1,3 +1,8 @@
+use api_types::{
+    CreateIssueCommentRequest, DeleteResponse, IssueComment, ListIssueCommentsQuery,
+    ListIssueCommentsResponse, MemberRole, MutationResponse, NotificationPayload, NotificationType,
+    UpdateIssueCommentRequest,
+};
 use axum::{
     Json,
     extract::{Extension, Path, Query, State},
@@ -10,20 +15,20 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_issue_access,
 };
-use api_types::{
-    CreateIssueCommentRequest, IssueComment, ListIssueCommentsQuery, ListIssueCommentsResponse,
-    MemberRole, UpdateIssueCommentRequest,
-};
-use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{issue_comments::IssueCommentRepository, organization_members::check_user_role},
+    db::{
+        issue_comments::IssueCommentRepository, issues::IssueRepository,
+        organization_members::check_user_role,
+    },
     mutation_definition::MutationBuilder,
+    notifications::notify_issue_subscribers,
 };
 
 /// Mutation definition for IssueComment - provides both router and TypeScript metadata.
-pub fn mutation() -> MutationBuilder<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> {
+pub fn mutation()
+-> MutationBuilder<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> {
     MutationBuilder::new("issue_comments")
         .list(list_issue_comments)
         .get(get_issue_comment)
@@ -126,6 +131,24 @@ async fn create_issue_comment(
                 "is_reply": is_reply,
             }),
         );
+    }
+
+    if let Ok(Some(issue)) = IssueRepository::find_by_id(state.pool(), response.data.issue_id).await
+    {
+        let comment_preview = response.data.message.chars().take(100).collect::<String>();
+        notify_issue_subscribers(
+            state.pool(),
+            organization_id,
+            ctx.user.id,
+            &issue,
+            NotificationType::IssueCommentAdded,
+            NotificationPayload {
+                comment_preview: Some(comment_preview),
+                ..Default::default()
+            },
+            Some(response.data.id),
+        )
+        .await;
     }
 
     Ok(Json(response))

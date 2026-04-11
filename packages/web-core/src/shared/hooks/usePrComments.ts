@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { attemptsApi } from '@/shared/lib/api';
+import { workspacesApi } from '@/shared/lib/api';
 import type { PrCommentsResponse } from 'shared/types';
 
 export const prCommentsKeys = {
   all: ['prComments'] as const,
-  byAttempt: (attemptId: string | undefined, repoId: string | undefined) =>
-    ['prComments', attemptId, repoId] as const,
+  byAttempt: (workspaceId: string | undefined, repoId: string | undefined) =>
+    ['prComments', workspaceId, repoId] as const,
 };
 
 type Options = {
@@ -13,15 +13,15 @@ type Options = {
 };
 
 export function usePrComments(
-  attemptId?: string,
+  workspaceId?: string,
   repoId?: string,
   opts?: Options
 ) {
-  const enabled = (opts?.enabled ?? true) && !!attemptId && !!repoId;
+  const enabled = (opts?.enabled ?? true) && !!workspaceId && !!repoId;
 
   return useQuery<PrCommentsResponse>({
-    queryKey: prCommentsKeys.byAttempt(attemptId, repoId),
-    queryFn: () => attemptsApi.getPrComments(attemptId!, repoId!),
+    queryKey: prCommentsKeys.byAttempt(workspaceId, repoId),
+    queryFn: () => workspacesApi.getPrComments(workspaceId!, repoId!),
     enabled,
     staleTime: 30_000, // Cache for 30s - comments don't change frequently
     retry: 2,

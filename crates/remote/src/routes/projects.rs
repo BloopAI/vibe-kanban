@@ -1,3 +1,7 @@
+use api_types::{
+    BulkUpdateProjectsRequest, BulkUpdateProjectsResponse, CreateProjectRequest, DeleteResponse,
+    ListProjectsQuery, ListProjectsResponse, MutationResponse, Project, UpdateProjectRequest,
+};
 use axum::{
     Json,
     extract::{Extension, Path, Query, State},
@@ -11,16 +15,11 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_member_access,
 };
-use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
     db::{get_txid, projects::ProjectRepository, types::is_valid_hsl_color},
     mutation_definition::MutationBuilder,
-};
-use api_types::{
-    BulkUpdateProjectsRequest, BulkUpdateProjectsResponse, CreateProjectRequest, ListProjectsQuery,
-    ListProjectsResponse, Project, UpdateProjectRequest,
 };
 
 /// Mutation definition for Projects - provides both router and TypeScript metadata.
@@ -204,7 +203,7 @@ async fn bulk_update_projects(
     let organization_id = first_project.organization_id;
     ensure_member_access(state.pool(), organization_id, ctx.user.id).await?;
 
-    let mut tx = state.pool().begin().await.map_err(|error| {
+    let mut tx = crate::db::begin_tx(state.pool()).await.map_err(|error| {
         tracing::error!(?error, "failed to begin transaction");
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
@@ -246,7 +245,10 @@ async fn bulk_update_projects(
         .await
         .map_err(|error| {
             tracing::error!(?error, project_id = %item.id, "failed to update project");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to update project")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to update project",
+            )
         })?;
 
         results.push(updated);

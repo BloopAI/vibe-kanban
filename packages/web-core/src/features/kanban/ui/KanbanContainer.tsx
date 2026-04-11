@@ -1,10 +1,21 @@
-import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import {
+  useMemo,
+  useCallback,
+  useState,
+  useEffect,
+  useRef,
+  type MouseEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useActions } from '@/shared/hooks/useActions';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useIsMobile } from '@/shared/hooks/useIsMobile';
+import { cn } from '@/shared/lib/utils';
+import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
 import {
   useUiPreferencesStore,
   resolveKanbanProjectState,
@@ -21,9 +32,15 @@ import {
   bulkUpdateIssues,
   type BulkUpdateIssueItem,
 } from '@/shared/lib/remoteApi';
-import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { PlusIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import { Actions } from '@/shared/actions';
+import {
+  buildKanbanIssueComposerKey,
+  closeKanbanIssueComposer,
+  openKanbanIssueComposer,
+  type ProjectIssueCreateOptions,
+  useKanbanIssueComposer,
+} from '@/shared/stores/useKanbanIssueComposerStore';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import {
   KanbanProvider,
@@ -53,6 +70,9 @@ import {
 } from '@vibe/ui/components/Dropdown';
 import { SearchableTagDropdownContainer } from '@/shared/components/SearchableTagDropdownContainer';
 import type { IssuePriority } from 'shared/remote-types';
+import { useIssueMultiSelect } from '@/shared/hooks/useIssueMultiSelect';
+import { useIssueSelectionStore } from '@/shared/stores/useIssueSelectionStore';
+import { BulkActionBarContainer } from './BulkActionBarContainer';
 
 const areStringSetsEqual = (left: string[], right: string[]): boolean => {
   if (left.length !== right.length) {
@@ -103,7 +123,10 @@ function LoadingState() {
  * Must be rendered within both OrgProvider and ProjectProvider.
  */
 export function KanbanContainer() {
+  const isMobile = useIsMobile();
   const { t } = useTranslation('common');
+  const appNavigation = useAppNavigation();
+  const routeState = useCurrentKanbanRouteState();
 
   // Get data from contexts (set up by WorkspacesLayout)
   const {
@@ -113,6 +136,7 @@ export function KanbanContainer() {
     tags,
     issueAssignees,
     issueTags,
+    issueRelationships,
     getTagObjectsForIssue,
     getTagsForIssue,
     getPullRequestsForIssue,
@@ -137,14 +161,39 @@ export function KanbanContainer() {
   // Get project name by finding the project matching current projectId
   const projectName = projects.find((p) => p.id === projectId)?.name ?? '';
 
-  // Apply filters
-  // Navigation hook for opening issues and create mode
-  const {
-    issueId: selectedKanbanIssueId,
-    openIssue,
-    openIssueWorkspace,
-    startCreate,
-  } = useKanbanNavigation();
+  const selectedKanbanIssueId = routeState.issueId;
+  const issueComposerKey = useMemo(
+    () => buildKanbanIssueComposerKey(routeState.hostId, projectId),
+    [routeState.hostId, projectId]
+  );
+  const issueComposer = useKanbanIssueComposer(issueComposerKey);
+  const isIssueComposerOpen = issueComposer !== null;
+  const openIssue = useCallback(
+    (issueId: string) => {
+      if (isIssueComposerOpen) {
+        closeKanbanIssueComposer(issueComposerKey);
+      }
+
+      appNavigation.goToProjectIssue(projectId, issueId);
+    },
+    [isIssueComposerOpen, issueComposerKey, appNavigation, projectId]
+  );
+  const openIssueWorkspace = useCallback(
+    (issueId: string, workspaceAttemptId: string) => {
+      appNavigation.goToProjectIssueWorkspace(
+        projectId,
+        issueId,
+        workspaceAttemptId
+      );
+    },
+    [appNavigation, projectId]
+  );
+  const startCreate = useCallback(
+    (options?: ProjectIssueCreateOptions) => {
+      openKanbanIssueComposer(issueComposerKey, options);
+    },
+    [issueComposerKey]
+  );
 
   // Get setter and executor from ActionsContext
   const {
@@ -175,6 +224,9 @@ export function KanbanContainer() {
   const setKanbanProjectViewShowWorkspaces = useUiPreferencesStore(
     (s) => s.setKanbanProjectViewShowWorkspaces
   );
+  const setKanbanProjectViewHideBlocked = useUiPreferencesStore(
+    (s) => s.setKanbanProjectViewHideBlocked
+  );
   const clearKanbanProjectViewPreferences = useUiPreferencesStore(
     (s) => s.clearKanbanProjectViewPreferences
   );
@@ -187,6 +239,7 @@ export function KanbanContainer() {
     filters: defaultKanbanFilters,
     showSubIssues: defaultShowSubIssues,
     showWorkspaces: defaultShowWorkspaces,
+    hideBlocked: defaultHideBlocked,
   } = resolvedProjectState;
   const projectViewPreferences = projectViewPreferencesById?.[activeViewId];
   const kanbanFilters = projectViewPreferences?.filters ?? defaultKanbanFilters;
@@ -194,12 +247,14 @@ export function KanbanContainer() {
     projectViewPreferences?.showSubIssues ?? defaultShowSubIssues;
   const showWorkspaces =
     projectViewPreferences?.showWorkspaces ?? defaultShowWorkspaces;
+  const hideBlocked = projectViewPreferences?.hideBlocked ?? defaultHideBlocked;
 
   const hasActiveFilters = useMemo(
     () =>
       !areKanbanFiltersEqual(kanbanFilters, defaultKanbanFilters) ||
       showSubIssues !== defaultShowSubIssues ||
-      showWorkspaces !== defaultShowWorkspaces,
+      showWorkspaces !== defaultShowWorkspaces ||
+      hideBlocked !== defaultHideBlocked,
     [
       kanbanFilters,
       defaultKanbanFilters,
@@ -207,16 +262,39 @@ export function KanbanContainer() {
       defaultShowSubIssues,
       showWorkspaces,
       defaultShowWorkspaces,
+      hideBlocked,
+      defaultHideBlocked,
     ]
   );
   const shouldAnimateCreateButton = issues.length === 0;
+
+  // Compute resolved status IDs for the blocked filter.
+  // A blocking issue is considered resolved when it's in:
+  // - The last visible status (rightmost kanban column, e.g. "Done")
+  // - Any hidden status (terminal states like "Cancelled" that don't appear as columns)
+  const doneStatusIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const s of statuses) {
+      if (s.hidden) ids.add(s.id);
+    }
+    const sorted = statuses
+      .filter((s) => !s.hidden)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    const lastVisible = sorted[sorted.length - 1];
+    if (lastVisible) ids.add(lastVisible.id);
+    return ids;
+  }, [statuses]);
 
   const { filteredIssues } = useKanbanFilters({
     issues,
     issueAssignees,
     issueTags,
+    issueRelationships,
+    issuesById,
+    doneStatusIds,
     filters: kanbanFilters,
     showSubIssues,
+    hideBlocked,
     currentUserId: userId,
   });
 
@@ -283,6 +361,13 @@ export function KanbanContainer() {
       setKanbanProjectViewShowWorkspaces(projectId, activeViewId, show);
     },
     [activeViewId, projectId, setKanbanProjectViewShowWorkspaces]
+  );
+
+  const setHideBlocked = useCallback(
+    (hide: boolean) => {
+      setKanbanProjectViewHideBlocked(projectId, activeViewId, hide);
+    },
+    [activeViewId, projectId, setKanbanProjectViewHideBlocked]
   );
 
   const clearKanbanFilters = useCallback(() => {
@@ -664,11 +749,64 @@ export function KanbanContainer() {
     [kanbanFilters.sortField, calculateSortOrder]
   );
 
+  // Multi-select support
+  const {
+    selectedIssueIds,
+    isMultiSelectActive,
+    handleIssueClick,
+    handleCheckboxChange,
+    clearSelection,
+  } = useIssueMultiSelect();
+  const setOrderedIssueIds = useIssueSelectionStore(
+    (s) => s.setOrderedIssueIds
+  );
+  const setAnchor = useIssueSelectionStore((s) => s.setAnchor);
+
+  // Compute ordered issue IDs for range selection
+  const orderedIssueIds = useMemo(() => {
+    const statusOrder =
+      kanbanViewMode === 'kanban' ? visibleStatuses : listViewStatuses;
+    return statusOrder.flatMap((status) => items[status.id] ?? []);
+  }, [kanbanViewMode, visibleStatuses, listViewStatuses, items]);
+
+  // Keep the store's ordered IDs in sync
+  useEffect(() => {
+    setOrderedIssueIds(orderedIssueIds);
+  }, [orderedIssueIds, setOrderedIssueIds]);
+
+  // Clear multi-selection when project or view mode changes
+  useEffect(() => {
+    clearSelection();
+  }, [projectId, kanbanViewMode, clearSelection]);
+
+  // Keep anchor in sync with the currently opened issue (e.g. from URL on
+  // page load) so Shift/Cmd+Click on another issue includes it.
+  useEffect(() => {
+    if (selectedKanbanIssueId) {
+      setAnchor(selectedKanbanIssueId);
+    }
+  }, [selectedKanbanIssueId, setAnchor]);
+
   const handleCardClick = useCallback(
-    (issueId: string) => {
-      openIssue(issueId);
+    (issueId: string, e?: MouseEvent) => {
+      if (e && (e.metaKey || e.ctrlKey || e.shiftKey)) {
+        handleIssueClick(issueId, e);
+      } else {
+        if (selectedIssueIds.size > 0) {
+          clearSelection();
+        }
+        // Set as anchor so Shift+Click from this issue works
+        setAnchor(issueId);
+        openIssue(issueId);
+      }
     },
-    [openIssue]
+    [
+      openIssue,
+      handleIssueClick,
+      selectedIssueIds.size,
+      clearSelection,
+      setAnchor,
+    ]
   );
 
   const handleAddTask = useCallback(
@@ -685,29 +823,33 @@ export function KanbanContainer() {
   );
 
   // Inline editing callbacks for kanban cards
+  // When multi-select is active, apply to all selected issues
   const handleCardPriorityClick = useCallback(
     (issueId: string) => {
-      openPrioritySelection(projectId, [issueId]);
+      const ids = isMultiSelectActive ? [...selectedIssueIds] : [issueId];
+      openPrioritySelection(projectId, ids);
     },
-    [projectId, openPrioritySelection]
+    [projectId, openPrioritySelection, selectedIssueIds, isMultiSelectActive]
   );
 
   const handleCardAssigneeClick = useCallback(
     (issueId: string) => {
-      openAssigneeSelection(projectId, [issueId]);
+      const ids = isMultiSelectActive ? [...selectedIssueIds] : [issueId];
+      openAssigneeSelection(projectId, ids);
     },
-    [projectId, openAssigneeSelection]
+    [projectId, openAssigneeSelection, selectedIssueIds, isMultiSelectActive]
   );
 
   const handleCardMoreActionsClick = useCallback(
     (issueId: string) => {
+      const ids = isMultiSelectActive ? [...selectedIssueIds] : [issueId];
       CommandBarDialog.show({
         page: 'issueActions',
         projectId,
-        issueIds: [issueId],
+        issueIds: ids,
       });
     },
-    [projectId]
+    [projectId, selectedIssueIds, isMultiSelectActive]
   );
 
   const handleCardTagToggle = useCallback(
@@ -753,9 +895,16 @@ export function KanbanContainer() {
 
   return (
     <div className="flex flex-col h-full space-y-base">
-      <div className="px-double pt-double space-y-base">
+      <div
+        className={cn(
+          'px-double pt-double space-y-base',
+          isMobile && 'px-base pt-base'
+        )}
+      >
         <div className="flex items-center gap-half">
-          <h2 className="text-2xl font-medium">{projectName}</h2>
+          <h2 className={cn('text-2xl font-medium', isMobile && 'text-lg')}>
+            {projectName}
+          </h2>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -780,7 +929,12 @@ export function KanbanContainer() {
           </DropdownMenu>
         </div>
 
-        <div className="flex flex-wrap items-start gap-base">
+        <div
+          className={cn(
+            'flex items-start gap-base',
+            isMobile ? 'flex-col' : 'flex-wrap'
+          )}
+        >
           <ViewNavTabs
             activeView={kanbanViewMode}
             onViewChange={setKanbanViewMode}
@@ -809,10 +963,13 @@ export function KanbanContainer() {
             onSortChange={setKanbanSort}
             onShowSubIssuesChange={setShowSubIssues}
             onShowWorkspacesChange={setShowWorkspaces}
+            hideBlocked={hideBlocked}
+            onHideBlockedChange={setHideBlocked}
             onClearFilters={clearKanbanFilters}
             onCreateIssue={handleAddTask}
             shouldAnimateCreateButton={shouldAnimateCreateButton}
             renderFiltersDialog={(props) => <KanbanFiltersDialog {...props} />}
+            isMobile={isMobile}
           />
         </div>
       </div>
@@ -877,8 +1034,11 @@ export function KanbanContainer() {
                             name={issue.title}
                             index={index}
                             className="group"
-                            onClick={() => handleCardClick(issue.id)}
+                            onClick={(e) => handleCardClick(issue.id, e)}
                             isOpen={selectedKanbanIssueId === issue.id}
+                            isMobile={isMobile}
+                            isSelected={selectedIssueIds.has(issue.id)}
+                            dragDisabled={isMultiSelectActive}
                           >
                             <KanbanCardContent
                               displayId={issue.simple_id}
@@ -894,6 +1054,7 @@ export function KanbanContainer() {
                                 issuesById
                               )}
                               isSubIssue={!!issue.parent_issue_id}
+                              isMobile={isMobile}
                               onPriorityClick={(e) => {
                                 e.stopPropagation();
                                 handleCardPriorityClick(issue.id);
@@ -978,10 +1139,15 @@ export function KanbanContainer() {
               }
               onIssueClick={handleCardClick}
               selectedIssueId={selectedKanbanIssueId}
+              selectedIssueIds={selectedIssueIds}
+              isMultiSelectActive={isMultiSelectActive}
+              onIssueCheckboxChange={handleCheckboxChange}
             />
           </KanbanProvider>
         </div>
       )}
+
+      {isMultiSelectActive && <BulkActionBarContainer projectId={projectId} />}
     </div>
   );
 }

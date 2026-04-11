@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
-pub fn router() -> Router<DeploymentImpl> {
+pub(super) fn router() -> Router<DeploymentImpl> {
     Router::new().route(
         "/workspaces/by-local-id/{local_workspace_id}",
         get(get_workspace_by_local_id),

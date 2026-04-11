@@ -1,11 +1,10 @@
+use api_types::{DeleteResponse, MutationResponse, Project};
 use chrono::{DateTime, Utc};
 use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
-use api_types::Project;
 use uuid::Uuid;
 
 use super::{get_txid, project_statuses::ProjectStatusRepository, tags::TagRepository};
-use api_types::{DeleteResponse, MutationResponse};
 
 /// Default color for the initial project created with personal organizations
 /// HSL format: "H S% L%" (blue - matches "To do" status)
@@ -147,7 +146,7 @@ impl ProjectRepository {
         color: Option<String>,
         sort_order: Option<i32>,
     ) -> Result<MutationResponse<Project>, ProjectError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         let data = Self::update_partial(&mut *tx, id, name, color, sort_order).await?;
 
         let txid = get_txid(&mut *tx).await?;
@@ -199,7 +198,7 @@ impl ProjectRepository {
     }
 
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, ProjectError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         sqlx::query!("DELETE FROM projects WHERE id = $1", id)
             .execute(&mut *tx)
             .await?;
@@ -262,7 +261,7 @@ impl ProjectRepository {
         name: String,
         color: String,
     ) -> Result<MutationResponse<Project>, ProjectError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
 
         let project = Self::create(&mut *tx, id, organization_id, name, color).await?;
 

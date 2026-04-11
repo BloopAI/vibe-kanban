@@ -6,14 +6,15 @@ import { VariantSelector } from '@/shared/components/VariantSelector';
 import { Button } from '@vibe/ui/components/Button';
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { AlertCircle, Loader2, Paperclip, Send, X } from 'lucide-react';
-import { imagesApi } from '@/shared/lib/api';
+import { attachmentsApi } from '@/shared/lib/api';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
-import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
+import { useWorkspaceExecution } from '@/shared/hooks/useWorkspaceExecution';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { useVariant } from '@/shared/hooks/useVariant';
 import { useRetryProcess } from '@/shared/hooks/useRetryProcess';
 import { executorConfigFromAction } from '@/shared/lib/executor';
+import { buildWorkspaceAttachmentMarkdown } from '@/shared/lib/workspaceAttachments';
 
 export function RetryEditorInline({
   attempt,
@@ -27,9 +28,9 @@ export function RetryEditorInline({
   onCancelled?: () => void;
 }) {
   const { t } = useTranslation(['common']);
-  const attemptId = attempt.id;
-  const { isAttemptRunning, attemptData } = useAttemptExecution(attemptId);
-  const { data: branchStatus } = useBranchStatus(attemptId);
+  const workspaceId = attempt.id;
+  const { isAttemptRunning, attemptData } = useWorkspaceExecution(workspaceId);
+  const { data: branchStatus } = useBranchStatus(workspaceId);
   const { profiles } = useUserSystem();
 
   const [message, setMessage] = useState(initialContent);
@@ -94,22 +95,34 @@ export function RetryEditorInline({
     }
   }, [canSend, isSending, onSend]);
 
-  // Handle image paste - upload to container and insert markdown
   const handlePasteFiles = useCallback(
     async (files: File[]) => {
+      const sessionId = attempt.session?.id;
+      if (!sessionId) {
+        console.warn(
+          'Skipping retry image upload: missing session id for attempt',
+          workspaceId
+        );
+        return;
+      }
+
       for (const file of files) {
         try {
-          const response = await imagesApi.uploadForAttempt(attemptId, file);
-          const imageMarkdown = `![${response.original_name}](${response.file_path})`;
+          const response = await attachmentsApi.uploadForAttempt(
+            workspaceId,
+            sessionId,
+            file
+          );
+          const imageMarkdown = buildWorkspaceAttachmentMarkdown(response);
           setMessage((prev) =>
             prev ? `${prev}\n\n${imageMarkdown}` : imageMarkdown
           );
         } catch (error) {
-          console.error('Failed to upload image:', error);
+          console.error('Failed to upload attachment:', error);
         }
       }
     },
-    [attemptId]
+    [attempt.session?.id, workspaceId]
   );
 
   // Attachment button handlers
@@ -119,9 +132,7 @@ export function RetryEditorInline({
   }, []);
   const handleFileInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(e.target.files || []).filter((f) =>
-        f.type.startsWith('image/')
-      );
+      const files = Array.from(e.target.files || []);
       if (files.length > 0) {
         handlePasteFiles(files);
       }
@@ -141,7 +152,8 @@ export function RetryEditorInline({
           onCmdEnter={handleCmdEnter}
           onPasteFiles={handlePasteFiles}
           className={cn('min-h-[40px]', 'bg-background')}
-          taskAttemptId={attemptId}
+          workspaceId={workspaceId}
+          sessionId={attempt.session?.id}
         />
         {isSending && (
           <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60">
@@ -159,7 +171,6 @@ export function RetryEditorInline({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
           multiple
           className="hidden"
           onChange={handleFileInputChange}
@@ -169,8 +180,8 @@ export function RetryEditorInline({
             variant="outline"
             onClick={handleAttachClick}
             disabled={isSending}
-            title="Attach image"
-            aria-label="Attach image"
+            title="Attach file"
+            aria-label="Attach file"
           >
             <Paperclip className="h-3 w-3" />
           </Button>

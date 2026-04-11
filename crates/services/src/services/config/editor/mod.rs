@@ -90,7 +90,7 @@ impl EditorConfig {
         }
     }
 
-    pub fn get_command(&self) -> CommandBuilder {
+    fn get_command(&self) -> CommandBuilder {
         let base_command = match &self.editor_type {
             EditorType::VsCode => "code",
             EditorType::VsCodeInsiders => "code-insiders",
@@ -153,11 +153,12 @@ impl EditorConfig {
             return;
         };
 
+        use utils::command_ext::NoWindowExt;
         let mut cmd = std::process::Command::new(&executable);
         cmd.args(&args)
             .arg("--install-extension")
             .arg("bloop.vibe-kanban");
-        let _ = cmd.spawn();
+        let _ = cmd.no_window().spawn();
     }
 
     pub async fn open_file(&self, path: &Path) -> Result<Option<String>, EditorOpenError> {
@@ -195,20 +196,23 @@ impl EditorConfig {
         // files must contain a line and column number
         let line_col = if path.is_file() { ":1:1" } else { "" };
         Some(format!(
-            "{scheme}://vscode-remote/ssh-remote+{user_part}{remote_host}{path_str}{line_col}"
+            "{scheme}://vscode-remote/ssh-remote+{user_part}{remote_host}{path_str}{line_col}?windowId=_blank"
         ))
     }
 
     pub async fn spawn_local(&self, path: &Path) -> Result<(), EditorOpenError> {
         let (executable, args) = self.resolve_command().await?;
 
+        use utils::command_ext::NoWindowExt;
         let mut cmd = std::process::Command::new(&executable);
         cmd.args(&args).arg(path);
-        cmd.spawn().map_err(|e| EditorOpenError::LaunchFailed {
-            executable: executable.to_string_lossy().into_owned(),
-            details: e.to_string(),
-            editor_type: self.editor_type.clone(),
-        })?;
+        cmd.no_window()
+            .spawn()
+            .map_err(|e| EditorOpenError::LaunchFailed {
+                executable: executable.to_string_lossy().into_owned(),
+                details: e.to_string(),
+                editor_type: self.editor_type.clone(),
+            })?;
         Ok(())
     }
 

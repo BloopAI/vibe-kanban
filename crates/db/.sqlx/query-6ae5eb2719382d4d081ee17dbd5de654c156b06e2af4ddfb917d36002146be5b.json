@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO workspace_attachments (id, workspace_id, attachment_id)\n                   SELECT $1, $2, $3\n                   WHERE NOT EXISTS (\n                       SELECT 1 FROM workspace_attachments WHERE workspace_id = $2 AND attachment_id = $3\n                   )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "6ae5eb2719382d4d081ee17dbd5de654c156b06e2af4ddfb917d36002146be5b"
+}

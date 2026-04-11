@@ -13,6 +13,7 @@ import {
   ArrowUpIcon,
   ArrowsOutIcon,
   GithubLogoIcon,
+  PencilSimpleIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { ChatBoxBase, VisualVariant, type DropzoneProps } from './ChatBoxBase';
@@ -24,7 +25,7 @@ import {
   DropdownMenuSeparator,
 } from './Dropdown';
 import { PrimaryButton } from './PrimaryButton';
-import type { LocalImageMetadata } from './TaskAttemptContext';
+import type { LocalAttachmentMetadata } from './WorkspaceContext';
 import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
 import { ContextUsageGauge, type ContextUsageInfo } from './ContextUsageGauge';
 import { TodoProgressPopup, type TodoProgressItem } from './TodoProgressPopup';
@@ -32,6 +33,10 @@ import {
   AskUserQuestionBanner,
   type AskUserQuestionBannerHandle,
 } from './AskUserQuestionBanner';
+import {
+  TurnNavigationPopup,
+  type TurnNavigationItem,
+} from './TurnNavigationPopup';
 
 // Status enum - single source of truth for execution state
 export type ExecutionStatus =
@@ -54,6 +59,7 @@ interface ActionsProps {
 
 export interface SessionOption<TExecutor extends string = string> {
   id: string;
+  name?: string | null;
   created_at: string | Date;
   executor?: TExecutor | string | null;
 }
@@ -64,6 +70,7 @@ interface SessionProps<TExecutor extends string = string> {
   onSelectSession: (sessionId: string) => void;
   isNewSessionMode?: boolean;
   onNewSession?: () => void;
+  onRenameSession?: (sessionId: string, currentName: string) => void;
 }
 
 export interface SessionToolbarActionItem {
@@ -143,7 +150,7 @@ export interface SessionChatBoxEditorRenderProps<
   repoIds?: string[];
   executor: TExecutor | null;
   onPasteFiles: (files: File[]) => void;
-  localImages?: LocalImageMetadata[];
+  localAttachments?: LocalAttachmentMetadata[];
 }
 
 interface SessionChatBoxProps<TExecutor extends string = string> {
@@ -175,11 +182,14 @@ interface SessionChatBoxProps<TExecutor extends string = string> {
   formatSessionDate?: (createdAt: string | Date) => string;
   todos?: TodoProgressItem[];
   inProgressTodo?: TodoProgressItem | null;
-  localImages?: LocalImageMetadata[];
+  localAttachments?: LocalAttachmentMetadata[];
   onPrCommentClick?: () => void;
   onViewCode?: () => void;
   onOpenWorkspace?: () => void;
   onScrollToPreviousMessage?: () => void;
+  userMessageTurns?: TurnNavigationItem[];
+  onScrollToUserMessage?: (patchKey: string) => void;
+  getActiveTurnPatchKey?: () => string | null;
   tokenUsageInfo?: ContextUsageInfo | null;
   supportsContextUsage?: boolean;
   dropzone?: DropzoneProps;
@@ -234,11 +244,14 @@ export function SessionChatBox<TExecutor extends string = string>({
   formatSessionDate = defaultFormatSessionDate,
   todos,
   inProgressTodo,
-  localImages,
+  localAttachments,
   onPrCommentClick,
   onViewCode,
   onOpenWorkspace,
   onScrollToPreviousMessage,
+  userMessageTurns,
+  onScrollToUserMessage,
+  getActiveTurnPatchKey,
   tokenUsageInfo,
   supportsContextUsage,
   dropzone,
@@ -279,6 +292,7 @@ export function SessionChatBox<TExecutor extends string = string>({
     hasContent && !['sending', 'stopping', 'queue-loading'].includes(status);
   const isQueued = status === 'queued';
   const isRunning = status === 'running' || status === 'queued';
+  const areContentInsertActionsDisabled = isDisabled || isQueued;
   const showRunningAnimation =
     (status === 'running' || status === 'queued' || status === 'sending') &&
     !isInApprovalMode &&
@@ -327,9 +341,7 @@ export function SessionChatBox<TExecutor extends string = string>({
 
   // File input handlers
   const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []).filter((f) =>
-      f.type.startsWith('image/')
-    );
+    const files = Array.from(e.target.files || []);
     if (files.length > 0) {
       actions.onPasteFiles(files);
     }
@@ -346,14 +358,18 @@ export function SessionChatBox<TExecutor extends string = string>({
     onSelectSession,
     isNewSessionMode,
     onNewSession,
+    onRenameSession,
   } = session;
   const isLatestSelected =
     sessions.length > 0 && selectedSessionId === sessions[0].id;
+  const selectedSessionObj = sessions.find((s) => s.id === selectedSessionId);
   const sessionLabel = isNewSessionMode
     ? t('conversation.sessions.newSession')
-    : isLatestSelected
-      ? t('conversation.sessions.latest')
-      : t('conversation.sessions.previous');
+    : selectedSessionObj?.name
+      ? selectedSessionObj.name
+      : isLatestSelected
+        ? t('conversation.sessions.latest')
+        : t('conversation.sessions.previous');
 
   // Stats
   const filesChanged = stats?.filesChanged ?? 0;
@@ -648,7 +664,7 @@ export function SessionChatBox<TExecutor extends string = string>({
         repoIds,
         executor: agent || executor?.selected || null,
         onPasteFiles: actions.onPasteFiles,
-        localImages,
+        localAttachments,
       })}
       error={displayError}
       banner={renderBanner()}
@@ -770,16 +786,24 @@ export function SessionChatBox<TExecutor extends string = string>({
       }
       headerRight={
         <>
-          {/* Scroll to previous user message button + Agent icon for existing session mode */}
+          {/* Turn navigation + Agent icon for existing session mode */}
           {!isNewSessionMode && (
             <>
               {onScrollToPreviousMessage && (
-                <ToolbarIconButton
-                  icon={ArrowUpIcon}
-                  title={t('conversation.actions.scrollToPreviousMessage')}
-                  aria-label={t('conversation.actions.scrollToPreviousMessage')}
-                  onClick={onScrollToPreviousMessage}
-                />
+                <TurnNavigationPopup
+                  turns={userMessageTurns ?? []}
+                  onNavigateToTurn={onScrollToUserMessage ?? (() => {})}
+                  getActiveTurnPatchKey={getActiveTurnPatchKey}
+                >
+                  <ToolbarIconButton
+                    icon={ArrowUpIcon}
+                    title={t('conversation.actions.scrollToPreviousMessage')}
+                    aria-label={t(
+                      'conversation.actions.scrollToPreviousMessage'
+                    )}
+                    onClick={onScrollToPreviousMessage}
+                  />
+                </TurnNavigationPopup>
               )}
               {renderAgentIcon?.(agent, 'size-icon-xl')}
             </>
@@ -817,14 +841,18 @@ export function SessionChatBox<TExecutor extends string = string>({
                     }
                     onClick={() => onSelectSession(s.id)}
                   >
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1.5 max-w-[200px]">
                       {renderAgentIcon?.(
                         s.executor ?? null,
                         'size-icon shrink-0'
                       )}
-                      {index === 0
-                        ? t('conversation.sessions.latest')
-                        : formatSessionDate(s.created_at)}
+                      <span className="truncate">
+                        {s.name
+                          ? s.name
+                          : index === 0
+                            ? t('conversation.sessions.latest')
+                            : formatSessionDate(s.created_at)}
+                      </span>
                     </span>
                   </DropdownMenuItem>
                 ))}
@@ -834,6 +862,22 @@ export function SessionChatBox<TExecutor extends string = string>({
                 {t('conversation.sessions.noPreviousSessions')}
               </DropdownMenuItem>
             )}
+            {onRenameSession && selectedSessionId && !isNewSessionMode && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  icon={PencilSimpleIcon}
+                  onClick={() =>
+                    onRenameSession(
+                      selectedSessionId,
+                      selectedSessionObj?.name ?? ''
+                    )
+                  }
+                >
+                  {t('conversation.sessions.rename')}
+                </DropdownMenuItem>
+              </>
+            )}
           </ToolbarDropdown>
         </>
       }
@@ -841,15 +885,14 @@ export function SessionChatBox<TExecutor extends string = string>({
         <>
           <ToolbarIconButton
             icon={PaperclipIcon}
-            aria-label={t('tasks:taskFormDialog.attachImage')}
-            title={t('tasks:taskFormDialog.attachImage')}
+            aria-label={t('tasks:taskFormDialog.attachFile')}
+            title={t('tasks:taskFormDialog.attachFile')}
             onClick={handleAttachClick}
-            disabled={isDisabled || isRunning}
+            disabled={areContentInsertActionsDisabled}
           />
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
             multiple
             className="hidden"
             onChange={handleFileInputChange}
@@ -860,7 +903,7 @@ export function SessionChatBox<TExecutor extends string = string>({
               aria-label="Add PR Comments"
               title="Insert PR comments into message"
               onClick={onPrCommentClick}
-              disabled={isDisabled || isRunning}
+              disabled={areContentInsertActionsDisabled}
             />
           )}
           {toolbarActions?.items.map((item) => (

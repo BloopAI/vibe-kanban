@@ -1,14 +1,14 @@
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
+};
 
 use chrono::{DateTime, Utc};
-use git2::{
-    BranchType, Delta, DiffFindOptions, DiffOptions, Error as GitError, Reference, Remote,
-    Repository, Sort,
-};
+use git2::{BranchType, DiffOptions, Error as GitError, Reference, Remote, Repository, Sort};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
-use utils::diff::{Diff, DiffChangeKind, FileDiffDetails, compute_line_change_counts};
+use utils::diff::{Diff, DiffChangeKind};
 
 mod cli;
 mod validation;
@@ -53,6 +53,7 @@ pub enum GitServiceError {
     #[error("Rebase in progress; resolve or abort it before retrying")]
     RebaseInProgress,
 }
+
 /// Service for managing Git operations in task execution workflows
 #[derive(Clone)]
 pub struct GitService {}
@@ -140,26 +141,6 @@ pub struct WorktreeResetOutcome {
     pub applied: bool,
 }
 
-/// Target for diff generation
-pub enum DiffTarget<'p> {
-    /// Work-in-progress branch checked out in this worktree
-    Worktree {
-        worktree_path: &'p Path,
-        base_commit: &'p Commit,
-    },
-    /// Fully committed branch vs base branch
-    Branch {
-        repo_path: &'p Path,
-        branch_name: &'p str,
-        base_branch: &'p str,
-    },
-    /// Specific commit vs base branch
-    Commit {
-        repo_path: &'p Path,
-        commit_sha: &'p str,
-    },
-}
-
 impl Default for GitService {
     fn default() -> Self {
         Self::new()
@@ -177,8 +158,49 @@ impl GitService {
     }
 
     /// Open the repository
-    pub fn open_repo(&self, repo_path: &Path) -> Result<Repository, GitServiceError> {
+    pub(crate) fn open_repo(&self, repo_path: &Path) -> Result<Repository, GitServiceError> {
         Repository::open(repo_path).map_err(GitServiceError::from)
+    }
+
+    /// Returns whether a path can be opened as a git repository.
+    pub fn is_repo_openable(&self, repo_path: &Path) -> bool {
+        Repository::open(repo_path).is_ok()
+    }
+
+    /// Returns the `.git` directory (or worktree gitdir) for the given repo path.
+    pub fn get_git_dir(&self, repo_path: &Path) -> Result<PathBuf, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        Ok(repo.path().to_path_buf())
+    }
+
+    /// Returns the common directory (shared `.git` dir across worktrees).
+    pub fn get_common_dir(&self, repo_path: &Path) -> Result<PathBuf, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        Ok(repo.commondir().to_path_buf())
+    }
+
+    /// Checks if a named worktree is valid/registered in the repository.
+    pub fn validate_worktree(
+        &self,
+        repo_path: &Path,
+        worktree_name: &str,
+    ) -> Result<bool, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        Ok(repo.find_worktree(worktree_name).is_ok())
+    }
+
+    /// Create a new local branch pointing at the tip of `base_branch_name`.
+    pub fn create_branch(
+        &self,
+        repo_path: &Path,
+        new_branch_name: &str,
+        base_branch_name: &str,
+    ) -> Result<(), GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let base_ref = Self::find_branch(&repo, base_branch_name)?.into_reference();
+        let commit = base_ref.peel_to_commit()?;
+        repo.branch(new_branch_name, &commit, false)?;
+        Ok(())
     }
 
     /// Ensure local (repo-scoped) identity exists for CLI commits.
@@ -256,27 +278,7 @@ impl GitService {
         Ok(())
     }
 
-    /// Ensure an existing repository has a main branch (for empty repos)
-    pub fn ensure_main_branch_exists(&self, repo_path: &Path) -> Result<(), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-
-        match repo.branches(None) {
-            Ok(branches) => {
-                if branches.count() == 0 {
-                    // No branches exist - create initial commit on main branch
-                    self.create_initial_commit(&repo)?;
-                }
-            }
-            Err(e) => {
-                return Err(GitServiceError::InvalidRepository(format!(
-                    "Failed to list branches: {e}"
-                )));
-            }
-        }
-        Ok(())
-    }
-
-    pub fn create_initial_commit(&self, repo: &Repository) -> Result<(), GitServiceError> {
+    fn create_initial_commit(&self, repo: &Repository) -> Result<(), GitServiceError> {
         let signature = self.signature_with_fallback(repo)?;
 
         let tree_id = {
@@ -321,264 +323,52 @@ impl GitService {
         Ok(true)
     }
 
-    /// Get diffs between branches or worktree changes
+    /// Get worktree diffs against a base commit
     pub fn get_diffs(
         &self,
-        target: DiffTarget,
+        worktree_path: &Path,
+        base_commit: &Commit,
         path_filter: Option<&[&str]>,
     ) -> Result<Vec<Diff>, GitServiceError> {
-        match target {
-            DiffTarget::Worktree {
-                worktree_path,
-                base_commit,
-            } => {
-                // Use Git CLI to compute diff vs base to avoid sparse false deletions
-                let repo = Repository::open(worktree_path)?;
-                let base_tree = repo
-                    .find_commit(base_commit.as_oid())?
-                    .tree()
-                    .map_err(|e| {
-                        GitServiceError::InvalidRepository(format!(
-                            "Failed to find base commit tree: {e}"
-                        ))
-                    })?;
+        // Use Git CLI to compute diff vs base to avoid sparse false deletions
+        let repo = Repository::open(worktree_path)?;
+        let base_tree = repo
+            .find_commit(base_commit.as_oid())?
+            .tree()
+            .map_err(|e| {
+                GitServiceError::InvalidRepository(format!("Failed to find base commit tree: {e}"))
+            })?;
 
-                let git = GitCli::new();
-                let cli_opts = StatusDiffOptions {
-                    path_filter: path_filter.map(|fs| fs.iter().map(|s| s.to_string()).collect()),
-                };
-                let entries = git
-                    .diff_status(worktree_path, base_commit, cli_opts)
-                    .map_err(|e| {
-                        GitServiceError::InvalidRepository(format!("git diff failed: {e}"))
-                    })?;
-                Ok(entries
-                    .into_iter()
-                    .map(|e| Self::status_entry_to_diff(&repo, &base_tree, e))
-                    .collect())
-            }
-            DiffTarget::Branch {
-                repo_path,
-                branch_name,
-                base_branch,
-            } => {
-                let repo = self.open_repo(repo_path)?;
-                let base_tree = Self::find_branch(&repo, base_branch)?
-                    .get()
-                    .peel_to_commit()?
-                    .tree()?;
-                let branch_tree = Self::find_branch(&repo, branch_name)?
-                    .get()
-                    .peel_to_commit()?
-                    .tree()?;
-
-                let mut diff_opts = DiffOptions::new();
-                diff_opts.include_typechange(true);
-
-                // Add path filtering if specified
-                if let Some(paths) = path_filter {
-                    for path in paths {
-                        diff_opts.pathspec(*path);
-                    }
-                }
-
-                let mut diff = repo.diff_tree_to_tree(
-                    Some(&base_tree),
-                    Some(&branch_tree),
-                    Some(&mut diff_opts),
-                )?;
-
-                // Enable rename detection
-                let mut find_opts = DiffFindOptions::new();
-                diff.find_similar(Some(&mut find_opts))?;
-
-                self.convert_diff_to_file_diffs(diff, &repo)
-            }
-            DiffTarget::Commit {
-                repo_path,
-                commit_sha,
-            } => {
-                let repo = self.open_repo(repo_path)?;
-
-                // Resolve commit and its baseline (the parent before the squash landed)
-                let commit_oid = git2::Oid::from_str(commit_sha).map_err(|_| {
-                    GitServiceError::InvalidRepository(format!("Invalid commit SHA: {commit_sha}"))
-                })?;
-                let commit = repo.find_commit(commit_oid)?;
-                let parent = commit.parent(0).map_err(|_| {
-                    GitServiceError::InvalidRepository(
-                        "Commit has no parent; cannot diff a squash merge without a baseline"
-                            .into(),
-                    )
-                })?;
-
-                let parent_tree = parent.tree()?;
-                let commit_tree = commit.tree()?;
-
-                // Diff options
-                let mut diff_opts = git2::DiffOptions::new();
-                diff_opts.include_typechange(true);
-
-                // Optional path filtering
-                if let Some(paths) = path_filter {
-                    for path in paths {
-                        diff_opts.pathspec(*path);
-                    }
-                }
-
-                // Compute the diff parent -> commit
-                let mut diff = repo.diff_tree_to_tree(
-                    Some(&parent_tree),
-                    Some(&commit_tree),
-                    Some(&mut diff_opts),
-                )?;
-
-                // Enable rename detection
-                let mut find_opts = git2::DiffFindOptions::new();
-                diff.find_similar(Some(&mut find_opts))?;
-
-                self.convert_diff_to_file_diffs(diff, &repo)
-            }
-        }
+        let git = GitCli::new();
+        let cli_opts = StatusDiffOptions {
+            path_filter: path_filter.map(|fs| fs.iter().map(|s| s.to_string()).collect()),
+        };
+        let entries = git
+            .diff_status(worktree_path, base_commit, cli_opts)
+            .map_err(|e| GitServiceError::InvalidRepository(format!("git diff failed: {e}")))?;
+        Ok(entries
+            .into_iter()
+            .map(|e| Self::status_entry_to_diff(&repo, &base_tree, e))
+            .collect())
     }
 
-    /// Convert git2::Diff to our Diff structs
-    fn convert_diff_to_file_diffs(
+    /// Returns file paths that differ from base commit, without loading content.
+    /// Much cheaper than `get_diffs` — skips content loading (`status_entry_to_diff`),
+    /// only runs git name-status commands to get the file list.
+    pub fn get_diff_file_paths(
         &self,
-        diff: git2::Diff,
-        repo: &Repository,
-    ) -> Result<Vec<Diff>, GitServiceError> {
-        let mut file_diffs = Vec::new();
-
-        let mut delta_index: usize = 0;
-        diff.foreach(
-            &mut |delta, _| {
-                if delta.status() == Delta::Unreadable {
-                    return true;
-                }
-
-                let status = delta.status();
-
-                // Decide if we should omit content due to size
-                let mut content_omitted = false;
-                // Check old blob size when applicable
-                if !matches!(status, Delta::Added) {
-                    let oid = delta.old_file().id();
-                    if !oid.is_zero()
-                        && let Ok(blob) = repo.find_blob(oid)
-                        && !blob.is_binary()
-                        && blob.size() > MAX_INLINE_DIFF_BYTES
-                    {
-                        content_omitted = true;
-                    }
-                }
-                // Check new blob size when applicable
-                if !matches!(status, Delta::Deleted) {
-                    let oid = delta.new_file().id();
-                    if !oid.is_zero()
-                        && let Ok(blob) = repo.find_blob(oid)
-                        && !blob.is_binary()
-                        && blob.size() > MAX_INLINE_DIFF_BYTES
-                    {
-                        content_omitted = true;
-                    }
-                }
-
-                // Only build old/new content if not omitted
-                let (old_path, old_content) = if matches!(status, Delta::Added) {
-                    (None, None)
-                } else {
-                    let path_opt = delta
-                        .old_file()
-                        .path()
-                        .map(|p| p.to_string_lossy().to_string());
-                    if content_omitted {
-                        (path_opt, None)
-                    } else {
-                        let details = delta
-                            .old_file()
-                            .path()
-                            .map(|p| self.create_file_details(p, &delta.old_file().id(), repo));
-                        (
-                            details.as_ref().and_then(|f| f.file_name.clone()),
-                            details.and_then(|f| f.content),
-                        )
-                    }
-                };
-
-                let (new_path, new_content) = if matches!(status, Delta::Deleted) {
-                    (None, None)
-                } else {
-                    let path_opt = delta
-                        .new_file()
-                        .path()
-                        .map(|p| p.to_string_lossy().to_string());
-                    if content_omitted {
-                        (path_opt, None)
-                    } else {
-                        let details = delta
-                            .new_file()
-                            .path()
-                            .map(|p| self.create_file_details(p, &delta.new_file().id(), repo));
-                        (
-                            details.as_ref().and_then(|f| f.file_name.clone()),
-                            details.and_then(|f| f.content),
-                        )
-                    }
-                };
-
-                let mut change = match status {
-                    Delta::Added => DiffChangeKind::Added,
-                    Delta::Deleted => DiffChangeKind::Deleted,
-                    Delta::Modified => DiffChangeKind::Modified,
-                    Delta::Renamed => DiffChangeKind::Renamed,
-                    Delta::Copied => DiffChangeKind::Copied,
-                    Delta::Untracked => DiffChangeKind::Added,
-                    _ => DiffChangeKind::Modified,
-                };
-
-                // Detect pure mode changes (e.g., chmod +/-x) and classify as PermissionChange
-                if matches!(status, Delta::Modified)
-                    && delta.old_file().mode() != delta.new_file().mode()
-                {
-                    // Only downgrade to PermissionChange if we KNOW content is unchanged
-                    if old_content.is_some() && new_content.is_some() && old_content == new_content
-                    {
-                        change = DiffChangeKind::PermissionChange;
-                    }
-                }
-
-                // Always compute line stats via libgit2 Patch
-                let (additions, deletions) = if let Ok(Some(patch)) =
-                    git2::Patch::from_diff(&diff, delta_index)
-                    && let Ok((_ctx, adds, dels)) = patch.line_stats()
-                {
-                    (Some(adds), Some(dels))
-                } else {
-                    (None, None)
-                };
-
-                file_diffs.push(Diff {
-                    change,
-                    old_path,
-                    new_path,
-                    old_content,
-                    new_content,
-                    content_omitted,
-                    additions,
-                    deletions,
-                    repo_id: None,
-                });
-
-                delta_index += 1;
-                true
-            },
-            None,
-            None,
-            None,
-        )?;
-
-        Ok(file_diffs)
+        worktree_path: &Path,
+        base_commit: &Commit,
+    ) -> Result<HashSet<String>, GitServiceError> {
+        let git = GitCli::new();
+        let entries = git
+            .diff_status(
+                worktree_path,
+                base_commit,
+                cli::StatusDiffOptions { path_filter: None },
+            )
+            .map_err(|e| GitServiceError::InvalidRepository(format!("git diff failed: {e}")))?;
+        Ok(entries.into_iter().map(|e| e.path).collect())
     }
 
     /// Extract file path from a Diff (for indexing and ConversationPatch)
@@ -637,39 +427,6 @@ impl GitService {
                 tracing::debug!("File is not valid UTF-8: {:?}: {}", abs_path, e);
                 None
             }
-        }
-    }
-
-    /// Create FileDiffDetails from path and blob with filesystem fallback
-    fn create_file_details(
-        &self,
-        path: &Path,
-        blob_id: &git2::Oid,
-        repo: &Repository,
-    ) -> FileDiffDetails {
-        let file_name = path.to_string_lossy().to_string();
-
-        // Try to get content from blob first (for non-zero OIDs)
-        let content = if !blob_id.is_zero() {
-            repo.find_blob(*blob_id)
-                .ok()
-                .and_then(|blob| Self::blob_to_string(&blob))
-                .or_else(|| {
-                    // Fallback to filesystem for unstaged changes
-                    tracing::debug!(
-                        "Blob not found for non-zero OID, reading from filesystem: {}",
-                        file_name
-                    );
-                    Self::read_file_to_string(repo, path)
-                })
-        } else {
-            // For zero OIDs, check filesystem directly (covers new/untracked files)
-            Self::read_file_to_string(repo, path)
-        };
-
-        FileDiffDetails {
-            file_name: Some(file_name),
-            content,
         }
     }
 
@@ -1044,6 +801,24 @@ impl GitService {
         Ok(())
     }
 
+    /// Get the HEAD commit OID for a repo/worktree. Returns None if HEAD is unborn.
+    pub fn get_head_commit(&self, repo_path: &Path) -> Option<Commit> {
+        let repo = self.open_repo(repo_path).ok()?;
+        let head = repo.head().ok()?;
+        head.target().map(Commit::new)
+    }
+
+    /// Returns true if HEAD's first parent is `expected_parent_oid` (i.e., HEAD is a simple commit on top of it).
+    pub fn is_head_child_of(&self, repo_path: &Path, expected_parent_oid: git2::Oid) -> bool {
+        let check = || -> Option<bool> {
+            let repo = self.open_repo(repo_path).ok()?;
+            let oid = repo.head().ok()?.target()?;
+            let parent = repo.find_commit(oid).ok()?.parent(0).ok()?;
+            Some(parent.id() == expected_parent_oid)
+        };
+        check().unwrap_or(false)
+    }
+
     /// Get current HEAD information including branch name and commit OID
     pub fn get_head_info(&self, repo_path: &Path) -> Result<HeadInfo, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
@@ -1067,13 +842,8 @@ impl GitService {
         Ok(HeadInfo { branch, oid })
     }
 
-    pub fn get_current_branch(&self, repo_path: &Path) -> Result<String, git2::Error> {
-        // Thin wrapper for backward compatibility
-        match self.get_head_info(repo_path) {
-            Ok(head_info) => Ok(head_info.branch),
-            Err(GitServiceError::Git(git_err)) => Err(git_err),
-            Err(_) => Err(git2::Error::from_str("Failed to get head info")),
-        }
+    pub fn get_current_branch(&self, repo_path: &Path) -> Result<String, GitServiceError> {
+        Ok(self.get_head_info(repo_path)?.branch)
     }
 
     /// Get the commit OID (as hex string) for a given branch without modifying HEAD
@@ -1096,36 +866,6 @@ impl GitService {
     ) -> Result<String, GitServiceError> {
         let git = GitCli::new();
         Ok(git.merge_base(worktree_path, target_branch, task_branch)?)
-    }
-
-    /// Get the subject/summary line for a given commit OID
-    pub fn get_commit_subject(
-        &self,
-        repo_path: &Path,
-        commit_sha: &str,
-    ) -> Result<String, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let oid = git2::Oid::from_str(commit_sha)
-            .map_err(|_| GitServiceError::InvalidRepository("Invalid commit SHA".into()))?;
-        let commit = repo.find_commit(oid)?;
-        Ok(commit.summary().unwrap_or("(no subject)").to_string())
-    }
-
-    /// Compare two OIDs and return (ahead, behind) counts: how many commits
-    /// `from_oid` is ahead of and behind `to_oid`.
-    pub fn ahead_behind_commits_by_oid(
-        &self,
-        repo_path: &Path,
-        from_oid: &str,
-        to_oid: &str,
-    ) -> Result<(usize, usize), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let from = git2::Oid::from_str(from_oid)
-            .map_err(|_| GitServiceError::InvalidRepository("Invalid from OID".into()))?;
-        let to = git2::Oid::from_str(to_oid)
-            .map_err(|_| GitServiceError::InvalidRepository("Invalid to OID".into()))?;
-        let (ahead, behind) = repo.graph_ahead_behind(from, to)?;
-        Ok((ahead, behind))
     }
 
     /// Return the full worktree status including all entries
@@ -1274,7 +1014,7 @@ impl GitService {
         Ok(())
     }
 
-    pub fn get_all_branches(&self, repo_path: &Path) -> Result<Vec<GitBranch>, git2::Error> {
+    pub fn get_all_branches(&self, repo_path: &Path) -> Result<Vec<GitBranch>, GitServiceError> {
         let repo = Repository::open(repo_path)?;
         let current_branch = self.get_current_branch(repo_path).unwrap_or_default();
         let mut branches = Vec::new();
@@ -1482,22 +1222,19 @@ impl GitService {
         Ok(final_commit.id().to_string())
     }
 
-    pub fn find_branch_type(
+    /// Returns true if the branch is a remote-tracking branch (not local).
+    pub fn is_remote_branch(
         &self,
         repo_path: &Path,
         branch_name: &str,
-    ) -> Result<BranchType, GitServiceError> {
+    ) -> Result<bool, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
-        // Try to find the branch as a local branch first
         match repo.find_branch(branch_name, BranchType::Local) {
-            Ok(_) => Ok(BranchType::Local),
-            Err(_) => {
-                // If not found, try to find it as a remote branch
-                match repo.find_branch(branch_name, BranchType::Remote) {
-                    Ok(_) => Ok(BranchType::Remote),
-                    Err(_) => Err(GitServiceError::BranchNotFound(branch_name.to_string())),
-                }
-            }
+            Ok(_) => Ok(false),
+            Err(_) => match repo.find_branch(branch_name, BranchType::Remote) {
+                Ok(_) => Ok(true),
+                Err(_) => Err(GitServiceError::BranchNotFound(branch_name.to_string())),
+            },
         }
     }
 
@@ -1630,7 +1367,7 @@ impl GitService {
         Ok(())
     }
 
-    pub fn find_branch<'a>(
+    pub(crate) fn find_branch<'a>(
         repo: &'a Repository,
         branch_name: &str,
     ) -> Result<git2::Branch<'a>, GitServiceError> {
@@ -1702,19 +1439,6 @@ impl GitService {
         let git_cli = GitCli::new();
         git_cli
             .check_remote_branch_exists(repo_path, remote_url, branch_name)
-            .map_err(GitServiceError::from)
-    }
-
-    pub fn fetch_branch(
-        &self,
-        repo_path: &Path,
-        remote_url: &str,
-        branch_name: &str,
-    ) -> Result<(), GitServiceError> {
-        let git_cli = GitCli::new();
-        let refspec = format!("+refs/heads/{branch_name}:refs/heads/{branch_name}");
-        git_cli
-            .fetch_with_refspec(repo_path, remote_url, &refspec)
             .map_err(GitServiceError::from)
     }
 
@@ -1965,5 +1689,34 @@ impl GitService {
         }
 
         Ok(stats)
+    }
+}
+
+/// Compute addition/deletion counts between two text snapshots using libgit2.
+pub fn compute_line_change_counts(old: &str, new: &str) -> (usize, usize) {
+    fn ensure_newline(s: &str) -> std::borrow::Cow<'_, str> {
+        if s.ends_with('\n') {
+            std::borrow::Cow::Borrowed(s)
+        } else {
+            let mut owned = s.to_owned();
+            owned.push('\n');
+            std::borrow::Cow::Owned(owned)
+        }
+    }
+
+    let old = ensure_newline(old);
+    let new = ensure_newline(new);
+
+    let mut opts = DiffOptions::new();
+    opts.context_lines(0);
+
+    match git2::Patch::from_buffers(old.as_bytes(), None, new.as_bytes(), None, Some(&mut opts))
+        .and_then(|patch| patch.line_stats())
+    {
+        Ok((_, adds, dels)) => (adds, dels),
+        Err(e) => {
+            tracing::error!("git2 diff failed: {}", e);
+            (0, 0)
+        }
     }
 }

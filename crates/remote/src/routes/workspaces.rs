@@ -1,3 +1,4 @@
+use api_types::{DeleteWorkspaceRequest, UpdateWorkspaceRequest, Workspace};
 use axum::{
     Json, Router,
     extract::{Extension, Path, State},
@@ -12,15 +13,17 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_project_access,
 };
-use api_types::{DeleteWorkspaceRequest, UpdateWorkspaceRequest, Workspace};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{issues::IssueRepository, workspaces::{CreateWorkspaceParams, WorkspaceRepository}},
+    db::{
+        issues::IssueRepository,
+        workspaces::{CreateWorkspaceParams, WorkspaceRepository},
+    },
 };
 
 #[derive(Debug, Deserialize)]
-pub struct CreateWorkspaceRequest {
+struct CreateWorkspaceRequest {
     pub project_id: Uuid,
     pub local_workspace_id: Option<Uuid>,
     pub issue_id: Option<Uuid>,
@@ -31,7 +34,7 @@ pub struct CreateWorkspaceRequest {
     pub lines_removed: Option<i32>,
 }
 
-pub fn router() -> Router<AppState> {
+pub(super) fn router() -> Router<AppState> {
     Router::new()
         .route(
             "/workspaces",
@@ -91,10 +94,7 @@ async fn create_workspace(
             IssueRepository::sync_issue_from_workspace_created(state.pool(), issue_id, ctx.user.id)
                 .await
         {
-            tracing::warn!(
-                ?error,
-                "failed to sync issue from workspace creation"
-            );
+            tracing::warn!(?error, "failed to sync issue from workspace creation");
         }
 
         if let Some(analytics) = state.analytics() {
@@ -178,7 +178,12 @@ async fn sync_issue_status_from_local_merge(
         return Ok(StatusCode::NO_CONTENT);
     };
 
-    IssueRepository::sync_status_from_local_workspace_merge(state.pool(), issue_id)
+    let mut conn = state.pool().acquire().await.map_err(|error| {
+        tracing::error!(?error, "failed to acquire connection");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    IssueRepository::sync_status_from_local_workspace_merge(&mut conn, issue_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, issue_id = %issue_id, "failed to sync issue status");
@@ -274,7 +279,10 @@ async fn get_workspace_by_local_id(
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to find workspace");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to find workspace")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to find workspace",
+            )
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "workspace not found"))?;
 

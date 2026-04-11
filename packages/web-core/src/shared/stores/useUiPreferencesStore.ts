@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { create } from 'zustand';
 import type { RepoAction } from '@vibe/ui/components/RepoCard';
 import type { IssuePriority } from 'shared/remote-types';
@@ -12,7 +12,7 @@ export const RIGHT_MAIN_PANEL_MODES = {
 export type RightMainPanelMode =
   (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES];
 
-export type LayoutMode = 'workspaces' | 'kanban' | 'migrate';
+export type LayoutMode = 'workspaces' | 'kanban';
 
 export type MobileTab =
   | 'workspaces'
@@ -23,6 +23,7 @@ export type MobileTab =
   | 'git';
 
 export type MobileFontScale = 'default' | 'small' | 'smaller';
+export const DEFAULT_CREATE_DRAFT_WORKSPACE_BY_DEFAULT = false;
 
 const MOBILE_FONT_SCALE_KEY = 'vk-mobile-font-scale';
 
@@ -95,6 +96,7 @@ export const KANBAN_PROJECT_VIEW_IDS = {
 
 export const DEFAULT_KANBAN_PROJECT_VIEW_ID = KANBAN_PROJECT_VIEW_IDS.TEAM;
 export const DEFAULT_KANBAN_SHOW_WORKSPACES = true;
+export const DEFAULT_KANBAN_HIDE_BLOCKED = false;
 
 export const getDefaultShowSubIssuesForView = (viewId: string): boolean =>
   viewId === KANBAN_PROJECT_VIEW_IDS.PERSONAL;
@@ -105,6 +107,7 @@ export type KanbanProjectView = {
   filters: KanbanFilterState;
   showSubIssues: boolean;
   showWorkspaces: boolean;
+  hideBlocked: boolean;
 };
 
 export type KanbanProjectViewSelection = {
@@ -115,6 +118,7 @@ export type KanbanProjectViewPreferences = {
   filters: KanbanFilterState;
   showSubIssues: boolean;
   showWorkspaces: boolean;
+  hideBlocked: boolean;
 };
 
 export type ResolvedKanbanProjectState = {
@@ -122,6 +126,7 @@ export type ResolvedKanbanProjectState = {
   filters: KanbanFilterState;
   showSubIssues: boolean;
   showWorkspaces: boolean;
+  hideBlocked: boolean;
 };
 
 const cloneKanbanFilters = (filters: KanbanFilterState): KanbanFilterState => ({
@@ -154,6 +159,7 @@ const getKanbanDefaultView = (viewId: string): KanbanProjectView => {
         KANBAN_PROJECT_VIEW_IDS.PERSONAL
       ),
       showWorkspaces: DEFAULT_KANBAN_SHOW_WORKSPACES,
+      hideBlocked: DEFAULT_KANBAN_HIDE_BLOCKED,
     };
   }
 
@@ -163,6 +169,7 @@ const getKanbanDefaultView = (viewId: string): KanbanProjectView => {
     filters: cloneKanbanFilters(DEFAULT_KANBAN_FILTER_STATE),
     showSubIssues: getDefaultShowSubIssuesForView(KANBAN_PROJECT_VIEW_IDS.TEAM),
     showWorkspaces: DEFAULT_KANBAN_SHOW_WORKSPACES,
+    hideBlocked: DEFAULT_KANBAN_HIDE_BLOCKED,
   };
 };
 
@@ -174,6 +181,7 @@ const createDefaultKanbanProjectViewPreferences = (
     filters: cloneKanbanFilters(view.filters),
     showSubIssues: view.showSubIssues,
     showWorkspaces: view.showWorkspaces,
+    hideBlocked: view.hideBlocked,
   };
 };
 
@@ -191,6 +199,7 @@ export const resolveKanbanProjectState = (
     filters: cloneKanbanFilters(activeView.filters),
     showSubIssues: activeView.showSubIssues,
     showWorkspaces: activeView.showWorkspaces,
+    hideBlocked: activeView.hideBlocked,
   };
 };
 
@@ -313,7 +322,7 @@ type State = {
   isTerminalVisible: boolean;
   previewRefreshKey: number;
   // Note: Kanban issue panel state (selectedKanbanIssueId, createMode, etc.)
-  // is now derived from URL via useKanbanNavigation hook
+  // is derived from URL via app navigation route state
 
   // Workspace-specific panel state
   workspacePanelStates: Record<string, WorkspacePanelState>;
@@ -341,6 +350,11 @@ type State = {
   // Mobile font scale
   mobileFontScale: MobileFontScale;
 
+  // Last selected organization and project (persisted via scratch store)
+  selectedOrgId: string | null;
+  selectedProjectId: string | null;
+  createDraftWorkspaceByDefault: boolean;
+
   // UI preferences actions
   setRepoAction: (repoId: string, action: RepoAction) => void;
   setExpanded: (key: string, value: boolean) => void;
@@ -360,7 +374,7 @@ type State = {
   toggleTerminal: () => void;
   setTerminalVisible: (value: boolean) => void;
   // Note: Kanban panel actions (openKanbanIssuePanel, closeKanbanIssuePanel, etc.)
-  // are now handled by navigation via useKanbanNavigation hook
+  // are handled by app navigation
   toggleRightMainPanelMode: (
     mode: RightMainPanelMode,
     workspaceId?: string
@@ -397,6 +411,11 @@ type State = {
     viewId: string,
     show: boolean
   ) => void;
+  setKanbanProjectViewHideBlocked: (
+    projectId: string,
+    viewId: string,
+    hide: boolean
+  ) => void;
   clearKanbanProjectViewPreferences: (
     projectId: string,
     viewId: string
@@ -418,6 +437,12 @@ type State = {
 
   // Mobile font scale actions
   setMobileFontScale: (scale: MobileFontScale) => void;
+
+  // Last selected organization and project actions
+  setSelectedOrgId: (orgId: string | null) => void;
+  clearSelectedOrgId: () => void;
+  setSelectedProjectId: (projectId: string | null) => void;
+  setCreateDraftWorkspaceByDefault: (value: boolean) => void;
 };
 
 export const useUiPreferencesStore = create<State>()((set, get) => ({
@@ -456,6 +481,11 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
 
   // Mobile font scale
   mobileFontScale: loadMobileFontScale(),
+
+  // Last selected organization and project
+  selectedOrgId: null,
+  selectedProjectId: null,
+  createDraftWorkspaceByDefault: DEFAULT_CREATE_DRAFT_WORKSPACE_BY_DEFAULT,
 
   // UI preferences actions
   setRepoAction: (repoId, action) =>
@@ -525,7 +555,6 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
       state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
     const isCurrentlyActive = wsState.rightMainPanelMode === mode;
     const isMobile = window.matchMedia('(max-width: 767px)').matches;
-
     set({
       workspacePanelStates: {
         ...state.workspacePanelStates,
@@ -706,6 +735,33 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
     });
   },
 
+  setKanbanProjectViewHideBlocked: (projectId, viewId, hide) => {
+    if (!isKanbanProjectViewId(viewId)) {
+      return;
+    }
+
+    set((s) => {
+      const projectPreferences =
+        s.kanbanProjectViewPreferences[projectId] ?? {};
+      const existingPreferences =
+        projectPreferences[viewId] ??
+        createDefaultKanbanProjectViewPreferences(viewId);
+
+      return {
+        kanbanProjectViewPreferences: {
+          ...s.kanbanProjectViewPreferences,
+          [projectId]: {
+            ...projectPreferences,
+            [viewId]: {
+              ...existingPreferences,
+              hideBlocked: hide,
+            },
+          },
+        },
+      };
+    });
+  },
+
   clearKanbanProjectViewPreferences: (projectId, viewId) => {
     if (!isKanbanProjectViewId(viewId)) {
       return;
@@ -779,6 +835,13 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
     }
     set({ mobileFontScale: scale });
   },
+
+  // Last selected organization and project actions
+  setSelectedOrgId: (orgId) => set({ selectedOrgId: orgId }),
+  clearSelectedOrgId: () => set({ selectedOrgId: null }),
+  setSelectedProjectId: (projectId) => set({ selectedProjectId: projectId }),
+  setCreateDraftWorkspaceByDefault: (value) =>
+    set({ createDraftWorkspaceByDefault: value }),
 }));
 
 // Hook for repo action preference
@@ -843,15 +906,26 @@ export function useExpandedAll() {
 // Hook for persisted file tree collapsed paths (per workspace)
 export function usePersistedCollapsedPaths(
   workspaceId: string | undefined
-): [Set<string>, (paths: Set<string>) => void] {
+): [
+  Set<string>,
+  (paths: Set<string> | ((prev: Set<string>) => Set<string>)) => void,
+] {
   const key = workspaceId ? `file-tree:${workspaceId}` : '';
   const paths = useUiPreferencesStore((s) => s.collapsedPaths[key] ?? []);
   const setPaths = useUiPreferencesStore((s) => s.setCollapsedPaths);
 
   const pathSet = useMemo(() => new Set(paths), [paths]);
+  const pathSetRef = useRef(pathSet);
+  pathSetRef.current = pathSet;
+
   const setPathSet = useCallback(
-    (newPaths: Set<string>) => {
-      if (key) setPaths(key, [...newPaths]);
+    (newPaths: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+      if (!key) return;
+      const resolved =
+        typeof newPaths === 'function'
+          ? newPaths(pathSetRef.current)
+          : newPaths;
+      setPaths(key, [...resolved]);
     },
     [key, setPaths]
   );
@@ -875,13 +949,12 @@ export function useMobileFontScale() {
 
 // Hook for workspace-specific panel state
 export function useWorkspacePanelState(workspaceId: string | undefined) {
-  // Get workspace-specific state (falls back to defaults when no workspaceId)
-  const workspacePanelStates = useUiPreferencesStore(
-    (s) => s.workspacePanelStates
+  // Subscribe only to this workspace's panel state slice (not the entire map)
+  const wsState = useUiPreferencesStore((s) =>
+    workspaceId
+      ? (s.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE)
+      : DEFAULT_WORKSPACE_PANEL_STATE
   );
-  const wsState = workspaceId
-    ? (workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE)
-    : DEFAULT_WORKSPACE_PANEL_STATE;
 
   // Global state (sidebars are global)
   const isLeftSidebarVisible = useUiPreferencesStore(

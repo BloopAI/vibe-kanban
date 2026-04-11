@@ -14,11 +14,11 @@ use uuid::Uuid;
 use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize)]
-pub struct ListIssueAssigneesQuery {
+pub(super) struct ListIssueAssigneesQuery {
     pub issue_id: Uuid,
 }
 
-pub fn router() -> Router<DeploymentImpl> {
+pub(super) fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route(
             "/issue-assignees",

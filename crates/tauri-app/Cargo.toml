@@ -1,0 +1,46 @@
+[package]
+name = "vibe-kanban-tauri"
+version = "0.1.42"
+edition = "2024"
+
+[[bin]]
+name = "vibe-kanban-tauri"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["devtools"] }
+tauri-plugin-shell = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-notification = "2"
+
+server = { path = "../server" }
+services = { path = "../services" }
+utils = { path = "../utils" }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+
+tokio-util = { version = "0.7", features = ["io"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["registry"] }
+serde_json = { workspace = true }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+rustls = { workspace = true }
+arboard = "3.6.1"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSString", "NSBundle", "NSDictionary", "NSError", "NSKeyValueCoding"] }
+objc2-web-kit = { version = "0.3", features = ["WKWebView"] }
+tauri-plugin-macos-fps = "0.1"
+objc2-user-notifications = "0.3"
+block2 = "0.6"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+tauri-winrt-notification = "0.7"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+notify-rust = "4"

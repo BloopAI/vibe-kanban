@@ -19,12 +19,13 @@ import {
 } from '@hello-pangea/dnd';
 import {
   type KeyboardEvent,
+  type MouseEvent,
   type MutableRefObject,
   type ReactNode,
   type Ref,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PlusIcon } from '@phosphor-icons/react';
+import { DotsSixVerticalIcon, PlusIcon } from '@phosphor-icons/react';
 import { Button } from './Button';
 
 export type { DropResult } from '@hello-pangea/dnd';
@@ -66,12 +67,14 @@ export type KanbanCardProps = Pick<Feature, 'id' | 'name'> & {
   index: number;
   children?: ReactNode;
   className?: string;
-  onClick?: () => void;
+  onClick?: (e: MouseEvent<HTMLDivElement>) => void;
   tabIndex?: number;
   forwardedRef?: Ref<HTMLDivElement>;
   onKeyDown?: (e: KeyboardEvent) => void;
   isOpen?: boolean;
+  isSelected?: boolean;
   dragDisabled?: boolean;
+  isMobile?: boolean;
 };
 
 export const KanbanCard = ({
@@ -85,7 +88,9 @@ export const KanbanCard = ({
   forwardedRef,
   onKeyDown,
   isOpen,
+  isSelected,
   dragDisabled = false,
+  isMobile,
 }: KanbanCardProps) => {
   return (
     <Draggable draggableId={id} index={index} isDragDisabled={dragDisabled}>
@@ -106,17 +111,54 @@ export const KanbanCard = ({
             className={cn(
               'p-base outline-none flex-col border -mt-[1px] -mx-[1px] bg-primary',
               snapshot.isDragging && 'cursor-grabbing shadow-lg',
-              isOpen && 'ring-2 ring-secondary-foreground ring-inset',
+              isSelected
+                ? 'ring-2 ring-accent ring-inset bg-accent/5'
+                : isOpen && 'ring-2 ring-secondary-foreground ring-inset',
               className
             )}
             ref={setRefs}
             {...provided.draggableProps}
-            {...provided.dragHandleProps}
+            {...(isMobile ? {} : provided.dragHandleProps)}
             tabIndex={tabIndex}
-            onClick={onClick}
+            onClick={
+              isMobile
+                ? (e) => {
+                    if (!snapshot.isDragging) onClick?.(e);
+                  }
+                : undefined
+            }
+            onMouseUp={
+              !isMobile
+                ? (e) => {
+                    if (e.button === 0 && !snapshot.isDragging) {
+                      onClick?.(e);
+                    }
+                  }
+                : undefined
+            }
             onKeyDown={onKeyDown}
           >
-            {children ?? <p className="m-0 font-medium text-sm">{name}</p>}
+            {isMobile ? (
+              <div className="flex gap-half">
+                <div
+                  {...provided.dragHandleProps}
+                  className="flex items-start pt-half cursor-grab shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <DotsSixVerticalIcon
+                    className="size-icon-xs text-low"
+                    weight="bold"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  {children ?? (
+                    <p className="m-0 font-medium text-sm">{name}</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              (children ?? <p className="m-0 font-medium text-sm">{name}</p>)
+            )}
           </Card>
         );
       }}

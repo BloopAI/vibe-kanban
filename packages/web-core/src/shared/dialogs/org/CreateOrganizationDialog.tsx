@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { create, useModal } from '@ebay/nice-modal-react';
+import { useTranslation } from 'react-i18next';
+import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { Button } from '@vibe/ui/components/Button';
 import { Input } from '@vibe/ui/components/Input';
-import { Label } from '@vibe/ui/components/Label';
 import {
   Dialog,
   DialogContent,
@@ -10,10 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@vibe/ui/components/KeyboardDialog';
-import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
-import { create, useModal } from '@ebay/nice-modal-react';
+import { Label } from '@vibe/ui/components/Label';
 import { useOrganizationMutations } from '@/shared/hooks/useOrganizationMutations';
-import { useTranslation } from 'react-i18next';
 import { defineModal, type NoProps } from '@/shared/lib/modals';
 
 export type CreateOrganizationResult = {
@@ -45,7 +45,6 @@ const CreateOrganizationDialogImpl = create<NoProps>(() => {
   });
 
   useEffect(() => {
-    // Reset form when dialog opens
     if (modal.visible) {
       setName('');
       setSlug('');
@@ -54,7 +53,6 @@ const CreateOrganizationDialogImpl = create<NoProps>(() => {
     }
   }, [modal.visible]);
 
-  // Auto-generate slug from name if not manually edited
   useEffect(() => {
     if (!isManualSlug && name) {
       const generatedSlug = name
@@ -71,10 +69,12 @@ const CreateOrganizationDialogImpl = create<NoProps>(() => {
   const validateName = (value: string): string | null => {
     const trimmedValue = value.trim();
     if (!trimmedValue) return 'Organization name is required';
-    if (trimmedValue.length < 3)
+    if (trimmedValue.length < 3) {
       return 'Organization name must be at least 3 characters';
-    if (trimmedValue.length > 50)
+    }
+    if (trimmedValue.length > 50) {
       return 'Organization name must be 50 characters or less';
+    }
     return null;
   };
 

@@ -1,4 +1,10 @@
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import type { Project } from "shared/remote-types";
 import type { OrganizationWithRole } from "shared/types";
@@ -7,10 +13,12 @@ import { clearTokens } from "@remote/shared/lib/auth";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { useOrganizationStore } from "@/shared/stores/useOrganizationStore";
 import { useUserOrganizations } from "@/shared/hooks/useUserOrganizations";
-import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 import { useAuth } from "@/shared/hooks/auth/useAuth";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
-import { useRelayAppBarHosts } from "@remote/shared/hooks/useRelayAppBarHosts";
+import {
+  resolveRelayNavigationHostId,
+  useRelayAppBarHosts,
+} from "@remote/shared/hooks/useRelayAppBarHosts";
 
 type OrganizationWithProjects = {
   organization: OrganizationWithRole;
@@ -43,6 +51,17 @@ export default function HomePage() {
   const { isSignedIn } = useAuth();
   const { hosts } = useRelayAppBarHosts(isSignedIn);
   const isMobile = useIsMobile();
+  const preferredHostId = useMemo(
+    () => resolveRelayNavigationHostId(hosts),
+    [hosts],
+  );
+
+  const openRelaySettings = useCallback((hostId?: string) => {
+    void SettingsDialog.show({
+      initialSection: "relay",
+      ...(hostId ? { initialState: { hostId } } : {}),
+    });
+  }, []);
 
   useEffect(() => {
     const legacyOrgId = search.legacyOrgSettingsOrgId;
@@ -60,7 +79,6 @@ export default function HomePage() {
     void SettingsDialog.show({
       initialSection: "organizations",
       initialState: { organizationId: legacyOrgId },
-      sections: REMOTE_SETTINGS_SECTIONS,
     });
   }, [navigate, search.legacyOrgSettingsOrgId, setSelectedOrgId]);
 
@@ -174,10 +192,7 @@ export default function HomePage() {
                   type="button"
                   className="mt-base rounded-sm border border-border bg-primary px-base py-half text-sm font-medium text-normal hover:border-brand/60 hover:text-high"
                   onClick={() => {
-                    void SettingsDialog.show({
-                      initialSection: "relay",
-                      sections: REMOTE_SETTINGS_SECTIONS,
-                    });
+                    openRelaySettings();
                   }}
                 >
                   Link a host
@@ -203,15 +218,11 @@ export default function HomePage() {
                       onClick={() => {
                         if (isOnline) {
                           navigate({
-                            to: "/workspaces",
-                            search: { hostId: host.id },
+                            to: "/hosts/$hostId/workspaces",
+                            params: { hostId: host.id },
                           });
                         } else if (isUnpaired) {
-                          void SettingsDialog.show({
-                            initialSection: "relay",
-                            initialState: { hostId: host.id },
-                            sections: REMOTE_SETTINGS_SECTIONS,
-                          });
+                          openRelaySettings(host.id);
                         }
                       }}
                     >
@@ -237,10 +248,7 @@ export default function HomePage() {
                   type="button"
                   className="flex w-full items-center justify-center rounded-sm border border-dashed border-border px-base py-half text-sm text-low hover:border-brand/60 hover:text-normal"
                   onClick={() => {
-                    void SettingsDialog.show({
-                      initialSection: "relay",
-                      sections: REMOTE_SETTINGS_SECTIONS,
-                    });
+                    openRelaySettings();
                   }}
                 >
                   Link a host
@@ -276,6 +284,8 @@ export default function HomePage() {
                 key={organization.id}
                 organization={organization}
                 projects={projects}
+                hostId={preferredHostId}
+                onRequireHost={openRelaySettings}
               />
             ))}
           </div>
@@ -298,7 +308,12 @@ function CenteredCard({ children }: { children: ReactNode }) {
 function OrganizationSection({
   organization,
   projects,
-}: OrganizationWithProjects) {
+  hostId,
+  onRequireHost,
+}: OrganizationWithProjects & {
+  hostId: string | null;
+  onRequireHost: () => void;
+}) {
   return (
     <section className="space-y-base">
       <header className="flex items-center justify-between gap-base">
@@ -318,7 +333,11 @@ function OrganizationSection({
         <ul className="grid gap-base sm:grid-cols-2">
           {projects.map((project) => (
             <li key={project.id}>
-              <ProjectCard project={project} />
+              <ProjectCard
+                project={project}
+                hostId={hostId}
+                onRequireHost={onRequireHost}
+              />
             </li>
           ))}
           {projects.length % 2 === 1 ? (
@@ -332,8 +351,29 @@ function OrganizationSection({
   );
 }
 
-function ProjectCard({ project }: { project: Project }) {
+function ProjectCard({
+  project,
+  hostId,
+  onRequireHost,
+}: {
+  project: Project;
+  hostId: string | null;
+  onRequireHost: () => void;
+}) {
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
+
+  if (!hostId) {
+    return (
+      <button
+        type="button"
+        className="group flex h-[61px] w-full flex-col justify-center rounded-sm border border-border bg-primary px-base py-base text-left hover:border-brand/60 hover:bg-panel"
+        onClick={onRequireHost}
+      >
+        <p className="text-sm font-medium text-high">{project.name}</p>
+        <p className="mt-half text-xs text-low">Link a host to open project</p>
+      </button>
+    );
+  }
 
   return (
     <Link

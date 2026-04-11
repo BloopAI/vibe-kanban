@@ -1,12 +1,12 @@
 use api_types::ListProjectsResponse;
 use rmcp::{
-    ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
+    ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::McpServer;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListProjectsRequest {
@@ -44,7 +44,7 @@ struct McpListProjectsResponse {
 }
 
 #[tool_router(router = remote_projects_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(description = "List all the available projects")]
     async fn list_projects(
         &self,
@@ -56,7 +56,7 @@ impl TaskServer {
         ));
         let response: ListProjectsResponse = match self.send_json(self.client.get(&url)).await {
             Ok(r) => r,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(Self::tool_error(e)),
         };
 
         let project_summaries: Vec<ProjectSummary> = response
@@ -65,7 +65,7 @@ impl TaskServer {
             .map(ProjectSummary::from_remote_project)
             .collect();
 
-        TaskServer::success(&McpListProjectsResponse {
+        McpServer::success(&McpListProjectsResponse {
             count: project_summaries.len(),
             projects: project_summaries,
         })

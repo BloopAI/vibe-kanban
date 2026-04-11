@@ -29,7 +29,10 @@ pub struct ThumbnailService;
 impl ThumbnailService {
     /// Generate a thumbnail from image bytes.
     /// Returns None for non-image MIME types.
-    pub fn generate(data: &[u8], mime_type: Option<&str>) -> Result<Option<ThumbnailResult>, ThumbnailError> {
+    pub fn generate(
+        data: &[u8],
+        mime_type: Option<&str>,
+    ) -> Result<Option<ThumbnailResult>, ThumbnailError> {
         // Check if it's an image MIME type we support
         let is_supported_image = mime_type
             .map(|m| {

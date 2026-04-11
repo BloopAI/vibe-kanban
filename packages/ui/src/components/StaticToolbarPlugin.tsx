@@ -1,23 +1,13 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import {
-  $getSelection,
-  $isRangeSelection,
-  FORMAT_TEXT_COMMAND,
-  SELECTION_CHANGE_COMMAND,
-  COMMAND_PRIORITY_CRITICAL,
-  UNDO_COMMAND,
-} from 'lexical';
+import { FORMAT_TEXT_COMMAND, UNDO_COMMAND } from 'lexical';
 import {
   INSERT_UNORDERED_LIST_COMMAND,
   INSERT_ORDERED_LIST_COMMAND,
-  REMOVE_LIST_COMMAND,
-  $isListNode,
 } from '@lexical/list';
 import {
   TextB,
   TextItalic,
-  TextUnderline,
   TextStrikethrough,
   Code,
   ListBullets,
@@ -29,17 +19,17 @@ import {
 import { cn } from '../lib/cn';
 
 interface ToolbarButtonProps {
-  active?: boolean;
   onClick: () => void;
   icon: Icon;
   label: string;
+  active?: boolean;
 }
 
 function ToolbarButton({
-  active,
   onClick,
   icon: Icon,
   label,
+  active,
 }: ToolbarButtonProps) {
   return (
     <button
@@ -66,86 +56,42 @@ function ToolbarButton({
 interface StaticToolbarPluginProps {
   saveStatus?: 'idle' | 'saved';
   extraActions?: ReactNode;
+  /** Called when a formatting button is clicked while the editor is read-only.
+   *  The parent should switch to edit mode; the command will be dispatched after. */
+  onRequestEdit?: () => void;
+  /** Whether the editor is currently in read-only / preview mode */
+  readOnly?: boolean;
 }
 
 export function StaticToolbarPlugin({
   saveStatus,
   extraActions,
+  onRequestEdit,
+  readOnly,
 }: StaticToolbarPluginProps) {
   const [editor] = useLexicalComposerContext();
 
-  // Text format state
-  const [isBold, setIsBold] = useState(false);
-  const [isItalic, setIsItalic] = useState(false);
-  const [isUnderline, setIsUnderline] = useState(false);
-  const [isStrikethrough, setIsStrikethrough] = useState(false);
-  const [isCode, setIsCode] = useState(false);
-
-  // List state
-  const [isBulletList, setIsBulletList] = useState(false);
-  const [isNumberedList, setIsNumberedList] = useState(false);
-
-  const updateToolbarState = useCallback(() => {
-    const selection = $getSelection();
-    if ($isRangeSelection(selection)) {
-      // Text formats
-      setIsBold(selection.hasFormat('bold'));
-      setIsItalic(selection.hasFormat('italic'));
-      setIsUnderline(selection.hasFormat('underline'));
-      setIsStrikethrough(selection.hasFormat('strikethrough'));
-      setIsCode(selection.hasFormat('code'));
-
-      // List detection - traverse up to find parent list
-      let node = selection.anchor.getNode();
-      let foundBullet = false;
-      let foundNumber = false;
-
-      // Walk up the tree to find a list node
-      while (node !== null) {
-        const parent = node.getParent();
-        if (parent && $isListNode(parent)) {
-          const listType = parent.getListType();
-          if (listType === 'bullet') {
-            foundBullet = true;
-          } else if (listType === 'number') {
-            foundNumber = true;
-          }
-          break;
-        }
-        node = parent as typeof node;
-      }
-
-      setIsBulletList(foundBullet);
-      setIsNumberedList(foundNumber);
-    }
-  }, []);
-
-  // Update toolbar state on selection change
-  useEffect(() => {
-    return editor.registerCommand(
-      SELECTION_CHANGE_COMMAND,
-      () => {
-        updateToolbarState();
-        return false;
-      },
-      COMMAND_PRIORITY_CRITICAL
-    );
-  }, [editor, updateToolbarState]);
-
-  // Also update on editor state changes
-  useEffect(() => {
-    return editor.registerUpdateListener(({ editorState }) => {
-      editorState.read(() => {
-        updateToolbarState();
+  /** Dispatch a command, switching to edit mode first if needed */
+  const dispatch = (fn: () => void) => {
+    if (readOnly && onRequestEdit) {
+      onRequestEdit();
+      // Dispatch after a tick so the editor becomes editable first
+      requestAnimationFrame(() => {
+        editor.focus();
+        editor.update(fn);
       });
-    });
-  }, [editor, updateToolbarState]);
+    } else {
+      fn();
+    }
+  };
 
   return (
-    <div className="flex items-center gap-half mt-base p-base border-t border-border/50">
+    <div className="flex items-center gap-half mt-half px-base py-half border-t border-border/50">
       {/* Undo button */}
       <ToolbarButton
-        onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)}
+        onClick={() =>
+          dispatch(() => editor.dispatchCommand(UNDO_COMMAND, undefined))
+        }
         icon={ArrowCounterClockwise}
         label="Undo"
       />
@@ -155,34 +101,32 @@ export function StaticToolbarPlugin({
 
       {/* Text formatting buttons */}
       <ToolbarButton
-        active={isBold}
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')}
+        onClick={() =>
+          dispatch(() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold'))
+        }
         icon={TextB}
         label="Bold"
       />
       <ToolbarButton
-        active={isItalic}
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')}
+        onClick={() =>
+          dispatch(() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic'))
+        }
         icon={TextItalic}
         label="Italic"
       />
       <ToolbarButton
-        active={isUnderline}
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline')}
-        icon={TextUnderline}
-        label="Underline"
-      />
-      <ToolbarButton
-        active={isStrikethrough}
         onClick={() =>
-          editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough')
+          dispatch(() =>
+            editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough')
+          )
         }
         icon={TextStrikethrough}
         label="Strikethrough"
       />
       <ToolbarButton
-        active={isCode}
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')}
+        onClick={() =>
+          dispatch(() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code'))
+        }
         icon={Code}
         label="Inline Code"
       />
@@ -192,26 +136,20 @@ export function StaticToolbarPlugin({
 
       {/* List buttons */}
       <ToolbarButton
-        active={isBulletList}
-        onClick={() => {
-          if (isBulletList) {
-            editor.dispatchCommand(REMOVE_LIST_COMMAND, undefined);
-          } else {
-            editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
-          }
-        }}
+        onClick={() =>
+          dispatch(() =>
+            editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)
+          )
+        }
         icon={ListBullets}
         label="Bullet List"
       />
       <ToolbarButton
-        active={isNumberedList}
-        onClick={() => {
-          if (isNumberedList) {
-            editor.dispatchCommand(REMOVE_LIST_COMMAND, undefined);
-          } else {
-            editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
-          }
-        }}
+        onClick={() =>
+          dispatch(() =>
+            editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)
+          )
+        }
         icon={ListNumbers}
         label="Numbered List"
       />

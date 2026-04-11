@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
 import { useJsonPatchWsStream } from '@/shared/hooks/useJsonPatchWsStream';
+import { useAppRuntime } from '@/shared/hooks/useAppRuntime';
+import { useLocalStorageScratch } from '@/shared/hooks/useLocalStorageScratch';
 import { scratchApi } from '@/shared/lib/api';
 import { ScratchType, type Scratch, type UpdateScratch } from 'shared/types';
 
@@ -17,29 +19,42 @@ export interface UseScratchResult {
 }
 
 interface UseScratchOptions {
-  /** Whether to enable the WebSocket connection. Defaults to true. */
+  /** Whether to enable the scratch connection. Defaults to true. */
   enabled?: boolean;
 }
 
 /**
- * Stream a single scratch item via WebSocket (JSON Patch).
- * Server sends the scratch object directly at /scratch.
+ * Runtime-aware scratch storage hook.
+ *
+ * - Local runtime: streams a single scratch item via WebSocket (JSON Patch)
+ *   backed by the server-side SQLite scratch table.
+ * - Remote runtime: persists scratch data in localStorage for the stable
+ *   cloud domain (cloud.vibekanban.com).
  */
 export const useScratch = (
   scratchType: ScratchType,
   id: string,
   options?: UseScratchOptions
 ): UseScratchResult => {
-  // Skip connection when disabled or no ID
-  const enabled = (options?.enabled ?? true) && id.length > 0;
-  const endpoint = enabled
+  const runtime = useAppRuntime();
+  const isRemote = runtime === 'remote';
+
+  // --- localStorage path (remote-web) ---
+  const localResult = useLocalStorageScratch(scratchType, id, {
+    enabled: isRemote && (options?.enabled ?? true),
+  });
+
+  // --- WebSocket/API path (local-web) ---
+  const serverEnabled =
+    !isRemote && (options?.enabled ?? true) && id.length > 0;
+  const endpoint = serverEnabled
     ? scratchApi.getStreamUrl(scratchType, id)
     : undefined;
 
   const initialData = useCallback((): ScratchState => ({ scratch: null }), []);
 
   const { data, isConnected, isInitialized, error } =
-    useJsonPatchWsStream<ScratchState>(endpoint, enabled, initialData);
+    useJsonPatchWsStream<ScratchState>(endpoint, serverEnabled, initialData);
 
   // Treat deleted scratches as null
   const rawScratch = data?.scratch as (Scratch & { deleted?: boolean }) | null;
@@ -58,7 +73,7 @@ export const useScratch = (
 
   const isLoading = !isInitialized && !error;
 
-  return {
+  const serverResult: UseScratchResult = {
     scratch,
     isLoading,
     isConnected,
@@ -66,4 +81,6 @@ export const useScratch = (
     updateScratch,
     deleteScratch,
   };
+
+  return isRemote ? localResult : serverResult;
 };

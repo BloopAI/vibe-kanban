@@ -4,6 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Disable macOS elastic overscroll bounce (visible in Tauri desktop app) */
+html {
+  overscroll-behavior: none;
+}
+
 /* 1) THEME TOKENS */
 @layer base {
   /* Light defaults */
@@ -447,6 +452,12 @@
 }
 
 @config '../../../../../local-web/tailwind.new.config.js';
+
+/* Hide Virtuoso Message List license watermark warning (scoped to virtuoso wrappers only) */
+.virtuoso-license-wrapper
+  > div[style*='color: red'][style*='pointer-events: none'] {
+  display: none !important;
+}
 
 /* Mobile-specific styles */
 @media (max-width: 767px) {

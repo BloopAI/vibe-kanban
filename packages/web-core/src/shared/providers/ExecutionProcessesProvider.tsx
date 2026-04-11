@@ -19,7 +19,6 @@ export const ExecutionProcessesProvider: React.FC<{
     error,
   } = useExecutionProcesses(sessionId, { showSoftDeleted: true });
 
-  // Filter out dropped processes (server already filters by session)
   const visible = useMemo(() => {
     return executionProcesses.filter((p) => !p.dropped);
   }, [executionProcesses]);
@@ -35,7 +34,6 @@ export const ExecutionProcessesProvider: React.FC<{
       visible.some(
         (process) =>
           (process.run_reason === 'codingagent' ||
-            process.run_reason === 'setupscript' ||
             process.run_reason === 'cleanupscript' ||
             process.run_reason === 'archivescript') &&
           process.status === 'running'

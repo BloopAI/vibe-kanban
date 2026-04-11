@@ -138,7 +138,7 @@ export function VirtualizedProcessLogs({
     );
   }
 
-  if (error) {
+  if (error && logs.length === 0) {
     return (
       <div className="h-full flex items-center justify-center">
         <p className="text-center text-destructive text-sm">
@@ -156,7 +156,7 @@ export function VirtualizedProcessLogs({
   };
 
   return (
-    <div className="h-full overflow-hidden">
+    <div className="virtuoso-license-wrapper h-full overflow-hidden">
       <VirtuosoMessageListLicense
         licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
       >

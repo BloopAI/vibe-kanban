@@ -8,13 +8,12 @@
 use std::{path::Path, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
-use command_group::AsyncCommandGroup;
 use rand::seq::SliceRandom as _;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 use ts_rs::TS;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{command_ext::GroupSpawnNoWindowExt, msg_store::MsgStore};
 
 use crate::{
     env::ExecutionEnv,
@@ -73,7 +72,7 @@ impl StandardCodingAgentExecutor for QaMockExecutor {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        let child = cmd.group_spawn().map_err(ExecutorError::Io)?;
+        let child = cmd.group_spawn_no_window().map_err(ExecutorError::Io)?;
         Ok(SpawnedChild::from(child))
     }
 
@@ -90,15 +89,20 @@ impl StandardCodingAgentExecutor for QaMockExecutor {
         self.spawn(current_dir, prompt, env).await
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
+    fn normalize_logs(
+        &self,
+        msg_store: Arc<MsgStore>,
+        current_dir: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
         // Reuse Claude's log processor since we output ClaudeJson format
         let entry_index_provider = EntryIndexProvider::start_from(&msg_store);
-        crate::executors::claude::ClaudeLogProcessor::process_logs(
+        let h1 = crate::executors::claude::ClaudeLogProcessor::process_logs(
             msg_store,
             current_dir,
             entry_index_provider,
             crate::executors::claude::HistoryStrategy::Default,
         );
+        vec![h1]
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
@@ -211,6 +215,13 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
             slash_commands: vec![],
             plugins: vec![],
             agents: vec![],
+            task_id: None,
+            tool_use_id: None,
+            description: None,
+            task_type: None,
+            prompt: None,
+            summary: None,
+            last_tool_name: None,
         },
         // 2. Assistant thinking
         ClaudeJson::Assistant {

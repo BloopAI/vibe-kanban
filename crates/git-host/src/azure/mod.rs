@@ -8,13 +8,12 @@ use async_trait::async_trait;
 use backon::{ExponentialBuilder, Retryable};
 pub use cli::AzCli;
 use cli::{AzCliError, AzureRepoInfo};
-use db::models::merge::PullRequestInfo;
 use tokio::task;
 use tracing::info;
 
 use crate::{
     GitHostProvider,
-    types::{CreatePrRequest, GitHostError, OpenPrInfo, ProviderKind, UnifiedPrComment},
+    types::{CreatePrRequest, GitHostError, ProviderKind, PullRequestDetail, UnifiedPrComment},
 };
 
 #[derive(Debug, Clone)]
@@ -75,7 +74,7 @@ impl GitHostProvider for AzureDevOpsProvider {
         repo_path: &Path,
         remote_url: &str,
         request: &CreatePrRequest,
-    ) -> Result<PullRequestInfo, GitHostError> {
+    ) -> Result<PullRequestDetail, GitHostError> {
         if let Some(head_url) = &request.head_repo_url
             && head_url != remote_url
         {
@@ -129,7 +128,7 @@ impl GitHostProvider for AzureDevOpsProvider {
         .await
     }
 
-    async fn get_pr_status(&self, pr_url: &str) -> Result<PullRequestInfo, GitHostError> {
+    async fn get_pr_status(&self, pr_url: &str) -> Result<PullRequestDetail, GitHostError> {
         (|| async {
             let cli = self.az_cli.clone();
             let url = pr_url.to_string();
@@ -166,7 +165,7 @@ impl GitHostProvider for AzureDevOpsProvider {
         repo_path: &Path,
         remote_url: &str,
         branch_name: &str,
-    ) -> Result<Vec<PullRequestInfo>, GitHostError> {
+    ) -> Result<Vec<PullRequestDetail>, GitHostError> {
         let repo_info = self.get_repo_info(repo_path, remote_url).await?;
 
         (|| async {
@@ -252,7 +251,7 @@ impl GitHostProvider for AzureDevOpsProvider {
         &self,
         _repo_path: &Path,
         _remote_url: &str,
-    ) -> Result<Vec<OpenPrInfo>, GitHostError> {
+    ) -> Result<Vec<PullRequestDetail>, GitHostError> {
         // TODO: Implement list_open_prs for Azure DevOps
         Err(GitHostError::UnsupportedProvider)
     }

@@ -63,6 +63,8 @@ interface KanbanFiltersDialogProps {
   ) => void;
   onShowSubIssuesChange: (show: boolean) => void;
   onShowWorkspacesChange: (show: boolean) => void;
+  hideBlocked: boolean;
+  onHideBlockedChange: (hide: boolean) => void;
 }
 
 export function KanbanFiltersDialog({
@@ -81,6 +83,8 @@ export function KanbanFiltersDialog({
   onSortChange,
   onShowSubIssuesChange,
   onShowWorkspacesChange,
+  hideBlocked,
+  onHideBlockedChange,
 }: KanbanFiltersDialogProps) {
   const { t } = useTranslation('common');
 
@@ -293,6 +297,16 @@ export function KanbanFiltersDialog({
               <Switch
                 checked={showWorkspaces}
                 onCheckedChange={onShowWorkspacesChange}
+              />
+            </div>
+
+            <div className="flex items-center gap-half rounded-sm bg-panel px-base py-half">
+              <span className="whitespace-nowrap text-sm text-normal">
+                {t('kanban.hideBlockedFilterLabel', 'Hide blocked')}
+              </span>
+              <Switch
+                checked={hideBlocked}
+                onCheckedChange={onHideBlockedChange}
               />
             </div>
           </div>

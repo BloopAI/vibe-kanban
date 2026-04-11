@@ -1,10 +1,9 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
 import { defineModal } from '@/shared/lib/modals';
-import { ApiError, attemptsApi } from '@/shared/lib/api';
+import { ApiError, workspacesApi } from '@/shared/lib/api';
 import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
 import { ErrorDialog } from '@vibe/ui/components/ErrorDialog';
 import { useProjectWorkspaceCreateDraft } from '@/shared/hooks/useProjectWorkspaceCreateDraft';
@@ -65,7 +64,6 @@ function WorkspaceSelectionContent({
 }) {
   const { t } = useTranslation('common');
   const modal = useModal();
-  const navigate = useNavigate();
   const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -142,7 +140,7 @@ function WorkspaceSelectionContent({
 
       setIsLinking(true);
       try {
-        await attemptsApi.linkToIssue(workspaceId, projectId, issueId);
+        await workspacesApi.linkToIssue(workspaceId, projectId, issueId);
         // Success - close dialog. UI will auto-update via Electric sync.
         modal.hide();
       } catch (err) {
@@ -183,10 +181,10 @@ function WorkspaceSelectionContent({
       // Get defaults from most recent workspace
       const defaults = await getWorkspaceDefaults(
         workspaces,
-        localWorkspaceIds
+        localWorkspaceIds,
+        projectId
       );
 
-      // Navigate and close dialog
       const createState = buildWorkspaceCreateInitialState({
         prompt: initialPrompt,
         defaults,
@@ -198,12 +196,13 @@ function WorkspaceSelectionContent({
         issueId,
       });
       if (!draftId) {
-        navigate({
-          to: '/workspaces/create',
-          state: (prev) => ({
-            ...prev,
-            ...createState,
-          }),
+        await ErrorDialog.show({
+          title: t('common:error'),
+          message: t(
+            'workspaces.createDraftError',
+            'Failed to prepare workspace draft. Please try again.'
+          ),
+          buttonText: t('common:ok'),
         });
       }
     } finally {
@@ -211,7 +210,6 @@ function WorkspaceSelectionContent({
     }
   }, [
     modal,
-    navigate,
     openWorkspaceCreateFromState,
     getIssue,
     issueId,
@@ -220,6 +218,7 @@ function WorkspaceSelectionContent({
     isLinking,
     activeWorkspaces,
     archivedWorkspaces,
+    t,
   ]);
 
   // Restore focus when dialog closes

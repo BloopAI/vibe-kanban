@@ -24,19 +24,22 @@ use crate::{
     },
 };
 
-pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
-    normalize_logs_with_suppressed_stderr_patterns(msg_store, worktree_path, &[]);
+pub fn normalize_logs(
+    msg_store: Arc<MsgStore>,
+    worktree_path: &Path,
+) -> Vec<tokio::task::JoinHandle<()>> {
+    normalize_logs_with_suppressed_stderr_patterns(msg_store, worktree_path, &[])
 }
 
 pub fn normalize_logs_with_suppressed_stderr_patterns(
     msg_store: Arc<MsgStore>,
     worktree_path: &Path,
     suppressed_stderr_patterns: &[&str],
-) {
+) -> Vec<tokio::task::JoinHandle<()>> {
     // stderr normalization
     let entry_index = EntryIndexProvider::start_from(&msg_store);
-    if suppressed_stderr_patterns.is_empty() {
-        normalize_stderr_logs(msg_store.clone(), entry_index.clone());
+    let h1 = if suppressed_stderr_patterns.is_empty() {
+        normalize_stderr_logs(msg_store.clone(), entry_index.clone())
     } else {
         normalize_acp_stderr_logs(
             msg_store.clone(),
@@ -45,13 +48,13 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
                 .iter()
                 .map(|pattern| pattern.to_string())
                 .collect(),
-        );
-    }
+        )
+    };
 
     // stdout normalization (main loop)
     let worktree_path = worktree_path.to_path_buf();
     // Type aliases to simplify complex state types and appease clippy
-    tokio::spawn(async move {
+    let h2 = tokio::spawn(async move {
         type ToolStates = std::collections::HashMap<String, PartialToolCallData>;
 
         let mut stored_session_id = false;
@@ -672,13 +675,15 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
             }
         }
     });
+
+    vec![h1, h2]
 }
 
 fn normalize_acp_stderr_logs(
     msg_store: Arc<MsgStore>,
     entry_index_provider: EntryIndexProvider,
     suppressed_patterns: Vec<String>,
-) {
+) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let mut stderr = msg_store.stderr_chunked_stream();
 
@@ -707,7 +712,7 @@ fn normalize_acp_stderr_logs(
                 msg_store.push_patch(patch);
             }
         }
-    });
+    })
 }
 
 struct PartialToolCallData {
@@ -774,7 +779,7 @@ struct AcpEventParser;
 
 impl AcpEventParser {
     /// Parse a line that may contain an ACP event
-    pub fn parse_line(line: &str) -> Option<AcpEvent> {
+    fn parse_line(line: &str) -> Option<AcpEvent> {
         let trimmed = line.trim();
 
         if let Ok(acp_event) = serde_json::from_str::<AcpEvent>(trimmed) {
@@ -787,7 +792,7 @@ impl AcpEventParser {
     }
 
     /// Parse command from tool title (for execute tools)
-    pub fn parse_execute_command(tc: &PartialToolCallData) -> String {
+    fn parse_execute_command(tc: &PartialToolCallData) -> String {
         if let Some(command) = tc.raw_input.as_ref().and_then(|value| {
             value
                 .as_object()
@@ -804,16 +809,6 @@ impl AcpEventParser {
             title.trim().to_string()
         }
     }
-}
-
-/// Result of parsing a line
-#[derive(Debug, Clone)]
-#[allow(clippy::large_enum_variant)]
-pub enum ParsedLine {
-    SessionId(String),
-    Event(AcpEvent),
-    Error(String),
-    Done,
 }
 
 impl TryFrom<SessionNotification> for AcpEvent {

@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CaretDownIcon,
@@ -72,6 +73,13 @@ export function ChatFileEntry({
     }
     onToggle?.();
   };
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    handleClick();
+  };
+  const isInteractive = Boolean(onToggle || isVSCode);
 
   // If we have diff content, wrap in a container with the diff body
   if (hasDiffContent) {
@@ -88,9 +96,14 @@ export function ChatFileEntry({
           className={cn(
             'flex items-center p-base w-full',
             isDenied ? 'bg-error/20' : 'bg-panel',
-            (onToggle || isVSCode) && 'cursor-pointer'
+            isInteractive && 'cursor-pointer'
           )}
           onClick={handleClick}
+          onKeyDown={handleKeyDown}
+          role={isInteractive ? 'button' : undefined}
+          aria-expanded={onToggle ? expanded : undefined}
+          tabIndex={isInteractive ? 0 : undefined}
+          data-scroll-anchor-target={isInteractive ? '' : undefined}
         >
           <div className="flex-1 flex items-center gap-base min-w-0">
             <span className="relative shrink-0">
@@ -150,10 +163,15 @@ export function ChatFileEntry({
       className={cn(
         'flex items-center border rounded-sm p-base w-full',
         isDenied ? 'bg-error/20 border-error' : 'bg-panel',
-        (onToggle || isVSCode) && 'cursor-pointer',
+        isInteractive && 'cursor-pointer',
         className
       )}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      role={isInteractive ? 'button' : undefined}
+      aria-expanded={onToggle ? expanded : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
+      data-scroll-anchor-target={isInteractive ? '' : undefined}
     >
       <div className="flex-1 flex items-center gap-base min-w-0">
         <span className="relative shrink-0">

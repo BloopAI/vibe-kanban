@@ -18,7 +18,7 @@ import { PrCommentCard } from '@vibe/ui/components/pr-comment-card';
 import type { UnifiedPrComment } from 'shared/types';
 
 export interface PrCommentsDialogProps {
-  attemptId: string;
+  workspaceId: string;
   repoId: string;
 }
 
@@ -33,11 +33,11 @@ function getCommentId(comment: UnifiedPrComment): string {
 }
 
 const PrCommentsDialogImpl = create<PrCommentsDialogProps>(
-  ({ attemptId, repoId }) => {
+  ({ workspaceId, repoId }) => {
     const { t } = useTranslation(['tasks', 'common']);
     const modal = useModal();
     const { data, isLoading, isError, error } = usePrComments(
-      attemptId,
+      workspaceId,
       repoId
     );
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -217,7 +217,7 @@ function getErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'error_data' in error) {
     const errorData = (error as { error_data?: { type?: string } }).error_data;
     if (errorData?.type === 'no_pr_attached') {
-      return 'No PR is attached to this task attempt. Create a PR first to see comments.';
+      return 'No PR is attached to this workspace. Create a PR first to see comments.';
     }
     if (errorData?.type === 'cli_not_installed') {
       return 'CLI is not installed. Please install it to fetch PR comments.';

@@ -4,14 +4,11 @@ use std::{
     time::{Duration, Instant},
 };
 
-use dashmap::DashMap;
 use db::models::repo::{SearchMatchType, SearchResult};
 use fst::{Map, MapBuilder};
 use git::GitService;
 use ignore::WalkBuilder;
 use moka::future::Cache;
-use notify::{RecommendedWatcher, RecursiveMode};
-use notify_debouncer_full::{DebounceEventResult, new_debouncer};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::sync::mpsc;
@@ -57,7 +54,7 @@ pub struct FileIndex {
 
 /// Errors that can occur during file index building
 #[derive(Error, Debug)]
-pub enum FileIndexError {
+enum FileIndexError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
@@ -91,7 +88,6 @@ pub struct FileSearchCache {
     git_service: GitService,
     file_ranker: FileRanker,
     build_queue: mpsc::UnboundedSender<PathBuf>,
-    watchers: DashMap<PathBuf, RecommendedWatcher>,
 }
 
 impl FileSearchCache {
@@ -126,7 +122,6 @@ impl FileSearchCache {
             git_service,
             file_ranker,
             build_queue: build_sender,
-            watchers: DashMap::new(),
         }
     }
 
@@ -154,19 +149,6 @@ impl FileSearchCache {
         }
 
         Err(CacheError::Miss)
-    }
-
-    /// Pre-warm cache for given repositories
-    pub async fn warm_repos(&self, repo_paths: Vec<PathBuf>) -> Result<(), String> {
-        for repo_path in repo_paths {
-            if let Err(e) = self.build_queue.send(repo_path.clone()) {
-                error!(
-                    "Failed to enqueue repo for warming: {:?} - {}",
-                    repo_path, e
-                );
-            }
-        }
-        Ok(())
     }
 
     /// Search within cached index with mode-based filtering
@@ -541,7 +523,6 @@ impl FileSearchCache {
                 git_service: git_service.clone(),
                 file_ranker: file_ranker.clone(),
                 build_queue: mpsc::unbounded_channel().0, // Dummy sender
-                watchers: DashMap::new(),
             };
 
             match cache_builder.build_repo_cache(&repo_path).await {
@@ -554,63 +535,6 @@ impl FileSearchCache {
                 }
             }
         }
-    }
-
-    /// Setup file watcher for repository
-    pub async fn setup_watcher(&self, repo_path: &Path) -> Result<(), String> {
-        let repo_path_buf = repo_path.to_path_buf();
-
-        if self.watchers.contains_key(&repo_path_buf) {
-            return Ok(()); // Already watching
-        }
-
-        let git_dir = repo_path.join(".git");
-        if !git_dir.exists() {
-            return Err("Not a git repository".to_string());
-        }
-
-        let build_queue = self.build_queue.clone();
-        let watched_path = repo_path_buf.clone();
-
-        let (tx, mut rx) = mpsc::unbounded_channel();
-
-        let mut debouncer = new_debouncer(
-            Duration::from_millis(500),
-            None,
-            move |res: DebounceEventResult| {
-                if let Ok(events) = res {
-                    for event in events {
-                        // Check if any path contains HEAD file
-                        for path in &event.event.paths {
-                            if path.file_name().is_some_and(|name| name == "HEAD") {
-                                if let Err(e) = tx.send(()) {
-                                    error!("Failed to send HEAD change event: {}", e);
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-            },
-        )
-        .map_err(|e| format!("Failed to create file watcher: {e}"))?;
-
-        debouncer
-            .watch(git_dir.join("HEAD"), RecursiveMode::NonRecursive)
-            .map_err(|e| format!("Failed to watch HEAD file: {e}"))?;
-
-        // Spawn task to handle HEAD changes
-        tokio::spawn(async move {
-            while rx.recv().await.is_some() {
-                info!("HEAD changed for repo: {:?}", watched_path);
-                if let Err(e) = build_queue.send(watched_path.clone()) {
-                    error!("Failed to enqueue cache refresh: {}", e);
-                }
-            }
-        });
-
-        info!("Setup file watcher for repo: {:?}", repo_path);
-        Ok(())
     }
 }
 

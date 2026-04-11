@@ -24,16 +24,17 @@ const defaultOptions: ExecutorDiscoveredOptions = {
 
 function useExecutorDiscovery(
   agent: BaseCodingAgent | null | undefined,
-  opts?: { workspaceId?: string; repoId?: string }
+  opts?: { workspaceId?: string; sessionId?: string; repoId?: string }
 ) {
-  const { workspaceId, repoId } = opts ?? {};
+  const { workspaceId, sessionId, repoId } = opts ?? {};
   const endpoint = useMemo(() => {
     if (!agent) return undefined;
     return agentsApi.getDiscoveredOptionsStreamUrl(agent, {
       workspaceId,
+      sessionId,
       repoId,
     });
-  }, [agent, workspaceId, repoId]);
+  }, [agent, workspaceId, sessionId, repoId]);
 
   const initialData = useCallback(
     (): ExecutorDiscoveryStreamState => ({
@@ -49,7 +50,12 @@ function useExecutorDiscovery(
       initialData
     );
 
-  const combinedError = data?.options?.error ?? error;
+  // Prefer the backend-reported error from the data payload. Only fall back
+  // to the WebSocket transport error when no data has been received yet —
+  // transient connection failures (e.g. React StrictMode double-mount or
+  // Safari/macOS 26 WebSocket instability) should not persist once data
+  // has successfully loaded.
+  const combinedError = data?.options?.error ?? (isInitialized ? null : error);
 
   useEffect(() => {
     if (combinedError) {
@@ -70,7 +76,7 @@ function useExecutorDiscovery(
 
 export function useModelSelectorConfig(
   agent: BaseCodingAgent | null | undefined,
-  opts?: { workspaceId?: string; repoId?: string }
+  opts?: { workspaceId?: string; sessionId?: string; repoId?: string }
 ) {
   const { options, error, isConnected, isInitialized } = useExecutorDiscovery(
     agent,
@@ -89,7 +95,7 @@ export function useModelSelectorConfig(
 
 export function useSlashCommands(
   agent: BaseCodingAgent | null | undefined,
-  opts?: { workspaceId?: string; repoId?: string }
+  opts?: { workspaceId?: string; sessionId?: string; repoId?: string }
 ) {
   const { options, error, isConnected, isInitialized } = useExecutorDiscovery(
     agent,

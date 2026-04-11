@@ -83,7 +83,7 @@ impl Approvals {
         }
     }
 
-    pub async fn create_with_waiter(
+    pub(crate) async fn create_with_waiter(
         &self,
         request: ApprovalRequest,
         is_question: bool,

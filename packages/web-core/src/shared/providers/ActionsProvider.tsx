@@ -5,12 +5,17 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useParams } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
-import { buildIssueCreatePath } from '@/shared/lib/routes/projectSidebarRoutes';
+import { useHostId } from '@/shared/providers/HostIdProvider';
+import {
+  buildKanbanIssueComposerKey,
+  openKanbanIssueComposer,
+  type ProjectIssueCreateOptions,
+} from '@/shared/stores/useKanbanIssueComposerStore';
 import {
   type ActionDefinition,
   type ActionExecutorContext,
@@ -22,18 +27,23 @@ import {
 } from '@/shared/types/actions';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { UserContext } from '@/shared/hooks/useUserContext';
+import { ProjectContext } from '@/shared/hooks/useProjectContext';
 import { useDevServer } from '@/shared/hooks/useDevServer';
 import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { useLogStream } from '@/shared/hooks/useLogStream';
 import { ActionsContext } from '@/shared/hooks/useActions';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useAppRuntime } from '@/shared/hooks/useAppRuntime';
 
 interface ActionsProviderProps {
   children: ReactNode;
 }
 
 export function ActionsProvider({ children }: ActionsProviderProps) {
-  const navigate = useNavigate();
+  const appRuntime = useAppRuntime();
+  const appNavigation = useAppNavigation();
   const { projectId } = useParams({ strict: false });
+  const hostId = useHostId();
   const queryClient = useQueryClient();
   // Get selected organization ID from store (for kanban context)
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
@@ -42,7 +52,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     useWorkspaceContext();
   // Get remote workspaces (optional — not available on all routes)
   const userCtx = useContext(UserContext);
-
+  const projectCtx = useContext(ProjectContext);
   // Get dev server state
   const { start, stop, runningDevServers } = useDevServer(workspaceId);
 
@@ -64,11 +74,17 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
 
   // Navigate to create issue mode (URL-based navigation)
   const navigateToCreateIssue = useCallback(
-    (options?: Parameters<typeof buildIssueCreatePath>[1]) => {
-      if (!projectId) return;
-      navigate(buildIssueCreatePath(projectId, options));
+    (options?: ProjectIssueCreateOptions) => {
+      if (!projectId) {
+        return;
+      }
+
+      openKanbanIssueComposer(
+        buildKanbanIssueComposerKey(hostId, projectId),
+        options
+      );
     },
-    [navigate, projectId]
+    [projectId, hostId]
   );
 
   // Get logs panel state
@@ -185,7 +201,9 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Build executor context from hooks
   const executorContext = useMemo<ActionExecutorContext>(() => {
     return {
-      navigate,
+      appRuntime,
+      currentHostId: hostId,
+      appNavigation,
       queryClient,
       selectWorkspace,
       activeWorkspaces,
@@ -207,10 +225,18 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       kanbanOrgId: selectedOrgId ?? undefined,
       kanbanProjectId: projectId,
       projectMutations: projectMutations ?? undefined,
-      remoteWorkspaces: userCtx?.workspaces ?? [],
+      remoteWorkspaces: (() => {
+        const userWs = userCtx?.workspaces ?? [];
+        const projectWs = projectCtx?.workspaces ?? [];
+        if (projectWs.length === 0) return userWs;
+        if (userWs.length === 0) return projectWs;
+        const seen = new Set(userWs.map((w) => w.id));
+        return [...userWs, ...projectWs.filter((w) => !seen.has(w.id))];
+      })(),
     };
   }, [
-    navigate,
+    appRuntime,
+    hostId,
     queryClient,
     selectWorkspace,
     activeWorkspaces,
@@ -233,6 +259,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     projectId,
     projectMutations,
     userCtx?.workspaces,
+    projectCtx?.workspaces,
   ]);
 
   // Main action executor with centralized target validation and error handling

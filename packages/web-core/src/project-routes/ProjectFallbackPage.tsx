@@ -1,22 +1,9 @@
 import React from 'react';
-import { useLocation } from '@tanstack/react-router';
-
-function getProjectIdFromPathname(pathname: string): string {
-  const segments = pathname.split('/').filter(Boolean);
-
-  const projectIndex = segments.indexOf('projects');
-  if (projectIndex === -1) {
-    return 'unknown';
-  }
-
-  return segments[projectIndex + 1] ?? 'unknown';
-}
+import { useParams } from '@tanstack/react-router';
 
 export function ProjectFallbackPage() {
-  const pathname = useLocation({
-    select: (location) => location.pathname,
-  });
-  const projectId = getProjectIdFromPathname(pathname);
+  const { projectId } = useParams({ strict: false });
+  const resolvedProjectId = projectId ?? 'unknown';
 
   return React.createElement(
     'div',
@@ -29,7 +16,7 @@ export function ProjectFallbackPage() {
     React.createElement(
       'p',
       { className: 'mt-base text-normal' },
-      `Project ID: ${projectId}`
+      `Project ID: ${resolvedProjectId}`
     )
   );
 }

@@ -1,14 +1,12 @@
 import { useMemo } from 'react';
-import { useLocation, useParams, useSearch } from '@tanstack/react-router';
+import { useParams } from '@tanstack/react-router';
 import {
   useUiPreferencesStore,
   useWorkspacePanelState,
   type LayoutMode,
 } from '@/shared/stores/useUiPreferencesStore';
-import {
-  useDiffViewStore,
-  useDiffViewMode,
-} from '@/shared/stores/useDiffViewStore';
+import { useDiffViewMode } from '@/shared/stores/useDiffViewStore';
+import { useDiffPaths } from '@/shared/stores/useWorkspaceDiffStore';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useDevServer } from '@/shared/hooks/useDevServer';
@@ -17,6 +15,9 @@ import { useShape } from '@/shared/integrations/electric/hooks';
 import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
+import { isProjectDestination } from '@/shared/lib/routes/appNavigation';
+import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
+import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
 import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
 import type { Merge } from 'shared/types';
 import type {
@@ -42,7 +43,7 @@ export function useActionVisibilityContext(
   const panelState = useWorkspacePanelState(
     isCreateMode ? undefined : workspaceId
   );
-  const diffPaths = useDiffViewStore((s) => s.diffPaths);
+  const diffPathsSet = useDiffPaths();
   const diffViewMode = useDiffViewMode();
   const expanded = useUiPreferencesStore((s) => s.expanded);
 
@@ -50,8 +51,8 @@ export function useActionVisibilityContext(
   const { projectId: routeProjectId, issueId: routeIssueId } = useParams({
     strict: false,
   });
-  const search = useSearch({ strict: false });
-  const kanbanCreateMode = search.mode === 'create';
+  const destination = useCurrentAppDestination();
+  const { isCreateMode: kanbanCreateMode } = useCurrentKanbanRouteState();
   const effectiveProjectId = options?.projectId ?? routeProjectId;
   const optionIssueIds = options?.issueIds;
   const effectiveIssueIds = useMemo(
@@ -82,12 +83,9 @@ export function useActionVisibilityContext(
   }, [shouldResolveSelectedIssueParent, projectIssues, effectiveIssueIds]);
 
   // Derive layoutMode from current route instead of persisted state
-  const location = useLocation();
-  const layoutMode: LayoutMode = location.pathname.startsWith('/projects')
+  const layoutMode: LayoutMode = isProjectDestination(destination)
     ? 'kanban'
-    : location.pathname.startsWith('/migrate')
-      ? 'migrate'
-      : 'workspaces';
+    : 'workspaces';
   const { config } = useUserSystem();
   const { isStarting, isStopping, runningDevServers } =
     useDevServer(workspaceId);
@@ -98,9 +96,11 @@ export function useActionVisibilityContext(
 
   return useMemo(() => {
     // Compute isAllDiffsExpanded
-    const diffKeys = diffPaths.map((p) => `diff:${p}`);
+    const diffPaths = Array.from(diffPathsSet);
+    const diffKeys = diffPaths.map((p: string) => `diff:${p}`);
     const isAllDiffsExpanded =
-      diffKeys.length > 0 && diffKeys.every((k) => expanded[k] !== false);
+      diffKeys.length > 0 &&
+      diffKeys.every((k: string) => expanded[k] !== false);
 
     // Compute dev server state
     const devServerState: DevServerState = isStarting
@@ -132,7 +132,7 @@ export function useActionVisibilityContext(
       isCreateMode,
       hasWorkspace: !!workspace,
       workspaceArchived: workspace?.archived ?? false,
-      hasDiffs: diffPaths.length > 0,
+      hasDiffs: diffPathsSet.size > 0,
       diffViewMode,
       isAllDiffsExpanded,
       editorType: config?.editor?.editor_type ?? null,
@@ -158,7 +158,7 @@ export function useActionVisibilityContext(
     isCreateMode,
     workspace,
     repos,
-    diffPaths,
+    diffPathsSet,
     diffViewMode,
     expanded,
     config?.editor?.editor_type,

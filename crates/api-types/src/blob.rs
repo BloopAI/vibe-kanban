@@ -4,7 +4,6 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct Blob {
     pub id: Uuid,
     pub project_id: Uuid,

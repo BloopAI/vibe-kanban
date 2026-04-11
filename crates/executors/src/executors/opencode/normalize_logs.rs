@@ -1,5 +1,8 @@
 use std::{collections::HashMap, path::Path, sync::Arc};
 
+type MessageId = String;
+type PartId = String;
+
 use futures::StreamExt;
 use serde::Deserialize;
 use serde_json::Value;
@@ -10,8 +13,9 @@ use workspace_utils::{
 };
 
 use super::types::{
-    MessageInfo, MessageRole, OpencodeExecutorEvent, Part, PermissionAskedEvent, QuestionInfo,
-    SdkEvent, SdkTodo, SessionStatus, ToolPart, ToolStateUpdate,
+    MessageInfo, MessagePartDeltaEvent, MessageRole, OpencodeExecutorEvent, Part,
+    PermissionAskedEvent, QuestionInfo, SdkEvent, SdkTodo, SessionStatus, ToolPart,
+    ToolStateUpdate,
 };
 use crate::{
     approvals::ToolCallMetadata,
@@ -37,12 +41,15 @@ fn system_message(content: String) -> NormalizedEntry {
     }
 }
 
-pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
+pub(super) fn normalize_logs(
+    msg_store: Arc<MsgStore>,
+    worktree_path: &Path,
+) -> Vec<tokio::task::JoinHandle<()>> {
     let entry_index = EntryIndexProvider::start_from(&msg_store);
-    normalize_stderr_logs(msg_store.clone(), entry_index.clone());
+    let h1 = normalize_stderr_logs(msg_store.clone(), entry_index.clone());
 
     let worktree_path = worktree_path.to_path_buf();
-    tokio::spawn(async move {
+    let h2 = tokio::spawn(async move {
         let mut stored_session_id = false;
         let mut state = LogState::new(entry_index.clone(), msg_store.clone());
 
@@ -177,6 +184,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
             }
         }
     });
+
+    vec![h1, h2]
 }
 
 fn parse_event(line: &str) -> Option<OpencodeExecutorEvent> {
@@ -195,13 +204,21 @@ enum UpdateMode {
     Set,
 }
 
+#[derive(Debug, Clone, Copy)]
+enum PartKind {
+    AssistantText,
+    Thinking,
+}
+
 #[derive(Default)]
 struct LogState {
     entry_index: EntryIndexProvider,
     msg_store: Arc<MsgStore>,
     message_roles: HashMap<String, MessageRole>,
-    assistant_text: HashMap<String, StreamingText>,
-    thinking_text: HashMap<String, StreamingText>,
+    assistant_text: HashMap<PartId, StreamingText>,
+    thinking_text: HashMap<PartId, StreamingText>,
+    part_kinds: HashMap<PartId, (MessageId, PartKind)>,
+    pending_deltas: HashMap<PartId, Vec<String>>,
     tool_states: HashMap<String, ToolCallState>,
     approvals: HashMap<String, ApprovalStatus>,
     model_system_message_emitted: bool,
@@ -218,6 +235,8 @@ impl LogState {
             message_roles: HashMap::new(),
             assistant_text: HashMap::new(),
             thinking_text: HashMap::new(),
+            part_kinds: HashMap::new(),
+            pending_deltas: HashMap::new(),
             tool_states: HashMap::new(),
             approvals: HashMap::new(),
             model_system_message_emitted: false,
@@ -251,6 +270,9 @@ impl LogState {
                     worktree_path,
                     msg_store,
                 );
+            }
+            SdkEvent::MessagePartDelta(event) => {
+                self.handle_part_delta(event, msg_store);
             }
             SdkEvent::TodoUpdated(event) => {
                 self.handle_todo_updated(&event.todos, msg_store);
@@ -398,13 +420,18 @@ impl LogState {
     ) {
         match part {
             Part::Text(part) => {
-                if self.message_roles.get(&part.message_id) != Some(&MessageRole::Assistant) {
-                    tracing::debug!(
-                        "Skipping text part for non-assistant message_id {}",
-                        part.message_id
-                    );
+                let stream_key = part.id.clone().unwrap_or_else(|| part.message_id.clone());
+
+                self.part_kinds.insert(
+                    stream_key.clone(),
+                    (part.message_id.clone(), PartKind::AssistantText),
+                );
+
+                if self.message_roles.get(&part.message_id) == Some(&MessageRole::User) {
                     return;
                 }
+
+                let buffered = self.pending_deltas.remove(&stream_key);
 
                 let (text, mode) = if let Some(delta) = delta {
                     (delta, UpdateMode::Append)
@@ -413,17 +440,40 @@ impl LogState {
                 };
 
                 let entry_index = self.entry_index.clone();
+
+                if let Some(pending) = buffered {
+                    let combined: String = pending.into_iter().collect();
+                    update_streaming_text(
+                        &entry_index,
+                        &combined,
+                        NormalizedEntryType::AssistantMessage,
+                        &stream_key,
+                        &mut self.assistant_text,
+                        msg_store,
+                        UpdateMode::Set,
+                    );
+                }
+
                 update_streaming_text(
                     &entry_index,
                     text,
                     NormalizedEntryType::AssistantMessage,
-                    &part.message_id,
+                    &stream_key,
                     &mut self.assistant_text,
                     msg_store,
                     mode,
                 );
             }
             Part::Reasoning(part) => {
+                let stream_key = part.id.clone().unwrap_or_else(|| part.message_id.clone());
+
+                self.part_kinds.insert(
+                    stream_key.clone(),
+                    (part.message_id.clone(), PartKind::Thinking),
+                );
+
+                let buffered = self.pending_deltas.remove(&stream_key);
+
                 let (text, mode) = if let Some(delta) = delta {
                     (delta, UpdateMode::Append)
                 } else {
@@ -431,11 +481,25 @@ impl LogState {
                 };
 
                 let entry_index = self.entry_index.clone();
+
+                if let Some(pending) = buffered {
+                    let combined: String = pending.into_iter().collect();
+                    update_streaming_text(
+                        &entry_index,
+                        &combined,
+                        NormalizedEntryType::Thinking,
+                        &stream_key,
+                        &mut self.thinking_text,
+                        msg_store,
+                        UpdateMode::Set,
+                    );
+                }
+
                 update_streaming_text(
                     &entry_index,
                     text,
                     NormalizedEntryType::Thinking,
-                    &part.message_id,
+                    &stream_key,
                     &mut self.thinking_text,
                     msg_store,
                     mode,
@@ -467,6 +531,51 @@ impl LogState {
                 }
             }
             Part::Other => {}
+        }
+    }
+
+    fn handle_part_delta(&mut self, event: MessagePartDeltaEvent, msg_store: &Arc<MsgStore>) {
+        if event.field != "text" || event.delta.is_empty() {
+            return;
+        }
+
+        let Some((message_id, kind)) = self.part_kinds.get(&event.part_id) else {
+            self.pending_deltas
+                .entry(event.part_id)
+                .or_default()
+                .push(event.delta);
+            return;
+        };
+        let message_id = message_id.clone();
+        let kind = *kind;
+
+        let entry_index = self.entry_index.clone();
+        match kind {
+            PartKind::AssistantText => {
+                if self.message_roles.get(&message_id) == Some(&MessageRole::User) {
+                    return;
+                }
+                update_streaming_text(
+                    &entry_index,
+                    &event.delta,
+                    NormalizedEntryType::AssistantMessage,
+                    &event.part_id,
+                    &mut self.assistant_text,
+                    msg_store,
+                    UpdateMode::Append,
+                );
+            }
+            PartKind::Thinking => {
+                update_streaming_text(
+                    &entry_index,
+                    &event.delta,
+                    NormalizedEntryType::Thinking,
+                    &event.part_id,
+                    &mut self.thinking_text,
+                    msg_store,
+                    UpdateMode::Append,
+                );
+            }
         }
     }
 
@@ -711,8 +820,8 @@ fn update_streaming_text(
     entry_index: &EntryIndexProvider,
     text: &str,
     entry_type: NormalizedEntryType,
-    message_id: &str,
-    map: &mut HashMap<String, StreamingText>,
+    stream_key: &str,
+    map: &mut HashMap<PartId, StreamingText>,
     msg_store: &Arc<MsgStore>,
     mode: UpdateMode,
 ) {
@@ -720,14 +829,14 @@ fn update_streaming_text(
         return;
     }
 
-    let is_new = !map.contains_key(message_id);
+    let is_new = !map.contains_key(stream_key);
 
     if is_new && text == "\n" {
         return;
     }
 
     let state = map
-        .entry(message_id.to_string())
+        .entry(stream_key.to_string())
         .or_insert_with(|| StreamingText {
             index: entry_index.next(),
             content: String::new(),
@@ -1389,7 +1498,15 @@ fn make_relative_path(path: &str, worktree_path: &Path) -> String {
 fn fingerprint_todos(todos: &[SdkTodo]) -> String {
     let mut parts = todos
         .iter()
-        .map(|t| format!("{}:{}:{}:{}", t.id, t.status, t.priority, t.content))
+        .map(|t| {
+            format!(
+                "{}:{}:{}:{}",
+                t.id.as_deref().unwrap_or(""),
+                t.status,
+                t.priority,
+                t.content
+            )
+        })
         .collect::<Vec<_>>();
     parts.sort();
     parts.join("|")

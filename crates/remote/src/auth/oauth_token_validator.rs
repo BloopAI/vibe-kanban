@@ -5,6 +5,7 @@ use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use crate::{
+    audit::{self, AuditAction, AuditEvent},
     auth::{
         JwtService, ProviderTokenDetails,
         provider::{ProviderRegistry, TokenValidationError, VALIDATE_TOKEN_MAX_RETRIES},
@@ -34,7 +35,11 @@ pub struct OAuthTokenValidator {
 }
 
 impl OAuthTokenValidator {
-    pub fn new(pool: PgPool, provider_registry: Arc<ProviderRegistry>, jwt: Arc<JwtService>) -> Self {
+    pub fn new(
+        pool: PgPool,
+        provider_registry: Arc<ProviderRegistry>,
+        jwt: Arc<JwtService>,
+    ) -> Self {
         Self {
             pool,
             provider_registry,
@@ -65,6 +70,12 @@ impl OAuthTokenValidator {
                                 "Failed to revoke all user sessions after OAuth token validation failure"
                             );
                         }
+                        audit::emit(
+                            AuditEvent::system(AuditAction::AuthSessionRevoked)
+                                .user(user_id, Some(session_id))
+                                .resource("auth_session", None)
+                                .description("All sessions revoked: OAuth provider token invalid"),
+                        );
                     }
                     OAuthTokenValidationError::ValidationUnavailable(_) => (),
                 };

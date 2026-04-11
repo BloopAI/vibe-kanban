@@ -17,27 +17,33 @@ import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/shared/lib/modals';
 import { GitOperationsProvider } from '@/shared/hooks/GitOperationsContext';
 import { useGitOperations } from '@/shared/hooks/useGitOperations';
-import { useAttempt } from '@/shared/hooks/useAttempt';
+import { useWorkspaceRecord } from '@/shared/hooks/useWorkspaceRecord';
 import { useRepoBranches } from '@/shared/hooks/useRepoBranches';
-import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
+import {
+  useWorkspaceRepo,
+  workspaceRepoKeys,
+} from '@/shared/hooks/useWorkspaceRepo';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useWorkspaces } from '@/shared/hooks/useWorkspaces';
-import { attemptsApi, type Result } from '@/shared/lib/api';
+import { workspacesApi, type Result } from '@/shared/lib/api';
 import { ResolveConflictsDialog } from '@/shared/dialogs/tasks/ResolveConflictsDialog';
 import { RebaseInProgressDialog } from '@vibe/ui/components/RebaseInProgressDialog';
 
 export interface RebaseDialogProps {
-  attemptId: string;
+  workspaceId: string;
   repoId: string;
 }
 
 interface RebaseDialogContentProps {
-  attemptId: string;
+  workspaceId: string;
   repoId: string;
 }
 
-function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
+function RebaseDialogContent({
+  workspaceId,
+  repoId,
+}: RebaseDialogContentProps) {
   const modal = useModal();
   const queryClient = useQueryClient();
   const { t } = useTranslation(['tasks', 'common']);
@@ -47,19 +53,19 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
   const [error, setError] = useState<string | null>(null);
   const [hasInitializedBranches, setHasInitializedBranches] = useState(false);
 
-  const git = useGitOperations(attemptId, repoId);
-  const { data: workspace } = useAttempt(attemptId);
+  const git = useGitOperations(workspaceId, repoId);
+  const { data: workspace } = useWorkspaceRecord(workspaceId);
   const { workspaceId: activeWorkspaceId } = useWorkspaceContext();
   const { workspaces } = useWorkspaces();
   const isWorkspaceRunning =
-    workspaces.find((w) => w.id === attemptId)?.isRunning ?? false;
+    workspaces.find((w) => w.id === workspaceId)?.isRunning ?? false;
 
   // Load branches and repo data internally
   const { data: branches = [], isLoading: branchesLoading } =
     useRepoBranches(repoId);
-  const { repos, isLoading: reposLoading } = useAttemptRepo(attemptId);
+  const { repos, isLoading: reposLoading } = useWorkspaceRepo(workspaceId);
   const { data: branchStatus, isLoading: branchStatusLoading } =
-    useBranchStatus(attemptId);
+    useBranchStatus(workspaceId);
 
   const repo = repos.find((r) => r.id === repoId);
   const repoStatus = branchStatus?.find((s) => s.repo_id === repoId);
@@ -75,23 +81,23 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
   const invalidateRebaseQueries = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: ['branchStatus', attemptId],
+        queryKey: ['branchStatus', workspaceId],
       }),
       queryClient.invalidateQueries({
-        queryKey: ['attemptRepos', attemptId],
+        queryKey: workspaceRepoKeys.byWorkspace(workspaceId),
       }),
     ]);
-  }, [queryClient, attemptId]);
+  }, [queryClient, workspaceId]);
 
   const continueRebaseInProgress = useCallback(async () => {
-    await attemptsApi.continueRebase(attemptId, { repo_id: repoId });
+    await workspacesApi.continueRebase(workspaceId, { repo_id: repoId });
     await invalidateRebaseQueries();
-  }, [attemptId, repoId, invalidateRebaseQueries]);
+  }, [workspaceId, repoId, invalidateRebaseQueries]);
 
   const abortRebaseInProgress = useCallback(async () => {
-    await attemptsApi.abortConflicts(attemptId, { repo_id: repoId });
+    await workspacesApi.abortConflicts(workspaceId, { repo_id: repoId });
     await invalidateRebaseQueries();
-  }, [attemptId, repoId, invalidateRebaseQueries]);
+  }, [workspaceId, repoId, invalidateRebaseQueries]);
 
   // Prevent the redirect useEffect from firing more than once. Without this,
   // every 5-second branchStatus poll that still returns conflicts would
@@ -112,12 +118,12 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
 
       // Don't show the dialog if the user switched away or if
       // a process is already running (e.g. resolving these conflicts).
-      if (activeWorkspaceId !== attemptId || isWorkspaceRunning) return;
+      if (activeWorkspaceId !== workspaceId || isWorkspaceRunning) return;
 
       if (hasConflictedFiles) {
         // Rebase in progress WITH conflicts -> show resolve conflicts dialog
         ResolveConflictsDialog.show({
-          workspaceId: attemptId,
+          workspaceId: workspaceId,
           conflictOp: repoStatus.conflict_op ?? 'rebase',
           sourceBranch: workspace?.branch ?? null,
           targetBranch: repoStatus.target_branch_name,
@@ -138,7 +144,7 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
     isRebaseInProgress,
     hasConflictedFiles,
     repoStatus,
-    attemptId,
+    workspaceId,
     repoId,
     workspace?.branch,
     modal,
@@ -148,10 +154,10 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
     abortRebaseInProgress,
   ]);
 
-  // Reset initialization flag when attemptId or repoId changes
+  // Reset initialization flag when workspaceId or repoId changes
   useEffect(() => {
     setHasInitializedBranches(false);
-  }, [attemptId, repoId]);
+  }, [workspaceId, repoId]);
 
   // Initialize branch selection once data is loaded
   useEffect(() => {
@@ -183,9 +189,9 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
         // Hide this dialog and show the resolve conflicts dialog
         // Only show if the user is still viewing this workspace
         modal.hide();
-        if (activeWorkspaceId === attemptId) {
+        if (activeWorkspaceId === workspaceId) {
           await ResolveConflictsDialog.show({
-            workspaceId: attemptId,
+            workspaceId: workspaceId,
             conflictOp: errorData.op,
             sourceBranch: workspace?.branch ?? null,
             targetBranch: errorData.target_branch,
@@ -326,13 +332,15 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
   );
 }
 
-const RebaseDialogImpl = create<RebaseDialogProps>(({ attemptId, repoId }) => {
-  return (
-    <GitOperationsProvider attemptId={attemptId}>
-      <RebaseDialogContent attemptId={attemptId} repoId={repoId} />
-    </GitOperationsProvider>
-  );
-});
+const RebaseDialogImpl = create<RebaseDialogProps>(
+  ({ workspaceId, repoId }) => {
+    return (
+      <GitOperationsProvider workspaceId={workspaceId}>
+        <RebaseDialogContent workspaceId={workspaceId} repoId={repoId} />
+      </GitOperationsProvider>
+    );
+  }
+);
 
 export const RebaseDialog = defineModal<RebaseDialogProps, void>(
   RebaseDialogImpl

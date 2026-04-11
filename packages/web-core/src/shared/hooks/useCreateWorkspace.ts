@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { attemptsApi } from '@/shared/lib/api';
+import { workspacesApi } from '@/shared/lib/api';
 import type { CreateAndStartWorkspaceRequest } from 'shared/types';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 
@@ -16,15 +16,18 @@ export function useCreateWorkspace() {
 
   const createWorkspace = useMutation({
     mutationFn: async ({ data, linkToIssue }: CreateWorkspaceParams) => {
-      const { workspace } = await attemptsApi.createAndStart(data);
+      const { workspace } = await workspacesApi.createAndStart(data);
 
-      // Link to issue if requested
       if (linkToIssue && workspace) {
-        await attemptsApi.linkToIssue(
-          workspace.id,
-          linkToIssue.remoteProjectId,
-          linkToIssue.issueId
-        );
+        try {
+          await workspacesApi.linkToIssue(
+            workspace.id,
+            linkToIssue.remoteProjectId,
+            linkToIssue.issueId
+          );
+        } catch (linkError) {
+          console.error('Failed to link workspace to issue:', linkError);
+        }
       }
 
       return { workspace };

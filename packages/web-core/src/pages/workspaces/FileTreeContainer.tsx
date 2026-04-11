@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+
 import { FileTree } from '@vibe/ui/components/FileTree';
 import {
   buildFileTree,
@@ -8,7 +9,15 @@ import {
   sortDiffs,
 } from '@/shared/lib/fileTreeUtils';
 import { usePersistedCollapsedPaths } from '@/shared/stores/useUiPreferencesStore';
-import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { useFileInView } from '@/shared/stores/useFileInViewStore';
+import {
+  useShowGitHubComments,
+  useSetShowGitHubComments,
+  useGetGitHubCommentCountForFile,
+  useGetFilesWithGitHubComments,
+  useGetFirstCommentLineForFile,
+  useIsGitHubCommentsLoading,
+} from '@/shared/stores/useWorkspaceDiffStore';
 import { useChangesView } from '@/shared/hooks/useChangesView';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { useTheme } from '@/shared/hooks/useTheme';
@@ -18,64 +27,58 @@ import type { Diff } from 'shared/types';
 interface FileTreeContainerProps {
   workspaceId: string;
   diffs: Diff[];
-  onSelectFile: (path: string, diff: Diff) => void;
   className: string;
 }
 
 export function FileTreeContainer({
   workspaceId,
   diffs,
-  onSelectFile,
   className,
 }: FileTreeContainerProps) {
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
 
-  const { fileInView } = useChangesView();
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedPaths, setCollapsedPaths] =
     usePersistedCollapsedPaths(workspaceId);
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const showGitHubComments = useShowGitHubComments();
+  const setShowGitHubComments = useSetShowGitHubComments();
+  const getGitHubCommentCountForFile = useGetGitHubCommentCountForFile();
+  const getFilesWithGitHubComments = useGetFilesWithGitHubComments();
+  const getFirstCommentLineForFile = useGetFirstCommentLineForFile();
+  const isGitHubCommentsLoading = useIsGitHubCommentsLoading();
 
-  // Get GitHub comments state from workspace context
-  const {
-    showGitHubComments,
-    setShowGitHubComments,
-    getGitHubCommentCountForFile,
-    getFilesWithGitHubComments,
-    getFirstCommentLineForFile,
-    isGitHubCommentsLoading,
-  } = useWorkspaceContext();
+  const { selectedFilePath, scrollToFile } = useChangesView();
+  const fileInView = useFileInView();
+  const activeFilePath = fileInView ?? selectedFilePath;
+  const treeScrollRef = useRef<HTMLDivElement | null>(null);
+  const treeScrollCallbackRef = useCallback((el: HTMLDivElement | null) => {
+    treeScrollRef.current = el;
+  }, []);
 
-  const { selectFile, scrollToFile } = useChangesView();
-
-  // Sync selectedPath with fileInView from context and scroll into view
   useEffect(() => {
-    if (fileInView !== undefined) {
-      setSelectedPath(fileInView);
-      // Scroll the selected node into view if needed
-      if (fileInView) {
-        const el = nodeRefs.current.get(fileInView);
-        if (el) {
-          el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
-      }
-    }
-  }, [fileInView]);
+    if (!activeFilePath || !treeScrollRef.current) return;
+    const container = treeScrollRef.current;
+    const selector = `[data-tree-path="${CSS.escape(activeFilePath)}"]`;
+    const node = container.querySelector(selector);
+    if (!(node instanceof HTMLElement)) return;
 
-  const handleNodeRef = useCallback(
-    (path: string, el: HTMLDivElement | null) => {
-      if (el) {
-        nodeRefs.current.set(path, el);
-      } else {
-        nodeRefs.current.delete(path);
+    const scrollNodeIntoView = () => {
+      const cRect = container.getBoundingClientRect();
+      const nRect = node.getBoundingClientRect();
+      if (nRect.top < cRect.top) {
+        container.scrollTop += nRect.top - cRect.top - 4;
+      } else if (nRect.bottom > cRect.bottom) {
+        container.scrollTop += nRect.bottom - cRect.bottom + 4;
       }
-    },
-    []
-  );
+    };
 
-  // Build tree from diffs
+    scrollNodeIntoView();
+    // Retry once after rAF — content-visibility reflow may shift positions
+    const rafId = requestAnimationFrame(scrollNodeIntoView);
+    return () => cancelAnimationFrame(rafId);
+  }, [activeFilePath]);
+
   const fullTree = useMemo(() => buildFileTree(diffs), [diffs]);
 
   // Get all folder paths for expand all functionality
@@ -105,15 +108,17 @@ export function FileTreeContainer({
 
   const handleToggleExpand = useCallback(
     (path: string) => {
-      const next = new Set(collapsedPaths);
-      if (next.has(path)) {
-        next.delete(path); // was collapsed, now expand
-      } else {
-        next.add(path); // was expanded, now collapse
-      }
-      setCollapsedPaths(next);
+      setCollapsedPaths((prev) => {
+        const next = new Set(prev);
+        if (next.has(path)) {
+          next.delete(path);
+        } else {
+          next.add(path);
+        }
+        return next;
+      });
     },
-    [collapsedPaths, setCollapsedPaths]
+    [setCollapsedPaths]
   );
 
   const handleToggleExpandAll = useCallback(() => {
@@ -126,14 +131,14 @@ export function FileTreeContainer({
 
   const handleSelectFile = useCallback(
     (path: string) => {
-      setSelectedPath(path);
       const diff = diffs.find((d) => d.newPath === path || d.oldPath === path);
+
       if (diff) {
-        scrollToFile(path);
-        onSelectFile(path, diff);
+        const targetPath = diff.newPath || diff.oldPath || path;
+        scrollToFile(targetPath);
       }
     },
-    [diffs, onSelectFile, scrollToFile]
+    [diffs, scrollToFile]
   );
 
   // Get list of diff paths that have GitHub comments, sorted to match visual order
@@ -154,8 +159,8 @@ export function FileTreeContainer({
     (direction: 'prev' | 'next') => {
       if (filesWithComments.length === 0) return;
 
-      const currentIndex = selectedPath
-        ? filesWithComments.indexOf(selectedPath)
+      const currentIndex = activeFilePath
+        ? filesWithComments.indexOf(activeFilePath)
         : -1;
       let nextIndex: number;
 
@@ -170,13 +175,14 @@ export function FileTreeContainer({
       const targetPath = filesWithComments[nextIndex];
       const lineNumber = getFirstCommentLineForFile(targetPath);
 
-      // Update local state
-      setSelectedPath(targetPath);
-
-      // Select file with line number to scroll to the comment
-      selectFile(targetPath, lineNumber ?? undefined);
+      scrollToFile(targetPath, lineNumber ?? undefined);
     },
-    [filesWithComments, selectedPath, getFirstCommentLineForFile, selectFile]
+    [
+      filesWithComments,
+      activeFilePath,
+      getFirstCommentLineForFile,
+      scrollToFile,
+    ]
   );
 
   const renderFileIcon = useCallback(
@@ -192,15 +198,15 @@ export function FileTreeContainer({
       nodes={filteredTree}
       collapsedPaths={collapsedPaths}
       onToggleExpand={handleToggleExpand}
-      selectedPath={selectedPath}
+      selectedPath={activeFilePath}
       onSelectFile={handleSelectFile}
-      onNodeRef={handleNodeRef}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       renderFileIcon={renderFileIcon}
       isAllExpanded={isAllExpanded}
       onToggleExpandAll={handleToggleExpandAll}
       className={className}
+      scrollContainerRef={treeScrollCallbackRef}
       showGitHubComments={showGitHubComments}
       onToggleGitHubComments={setShowGitHubComments}
       getGitHubCommentCountForFile={getGitHubCommentCountForFile}

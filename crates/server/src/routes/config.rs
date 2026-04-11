@@ -26,6 +26,7 @@ use services::services::{
         save_config_to_file,
     },
     container::ContainerService,
+    remote_client::RemoteClientError,
 };
 use tokio::fs;
 use ts_rs::TS;
@@ -35,8 +36,8 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    routes::relay_ws::{SignedWebSocket, SignedWsUpgrade},
-    tunnel,
+    middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
+    runtime::relay_registration,
 };
 
 pub fn router() -> Router<DeploymentImpl> {
@@ -86,9 +87,11 @@ impl Environment {
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct UserSystemInfo {
+    pub version: String,
     pub config: Config,
-    pub analytics_user_id: String,
+    pub machine_id: String,
     pub login_status: LoginStatus,
+    pub remote_auth_degraded: Option<String>,
     #[serde(flatten)]
     pub profiles: ExecutorConfigs,
     pub environment: Environment,
@@ -103,18 +106,58 @@ pub struct UserSystemInfo {
 async fn get_user_system_info(
     State(deployment): State<DeploymentImpl>,
 ) -> ResponseJson<ApiResponse<UserSystemInfo>> {
-    let config = deployment.config().read().await;
-    let login_status = tokio::time::timeout(
+    let config = deployment.config().read().await.clone();
+    let login_status = match tokio::time::timeout(
         std::time::Duration::from_secs(2),
         deployment.get_login_status(),
     )
     .await
-    .unwrap_or(LoginStatus::LoggedOut);
+    {
+        Ok(status) => status,
+        Err(_) => {
+            tracing::warn!("timed out determining login status for /api/info");
+
+            let auth_context = deployment.auth_context();
+            let cached_profile = auth_context.cached_profile().await;
+
+            match auth_context.get_credentials().await {
+                Some(_) => {
+                    if auth_context.remote_auth_degraded_slug().await.is_none() {
+                        auth_context
+                            .set_remote_auth_degraded_slug(
+                                RemoteClientError::generic_degraded_slug(),
+                            )
+                            .await;
+                    }
+
+                    deployment
+                        .track_if_analytics_allowed(
+                            "login_status_timeout",
+                            serde_json::json!({
+                                "has_cached_profile": cached_profile.is_some(),
+                            }),
+                        )
+                        .await;
+
+                    LoginStatus::LoggedIn {
+                        profile: cached_profile,
+                    }
+                }
+                None => {
+                    auth_context.clear_profile().await;
+                    auth_context.clear_remote_auth_degraded_slug().await;
+                    LoginStatus::LoggedOut
+                }
+            }
+        }
+    };
 
     let user_system_info = UserSystemInfo {
-        config: config.clone(),
-        analytics_user_id: deployment.user_id().to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        config,
+        machine_id: deployment.user_id().to_string(),
         login_status,
+        remote_auth_degraded: deployment.auth_context().remote_auth_degraded_slug().await,
         profiles: ExecutorConfigs::get_cached(),
         environment: Environment::new(),
         capabilities: {
@@ -127,8 +170,8 @@ async fn get_user_system_info(
             }
             caps
         },
-        shared_api_base: deployment.shared_api_base(),
-        preview_proxy_port: crate::preview_proxy::get_proxy_port(),
+        shared_api_base: deployment.remote_info().get_api_base(),
+        preview_proxy_port: deployment.client_info().get_preview_proxy_port(),
     };
 
     ResponseJson(ApiResponse::success(user_system_info))
@@ -200,20 +243,15 @@ async fn track_config_events(deployment: &DeploymentImpl, old: &Config, new: &Co
 async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &Config) {
     track_config_events(deployment, old, new).await;
 
-    let old_relay_host_name = tunnel::effective_relay_host_name(old, deployment.user_id());
-    let new_relay_host_name = tunnel::effective_relay_host_name(new, deployment.user_id());
-
-    deployment
-        .server_info()
-        .set_hostname(new_relay_host_name.clone())
-        .await;
+    let old_host_nickname = relay_registration::clean_host_nickname(old, deployment.user_id());
+    let new_host_nickname = relay_registration::clean_host_nickname(new, deployment.user_id());
 
     match (old.relay_enabled, new.relay_enabled) {
-        (false, true) => tunnel::spawn_relay(deployment).await,
-        (true, false) => tunnel::stop_relay(deployment).await,
+        (false, true) => relay_registration::spawn_relay(deployment).await,
+        (true, false) => relay_registration::stop_relay(deployment).await,
         (true, true) => {
-            if old_relay_host_name != new_relay_host_name {
-                tunnel::spawn_relay(deployment).await;
+            if old_host_nickname != new_host_nickname {
+                relay_registration::spawn_relay(deployment).await;
             }
         }
         (false, false) => (),
@@ -553,6 +591,8 @@ async fn get_agent_preset_options(
 pub struct ExecutorDiscoveredOptionsStreamQuery {
     executor: BaseCodingAgent,
     #[serde(default)]
+    session_id: Option<Uuid>,
+    #[serde(default)]
     workspace_id: Option<Uuid>,
     #[serde(default)]
     repo_id: Option<Uuid>,
@@ -571,7 +611,7 @@ pub async fn stream_executor_discovered_options_ws(
 }
 
 async fn handle_executor_discovered_options_ws(
-    mut socket: SignedWebSocket,
+    mut socket: MaybeSignedWebSocket,
     deployment: DeploymentImpl,
     query: ExecutorDiscoveredOptionsStreamQuery,
 ) -> anyhow::Result<()> {
@@ -581,6 +621,7 @@ async fn handle_executor_discovered_options_ws(
         .container()
         .discover_executor_options(
             ExecutorProfileId::new(query.executor),
+            query.session_id,
             query.workspace_id,
             query.repo_id,
         )

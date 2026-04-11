@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   GithubLogoIcon,
@@ -20,7 +20,6 @@ interface FileTreeProps {
   onToggleExpand: (path: string) => void;
   selectedPath?: string | null;
   onSelectFile?: (path: string) => void;
-  onNodeRef?: (path: string, el: HTMLDivElement | null) => void;
   renderFileIcon?: (fileName: string) => ReactNode;
   searchQuery: string;
   onSearchChange: (value: string) => void;
@@ -39,15 +38,20 @@ interface FileTreeProps {
   onNavigateComments?: (direction: 'prev' | 'next') => void;
   /** Whether there are files with GitHub comments to navigate */
   hasFilesWithComments?: boolean;
+  scrollContainerRef?: (el: HTMLDivElement | null) => void;
 }
 
-export function FileTree({
+const FILE_NODE_STYLE = {
+  contentVisibility: 'auto' as const,
+  containIntrinsicSize: 'auto 26px',
+};
+
+export const FileTree = memo(function FileTree({
   nodes,
   collapsedPaths,
   onToggleExpand,
   selectedPath,
   onSelectFile,
-  onNodeRef,
   searchQuery,
   onSearchChange,
   isAllExpanded,
@@ -60,31 +64,28 @@ export function FileTree({
   onNavigateComments,
   hasFilesWithComments,
   renderFileIcon,
+  scrollContainerRef,
 }: FileTreeProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const renderNodes = (nodeList: FileTreeViewNode[], depth = 0) => {
     return nodeList.map((node) => (
-      <div key={node.id}>
+      <div
+        key={node.id}
+        style={node.type === 'file' ? FILE_NODE_STYLE : undefined}
+      >
         <FileTreeNode
-          ref={
-            node.type === 'file' && onNodeRef
-              ? (el) => onNodeRef(node.path, el)
-              : undefined
-          }
           node={node}
           depth={depth}
           isExpanded={!collapsedPaths.has(node.path)}
           isSelected={selectedPath === node.path}
-          onToggle={
-            node.type === 'folder' ? () => onToggleExpand(node.path) : undefined
-          }
-          onSelect={
-            node.type === 'file' && onSelectFile
-              ? () => onSelectFile(node.path)
+          onToggle={node.type === 'folder' ? onToggleExpand : undefined}
+          onSelect={node.type === 'file' ? onSelectFile : undefined}
+          renderFileIcon={renderFileIcon}
+          commentCount={
+            showGitHubComments
+              ? getGitHubCommentCountForFile?.(node.path)
               : undefined
           }
-          renderFileIcon={renderFileIcon}
-          commentCount={getGitHubCommentCountForFile?.(node.path)}
           showCommentBadge={showGitHubComments}
         />
         {node.type === 'folder' &&
@@ -159,7 +160,11 @@ export function FileTree({
           )}
         </div>
       </div>
-      <div className="p-base flex-1 min-h-0 overflow-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent">
+      <div
+        ref={scrollContainerRef}
+        className="p-base flex-1 min-h-0 overflow-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent"
+        style={{ contain: 'layout style paint' }}
+      >
         {nodes.length > 0 ? (
           renderNodes(nodes)
         ) : (
@@ -170,4 +175,4 @@ export function FileTree({
       </div>
     </div>
   );
-}
+});

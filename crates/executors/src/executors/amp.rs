@@ -1,12 +1,11 @@
 use std::{path::Path, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
-use command_group::AsyncCommandGroup;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{command_ext::GroupSpawnNoWindowExt, msg_store::MsgStore};
 
 use crate::{
     command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
@@ -71,7 +70,7 @@ impl StandardCodingAgentExecutor for Amp {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
 
         // Feed the prompt in, then close the pipe so amp sees EOF
         if let Some(mut stdin) = child.inner().stdin.take() {
@@ -114,7 +113,7 @@ impl StandardCodingAgentExecutor for Amp {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
 
         // Feed the prompt in, then close the pipe so amp sees EOF
         if let Some(mut stdin) = child.inner().stdin.take() {
@@ -125,11 +124,15 @@ impl StandardCodingAgentExecutor for Amp {
         Ok(child.into())
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
+    fn normalize_logs(
+        &self,
+        msg_store: Arc<MsgStore>,
+        current_dir: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
         let entry_index_provider = EntryIndexProvider::start_from(&msg_store);
 
         // Process stdout logs (Amp's stream JSON output) using Claude's log processor
-        ClaudeLogProcessor::process_logs(
+        let h1 = ClaudeLogProcessor::process_logs(
             msg_store.clone(),
             current_dir,
             entry_index_provider.clone(),
@@ -137,7 +140,9 @@ impl StandardCodingAgentExecutor for Amp {
         );
 
         // Process stderr logs using the standard stderr processor
-        normalize_stderr_logs(msg_store, entry_index_provider);
+        let h2 = normalize_stderr_logs(msg_store, entry_index_provider);
+
+        vec![h1, h2]
     }
 
     // MCP configuration methods

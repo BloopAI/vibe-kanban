@@ -10,10 +10,6 @@ pub struct PortInfo {
     pub preview_proxy_port: Option<u16>,
 }
 
-pub async fn write_port_file(port: u16) -> std::io::Result<PathBuf> {
-    write_port_file_with_proxy(port, None).await
-}
-
 pub async fn write_port_file_with_proxy(
     main_port: u16,
     preview_proxy_port: Option<u16>,

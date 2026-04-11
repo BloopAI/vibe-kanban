@@ -1,7 +1,7 @@
 use std::{cmp::Ordering, path::Path, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use command_group::AsyncGroupChild;
 use convert_case::{Case, Casing};
 use derivative::Derivative;
 use futures::StreamExt;
@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use tokio::{io::AsyncBufReadExt, process::Command};
 use ts_rs::TS;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{command_ext::GroupSpawnNoWindowExt, msg_store::MsgStore};
 
 use crate::{
     approvals::ExecutorApprovalService,
@@ -89,7 +89,7 @@ type ServerPassword = String;
 
 impl Opencode {
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
-        let builder = CommandBuilder::new("npx -y opencode-ai@1.1.59")
+        let builder = CommandBuilder::new("npx -y opencode-ai@1.2.27")
             // Pass hostname/port as separate args so OpenCode treats them as explicitly set
             // (it checks `process.argv.includes(\"--port\")` / `\"--hostname\"`).
             .extend_params(["serve", "--hostname", "127.0.0.1", "--port", "0"]);
@@ -130,7 +130,7 @@ impl Opencode {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
-        let child = command.group_spawn()?;
+        let child = command.group_spawn_no_window()?;
 
         Ok((child, server_password))
     }
@@ -436,8 +436,12 @@ impl StandardCodingAgentExecutor for Opencode {
             .await
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {
-        normalize_logs::normalize_logs(msg_store, worktree_path);
+    fn normalize_logs(
+        &self,
+        msg_store: Arc<MsgStore>,
+        worktree_path: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
+        normalize_logs::normalize_logs(msg_store, worktree_path)
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {

@@ -3,9 +3,6 @@ import { createHmrContext } from '@/shared/lib/hmrContext';
 import type {
   Session,
   RepoWithTargetBranch,
-  UnifiedPrComment,
-  Diff,
-  DiffStats,
   Workspace as ApiWorkspace,
 } from 'shared/types';
 import type { SidebarWorkspace } from '@/shared/hooks/useWorkspaces';
@@ -23,6 +20,11 @@ export interface NormalizedGitHubComment {
   diffHunk: string | null;
 }
 
+// ---------------------------------------------------------------------------
+// Core workspace context — workspace, sessions, repos, navigation.
+// Changes infrequently; safe for conversation-shell subscriptions.
+// ---------------------------------------------------------------------------
+
 export interface WorkspaceContextValue {
   workspaceId: string | undefined;
   /** Real workspace data from API */
@@ -31,6 +33,7 @@ export interface WorkspaceContextValue {
   activeWorkspaces: SidebarWorkspace[];
   /** Archived workspaces for sidebar display */
   archivedWorkspaces: SidebarWorkspace[];
+  isWorkspacesListLoading: boolean;
   isLoading: boolean;
   isCreateMode: boolean;
   selectWorkspace: (id: string) => void;
@@ -49,21 +52,6 @@ export interface WorkspaceContextValue {
   /** Repos for the current workspace */
   repos: RepoWithTargetBranch[];
   isReposLoading: boolean;
-  /** GitHub PR Comments */
-  gitHubComments: UnifiedPrComment[];
-  isGitHubCommentsLoading: boolean;
-  showGitHubComments: boolean;
-  setShowGitHubComments: (show: boolean) => void;
-  getGitHubCommentsForFile: (filePath: string) => NormalizedGitHubComment[];
-  getGitHubCommentCountForFile: (filePath: string) => number;
-  getFilesWithGitHubComments: () => string[];
-  getFirstCommentLineForFile: (filePath: string) => number | null;
-  /** Diffs for the current workspace */
-  diffs: Diff[];
-  /** Set of file paths in the diffs */
-  diffPaths: Set<string>;
-  /** Aggregate diff statistics */
-  diffStats: DiffStats;
 }
 
 // Exported for optional usage outside WorkspaceProvider (e.g., old UI)

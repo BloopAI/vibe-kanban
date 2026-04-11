@@ -2,7 +2,6 @@ import {
   useMemo,
   useState,
   useCallback,
-  useContext,
   memo,
   forwardRef,
   useImperativeHandle,
@@ -15,14 +14,17 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
+import { TRANSFORMERS, type Transformer } from '@lexical/markdown';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
-import { TRANSFORMERS, CODE, type Transformer } from '@lexical/markdown';
+import { CodeBlockEscapePlugin } from '@vibe/ui/components/CodeBlockEscapePlugin';
+import { InlineCodeBoundaryPlugin } from '@vibe/ui/components/InlineCodeBoundaryPlugin';
 import {
   PrCommentNode,
   PR_COMMENT_TRANSFORMER,
   PR_COMMENT_EXPORT_TRANSFORMER,
 } from '@vibe/ui/components/pr-comment-node';
 import { createImageNode } from '@vibe/ui/components/image-node';
+import { createAttachmentNode } from '@vibe/ui/components/attachment-node';
 import {
   ComponentInfoNode,
   COMPONENT_INFO_TRANSFORMER,
@@ -31,10 +33,11 @@ import {
 } from '@vibe/ui/components/component-info-node';
 import { TABLE_TRANSFORMER } from '@vibe/ui/lib/table-transformer';
 import {
-  TaskAttemptContext,
-  LocalImagesContext,
-  type LocalImageMetadata,
-} from '@vibe/ui/components/TaskAttemptContext';
+  WorkspaceContext as EditorWorkspaceContext,
+  SessionContext,
+  LocalAttachmentsContext,
+  type LocalAttachmentMetadata,
+} from '@vibe/ui/components/WorkspaceContext';
 import { TypeaheadOpenProvider } from '@vibe/ui/components/TypeaheadOpenContext';
 import {
   FileTagTypeaheadPlugin,
@@ -49,7 +52,6 @@ import { ReadOnlyLinkPlugin } from '@vibe/ui/components/ReadOnlyLinkPlugin';
 import { ClickableCodePlugin } from '@vibe/ui/components/ClickableCodePlugin';
 import { ToolbarPlugin } from '@vibe/ui/components/ToolbarPlugin';
 import { StaticToolbarPlugin } from '@vibe/ui/components/StaticToolbarPlugin';
-import { CodeBlockShortcutPlugin } from '@vibe/ui/components/CodeBlockShortcutPlugin';
 import { PasteMarkdownPlugin } from '@vibe/ui/components/PasteMarkdownPlugin';
 import { MarkdownSyncPlugin } from '@vibe/ui/components/MarkdownSyncPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
@@ -62,9 +64,9 @@ import { CODE_HIGHLIGHT_CLASSES } from '@vibe/ui/lib/code-highlight-theme';
 import { LinkNode } from '@lexical/link';
 import { TableNode, TableRowNode, TableCellNode } from '@lexical/table';
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
-import { EditorState, type LexicalEditor } from 'lexical';
+import { type EditorState, type LexicalEditor } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { useDiffPaths } from '@/shared/stores/useWorkspaceDiffStore';
 import { useSlashCommands } from '@/shared/hooks/useExecutorDiscovery';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { cn } from '@/shared/lib/utils';
@@ -108,12 +110,14 @@ type WysiwygProps = {
   onShiftCmdEnter?: () => void;
   /** Keyboard shortcut mode for sending messages */
   sendShortcut?: SendMessageShortcut;
-  /** Task attempt ID for resolving .vibe-images paths */
-  taskAttemptId?: string;
+  /** Task attempt ID for resolving .vibe-attachments paths */
+  workspaceId?: string;
+  /** Session ID used for workspace-scoped APIs (attachments, slash command discovery) */
+  sessionId?: string;
   /** Repo ID for slash commands when no workspace yet */
   repoId?: string;
-  /** Local images for immediate rendering (before saved to server) */
-  localImages?: LocalImageMetadata[];
+  /** Local attachments for immediate rendering (before saved to server) */
+  localAttachments?: LocalAttachmentMetadata[];
   /** Optional edit callback - shows edit button in read-only mode when provided */
   onEdit?: () => void;
   /** Optional delete callback - shows delete button in read-only mode when provided */
@@ -124,12 +128,16 @@ type WysiwygProps = {
   findMatchingDiffPath?: (text: string) => string | null;
   /** Callback when clickable inline code is clicked (only in read-only mode) */
   onCodeClick?: (fullPath: string) => void;
+  /** Hide the copy/edit/delete action buttons in read-only mode */
+  hideActions?: boolean;
   /** Show a static toolbar below the editor content */
   showStaticToolbar?: boolean;
   /** Save status indicator for static toolbar */
   saveStatus?: 'idle' | 'saved';
   /** Additional actions to render in static toolbar */
   staticToolbarActions?: ReactNode;
+  /** Called when a toolbar button is clicked in preview mode to request edit */
+  onRequestEdit?: () => void;
 };
 
 /** Ref interface for WYSIWYGEditor, exposing imperative methods */
@@ -254,25 +262,34 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       onCmdEnter,
       onShiftCmdEnter,
       sendShortcut,
-      taskAttemptId,
+      workspaceId,
+      sessionId,
       repoId,
-      localImages,
+      localAttachments,
       onEdit,
       onDelete,
       autoFocus = false,
       findMatchingDiffPath,
       onCodeClick,
+      hideActions = false,
       showStaticToolbar = false,
       saveStatus,
       staticToolbarActions,
+      onRequestEdit,
     }: WysiwygProps,
     ref: React.ForwardedRef<WYSIWYGEditorRef>
   ) {
     // Ref to capture the Lexical editor instance for imperative methods
     const editorInstanceRef = useRef<LexicalEditor | null>(null);
 
-    // Expose focus method via ref
-    useImperativeHandle(ref, () => ({
+    // Expose focus method via ref.
+    // Guard: only pass a valid ref to useImperativeHandle. When the component
+    // is rendered without a ref (e.g. the nested preview editor), React dev
+    // mode may pass a frozen empty object which causes "Cannot add property
+    // current, object is not extensible".
+    const safeRef =
+      typeof ref === 'function' || (ref && 'current' in ref) ? ref : null;
+    useImperativeHandle(safeRef, () => ({
       focus: () => {
         editorInstanceRef.current?.focus();
       },
@@ -280,11 +297,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
 
     // Copy button state
     const [copied, setCopied] = useState(false);
-    const workspaceContext = useContext(WorkspaceContext);
-    const diffPaths = useMemo(
-      () => workspaceContext?.diffPaths ?? new Set<string>(),
-      [workspaceContext?.diffPaths]
-    );
+    const diffPaths = useDiffPaths();
     const preferredRepoId = useUiPreferencesStore(
       (state) => state.fileSearchRepoId
     );
@@ -292,7 +305,8 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       (state) => state.setFileSearchRepo
     );
     const slashCommandsQuery = useSlashCommands(executor, {
-      workspaceId: taskAttemptId,
+      workspaceId: sessionId ? workspaceId : undefined,
+      sessionId,
       repoId,
     });
     const listRecentRepos = useCallback(async () => repoApi.listRecent(), []);
@@ -364,14 +378,22 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         }),
       []
     );
+    const attachmentNodeDefinition = useMemo(
+      () =>
+        createAttachmentNode({
+          fetchAttachmentUrl: fetchAttachmentSasUrl,
+        }),
+      []
+    );
     const { ImageNode, IMAGE_TRANSFORMER, $isImageNode } = imageNodeDefinition;
+    const { AttachmentNode, ATTACHMENT_TRANSFORMER } = attachmentNodeDefinition;
 
     const initialConfig = useMemo(
       () => ({
         namespace: 'md-wysiwyg',
         onError: console.error,
         theme: {
-          paragraph: 'mb-2 last:mb-0',
+          paragraph: 'mb-1 last:mb-0',
           heading: {
             h1: 'mt-4 mb-2 text-2xl font-semibold',
             h2: 'mt-3 mb-2 text-xl font-semibold',
@@ -383,8 +405,8 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
           quote:
             'my-3 border-l-4 border-primary-foreground pl-4 text-muted-foreground',
           list: {
-            ul: 'my-1 list-disc list-inside',
-            ol: 'my-1 list-decimal list-inside',
+            ul: 'my-1 list-disc pl-6',
+            ol: 'my-1 list-decimal pl-6',
             listitem: '',
             nested: {
               // Hide the structural wrapper marker Lexical adds for nested items.
@@ -416,6 +438,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
           CodeHighlightNode,
           LinkNode,
           ImageNode,
+          AttachmentNode,
           PrCommentNode,
           ComponentInfoNode,
           TableNode,
@@ -423,22 +446,23 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
           TableCellNode,
         ],
       }),
-      [ImageNode]
+      [AttachmentNode, ImageNode]
     );
 
-    // Extended transformers with image, PR comment, and code block support (memoized to prevent unnecessary re-renders)
-    const extendedTransformers: Transformer[] = useMemo(
+    // Full markdown transformers for both edit and display modes.
+    // Custom element transformers come first for matching precedence.
+    const allTransformers: Transformer[] = useMemo(
       () => [
         TABLE_TRANSFORMER,
         IMAGE_TRANSFORMER,
+        ATTACHMENT_TRANSFORMER,
         PR_COMMENT_EXPORT_TRANSFORMER,
         PR_COMMENT_TRANSFORMER,
         COMPONENT_INFO_EXPORT_TRANSFORMER,
         COMPONENT_INFO_TRANSFORMER,
-        CODE,
         ...TRANSFORMERS,
       ],
-      [IMAGE_TRANSFORMER]
+      [ATTACHMENT_TRANSFORMER, IMAGE_TRANSFORMER]
     );
 
     // Memoized handlers for ContentEditable to prevent re-renders
@@ -486,104 +510,110 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
     );
 
     const editorContent = (
-      <div className="wysiwyg text-base">
-        <TaskAttemptContext.Provider value={taskAttemptId}>
-          <LocalImagesContext.Provider value={localImages ?? []}>
-            <LexicalComposer initialConfig={initialConfig}>
-              <EditorRefPlugin editorRef={editorInstanceRef} />
-              <MarkdownSyncPlugin
-                value={value}
-                onChange={onChange}
-                onEditorStateChange={onEditorStateChange}
-                editable={!disabled}
-                transformers={extendedTransformers}
-              />
-              {!disabled && <ToolbarPlugin />}
-              <div className="relative">
-                <RichTextPlugin
-                  contentEditable={
-                    <ContentEditable
-                      className={cn('outline-none', className)}
-                      aria-label={
-                        disabled ? 'Markdown content' : 'Markdown editor'
-                      }
-                      onPasteCapture={handlePaste}
-                    />
-                  }
-                  placeholder={placeholderElement}
-                  ErrorBoundary={LexicalErrorBoundary}
+      <div className="wysiwyg text-base relative">
+        <EditorWorkspaceContext.Provider value={workspaceId}>
+          <SessionContext.Provider value={sessionId}>
+            <LocalAttachmentsContext.Provider value={localAttachments ?? []}>
+              <LexicalComposer initialConfig={initialConfig}>
+                <EditorRefPlugin editorRef={editorInstanceRef} />
+                <MarkdownSyncPlugin
+                  value={value}
+                  onChange={onChange}
+                  onEditorStateChange={onEditorStateChange}
+                  editable={!disabled}
+                  transformers={allTransformers}
                 />
-              </div>
+                {!disabled && !showStaticToolbar && <ToolbarPlugin />}
 
-              {!disabled && showStaticToolbar && (
-                <StaticToolbarPlugin
-                  saveStatus={saveStatus}
-                  extraActions={staticToolbarActions}
-                />
-              )}
-
-              <ListPlugin />
-              <TablePlugin />
-              <CodeHighlightPlugin />
-              {/* Only include editing plugins when not in read-only mode */}
-              {!disabled && (
-                <>
-                  {autoFocus && <AutoFocusPlugin />}
-                  <HistoryPlugin />
-                  <MarkdownShortcutPlugin transformers={extendedTransformers} />
-                  <PasteMarkdownPlugin transformers={extendedTransformers} />
-                  <TypeaheadOpenProvider>
-                    <FileTagTypeaheadPlugin
-                      repoIds={repoIds}
-                      diffPaths={diffPaths}
-                      preferredRepoId={preferredRepoId}
-                      setPreferredRepoId={setFileSearchRepo}
-                      listRecentRepos={listRecentRepos}
-                      getRepoById={getRepoById}
-                      chooseRepo={chooseRepo}
-                      onCreateTag={handleCreateTag}
-                      searchTagsAndFiles={searchFileTags}
-                    />
-                    {executor && (
-                      <SlashCommandTypeaheadPlugin
-                        enabled={true}
-                        commands={slashCommandsQuery.commands}
-                        isInitialized={slashCommandsQuery.isInitialized}
-                        isDiscovering={slashCommandsQuery.discovering}
+                <div className="relative">
+                  <RichTextPlugin
+                    contentEditable={
+                      <ContentEditable
+                        className={cn('outline-none', className)}
+                        aria-label={
+                          disabled ? 'Markdown content' : 'Markdown editor'
+                        }
+                        onPasteCapture={handlePaste}
                       />
-                    )}
-                    <KeyboardCommandsPlugin
-                      onCmdEnter={onCmdEnter}
-                      onShiftCmdEnter={onShiftCmdEnter}
-                      onChange={onChange}
-                      transformers={extendedTransformers}
-                      sendShortcut={sendShortcut}
-                    />
-                  </TypeaheadOpenProvider>
-                  <ImageKeyboardPlugin isTargetNode={$isImageNode} />
-                  <ComponentInfoKeyboardPlugin
-                    isTargetNode={$isComponentInfoNode}
+                    }
+                    placeholder={placeholderElement}
+                    ErrorBoundary={LexicalErrorBoundary}
                   />
-                  <CodeBlockShortcutPlugin />
-                </>
-              )}
-              {/* Link sanitization for read-only mode */}
-              {disabled && <ReadOnlyLinkPlugin />}
-              {/* Clickable code for file paths in read-only mode */}
-              {disabled && findMatchingDiffPath && onCodeClick && (
-                <ClickableCodePlugin
-                  findMatchingDiffPath={findMatchingDiffPath}
-                  onCodeClick={onCodeClick}
-                />
-              )}
-            </LexicalComposer>
-          </LocalImagesContext.Provider>
-        </TaskAttemptContext.Provider>
+                </div>
+
+                {showStaticToolbar && (
+                  <StaticToolbarPlugin
+                    saveStatus={saveStatus}
+                    extraActions={staticToolbarActions}
+                    readOnly={disabled}
+                    onRequestEdit={onRequestEdit}
+                  />
+                )}
+
+                <MarkdownShortcutPlugin transformers={allTransformers} />
+                <ListPlugin />
+                <TablePlugin />
+                <CodeHighlightPlugin />
+                {/* Only include editing plugins when not in read-only mode */}
+                {!disabled && (
+                  <>
+                    {autoFocus && <AutoFocusPlugin />}
+                    <HistoryPlugin />
+                    <CodeBlockEscapePlugin />
+                    <InlineCodeBoundaryPlugin />
+                    <PasteMarkdownPlugin transformers={allTransformers} />
+                    <TypeaheadOpenProvider>
+                      <FileTagTypeaheadPlugin
+                        repoIds={repoIds}
+                        diffPaths={diffPaths}
+                        preferredRepoId={preferredRepoId}
+                        setPreferredRepoId={setFileSearchRepo}
+                        listRecentRepos={listRecentRepos}
+                        getRepoById={getRepoById}
+                        chooseRepo={chooseRepo}
+                        onCreateTag={handleCreateTag}
+                        searchTagsAndFiles={searchFileTags}
+                      />
+                      {executor && (
+                        <SlashCommandTypeaheadPlugin
+                          enabled={true}
+                          commands={slashCommandsQuery.commands}
+                          isInitialized={slashCommandsQuery.isInitialized}
+                          isDiscovering={slashCommandsQuery.discovering}
+                        />
+                      )}
+                      <KeyboardCommandsPlugin
+                        onCmdEnter={onCmdEnter}
+                        onShiftCmdEnter={onShiftCmdEnter}
+                        onChange={onChange}
+                        transformers={allTransformers}
+                        sendShortcut={sendShortcut}
+                      />
+                    </TypeaheadOpenProvider>
+                    <ImageKeyboardPlugin isTargetNode={$isImageNode} />
+                    <ComponentInfoKeyboardPlugin
+                      isTargetNode={$isComponentInfoNode}
+                    />
+                  </>
+                )}
+                {/* Link sanitization for read-only mode */}
+                {disabled && <ReadOnlyLinkPlugin />}
+                {/* Clickable code for file paths in read-only mode */}
+                {disabled && findMatchingDiffPath && onCodeClick && (
+                  <ClickableCodePlugin
+                    findMatchingDiffPath={findMatchingDiffPath}
+                    onCodeClick={onCodeClick}
+                  />
+                )}
+              </LexicalComposer>
+            </LocalAttachmentsContext.Provider>
+          </SessionContext.Provider>
+        </EditorWorkspaceContext.Provider>
       </div>
     );
 
     // Wrap with action buttons in read-only mode
-    if (disabled) {
+    if (disabled && !hideActions) {
       return (
         <div className="relative group">
           <div className="sticky top-0 right-2 z-10 pointer-events-none h-0">

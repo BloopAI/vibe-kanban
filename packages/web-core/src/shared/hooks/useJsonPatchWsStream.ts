@@ -39,6 +39,7 @@ export const useJsonPatchWsStream = <T extends object>(
   const [data, setData] = useState<T | undefined>(undefined);
   const [isConnected, setIsConnected] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const initializedForEndpointRef = useRef<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const dataRef = useRef<T | undefined>(undefined);
@@ -144,7 +145,9 @@ export const useJsonPatchWsStream = <T extends object>(
 
               // Handle Ready messages (initial data has been sent)
               if ('Ready' in msg) {
+                initializedForEndpointRef.current = endpoint;
                 setIsInitialized(true);
+                setError(null);
               }
 
               // Handle finished messages ({finished: true})
@@ -162,7 +165,9 @@ export const useJsonPatchWsStream = <T extends object>(
           };
 
           ws.onerror = () => {
-            setError('Connection failed');
+            // Don't set error here — onclose always fires after onerror
+            // and handles retry logic. Setting error eagerly hides data
+            // that was already received.
           };
 
           ws.onclose = (evt) => {
@@ -180,6 +185,10 @@ export const useJsonPatchWsStream = <T extends object>(
 
             // Otherwise, reconnect on unexpected/error closures
             retryAttemptsRef.current += 1;
+            // Only show error if we haven't received any data yet
+            if (!dataRef.current && retryAttemptsRef.current > 6) {
+              setError('Connection failed');
+            }
             scheduleReconnect();
           };
 
@@ -190,7 +199,6 @@ export const useJsonPatchWsStream = <T extends object>(
           }
 
           console.error('Failed to open WebSocket stream:', error);
-          setError('Connection failed');
           retryAttemptsRef.current += 1;
           scheduleReconnect();
         }
@@ -230,5 +238,13 @@ export const useJsonPatchWsStream = <T extends object>(
     retryNonce,
   ]);
 
-  return { data, isConnected, isInitialized, error };
+  const isInitializedForCurrentEndpoint =
+    isInitialized && initializedForEndpointRef.current === endpoint;
+
+  return {
+    data,
+    isConnected,
+    isInitialized: isInitializedForCurrentEndpoint,
+    error,
+  };
 };

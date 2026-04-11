@@ -13,12 +13,12 @@ import { VirtualizedProcessLogs } from '@/shared/components/VirtualizedProcessLo
 import { getDevServerWorkingDir } from '@/shared/lib/devServerUtils';
 
 interface PreviewControlsContainerProps {
-  attemptId: string;
+  workspaceId: string;
   className: string;
 }
 
 export function PreviewControlsContainer({
-  attemptId,
+  workspaceId,
   className,
 }: PreviewControlsContainerProps) {
   const { t } = useTranslation(['tasks', 'common']);
@@ -29,7 +29,7 @@ export function PreviewControlsContainer({
   );
 
   const { isStarting, runningDevServers, devServerProcesses } =
-    usePreviewDevServer(attemptId);
+    usePreviewDevServer(workspaceId);
 
   const [activeProcessId, setActiveProcessId] = useState<string | null>(null);
 

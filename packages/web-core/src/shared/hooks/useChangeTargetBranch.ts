@@ -1,10 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { attemptsApi } from '@/shared/lib/api';
+import { workspacesApi } from '@/shared/lib/api';
 import type {
   ChangeTargetBranchRequest,
   ChangeTargetBranchResponse,
 } from 'shared/types';
 import { repoBranchKeys } from '@/shared/hooks/useRepoBranches';
+import { workspaceRepoKeys } from '@/shared/hooks/useWorkspaceRepo';
 
 type ChangeTargetBranchParams = {
   newTargetBranch: string;
@@ -12,7 +13,7 @@ type ChangeTargetBranchParams = {
 };
 
 export function useChangeTargetBranch(
-  attemptId: string | undefined,
+  workspaceId: string | undefined,
   repoId: string | undefined,
   onSuccess?: (data: ChangeTargetBranchResponse) => void,
   onError?: (err: unknown) => void
@@ -25,7 +26,7 @@ export function useChangeTargetBranch(
     ChangeTargetBranchParams
   >({
     mutationFn: async ({ newTargetBranch, repoId }) => {
-      if (!attemptId) {
+      if (!workspaceId) {
         throw new Error('Attempt id is not set');
       }
 
@@ -33,20 +34,20 @@ export function useChangeTargetBranch(
         new_target_branch: newTargetBranch,
         repo_id: repoId,
       };
-      return attemptsApi.change_target_branch(attemptId, payload);
+      return workspacesApi.change_target_branch(workspaceId, payload);
     },
     onSuccess: (data) => {
-      if (attemptId) {
+      if (workspaceId) {
         queryClient.invalidateQueries({
-          queryKey: ['branchStatus', attemptId],
+          queryKey: ['branchStatus', workspaceId],
         });
-        // Invalidate taskAttempt query to refresh attempt.target_branch
+        // Invalidate workspaceWithSession query to refresh attempt.target_branch
         queryClient.invalidateQueries({
-          queryKey: ['taskAttempt', attemptId],
+          queryKey: ['workspaceWithSession', workspaceId],
         });
         // Refresh repos to update target_branch in RepoCard
         queryClient.invalidateQueries({
-          queryKey: ['attemptRepo', attemptId],
+          queryKey: workspaceRepoKeys.byWorkspace(workspaceId),
         });
       }
 
@@ -60,9 +61,9 @@ export function useChangeTargetBranch(
     },
     onError: (err) => {
       console.error('Failed to change target branch:', err);
-      if (attemptId) {
+      if (workspaceId) {
         queryClient.invalidateQueries({
-          queryKey: ['branchStatus', attemptId],
+          queryKey: ['branchStatus', workspaceId],
         });
       }
       onError?.(err);

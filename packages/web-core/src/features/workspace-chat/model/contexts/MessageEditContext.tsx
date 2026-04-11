@@ -25,6 +25,9 @@ const MessageEditContext = createHmrContext<MessageEditContextType | null>(
   null
 );
 
+const EMPTY_ORDER: Record<string, number> = {};
+const NOOP_IS_GREYED = () => false;
+
 export function MessageEditProvider({
   children,
 }: {
@@ -33,14 +36,18 @@ export function MessageEditProvider({
   const [activeEdit, setActiveEdit] = useState<EditState | null>(null);
   const { entries } = useEntries();
 
-  // Build entry order map from entries
+  // Build entry order map only when actively editing.
+  // When inactive, return a stable empty reference to prevent
+  // downstream useMemo/useCallback deps from changing on every
+  // streaming entries update.
   const entryOrder = useMemo(() => {
+    if (!activeEdit) return EMPTY_ORDER;
     const order: Record<string, number> = {};
     entries.forEach((entry, idx) => {
       order[entry.patchKey] = idx;
     });
     return order;
-  }, [entries]);
+  }, [entries, activeEdit]);
 
   const startEdit = useCallback(
     (entryKey: string, processId: string, originalMessage: string) => {
@@ -53,17 +60,20 @@ export function MessageEditProvider({
     setActiveEdit(null);
   }, []);
 
+  // When not editing, return a stable no-op to avoid context value churn.
+  // The entryOrder dep would otherwise create a new callback reference
+  // on every entries update even though it always returns false.
   const isEntryGreyed = useCallback(
     (entryKey: string) => {
       if (!activeEdit) return false;
       const activeOrder = entryOrder[activeEdit.entryKey];
       const thisOrder = entryOrder[entryKey];
-      // Grey out entries that come AFTER the edit target
       return thisOrder > activeOrder;
     },
     [activeEdit, entryOrder]
   );
 
+  const stableIsEntryGreyed = activeEdit ? isEntryGreyed : NOOP_IS_GREYED;
   const isInEditMode = activeEdit !== null;
 
   const value = useMemo(
@@ -71,10 +81,10 @@ export function MessageEditProvider({
       activeEdit,
       startEdit,
       cancelEdit,
-      isEntryGreyed,
+      isEntryGreyed: stableIsEntryGreyed,
       isInEditMode,
     }),
-    [activeEdit, startEdit, cancelEdit, isEntryGreyed, isInEditMode]
+    [activeEdit, startEdit, cancelEdit, stableIsEntryGreyed, isInEditMode]
   );
 
   return (

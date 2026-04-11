@@ -10,6 +10,13 @@ LEGACY_PATHS=(
   "packages/local-web/src/components/dialogs"
 )
 
+NAVIGATION_FILES=(
+  "packages/web-core/src/shared/lib/routes/appNavigation.ts"
+  "packages/web-core/src/shared/hooks/useAppNavigation.ts"
+  "packages/local-web/src/app/navigation/AppNavigation.ts"
+  "packages/remote-web/src/app/navigation/AppNavigation.ts"
+)
+
 echo "▶️  Checking for net-new files in legacy frontend paths..."
 
 if [ ! -f "$ALLOWLIST_FILE" ]; then
@@ -21,7 +28,9 @@ current_files="$(
   git -C "$REPO_ROOT" ls-files "${LEGACY_PATHS[@]}" | LC_ALL=C sort
 )"
 allowed_files="$(
-  grep -v '^\s*#' "$ALLOWLIST_FILE" | sed '/^\s*$/d' | LC_ALL=C sort
+  { grep -v '^\s*#' "$ALLOWLIST_FILE" || true; } |
+    sed '/^\s*$/d' |
+    LC_ALL=C sort
 )"
 
 new_files="$(
@@ -45,3 +54,83 @@ if [ -n "$removed_files" ]; then
 fi
 
 echo "✅ No net-new files in legacy frontend paths."
+
+echo "▶️  Checking navigation modules for explicit any..."
+
+any_hits="$(
+  grep \
+    -nE \
+    '(as[[:space:]]+any([^[:alnum:]_]|$)|:[[:space:]]*any([^[:alnum:]_]|$)|<any>)' \
+    "${NAVIGATION_FILES[@]}" || true
+)"
+
+if [ -n "$any_hits" ]; then
+  echo "❌ Explicit any found in navigation modules:"
+  printf '%s\n' "$any_hits"
+  exit 1
+fi
+
+echo "✅ No explicit any in navigation modules."
+
+echo "▶️  Checking web-core for navigate({ to: '.' ... }) usage..."
+
+dot_navigation_hits="$(
+  find "$REPO_ROOT/packages/web-core/src" \
+    -type f \( -name '*.ts' -o -name '*.tsx' \) \
+    -print0 |
+    xargs -0 perl -0ne '
+      my $content = $_;
+      while ($content =~ /navigate\s*\(\s*\{[\s\S]*?\bto\s*:\s*["\x27]\.["\x27][\s\S]*?\}\s*\)/g) {
+        my $line = 1 + (substr($content, 0, $-[0]) =~ tr/\n//);
+        print "$ARGV:$line\n";
+      }
+    ' || true
+)"
+
+if [ -n "$dot_navigation_hits" ]; then
+  echo "❌ Found navigate({ to: '.' ... }) usage in web-core:"
+  printf '%s\n' "$dot_navigation_hits"
+  echo ""
+  echo "Use AppNavigation destination methods instead of route-local '.' normalization."
+  exit 1
+fi
+
+echo "✅ No navigate({ to: '.' ... }) usage in web-core."
+
+echo "▶️  Checking web-core for direct appNavigation.navigate(...) usage..."
+
+app_navigation_navigate_hits="$(
+  find "$REPO_ROOT/packages/web-core/src" \
+    -type f \( -name '*.ts' -o -name '*.tsx' \) \
+    -print0 |
+    xargs -0 grep -nE 'appNavigation[[:space:]]*\.[[:space:]]*navigate[[:space:]]*\(' || true
+)"
+
+if [ -n "$app_navigation_navigate_hits" ]; then
+  echo "❌ Found direct appNavigation.navigate(...) usage in web-core:"
+  printf '%s\n' "$app_navigation_navigate_hits"
+  echo ""
+  echo "Use goTo* methods or goToAppDestination(...) instead."
+  exit 1
+fi
+
+echo "✅ No direct appNavigation.navigate(...) usage in web-core."
+
+echo "▶️  Checking web-core for legacy pathResolution imports..."
+
+path_resolution_import_hits="$(
+  find "$REPO_ROOT/packages/web-core/src" \
+    -type f \( -name '*.ts' -o -name '*.tsx' \) \
+    -print0 |
+    xargs -0 grep -nE '@/shared/lib/routes/pathResolution' || true
+)"
+
+if [ -n "$path_resolution_import_hits" ]; then
+  echo "❌ Found legacy pathResolution imports in web-core:"
+  printf '%s\n' "$path_resolution_import_hits"
+  echo ""
+  echo "Use appNavigation.resolveFromPath(...) and AppDestination helpers instead."
+  exit 1
+fi
+
+echo "✅ No legacy pathResolution imports in web-core."

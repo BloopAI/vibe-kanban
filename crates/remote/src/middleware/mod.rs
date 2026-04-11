@@ -1,1 +1,1 @@
-pub mod version;
+pub(crate) mod version;

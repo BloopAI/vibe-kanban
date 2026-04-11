@@ -1,11 +1,12 @@
 //! All shape constant instances for realtime streaming.
 
-use crate::shape_definition::ShapeDefinition;
 use api_types::{
     Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssueRelationship,
-    IssueTag, Notification, OrganizationMember, Project, ProjectStatus, PullRequest, Tag, User,
-    Workspace,
+    IssueTag, Notification, OrganizationMember, Project, ProjectStatus, PullRequest,
+    PullRequestIssue, Tag, User, Workspace,
 };
+
+use crate::shape_definition::ShapeDefinition;
 
 // =============================================================================
 // Organization-scoped shapes
@@ -22,9 +23,9 @@ pub const PROJECTS_SHAPE: ShapeDefinition<Project> = crate::define_shape!(
 pub const NOTIFICATIONS_SHAPE: ShapeDefinition<Notification> = crate::define_shape!(
     name: "NOTIFICATIONS_SHAPE",
     table: "notifications",
-    where_clause: r#""organization_id" = $1 AND "user_id" = $2"#,
+    where_clause: r#""user_id" = $1"#,
     url: "/shape/notifications",
-    params: ["organization_id", "user_id"],
+    params: ["user_id"],
 );
 
 pub const ORGANIZATION_MEMBERS_SHAPE: ShapeDefinition<OrganizationMember> = crate::define_shape!(
@@ -126,8 +127,16 @@ pub const PROJECT_ISSUE_RELATIONSHIPS_SHAPE: ShapeDefinition<IssueRelationship> 
 pub const PROJECT_PULL_REQUESTS_SHAPE: ShapeDefinition<PullRequest> = crate::define_shape!(
     name: "PROJECT_PULL_REQUESTS_SHAPE",
     table: "pull_requests",
-    where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+    where_clause: r#""project_id" = $1"#,
     url: "/shape/project/{project_id}/pull_requests",
+    params: ["project_id"],
+);
+
+pub const PROJECT_PULL_REQUEST_ISSUES_SHAPE: ShapeDefinition<PullRequestIssue> = crate::define_shape!(
+    name: "PROJECT_PULL_REQUEST_ISSUES_SHAPE",
+    table: "pull_request_issues",
+    where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+    url: "/shape/project/{project_id}/pull_request_issues",
     params: ["project_id"],
 );
 
@@ -150,4 +159,3 @@ pub const ISSUE_REACTIONS_SHAPE: ShapeDefinition<IssueCommentReaction> = crate::
     url: "/shape/issue/{issue_id}/reactions",
     params: ["issue_id"],
 );
-

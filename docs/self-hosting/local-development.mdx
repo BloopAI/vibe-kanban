@@ -85,6 +85,12 @@ VITE_RELAY_API_BASE_URL=http://localhost:8082
 
 # Email invitations (optional — leave empty to disable)
 LOOPS_EMAIL_API_KEY=
+
+# Loops transactional email template IDs (optional — defaults are the upstream templates).
+# Override these with your own Loops account template IDs if using a custom Loops account.
+LOOPS_INVITE_TEMPLATE_ID=cmhvy2wgs3s13z70i1pxakij9
+LOOPS_REVIEW_READY_TEMPLATE_ID=cmj47k5ge16990iylued9by17
+LOOPS_REVIEW_FAILED_TEMPLATE_ID=cmj49ougk1c8s0iznavijdqpo
 ```
 
 For production or self-hosting on a server, add `PUBLIC_BASE_URL` (your public URL, e.g. `https://kanban.example.com`) and `REMOTE_SERVER_PORTS=0.0.0.0:3000:8081` so the server is reachable from other hosts. Defaults keep local dev unchanged.
@@ -155,28 +161,12 @@ This mode requires local HTTPS + Caddy routing (next step).
 
 ## Step 7: Optional Local HTTPS + Caddy (required for tunnel-mode testing)
 
-Create a Caddy config that routes:
+Use the checked-in `Caddyfile.example` in the repository root. It routes:
 - `localhost:3001` -> remote server (`127.0.0.1:3000`)
 - `relay.localhost:3001` and `*.relay.localhost:3001` -> relay server (`127.0.0.1:8082`)
 
 ```bash
-caddy run --config - --adapter caddyfile <<'EOF'
-localhost:3001, relay.localhost:3001, *.relay.localhost:3001 {
-  tls internal
-
-  @relay host relay.localhost *.relay.localhost
-  handle @relay {
-    reverse_proxy 127.0.0.1:8082
-  }
-
-  @app expression `{http.request.host} == "localhost:3001" || {http.request.host} == "localhost"`
-  handle @app {
-    reverse_proxy 127.0.0.1:3000
-  }
-
-  respond "not found" 404
-}
-EOF
+caddy run --config Caddyfile.example
 ```
 
 If you use this HTTPS setup, update OAuth callback URLs to:

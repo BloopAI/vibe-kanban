@@ -15,11 +15,11 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    routes::relay_ws::{SignedWebSocket, SignedWsUpgrade},
+    middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
 };
 
 #[derive(Debug, Deserialize)]
-pub struct TerminalQuery {
+struct TerminalQuery {
     pub workspace_id: Uuid,
     #[serde(default = "default_cols")]
     pub cols: u16,
@@ -49,7 +49,7 @@ enum TerminalMessage {
     Error { message: String },
 }
 
-pub async fn terminal_ws(
+async fn terminal_ws(
     ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TerminalQuery>,
@@ -93,7 +93,7 @@ pub async fn terminal_ws(
 }
 
 async fn handle_terminal_ws(
-    mut socket: SignedWebSocket,
+    mut socket: MaybeSignedWebSocket,
     deployment: DeploymentImpl,
     working_dir: PathBuf,
     cols: u16,
@@ -165,7 +165,7 @@ async fn handle_terminal_ws(
     let _ = deployment.pty().close_session(session_id).await;
 }
 
-async fn send_error(socket: &mut SignedWebSocket, message: &str) -> anyhow::Result<()> {
+async fn send_error(socket: &mut MaybeSignedWebSocket, message: &str) -> anyhow::Result<()> {
     let msg = TerminalMessage::Error {
         message: message.to_string(),
     };
@@ -175,6 +175,6 @@ async fn send_error(socket: &mut SignedWebSocket, message: &str) -> anyhow::Resu
     Ok(())
 }
 
-pub fn router() -> Router<DeploymentImpl> {
+pub(super) fn router() -> Router<DeploymentImpl> {
     Router::new().route("/terminal/ws", get(terminal_ws))
 }

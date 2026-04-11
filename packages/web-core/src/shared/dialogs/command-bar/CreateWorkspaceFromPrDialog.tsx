@@ -20,21 +20,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@vibe/ui/components/Select';
-import { useNavigate } from '@tanstack/react-router';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/shared/lib/modals';
-import { attemptsApi, repoApi } from '@/shared/lib/api';
+import { workspacesApi, repoApi } from '@/shared/lib/api';
 import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { SearchableDropdownContainer } from '@/shared/components/ui-new/containers/SearchableDropdownContainer';
-import type { OpenPrInfo, GitRemote } from 'shared/types';
-import { toWorkspace } from '@/shared/lib/routes/navigation';
+import type { PullRequestDetail, GitRemote } from 'shared/types';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 export interface CreateWorkspaceFromPrDialogProps {}
 
 const CreateWorkspaceFromPrDialogImpl =
   create<CreateWorkspaceFromPrDialogProps>(() => {
     const modal = useModal();
-    const navigate = useNavigate();
+    const appNavigation = useAppNavigation();
     const { t } = useTranslation('tasks');
     const queryClient = useQueryClient();
 
@@ -94,7 +93,7 @@ const CreateWorkspaceFromPrDialogImpl =
       enabled: modal.visible && !!selectedRepoId && !!selectedRemote,
     });
 
-    const openPrs = useMemo<OpenPrInfo[]>(
+    const openPrs = useMemo<PullRequestDetail[]>(
       () => (prsResult?.success === true ? prsResult.data : []),
       [prsResult]
     );
@@ -140,7 +139,7 @@ const CreateWorkspaceFromPrDialogImpl =
         ) {
           throw new Error('Missing required fields');
         }
-        const result = await attemptsApi.createFromPr({
+        const result = await workspacesApi.createFromPr({
           repo_id: selectedRepoId,
           pr_number: selectedPrNumber as unknown as bigint,
           pr_title: selectedPr.title,
@@ -181,7 +180,7 @@ const CreateWorkspaceFromPrDialogImpl =
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
         queryClient.invalidateQueries({ queryKey: ['workspaces'] });
         modal.hide();
-        navigate(toWorkspace(data.workspace.id));
+        appNavigation.goToWorkspace(data.workspace.id);
       },
     });
 

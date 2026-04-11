@@ -1,12 +1,15 @@
 use anyhow::{self, Error as AnyhowError};
 use axum::Router;
 use deployment::{Deployment, DeploymentError};
-use server::{DeploymentImpl, preview_proxy, routes, tunnel};
+use server::{
+    DeploymentImpl, middleware::origin::validate_origin, routes, runtime::relay_registration,
+};
 use services::services::container::ContainerService;
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
+use tower_http::validate_request::ValidateRequestHeaderLayer;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
     assets::asset_dir,
@@ -37,7 +40,7 @@ async fn main() -> Result<(), VibeKanbanError> {
 
     let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
     let filter_string = format!(
-        "warn,server={level},services={level},db={level},executors={level},deployment={level},local_deployment={level},utils={level},codex_core=off",
+        "warn,server={level},services={level},db={level},executors={level},deployment={level},local_deployment={level},utils={level},embedded_ssh={level},desktop_bridge={level},relay_hosts={level},relay_client={level},relay_webrtc={level},codex_core=off",
         level = log_level
     );
     let env_filter = EnvFilter::try_new(filter_string).expect("Failed to create tracing filter");
@@ -64,7 +67,9 @@ async fn main() -> Result<(), VibeKanbanError> {
         tracing::info!("Database copy complete");
     }
 
-    let deployment = DeploymentImpl::new().await?;
+    let shutdown_token = CancellationToken::new();
+
+    let deployment = DeploymentImpl::new(shutdown_token.clone()).await?;
     deployment.update_sentry_scope().await?;
     deployment
         .container()
@@ -88,8 +93,6 @@ async fn main() -> Result<(), VibeKanbanError> {
     tokio::spawn(async move {
         executors::executors::utils::preload_global_executor_options_cache().await;
     });
-    let app_router = routes::router(deployment.clone());
-
     let port = std::env::var("BACKEND_PORT")
         .or_else(|_| std::env::var("PORT"))
         .ok()
@@ -117,19 +120,26 @@ async fn main() -> Result<(), VibeKanbanError> {
     let proxy_listener = tokio::net::TcpListener::bind(format!("{host}:{proxy_port}")).await?;
     let actual_proxy_port = proxy_listener.local_addr()?.port();
 
-    preview_proxy::set_proxy_port(actual_proxy_port);
-
     if let Err(e) = write_port_file_with_proxy(actual_main_port, Some(actual_proxy_port)).await {
         tracing::warn!("Failed to write port file: {}", e);
     }
-
-    let shutdown_token = CancellationToken::new();
 
     tracing::info!(
         "Main server on :{}, Preview proxy on :{}",
         actual_main_port,
         actual_proxy_port
     );
+
+    deployment
+        .client_info()
+        .set_server_addr(main_listener.local_addr()?)
+        .expect("client server address already set");
+    deployment
+        .client_info()
+        .set_preview_proxy_port(actual_proxy_port)
+        .expect("client preview proxy port already set");
+
+    let app_router = routes::router(deployment.clone());
 
     // Production only: open browser
     if !cfg!(debug_assertions) {
@@ -148,7 +158,8 @@ async fn main() -> Result<(), VibeKanbanError> {
         });
     }
 
-    let proxy_router: Router = preview_proxy::router();
+    let proxy_router: Router = routes::preview::subdomain_router(deployment.clone())
+        .layer(ValidateRequestHeaderLayer::custom(validate_origin));
 
     let main_shutdown = shutdown_token.clone();
     let proxy_shutdown = shutdown_token.clone();
@@ -169,13 +180,7 @@ async fn main() -> Result<(), VibeKanbanError> {
         }
     });
 
-    deployment.server_info().set_port(actual_main_port).await;
-    let relay_host_name = {
-        let config = deployment.config().read().await;
-        tunnel::effective_relay_host_name(&config, deployment.user_id())
-    };
-    deployment.server_info().set_hostname(relay_host_name).await;
-    tunnel::spawn_relay(&deployment).await;
+    relay_registration::spawn_relay(&deployment).await;
 
     tokio::select! {
         _ = shutdown_signal() => {

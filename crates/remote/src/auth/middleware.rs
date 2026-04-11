@@ -1,3 +1,4 @@
+use api_types::User;
 use axum::{
     body::Body,
     extract::State,
@@ -7,13 +8,16 @@ use axum::{
 };
 use axum_extra::headers::{Authorization, HeaderMapExt, authorization::Bearer};
 use chrono::{DateTime, Utc};
-use tracing::warn;
+use tower_http::request_id::RequestId;
+use tracing::{Span, warn};
 use uuid::Uuid;
 
-use api_types::User;
 use crate::{
-    AppState, configure_user_scope,
+    AppState, audit,
+    audit::{AuditAction, AuditEvent},
+    configure_user_scope,
     db::{
+        self,
         auth::{AuthSessionError, AuthSessionRepository, MAX_SESSION_INACTIVITY_DURATION},
         identity_errors::IdentityError,
         users::UserRepository,
@@ -28,7 +32,7 @@ pub struct RequestContext {
     pub access_token_expires_at: DateTime<Utc>,
 }
 
-pub async fn require_session(
+pub(crate) async fn require_session(
     State(state): State<AppState>,
     mut req: Request<Body>,
     next: Next,
@@ -43,11 +47,25 @@ pub async fn require_session(
         Err(response) => return response,
     };
 
+    Span::current().record("user_id", tracing::field::display(ctx.user.id));
+
+    let request_id = req
+        .extensions()
+        .get::<RequestId>()
+        .and_then(|id| id.header_value().to_str().ok())
+        .unwrap_or("")
+        .to_owned();
+
+    let tx_ctx = db::TxContext {
+        user_id: ctx.user.id,
+        request_id,
+    };
+
     req.extensions_mut().insert(ctx);
-    next.run(req).await
+    db::TX_CONTEXT.scope(Some(tx_ctx), next.run(req)).await
 }
 
-pub async fn request_context_from_access_token(
+pub(super) async fn request_context_from_access_token(
     state: &AppState,
     access_token: &str,
 ) -> Result<RequestContext, Response> {
@@ -75,7 +93,7 @@ pub async fn request_context_from_access_token(
     Ok(ctx)
 }
 
-pub async fn request_context_from_auth_session_id(
+pub(super) async fn request_context_from_auth_session_id(
     state: &AppState,
     session_id: Uuid,
 ) -> Result<RequestContext, Response> {
@@ -103,10 +121,20 @@ pub async fn request_context_from_auth_session_id(
     }
 
     if session.inactivity_duration(Utc::now()) > MAX_SESSION_INACTIVITY_DURATION {
-        warn!("session `{}` expired due to inactivity; revoking", session.id);
+        warn!(
+            "session `{}` expired due to inactivity; revoking",
+            session.id
+        );
         if let Err(error) = session_repo.revoke(session.id).await {
             warn!(?error, "failed to revoke inactive session");
         }
+        audit::emit(
+            AuditEvent::system(AuditAction::AuthSessionRevoked)
+                .user(session.user_id, Some(session.id))
+                .resource("auth_session", Some(session.id))
+                .http("", "", 401)
+                .description("Session revoked due to inactivity"),
+        );
         return Err(StatusCode::UNAUTHORIZED.into_response());
     }
 

@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                p.id                  AS \"id!: Uuid\",\n                p.url                 AS \"url!: String\",\n                p.number              AS \"number!: i32\",\n                p.status              AS \"status!: PullRequestStatus\",\n                p.merged_at           AS \"merged_at: DateTime<Utc>\",\n                p.merge_commit_sha    AS \"merge_commit_sha: String\",\n                p.target_branch_name  AS \"target_branch_name!: String\",\n                p.project_id          AS \"project_id!: Uuid\",\n                p.issue_id            AS \"issue_id!: Uuid\",\n                p.workspace_id        AS \"workspace_id: Uuid\",\n                p.created_at          AS \"created_at!: DateTime<Utc>\",\n                p.updated_at          AS \"updated_at!: DateTime<Utc>\"\n            FROM pull_requests p\n            INNER JOIN projects proj ON p.project_id = proj.id\n            INNER JOIN organization_member_metadata omm\n                ON omm.organization_id = proj.organization_id\n                AND omm.user_id = $2\n            WHERE p.url = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "url!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "number!: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "status!: PullRequestStatus",
+        "type_info": {
+          "Custom": {
+            "name": "pull_request_status",
+            "kind": {
+              "Enum": [
+                "open",
+                "merged",
+                "closed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "merged_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "merge_commit_sha: String",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "target_branch_name!: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "issue_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 9,
+        "name": "workspace_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "feaf2bff2aa596327eaddfbced3e949d14b042124b7840fce1c132555d8e249c"
+}

@@ -1,14 +1,100 @@
 import { useCallback, useEffect, useMemo, type ReactNode } from "react";
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import {
   MOBILE_TABS,
   Navbar,
   type MobileTabId,
+  type NavbarSectionItem,
 } from "@vibe/ui/components/Navbar";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
-import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
+import { CommandBarDialog } from "@/shared/dialogs/command-bar/CommandBarDialog";
 import { useMobileActiveTab } from "@/shared/stores/useUiPreferencesStore";
 import { useMobileWorkspaceTitle } from "@remote/shared/stores/useMobileWorkspaceTitle";
+import { useActions } from "@/shared/hooks/useActions";
+import { useWorkspaceContext } from "@/shared/hooks/useWorkspaceContext";
+import { useActionVisibilityContext } from "@/shared/hooks/useActionVisibilityContext";
+import { NavbarActionGroups } from "@/shared/actions";
+import {
+  NavbarDivider,
+  type ActionDefinition,
+  type NavbarItem as ActionNavbarItem,
+  type ActionVisibilityContext,
+  isSpecialIcon,
+  getActionIcon,
+  getActionTooltip,
+  isActionActive,
+  isActionEnabled,
+  isActionVisible,
+} from "@/shared/types/actions";
+
+/**
+ * Check if a NavbarItem is a divider
+ */
+function isDivider(item: ActionNavbarItem): item is typeof NavbarDivider {
+  return "type" in item && item.type === "divider";
+}
+
+/**
+ * Filter navbar items by visibility, keeping dividers but removing them
+ * if they would appear at the start, end, or consecutively.
+ */
+function filterNavbarItems(
+  items: readonly ActionNavbarItem[],
+  ctx: ActionVisibilityContext,
+): ActionNavbarItem[] {
+  const filtered = items.filter((item) => {
+    if (isDivider(item)) return true;
+    if (!isActionVisible(item, ctx)) return false;
+    return !isSpecialIcon(getActionIcon(item, ctx));
+  });
+
+  const result: ActionNavbarItem[] = [];
+  for (const item of filtered) {
+    if (isDivider(item)) {
+      if (result.length > 0 && !isDivider(result[result.length - 1])) {
+        result.push(item);
+      }
+    } else {
+      result.push(item);
+    }
+  }
+
+  if (result.length > 0 && isDivider(result[result.length - 1])) {
+    result.pop();
+  }
+
+  return result;
+}
+
+function toNavbarSectionItems(
+  items: readonly ActionNavbarItem[],
+  ctx: ActionVisibilityContext,
+  onExecuteAction: (action: ActionDefinition) => void,
+): NavbarSectionItem[] {
+  return items.reduce<NavbarSectionItem[]>((result, item) => {
+    if (isDivider(item)) {
+      result.push({ type: "divider" });
+      return result;
+    }
+
+    const icon = getActionIcon(item, ctx);
+    if (isSpecialIcon(icon)) {
+      return result;
+    }
+
+    result.push({
+      type: "action",
+      id: item.id,
+      icon,
+      isActive: isActionActive(item, ctx),
+      tooltip: getActionTooltip(item, ctx),
+      shortcut: item.shortcut,
+      disabled: !isActionEnabled(item, ctx),
+      onClick: () => onExecuteAction(item),
+    });
+    return result;
+  }, []);
+}
 
 interface RemoteNavbarContainerProps {
   organizationName: string | null;
@@ -24,7 +110,11 @@ export function RemoteNavbarContainer({
   mobileUserSlot,
 }: RemoteNavbarContainerProps) {
   const location = useLocation();
+  const { hostId } = useParams({ strict: false });
   const mobileWorkspaceTitle = useMobileWorkspaceTitle((s) => s.title);
+  const { executeAction } = useActions();
+  const { workspace: selectedWorkspace } = useWorkspaceContext();
+  const actionCtx = useActionVisibilityContext();
 
   const [mobileActiveTab, setMobileActiveTab] = useMobileActiveTab();
 
@@ -34,9 +124,12 @@ export function RemoteNavbarContainer({
     [],
   );
 
-  const isOnWorkspaceView = /^\/workspaces\/[^/]+/.test(location.pathname);
-  const isOnWorkspaceList =
-    location.pathname === "/workspaces" || location.pathname === "/workspaces/";
+  const isOnWorkspaceView = /^\/hosts\/[^/]+\/workspaces\/[^/]+/.test(
+    location.pathname,
+  );
+  const isOnWorkspaceList = /^\/hosts\/[^/]+\/workspaces\/?$/.test(
+    location.pathname,
+  );
 
   useEffect(() => {
     if (isOnWorkspaceView) {
@@ -45,22 +138,46 @@ export function RemoteNavbarContainer({
   }, [isOnWorkspaceView, setMobileActiveTab]);
   const navigate = useNavigate();
 
-  const isOnProjectPage = location.pathname.startsWith("/projects/");
-  const projectId = isOnProjectPage ? location.pathname.split("/")[2] : null;
+  const isOnProjectPage = /^\/projects\/[^/]+/.test(location.pathname);
+  const pathSegments = location.pathname.split("/").filter(Boolean);
+  const projectSegmentIndex = pathSegments.indexOf("projects");
+  const projectId =
+    projectSegmentIndex === -1
+      ? null
+      : (pathSegments[projectSegmentIndex + 1] ?? null);
   const isOnProjectSubRoute =
     isOnProjectPage &&
     (location.pathname.includes("/issues/") ||
       location.pathname.includes("/workspaces/"));
 
+  const handleExecuteAction = useCallback(
+    (action: ActionDefinition) => {
+      if (action.requiresTarget && selectedWorkspace?.id) {
+        executeAction(action, selectedWorkspace.id);
+      } else {
+        executeAction(action);
+      }
+    },
+    [executeAction, selectedWorkspace?.id],
+  );
+
+  const rightItems = useMemo(
+    () =>
+      toNavbarSectionItems(
+        filterNavbarItems(NavbarActionGroups.right, actionCtx),
+        actionCtx,
+        handleExecuteAction,
+      ),
+    [actionCtx, handleExecuteAction],
+  );
+
   const workspaceTitle = useMemo(() => {
     if (isOnProjectPage) {
       return organizationName ?? "Project";
     }
-    // Inside a workspace: show workspace name from store
     if (isOnWorkspaceView) {
       return mobileWorkspaceTitle ?? undefined;
     }
-    // Home page or workspace list: no section title (Row 2 hidden)
     return undefined;
   }, [
     location.pathname,
@@ -79,21 +196,28 @@ export function RemoteNavbarContainer({
         params: { projectId },
       });
     } else if (isOnWorkspaceView) {
-      // Inside workspace: go back to workspace list
-      navigate({ to: "/workspaces" });
+      if (!hostId) {
+        navigate({ to: "/" });
+        return;
+      }
+      navigate({ to: "/hosts/$hostId/workspaces", params: { hostId } });
     } else {
-      // Workspace list or other: go home
       navigate({ to: "/" });
     }
-  }, [navigate, isOnProjectPage, projectId, isOnWorkspaceView]);
+  }, [navigate, hostId, isOnProjectPage, projectId, isOnWorkspaceView]);
 
   const handleOpenSettings = useCallback(() => {
-    SettingsDialog.show({ sections: REMOTE_SETTINGS_SECTIONS });
+    SettingsDialog.show();
+  }, []);
+
+  const handleOpenCommandBar = useCallback(() => {
+    CommandBarDialog.show();
   }, []);
 
   return (
     <Navbar
       workspaceTitle={workspaceTitle}
+      rightItems={isOnProjectPage ? rightItems : undefined}
       mobileMode={mobileMode}
       mobileUserSlot={mobileUserSlot}
       isOnProjectPage={isOnProjectPage}
@@ -101,6 +225,7 @@ export function RemoteNavbarContainer({
       onNavigateBack={handleNavigateBack}
       mobileShowBack={mobileShowBack}
       onOpenSettings={handleOpenSettings}
+      onOpenCommandBar={handleOpenCommandBar}
       onOpenDrawer={isOnProjectPage ? onOpenDrawer : undefined}
       mobileActiveTab={mobileActiveTab as MobileTabId}
       onMobileTabChange={(tab) => setMobileActiveTab(tab)}

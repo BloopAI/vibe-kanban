@@ -144,7 +144,7 @@ export function GitPanelContainer({
       if (errorData?.type === 'force_push_required' && selectedWorkspace?.id) {
         setPushStates((prev) => ({ ...prev, [repoId]: 'idle' }));
         await ForcePushDialog.show({
-          attemptId: selectedWorkspace.id,
+          workspaceId: selectedWorkspace.id,
           repoId,
         });
         return;

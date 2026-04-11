@@ -1,4 +1,4 @@
-import { ComponentType } from 'react';
+import { ComponentType, type KeyboardEvent } from 'react';
 import {
   CaretDownIcon,
   UserIcon,
@@ -79,6 +79,12 @@ export function ChatEntryContainer({
       ? variantConfig.plan_denied
       : variantConfig[variant];
   const Icon = config.icon;
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!onToggle || event.target !== event.currentTarget) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    onToggle();
+  };
 
   return (
     <div
@@ -99,6 +105,10 @@ export function ChatEntryContainer({
           onToggle && 'cursor-pointer'
         )}
         onClick={onToggle}
+        onKeyDown={handleKeyDown}
+        role={onToggle ? 'button' : undefined}
+        aria-expanded={onToggle ? expanded : undefined}
+        tabIndex={onToggle ? 0 : undefined}
       >
         <Icon className="size-icon-xs shrink-0 text-low" />
         {title && (

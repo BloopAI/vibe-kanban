@@ -8,7 +8,7 @@ import {
 import { Button } from '@vibe/ui/components/Button';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal, getErrorMessage } from '@/shared/lib/modals';
-import { attemptsApi } from '@/shared/lib/api';
+import { workspacesApi } from '@/shared/lib/api';
 import type { GhCliSetupError } from 'shared/types';
 import { useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
@@ -16,7 +16,7 @@ import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface GhCliSetupDialogProps {
-  attemptId: string;
+  workspaceId: string;
 }
 
 export type GhCliSupportVariant = 'homebrew' | 'manual';
@@ -120,137 +120,145 @@ export const GhCliHelpInstructions = ({
   );
 };
 
-const GhCliSetupDialogImpl = create<GhCliSetupDialogProps>(({ attemptId }) => {
-  const modal = useModal();
-  const { t } = useTranslation();
-  const [isRunning, setIsRunning] = useState(false);
-  const [errorInfo, setErrorInfo] = useState<{
-    error: GhCliSetupError;
-    message: string;
-    variant: GhCliSupportVariant | null;
-  } | null>(null);
-  const pendingResultRef = useRef<GhCliSetupError | null>(null);
-  const hasResolvedRef = useRef(false);
+const GhCliSetupDialogImpl = create<GhCliSetupDialogProps>(
+  ({ workspaceId }) => {
+    const modal = useModal();
+    const { t } = useTranslation();
+    const [isRunning, setIsRunning] = useState(false);
+    const [errorInfo, setErrorInfo] = useState<{
+      error: GhCliSetupError;
+      message: string;
+      variant: GhCliSupportVariant | null;
+    } | null>(null);
+    const pendingResultRef = useRef<GhCliSetupError | null>(null);
+    const hasResolvedRef = useRef(false);
 
-  const handleRunSetup = async () => {
-    setIsRunning(true);
-    setErrorInfo(null);
-    pendingResultRef.current = null;
+    const handleRunSetup = async () => {
+      setIsRunning(true);
+      setErrorInfo(null);
+      pendingResultRef.current = null;
 
-    try {
-      await attemptsApi.setupGhCli(attemptId);
-      hasResolvedRef.current = true;
-      modal.resolve(null);
-      modal.hide();
-    } catch (err: unknown) {
-      const rawMessage =
-        getErrorMessage(err) ||
-        t('settings:integrations.github.cliSetup.errors.setupFailed');
+      try {
+        await workspacesApi.setupGhCli(workspaceId);
+        hasResolvedRef.current = true;
+        modal.resolve(null);
+        modal.hide();
+      } catch (err: unknown) {
+        const rawMessage =
+          getErrorMessage(err) ||
+          t('settings:integrations.github.cliSetup.errors.setupFailed');
 
-      const maybeErrorData =
-        typeof err === 'object' && err !== null && 'error_data' in err
-          ? (err as { error_data?: unknown }).error_data
+        const maybeErrorData =
+          typeof err === 'object' && err !== null && 'error_data' in err
+            ? (err as { error_data?: unknown }).error_data
+            : undefined;
+
+        const isGhCliSetupError = (x: unknown): x is GhCliSetupError =>
+          x === 'BREW_MISSING' ||
+          x === 'SETUP_HELPER_NOT_SUPPORTED' ||
+          (typeof x === 'object' && x !== null && 'OTHER' in x);
+
+        const errorData = isGhCliSetupError(maybeErrorData)
+          ? maybeErrorData
           : undefined;
 
-      const isGhCliSetupError = (x: unknown): x is GhCliSetupError =>
-        x === 'BREW_MISSING' ||
-        x === 'SETUP_HELPER_NOT_SUPPORTED' ||
-        (typeof x === 'object' && x !== null && 'OTHER' in x);
+        const resolvedError: GhCliSetupError = errorData ?? {
+          OTHER: { message: rawMessage },
+        };
+        const ui = mapGhCliErrorToUi(resolvedError, rawMessage, t);
 
-      const errorData = isGhCliSetupError(maybeErrorData)
-        ? maybeErrorData
-        : undefined;
+        pendingResultRef.current = resolvedError;
+        setErrorInfo({
+          error: resolvedError,
+          message: ui.message,
+          variant: ui.variant,
+        });
+      } finally {
+        setIsRunning(false);
+      }
+    };
 
-      const resolvedError: GhCliSetupError = errorData ?? {
-        OTHER: { message: rawMessage },
-      };
-      const ui = mapGhCliErrorToUi(resolvedError, rawMessage, t);
+    const handleClose = () => {
+      if (!hasResolvedRef.current) {
+        modal.resolve(pendingResultRef.current);
+      }
+      modal.hide();
+    };
 
-      pendingResultRef.current = resolvedError;
-      setErrorInfo({
-        error: resolvedError,
-        message: ui.message,
-        variant: ui.variant,
-      });
-    } finally {
-      setIsRunning(false);
-    }
-  };
+    return (
+      <Dialog
+        open={modal.visible}
+        onOpenChange={(open) => !open && handleClose()}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t('settings:integrations.github.cliSetup.title')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>{t('settings:integrations.github.cliSetup.description')}</p>
 
-  const handleClose = () => {
-    if (!hasResolvedRef.current) {
-      modal.resolve(pendingResultRef.current);
-    }
-    modal.hide();
-  };
-
-  return (
-    <Dialog
-      open={modal.visible}
-      onOpenChange={(open) => !open && handleClose()}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {t('settings:integrations.github.cliSetup.title')}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <p>{t('settings:integrations.github.cliSetup.description')}</p>
-
-          <div className="space-y-2">
-            <p className="text-sm">
-              {t('settings:integrations.github.cliSetup.setupWillTitle')}
-            </p>
-            <ol className="text-sm list-decimal list-inside space-y-1 ml-2">
-              <li>
-                {t(
-                  'settings:integrations.github.cliSetup.steps.checkInstalled'
-                )}
-              </li>
-              <li>
-                {t(
-                  'settings:integrations.github.cliSetup.steps.installHomebrew'
-                )}
-              </li>
-              <li>
-                {t('settings:integrations.github.cliSetup.steps.authenticate')}
-              </li>
-            </ol>
-            <p className="text-sm text-muted-foreground mt-4">
-              {t('settings:integrations.github.cliSetup.setupNote')}
-            </p>
-          </div>
-          {errorInfo && (
-            <Alert variant="destructive">
-              <AlertDescription className="space-y-2">
-                <p>{errorInfo.message}</p>
-                {errorInfo.variant && (
-                  <GhCliHelpInstructions variant={errorInfo.variant} t={t} />
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
-        <DialogFooter>
-          <Button onClick={handleRunSetup} disabled={isRunning}>
-            {isRunning ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t('settings:integrations.github.cliSetup.running')}
-              </>
-            ) : (
-              t('settings:integrations.github.cliSetup.runSetup')
+            <div className="space-y-2">
+              <p className="text-sm">
+                {t('settings:integrations.github.cliSetup.setupWillTitle')}
+              </p>
+              <ol className="text-sm list-decimal list-inside space-y-1 ml-2">
+                <li>
+                  {t(
+                    'settings:integrations.github.cliSetup.steps.checkInstalled'
+                  )}
+                </li>
+                <li>
+                  {t(
+                    'settings:integrations.github.cliSetup.steps.installHomebrew'
+                  )}
+                </li>
+                <li>
+                  {t(
+                    'settings:integrations.github.cliSetup.steps.authenticate'
+                  )}
+                </li>
+              </ol>
+              <p className="text-sm text-muted-foreground mt-4">
+                {t('settings:integrations.github.cliSetup.setupNote')}
+              </p>
+            </div>
+            {errorInfo && (
+              <Alert variant="destructive">
+                <AlertDescription className="space-y-2">
+                  <p>{errorInfo.message}</p>
+                  {errorInfo.variant && (
+                    <GhCliHelpInstructions variant={errorInfo.variant} t={t} />
+                  )}
+                </AlertDescription>
+              </Alert>
             )}
-          </Button>
-          <Button variant="outline" onClick={handleClose} disabled={isRunning}>
-            {t('common:buttons.close')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-});
+          </div>
+          <DialogFooter>
+            <Button onClick={handleRunSetup} disabled={isRunning}>
+              {isRunning ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t('settings:integrations.github.cliSetup.running')}
+                </>
+              ) : (
+                t('settings:integrations.github.cliSetup.runSetup')
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              disabled={isRunning}
+            >
+              {t('common:buttons.close')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+);
 
 export const GhCliSetupDialog = defineModal<
   GhCliSetupDialogProps,

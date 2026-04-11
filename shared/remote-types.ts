@@ -6,9 +6,13 @@ export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in
 
 export type Project = { id: string, organization_id: string, name: string, color: string, sort_order: number, created_at: string, updated_at: string, };
 
-export type Notification = { id: string, organization_id: string, user_id: string, notification_type: NotificationType, payload: JsonValue, issue_id: string | null, comment_id: string | null, seen: boolean, dismissed_at: string | null, created_at: string, };
+export type Notification = { id: string, organization_id: string, user_id: string, notification_type: NotificationType, payload: NotificationPayload, issue_id: string | null, comment_id: string | null, seen: boolean, dismissed_at: string | null, created_at: string, };
 
-export type NotificationType = "IssueCommentAdded" | "IssueStatusChanged" | "IssueAssigneeChanged" | "IssueDeleted";
+export type NotificationGroupKind = "single" | "issue_changes" | "status_changes" | "comments" | "reactions" | "issue_deleted";
+
+export type NotificationPayload = { deeplink_path?: string | null, issue_id?: string | null, issue_simple_id?: string | null, issue_title?: string | null, actor_user_id?: string | null, comment_preview?: string | null, old_status_id?: string | null, new_status_id?: string | null, old_status_name?: string | null, new_status_name?: string | null, new_title?: string | null, old_priority?: IssuePriority | null, new_priority?: IssuePriority | null, assignee_user_id?: string | null, emoji?: string | null, };
+
+export type NotificationType = "issue_comment_added" | "issue_status_changed" | "issue_assignee_changed" | "issue_priority_changed" | "issue_unassigned" | "issue_comment_reaction" | "issue_deleted" | "issue_title_changed" | "issue_description_changed";
 
 export type Workspace = { id: string, project_id: string, owner_user_id: string, issue_id: string | null, local_workspace_id: string | null, name: string | null, archived: boolean, files_changed: number | null, lines_added: number | null, lines_removed: number | null, created_at: string, updated_at: string, };
 
@@ -40,23 +44,38 @@ export type IssueCommentReaction = { id: string, comment_id: string, user_id: st
 
 export type IssuePriority = "urgent" | "high" | "medium" | "low";
 
+export type IssueSortField = "sort_order" | "priority" | "created_at" | "updated_at" | "title";
+
+export type ListIssuesQuery = { project_id: string, };
+
+export type SearchIssuesRequest = { project_id: string, status_id?: string, status_ids?: Array<string>, priority?: IssuePriority, parent_issue_id?: string, search?: string, simple_id?: string, assignee_user_id?: string, tag_id?: string, tag_ids?: Array<string>, sort_field?: IssueSortField, sort_direction?: SortDirection, limit?: number, offset?: number, };
+
+export type ListIssuesResponse = { issues: Array<Issue>, total_count: number, limit: number, offset: number, };
+
 export type PullRequestStatus = "open" | "merged" | "closed";
 
-export type PullRequest = { id: string, url: string, number: number, status: PullRequestStatus, merged_at: string | null, merge_commit_sha: string | null, target_branch_name: string, issue_id: string, workspace_id: string | null, created_at: string, updated_at: string, };
+export type PullRequest = { id: string, url: string, number: number, status: PullRequestStatus, merged_at: string | null, merge_commit_sha: string | null, target_branch_name: string, project_id: string, issue_id: string, workspace_id: string | null, created_at: string, updated_at: string, };
+
+export type PullRequestIssue = { id: string, pull_request_id: string, issue_id: string, };
+
+export type CreatePullRequestIssueRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, issue_id: string, url: string, number: number, status: PullRequestStatus, merged_at: string | null, merge_commit_sha: string | null, target_branch_name: string, };
+
+export type SortDirection = "asc" | "desc";
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
 export type User = { id: string, email: string, first_name: string | null, last_name: string | null, username: string | null, created_at: string, updated_at: string, };
 
-export type RelayHost = { id: string, owner_user_id: string, name: string, status: string, last_seen_at: string | null, agent_version: string | null, created_at: string, updated_at: string, access_role: string, };
+export type RelayHost = { id: string, owner_user_id: string, machine_id: string, name: string, status: string, last_seen_at: string | null, agent_version: string | null, created_at: string, updated_at: string, access_role: string, };
 
 export type ListRelayHostsResponse = { hosts: Array<RelayHost>, };
 
-export type RelaySession = { id: string, host_id: string, request_user_id: string, state: string, created_at: string, expires_at: string, claimed_at: string | null, ended_at: string | null, };
-
-export type CreateRelaySessionResponse = { session: RelaySession, };
-
-export type RelaySessionAuthCodeResponse = { session_id: string, code: string, };
+export type CreateRemoteSessionResponse = { session_id: string, };
 
 export enum MemberRole { ADMIN = "ADMIN", MEMBER = "MEMBER" }
 
@@ -70,13 +89,6 @@ export type CreateProjectRequest = {
 id?: string, organization_id: string, name: string, color: string, };
 
 export type UpdateProjectRequest = { name: string | null, color: string | null, sort_order: number | null, };
-
-export type CreateNotificationRequest = { 
-/**
- * Optional client-generated ID. If not provided, server generates one.
- * Using client-generated IDs enables stable optimistic updates.
- */
-id?: string, organization_id: string, seen: boolean, };
 
 export type UpdateNotificationRequest = { seen: boolean | null, };
 
@@ -165,6 +177,12 @@ export type CommitAttachmentsResponse = { attachments: Array<AttachmentWithBlob>
 
 export type AttachmentUrlResponse = { url: string, };
 
+export type ExportRequest = { organization_id: string, 
+/**
+ * If empty, exports all projects in the organization.
+ */
+project_ids: Array<string>, include_attachments: boolean, };
+
 // Shape definition interface
 export interface ShapeDefinition<T> {
   readonly table: string;
@@ -194,7 +212,7 @@ export const PROJECTS_SHAPE = defineShape<Project>(
 
 export const NOTIFICATIONS_SHAPE = defineShape<Notification>(
   'notifications',
-  ['organization_id', 'user_id'] as const,
+  ['user_id'] as const,
   '/v1/shape/notifications',
   '/v1/fallback/notifications'
 );
@@ -281,6 +299,13 @@ export const PROJECT_PULL_REQUESTS_SHAPE = defineShape<PullRequest>(
   ['project_id'] as const,
   '/v1/shape/project/{project_id}/pull_requests',
   '/v1/fallback/pull_requests'
+);
+
+export const PROJECT_PULL_REQUEST_ISSUES_SHAPE = defineShape<PullRequestIssue>(
+  'pull_request_issues',
+  ['project_id'] as const,
+  '/v1/shape/project/{project_id}/pull_request_issues',
+  '/v1/fallback/pull_request_issues'
 );
 
 export const ISSUE_COMMENTS_SHAPE = defineShape<IssueComment>(
@@ -372,6 +397,11 @@ export const ISSUE_COMMENT_MUTATION = defineMutation<IssueComment, CreateIssueCo
 export const ISSUE_COMMENT_REACTION_MUTATION = defineMutation<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>(
   'IssueCommentReaction',
   '/v1/issue_comment_reactions'
+);
+
+export const PULL_REQUEST_ISSUE_MUTATION = defineMutation<PullRequestIssue, CreatePullRequestIssueRequest, unknown>(
+  'PullRequestIssue',
+  '/v1/pull_request_issues'
 );
 
 // Type helpers to extract types from a mutation definition

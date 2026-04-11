@@ -1,0 +1,43 @@
+name: 'Setup Jsign'
+description: 'Downloads and caches Jsign for cross-platform Windows code signing'
+
+inputs:
+  version:
+    description: 'Jsign version'
+    required: false
+    default: '7.4'
+  sha256:
+    description: 'Expected SHA256 of the jar'
+    required: false
+    default: '2abf2ade9ea322acc2d60c24794eadc465ff9380938fca4c932d09e0b25f1c28'
+
+outputs:
+  jar-path:
+    description: 'Path to the Jsign jar'
+    value: ${{ steps.path.outputs.jar }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set jar path
+      id: path
+      shell: bash
+      run: echo "jar=${{ runner.temp }}/jsign-${{ inputs.version }}.jar" >> $GITHUB_OUTPUT
+
+    - name: Cache Jsign
+      id: cache
+      uses: actions/cache@v5
+      with:
+        path: ${{ steps.path.outputs.jar }}
+        key: jsign-${{ inputs.version }}-${{ inputs.sha256 }}
+
+    - name: Download Jsign
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        curl -sL "https://github.com/ebourg/jsign/releases/download/${{ inputs.version }}/jsign-${{ inputs.version }}.jar" \
+          -o "${{ steps.path.outputs.jar }}"
+
+    - name: Verify checksum
+      shell: bash
+      run: echo "${{ inputs.sha256 }}  ${{ steps.path.outputs.jar }}" | sha256sum -c -

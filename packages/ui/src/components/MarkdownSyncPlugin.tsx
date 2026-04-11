@@ -29,6 +29,13 @@ export function MarkdownSyncPlugin({
 }: MarkdownSyncPluginProps) {
   const [editor] = useLexicalComposerContext();
   const lastSerializedRef = useRef<string | undefined>(undefined);
+  const prevTransformersRef = useRef(transformers);
+
+  // Detect transformer changes and force re-parse
+  if (transformers !== prevTransformersRef.current) {
+    prevTransformersRef.current = transformers;
+    lastSerializedRef.current = undefined;
+  }
 
   // Handle editable state
   useEffect(() => {
@@ -73,6 +80,7 @@ export function MarkdownSyncPlugin({
       const markdown = editorState.read(() =>
         $convertToMarkdownString(transformers)
       );
+
       if (markdown === lastSerializedRef.current) return;
 
       lastSerializedRef.current = markdown;

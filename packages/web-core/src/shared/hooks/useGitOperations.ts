@@ -5,17 +5,17 @@ import { useForcePush } from '@/shared/hooks/useForcePush';
 import { useChangeTargetBranch } from '@/shared/hooks/useChangeTargetBranch';
 import { useGitOperationsError } from '@/shared/hooks/GitOperationsContext';
 import { Result } from '@/shared/lib/api';
-import type { GitOperationError, PushTaskAttemptRequest } from 'shared/types';
+import type { GitOperationError, PushWorkspaceRequest } from 'shared/types';
 import { ForcePushDialog } from '@/shared/dialogs/command-bar/ForcePushDialog';
 
 export function useGitOperations(
-  attemptId: string | undefined,
+  workspaceId: string | undefined,
   repoId: string | undefined
 ) {
   const { setError } = useGitOperationsError();
 
   const rebase = useRebase(
-    attemptId,
+    workspaceId,
     repoId,
     () => setError(null),
     (err: Result<void, GitOperationError>) => {
@@ -32,7 +32,7 @@ export function useGitOperations(
   );
 
   const merge = useMerge(
-    attemptId,
+    workspaceId,
     () => setError(null),
     (err: unknown) => {
       const message =
@@ -44,7 +44,7 @@ export function useGitOperations(
   );
 
   const forcePush = useForcePush(
-    attemptId,
+    workspaceId,
     () => setError(null),
     (err: unknown) => {
       const message =
@@ -56,14 +56,14 @@ export function useGitOperations(
   );
 
   const push = usePush(
-    attemptId,
+    workspaceId,
     () => setError(null),
-    async (err: unknown, errorData, params?: PushTaskAttemptRequest) => {
+    async (err: unknown, errorData, params?: PushWorkspaceRequest) => {
       // Handle typed push errors
       if (errorData?.type === 'force_push_required') {
         // Show confirmation dialog - dialog handles the force push internally
-        if (attemptId && params?.repo_id) {
-          await ForcePushDialog.show({ attemptId, repoId: params.repo_id });
+        if (workspaceId && params?.repo_id) {
+          await ForcePushDialog.show({ workspaceId, repoId: params.repo_id });
         }
         return;
       }
@@ -77,7 +77,7 @@ export function useGitOperations(
   );
 
   const changeTargetBranch = useChangeTargetBranch(
-    attemptId,
+    workspaceId,
     repoId,
     () => setError(null),
     (err: unknown) => {

@@ -12,11 +12,11 @@ use uuid::Uuid;
 use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize)]
-pub struct ListProjectStatusesQuery {
+pub(super) struct ListProjectStatusesQuery {
     pub project_id: Uuid,
 }
 
-pub fn router() -> Router<DeploymentImpl> {
+pub(super) fn router() -> Router<DeploymentImpl> {
     Router::new().route("/project-statuses", get(list_project_statuses))
 }
 

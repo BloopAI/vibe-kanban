@@ -1,21 +1,22 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     io,
     path::{Path, PathBuf},
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
     },
-    time::Duration,
+    time::{Duration, SystemTime},
 };
 
 use db::{
     DBService,
     models::{workspace::Workspace, workspace_repo::WorkspaceRepo},
 };
-use executors::logs::utils::{ConversationPatch, patch::escape_json_pointer_segment};
+use executors::logs::utils::ConversationPatch;
 use futures::StreamExt;
-use git::{Commit, DiffTarget, GitService, GitServiceError};
+use git::{Commit, GitService, GitServiceError, compute_line_change_counts};
+use json_patch::Patch;
 use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{
     DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache, new_debouncer,
@@ -24,13 +25,12 @@ use sqlx::SqlitePool;
 use thiserror::Error;
 use tokio::{sync::mpsc, task::JoinHandle};
 use tokio_stream::wrappers::{IntervalStream, ReceiverStream};
-use utils::{
-    diff::{self, Diff},
-    log_msg::LogMsg,
-};
+use utils::{diff::Diff, log_msg::LogMsg};
 use uuid::Uuid;
 
 use crate::services::filesystem_watcher::{self, FilesystemWatcherError};
+
+type SentFileStats = Arc<std::sync::RwLock<HashMap<String, (SystemTime, u64)>>>;
 
 #[derive(Debug, Clone, Default)]
 pub struct DiffStats {
@@ -75,15 +75,7 @@ pub async fn compute_diff_stats(
         let diffs_result = tokio::task::spawn_blocking({
             let git = git.clone();
             let worktree = worktree_path.clone();
-            move || {
-                git.get_diffs(
-                    DiffTarget::Worktree {
-                        worktree_path: &worktree,
-                        base_commit: &base_commit,
-                    },
-                    None,
-                )
-            }
+            move || git.get_diffs(&worktree, &base_commit, None)
         })
         .await;
 
@@ -119,21 +111,8 @@ pub enum DiffStreamError {
     Notify(#[from] notify::Error),
 }
 
-impl DiffStreamError {
-    /// Returns true if this error is caused by a git repository not being found
-    /// (e.g. the worktree directory was deleted while the diff stream was running).
-    fn is_repo_not_found(&self) -> bool {
-        matches!(
-            self,
-            DiffStreamError::GitService(GitServiceError::Git(git_err))
-                if git_err.code() == git2::ErrorCode::NotFound
-                    && git_err.class() == git2::ErrorClass::Repository
-        )
-    }
-}
-
-/// Diff stream that owns the filesystem watcher task
-/// When this stream is dropped, the watcher is automatically cleaned up
+/// Diff stream that owns the filesystem watcher task.
+/// When this stream is dropped, the watcher is automatically cleaned up.
 pub struct DiffStreamHandle {
     stream: futures::stream::BoxStream<'static, Result<LogMsg, io::Error>>,
     _watcher_task: Option<JoinHandle<()>>,
@@ -146,7 +125,7 @@ impl futures::Stream for DiffStreamHandle {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        // Delegate to inner stream
+        // Delegate to inner stream.
         std::pin::Pin::new(&mut self.stream).poll_next(cx)
     }
 }
@@ -160,7 +139,7 @@ impl Drop for DiffStreamHandle {
 }
 
 impl DiffStreamHandle {
-    /// Create a new DiffStreamHandle from a boxed stream and optional watcher task
+    /// Create a new DiffStreamHandle from a boxed stream and optional watcher task.
     pub fn new(
         stream: futures::stream::BoxStream<'static, Result<LogMsg, io::Error>>,
         watcher_task: Option<JoinHandle<()>>,
@@ -192,15 +171,22 @@ struct DiffStreamManager {
     tx: mpsc::Sender<Result<LogMsg, io::Error>>,
     cumulative: Arc<AtomicUsize>,
     known_paths: Arc<std::sync::RwLock<HashSet<String>>>,
-    full_sent: Arc<std::sync::RwLock<HashSet<String>>>,
+    sent_file_stats: SentFileStats,
     current_base_commit: Commit,
     current_target_branch: String,
+    last_head_commit: Option<Commit>,
+    reconcile_cycle: u8,
+    base_lookup_error_logged: bool,
+    needs_post_reset_discovery: bool,
+    pending_reset_since: Option<tokio::time::Instant>,
 }
 
 enum DiffEvent {
     Filesystem(DebounceEventResult),
     GitStateChange,
     CheckTarget,
+    Reconcile,
+    DebouncedReset,
 }
 
 pub async fn create(args: DiffStreamArgs) -> Result<DiffStreamHandle, DiffStreamError> {
@@ -210,11 +196,7 @@ pub async fn create(args: DiffStreamArgs) -> Result<DiffStreamHandle, DiffStream
     let watcher_task = tokio::spawn(async move {
         let mut manager = DiffStreamManager::new(manager_args, tx);
         if let Err(e) = manager.run().await {
-            if e.is_repo_not_found() {
-                tracing::warn!("Diff stream ended: repository no longer found");
-            } else {
-                tracing::error!("Diff stream manager failed: {e}");
-            }
+            tracing::warn!("Diff stream ended: {e}");
             let _ = manager.tx.send(Err(io::Error::other(e.to_string()))).await;
         }
     });
@@ -234,14 +216,19 @@ impl DiffStreamManager {
             tx,
             cumulative: Arc::new(AtomicUsize::new(0)),
             known_paths: Arc::new(std::sync::RwLock::new(HashSet::new())),
-            full_sent: Arc::new(std::sync::RwLock::new(HashSet::new())),
+            sent_file_stats: Arc::new(std::sync::RwLock::new(HashMap::new())),
+            last_head_commit: None,
+            reconcile_cycle: 0,
+            base_lookup_error_logged: false,
+            needs_post_reset_discovery: false,
+            pending_reset_since: None,
         }
     }
 
     async fn run(&mut self) -> Result<(), DiffStreamError> {
         self.reset_stream().await?;
-
-        // Send Ready message to indicate initial data has been sent
+        self.last_head_commit = self.resolve_head_commit().await;
+        // Send Ready once the initial snapshot has been pushed.
         let _ready_error = self.tx.send(Ok(LogMsg::Ready)).await;
 
         let (fs_debouncer, mut fs_rx, canonical_worktree) =
@@ -258,6 +245,8 @@ impl DiffStreamManager {
 
         let mut target_interval =
             IntervalStream::new(tokio::time::interval(Duration::from_secs(1)));
+        let mut reconcile_interval =
+            IntervalStream::new(tokio::time::interval(Duration::from_secs(5)));
 
         loop {
             let event = tokio::select! {
@@ -269,13 +258,24 @@ impl DiffStreamManager {
                     }
                 } => DiffEvent::GitStateChange,
                 _ = target_interval.next() => DiffEvent::CheckTarget,
+                _ = reconcile_interval.next() => DiffEvent::Reconcile,
+                _ = async {
+                    match self.pending_reset_since {
+                        Some(since) => tokio::time::sleep_until(since + Duration::from_secs(1)).await,
+                        None => std::future::pending().await,
+                    }
+                } => DiffEvent::DebouncedReset,
                 else => break,
             };
 
             match event {
                 DiffEvent::Filesystem(res) => match res {
                     Ok(events) => {
-                        self.handle_fs_events(events, &canonical_worktree).await?;
+                        if let Err(e) = self.handle_fs_events(events, &canonical_worktree).await {
+                            tracing::warn!(
+                                "FS event processing failed, reconcile will catch up: {e}"
+                            );
+                        }
                     }
                     Err(e) => {
                         tracing::error!("Filesystem watcher error: {e:?}");
@@ -288,30 +288,71 @@ impl DiffStreamManager {
                 DiffEvent::CheckTarget => {
                     self.handle_target_check().await?;
                 }
+                DiffEvent::Reconcile => {
+                    if let Err(e) = self.handle_reconcile().await {
+                        tracing::warn!("Reconcile failed: {e}");
+                    }
+                }
+                DiffEvent::DebouncedReset => {
+                    if let Some(new_base) = self
+                        .recompute_base_commit(&self.current_target_branch)
+                        .await
+                    {
+                        self.current_base_commit = new_base;
+                    }
+                    self.last_head_commit = self.resolve_head_commit().await;
+                    self.reset_stream().await?;
+                }
             }
         }
         Ok(())
     }
 
-    async fn reset_stream(&mut self) -> Result<(), DiffStreamError> {
-        let paths_to_clear: Vec<String> = {
-            let mut guard = self.known_paths.write().unwrap();
-            guard.drain().collect()
-        };
-
-        for raw_path in paths_to_clear {
-            let prefixed = prefix_path(raw_path, self.args.path_prefix.as_deref());
-            let patch = ConversationPatch::remove_diff(escape_json_pointer_segment(&prefixed));
-            if self.tx.send(Ok(LogMsg::JsonPatch(patch))).await.is_err() {
-                return Ok(());
-            }
+    async fn send_patch(&self, patch: Patch) -> Result<bool, DiffStreamError> {
+        if patch.0.is_empty() {
+            return Ok(true);
         }
+        Ok(self.tx.send(Ok(LogMsg::JsonPatch(patch))).await.is_ok())
+    }
 
+    async fn reset_stream(&mut self) -> Result<(), DiffStreamError> {
+        self.needs_post_reset_discovery = true;
+        self.pending_reset_since = None;
         self.cumulative.store(0, Ordering::Relaxed);
-        self.full_sent.write().unwrap().clear();
+        self.sent_file_stats.write().unwrap().clear();
+        self.known_paths.write().unwrap().clear();
 
         let diffs = self.fetch_diffs().await?;
-        self.send_diffs(diffs).await?;
+        let mut entries = HashMap::new();
+
+        for mut diff in diffs {
+            let raw_path = GitService::diff_path(&diff);
+            self.known_paths.write().unwrap().insert(raw_path.clone());
+
+            let abs = self.args.worktree_path.join(&raw_path);
+            if let Ok(meta) = std::fs::metadata(&abs)
+                && let Ok(mtime) = meta.modified()
+            {
+                self.sent_file_stats
+                    .write()
+                    .unwrap()
+                    .insert(raw_path.clone(), (mtime, meta.len()));
+            }
+
+            if let Some(old) = diff.old_path {
+                diff.old_path = Some(prefix_path(old, self.args.path_prefix.as_deref()));
+            }
+            if let Some(new) = diff.new_path {
+                diff.new_path = Some(prefix_path(new, self.args.path_prefix.as_deref()));
+            }
+            diff.repo_id = Some(self.args.repo_id);
+
+            entries.insert(raw_path, diff);
+        }
+
+        let repo_key = self.repo_key();
+        let patch = ConversationPatch::replace_repo_diffs(&repo_key, entries);
+        self.send_patch(patch).await?;
 
         Ok(())
     }
@@ -324,14 +365,7 @@ impl DiffStreamManager {
         let cumulative = self.cumulative.clone();
 
         tokio::task::spawn_blocking(move || {
-            let diffs = git.get_diffs(
-                DiffTarget::Worktree {
-                    worktree_path: &worktree,
-                    base_commit: &base,
-                },
-                None,
-            )?;
-
+            let diffs = git.get_diffs(&worktree, &base, None)?;
             let mut processed_diffs = Vec::with_capacity(diffs.len());
             for mut diff in diffs {
                 apply_stream_omit_policy(&mut diff, &cumulative, stats_only);
@@ -340,38 +374,6 @@ impl DiffStreamManager {
             Ok(processed_diffs)
         })
         .await?
-    }
-
-    async fn send_diffs(&self, diffs: Vec<Diff>) -> Result<(), DiffStreamError> {
-        for mut diff in diffs {
-            let raw_path = GitService::diff_path(&diff);
-
-            {
-                let mut guard = self.known_paths.write().unwrap();
-                guard.insert(raw_path.clone());
-            }
-
-            if !diff.content_omitted {
-                let mut guard = self.full_sent.write().unwrap();
-                guard.insert(raw_path.clone());
-            }
-
-            let prefixed_entry = prefix_path(raw_path, self.args.path_prefix.as_deref());
-            if let Some(old) = diff.old_path {
-                diff.old_path = Some(prefix_path(old, self.args.path_prefix.as_deref()));
-            }
-            if let Some(new) = diff.new_path {
-                diff.new_path = Some(prefix_path(new, self.args.path_prefix.as_deref()));
-            }
-            diff.repo_id = Some(self.args.repo_id);
-
-            let patch =
-                ConversationPatch::add_diff(escape_json_pointer_segment(&prefixed_entry), diff);
-            if self.tx.send(Ok(LogMsg::JsonPatch(patch))).await.is_err() {
-                return Ok(());
-            }
-        }
-        Ok(())
     }
 
     async fn handle_fs_events(
@@ -390,21 +392,21 @@ impl DiffStreamManager {
         let worktree = self.args.worktree_path.clone();
         let base = self.current_base_commit.clone();
         let cumulative = self.cumulative.clone();
-        let full_sent = self.full_sent.clone();
         let known_paths = self.known_paths.clone();
+        let sent_file_stats = self.sent_file_stats.clone();
         let stats_only = self.args.stats_only;
         let prefix = self.args.path_prefix.clone();
         let repo_id = self.args.repo_id;
 
-        let messages = tokio::task::spawn_blocking(move || {
+        let patch = tokio::task::spawn_blocking(move || {
             process_file_changes(
                 &git,
                 &worktree,
                 &base,
                 &changed_paths,
                 &cumulative,
-                &full_sent,
                 &known_paths,
+                &sent_file_stats,
                 stats_only,
                 prefix.as_deref(),
                 repo_id,
@@ -412,27 +414,30 @@ impl DiffStreamManager {
         })
         .await??;
 
-        for msg in messages {
-            if self.tx.send(Ok(msg)).await.is_err() {
-                return Ok(());
-            }
-        }
+        self.send_patch(patch).await?;
         Ok(())
     }
 
     async fn handle_git_state_change(&mut self) -> Result<(), DiffStreamError> {
-        let Some(new_base) = self
-            .recompute_base_commit(&self.current_target_branch)
-            .await
-        else {
-            return Ok(());
-        };
-
-        if new_base.as_oid() != self.current_base_commit.as_oid() {
-            self.current_base_commit = new_base;
-            self.reset_stream().await?;
+        if self.is_child_of_current_head().await {
+            return Ok(()); // Simple commit — reconcile handles via forced discovery
         }
+        // Non-commit (checkout/reset/rebase) — debounce reset to batch rapid HEAD changes
+        self.pending_reset_since = Some(tokio::time::Instant::now());
         Ok(())
+    }
+
+    async fn is_child_of_current_head(&self) -> bool {
+        let Some(ref last) = self.last_head_commit else {
+            return false;
+        };
+        let git = self.args.git_service.clone();
+        let wt = self.args.worktree_path.clone();
+        let last_oid = last.as_oid();
+        tokio::task::spawn_blocking(move || git.is_head_child_of(&wt, last_oid))
+            .await
+            .ok()
+            .unwrap_or(false)
     }
 
     async fn handle_target_check(&mut self) -> Result<(), DiffStreamError> {
@@ -456,6 +461,173 @@ impl DiffStreamManager {
         Ok(())
     }
 
+    async fn handle_reconcile(&mut self) -> Result<(), DiffStreamError> {
+        // Skip reconciliation if a debounced reset is pending — it will handle the full reset
+        if self.pending_reset_since.is_some() {
+            return Ok(());
+        }
+
+        let current_head = self.resolve_head_commit().await;
+        let head_changed = match (&current_head, &self.last_head_commit) {
+            (Some(a), Some(b)) => a.as_oid() != b.as_oid(),
+            (None, None) => false,
+            _ => true,
+        };
+
+        if head_changed {
+            let new_base = self
+                .recompute_base_commit(&self.current_target_branch)
+                .await;
+
+            match new_base {
+                Some(base) if base.as_oid() != self.current_base_commit.as_oid() => {
+                    if self.base_lookup_error_logged {
+                        tracing::info!("Base commit lookup recovered after HEAD change");
+                        self.base_lookup_error_logged = false;
+                    }
+                    self.last_head_commit = current_head;
+                    self.current_base_commit = base;
+                    self.reset_stream().await?;
+                    return Ok(());
+                }
+                Some(_) => {
+                    if self.base_lookup_error_logged {
+                        tracing::info!("Base commit lookup recovered after HEAD change");
+                        self.base_lookup_error_logged = false;
+                    }
+                    // Check parent BEFORE updating last_head_commit
+                    let is_commit = self.is_child_of_current_head().await;
+                    self.last_head_commit = current_head;
+
+                    if !is_commit {
+                        self.reset_stream().await?;
+                        return Ok(());
+                    }
+                }
+                None => {
+                    if !self.base_lookup_error_logged {
+                        tracing::error!(
+                            "Failed to recompute base commit after HEAD change, will keep retrying"
+                        );
+                        self.base_lookup_error_logged = true;
+                    }
+                }
+            }
+        }
+
+        let force_discovery = head_changed;
+
+        let known: HashSet<String> = self.known_paths.read().unwrap().clone();
+        let worktree_for_stat = self.args.worktree_path.clone();
+        let sent_stats = self.sent_file_stats.clone();
+
+        let stat_changed: Vec<String> = tokio::task::spawn_blocking(move || {
+            let stats_guard = sent_stats.read().unwrap();
+            known
+                .iter()
+                .filter(|path| {
+                    let abs = worktree_for_stat.join(path);
+                    let cur = std::fs::metadata(&abs)
+                        .ok()
+                        .and_then(|m| m.modified().ok().map(|mt| (mt, m.len())));
+                    match (cur, stats_guard.get(path.as_str())) {
+                        (Some(c), Some(p)) => c != *p,
+                        (None, Some(_)) => true,
+                        (Some(_), None) => true,
+                        (None, None) => false,
+                    }
+                })
+                .cloned()
+                .collect()
+        })
+        .await?;
+
+        self.reconcile_cycle = self.reconcile_cycle.wrapping_add(1);
+        let run_discovery = force_discovery
+            || self.needs_post_reset_discovery
+            || !stat_changed.is_empty()
+            || self.reconcile_cycle.is_multiple_of(6);
+
+        if stat_changed.is_empty() && !run_discovery {
+            return Ok(());
+        }
+
+        let git = self.args.git_service.clone();
+        let wt = self.args.worktree_path.clone();
+        let base = self.current_base_commit.clone();
+        let fresh_paths =
+            tokio::task::spawn_blocking(move || git.get_diff_file_paths(&wt, &base)).await??;
+        self.needs_post_reset_discovery = false;
+
+        // Batch remove ops
+        let removed: Vec<String> = self
+            .known_paths
+            .read()
+            .unwrap()
+            .difference(&fresh_paths)
+            .cloned()
+            .collect();
+        if !removed.is_empty() {
+            let repo_key = self.repo_key();
+            let mut ops = Vec::new();
+            for path in &removed {
+                let patch = ConversationPatch::remove_repo_diff(&repo_key, path);
+                ops.extend(patch.0);
+                self.known_paths.write().unwrap().remove(path);
+                self.sent_file_stats.write().unwrap().remove(path);
+            }
+            self.send_patch(Patch(ops)).await?;
+        }
+
+        let new_files: Vec<String> = fresh_paths
+            .difference(&self.known_paths.read().unwrap())
+            .cloned()
+            .collect();
+        let mut paths_to_diff: Vec<String> = stat_changed
+            .into_iter()
+            .filter(|p| fresh_paths.contains(p))
+            .collect();
+        paths_to_diff.extend(new_files);
+
+        if !paths_to_diff.is_empty() {
+            self.rediff_paths(&paths_to_diff).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn rediff_paths(&self, paths: &[String]) -> Result<(), DiffStreamError> {
+        let git = self.args.git_service.clone();
+        let worktree = self.args.worktree_path.clone();
+        let base = self.current_base_commit.clone();
+        let cumulative = self.cumulative.clone();
+        let known_paths = self.known_paths.clone();
+        let sent_file_stats = self.sent_file_stats.clone();
+        let stats_only = self.args.stats_only;
+        let prefix = self.args.path_prefix.clone();
+        let repo_id = self.args.repo_id;
+        let paths = paths.to_vec();
+
+        let patch = tokio::task::spawn_blocking(move || {
+            process_file_changes(
+                &git,
+                &worktree,
+                &base,
+                &paths,
+                &cumulative,
+                &known_paths,
+                &sent_file_stats,
+                stats_only,
+                prefix.as_deref(),
+                repo_id,
+            )
+        })
+        .await??;
+
+        self.send_patch(patch).await?;
+        Ok(())
+    }
+
     async fn recompute_base_commit(&self, target_branch: &str) -> Option<Commit> {
         let git = self.args.git_service.clone();
         let repo_path = self.args.repo_path.clone();
@@ -466,6 +638,22 @@ impl DiffStreamManager {
             .await
             .ok()
             .flatten()
+    }
+
+    async fn resolve_head_commit(&self) -> Option<Commit> {
+        let git = self.args.git_service.clone();
+        let wt = self.args.worktree_path.clone();
+        tokio::task::spawn_blocking(move || git.get_head_commit(&wt))
+            .await
+            .ok()
+            .flatten()
+    }
+
+    fn repo_key(&self) -> String {
+        self.args
+            .path_prefix
+            .clone()
+            .unwrap_or_else(|| "_".to_string())
     }
 }
 
@@ -509,7 +697,7 @@ fn omit_diff_contents(diff: &mut Diff) {
     {
         let old = diff.old_content.as_deref().unwrap_or("");
         let new = diff.new_content.as_deref().unwrap_or("");
-        let (add, del) = diff::compute_line_change_counts(old, new);
+        let (add, del) = compute_line_change_counts(old, new);
         diff.additions = Some(add);
         diff.deletions = Some(del);
     }
@@ -544,45 +732,35 @@ fn process_file_changes(
     base_commit: &Commit,
     changed_paths: &[String],
     cumulative_bytes: &Arc<AtomicUsize>,
-    full_sent_paths: &Arc<std::sync::RwLock<HashSet<String>>>,
     known_paths: &Arc<std::sync::RwLock<HashSet<String>>>,
+    sent_file_stats: &SentFileStats,
     stats_only: bool,
     path_prefix: Option<&str>,
     repo_id: Uuid,
-) -> Result<Vec<LogMsg>, DiffStreamError> {
+) -> Result<Patch, DiffStreamError> {
     let path_filter: Vec<&str> = changed_paths.iter().map(|s| s.as_str()).collect();
+    let current_diffs = git_service.get_diffs(worktree_path, base_commit, Some(&path_filter))?;
 
-    let current_diffs = git_service.get_diffs(
-        DiffTarget::Worktree {
-            worktree_path,
-            base_commit,
-        },
-        Some(&path_filter),
-    )?;
-
-    let mut msgs = Vec::new();
+    let mut ops = Vec::new();
     let mut files_with_diffs = HashSet::new();
 
     for mut diff in current_diffs {
         let raw_file_path = GitService::diff_path(&diff);
         files_with_diffs.insert(raw_file_path.clone());
+        known_paths.write().unwrap().insert(raw_file_path.clone());
+
+        let abs = worktree_path.join(&raw_file_path);
+        if let Ok(meta) = std::fs::metadata(&abs)
+            && let Ok(mtime) = meta.modified()
         {
-            let mut guard = known_paths.write().unwrap();
-            guard.insert(raw_file_path.clone());
+            sent_file_stats
+                .write()
+                .unwrap()
+                .insert(raw_file_path.clone(), (mtime, meta.len()));
         }
 
         apply_stream_omit_policy(&mut diff, cumulative_bytes, stats_only);
 
-        if diff.content_omitted {
-            if full_sent_paths.read().unwrap().contains(&raw_file_path) {
-                continue;
-            }
-        } else {
-            let mut guard = full_sent_paths.write().unwrap();
-            guard.insert(raw_file_path.clone());
-        }
-
-        let prefixed_entry_index = prefix_path(raw_file_path, path_prefix);
         if let Some(old) = diff.old_path {
             diff.old_path = Some(prefix_path(old, path_prefix));
         }
@@ -591,24 +769,22 @@ fn process_file_changes(
         }
         diff.repo_id = Some(repo_id);
 
-        let patch =
-            ConversationPatch::add_diff(escape_json_pointer_segment(&prefixed_entry_index), diff);
-        msgs.push(LogMsg::JsonPatch(patch));
+        let repo_key = path_prefix.unwrap_or("_");
+        let patch = ConversationPatch::add_repo_diff(repo_key, &raw_file_path, diff);
+        ops.extend(patch.0);
     }
 
     for changed_path in changed_paths {
         if !files_with_diffs.contains(changed_path) {
-            let prefixed_path = prefix_path(changed_path.clone(), path_prefix);
-            let patch = ConversationPatch::remove_diff(escape_json_pointer_segment(&prefixed_path));
-            msgs.push(LogMsg::JsonPatch(patch));
-            {
-                let mut guard = known_paths.write().unwrap();
-                guard.remove(changed_path);
-            }
+            let repo_key = path_prefix.unwrap_or("_");
+            let patch = ConversationPatch::remove_repo_diff(repo_key, changed_path);
+            ops.extend(patch.0);
+            known_paths.write().unwrap().remove(changed_path);
+            sent_file_stats.write().unwrap().remove(changed_path);
         }
     }
 
-    Ok(msgs)
+    Ok(Patch(ops))
 }
 
 /// Watches `.git/HEAD` and `.git/logs/HEAD` for changes.
@@ -620,7 +796,7 @@ fn setup_git_watcher(
     Debouncer<RecommendedWatcher, RecommendedCache>,
     tokio::sync::watch::Receiver<()>,
 )> {
-    let Ok(repo) = git.open_repo(worktree_path) else {
+    let Ok(gitdir) = git.get_git_dir(worktree_path) else {
         tracing::warn!(
             "Failed to open git repo at {:?}, git events will be ignored",
             worktree_path
@@ -628,13 +804,12 @@ fn setup_git_watcher(
         return None;
     };
 
-    // For worktrees, repo.path() points to the actual gitdir (e.g. .git/worktrees/name or .git/)
-    let gitdir = repo.path();
+    // For worktrees, gitdir points to the actual gitdir (e.g. `.git/worktrees/name` or `.git/`).
     let paths_to_watch = vec![gitdir.join("HEAD"), gitdir.join("logs").join("HEAD")];
 
     let (tx, rx) = tokio::sync::watch::channel(());
 
-    // Create debouncer with short timeout since git operations might touch multiple files
+    // Use a short debounce because git operations often touch both files in quick succession.
     let mut debouncer = new_debouncer(
         Duration::from_millis(200),
         None,

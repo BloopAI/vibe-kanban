@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from 'react';
 import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
-import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { isCodingAgent } from '@/shared/constants/processes';
 import { useResetProcessMutation } from './useResetProcessMutation';
@@ -11,26 +10,31 @@ export interface UseResetProcessResult {
   isResetPending: boolean;
 }
 
-export function useResetProcess(): UseResetProcessResult {
-  const { workspaceId, selectedSessionId } = useWorkspaceContext();
+/**
+ * @param workspaceId - passed explicitly to avoid subscribing to WorkspaceContext
+ * @param selectedSessionId - passed explicitly to avoid subscribing to WorkspaceContext
+ */
+export function useResetProcess(
+  workspaceId: string | undefined,
+  selectedSessionId: string | undefined
+): UseResetProcessResult {
   const { data: branchStatus } = useBranchStatus(workspaceId);
   const { executionProcessesAll: processes } = useExecutionProcessesContext();
 
   const resetMutation = useResetProcessMutation(selectedSessionId ?? '');
   const isResetPending = resetMutation.isPending;
 
-  const firstCodingProcessId = useMemo(
+  const hasCodingProcess = useMemo(
     () =>
-      processes.find(
+      processes.some(
         (process) => !process.dropped && isCodingAgent(process.run_reason)
-      )?.id,
+      ),
     [processes]
   );
 
   const canResetProcess = useCallback(
-    (executionProcessId: string) =>
-      !!firstCodingProcessId && executionProcessId !== firstCodingProcessId,
-    [firstCodingProcessId]
+    (executionProcessId: string) => hasCodingProcess && !!executionProcessId,
+    [hasCodingProcess]
   );
 
   const resetProcess = useCallback(

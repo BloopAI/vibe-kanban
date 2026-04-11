@@ -21,9 +21,6 @@
     "placeholder": "Seleccionar una rama",
     "searchPlaceholder": "Buscar ramas..."
   },
-  "breadcrumb": {
-    "more": "More"
-  },
   "buttons": {
     "cancel": "Cancelar",
     "close": "Cerrar",
@@ -41,28 +38,17 @@
     "send": "Enviar",
     "addItem": "Añadir elemento",
     "reply": "Responder",
-    "retry": "Retry"
+    "retry": "Retry",
+    "add": "Agregar"
   },
   "form": {
     "notSpecified": "No especificado",
     "selectOption": "Seleccionar una opción..."
   },
   "conversation": {
-    "args": "Argumentos",
     "deniedByUser": "{{toolName}} denegado por el usuario",
     "output": "Salida",
     "plan": "Plan",
-    "planToggle": {
-      "hide": "Ocultar plan",
-      "show": "Mostrar plan"
-    },
-    "result": "Resultado",
-    "toolDetailsToggle": {
-      "hide": "Ocultar detalles",
-      "show": "Mostrar detalles"
-    },
-    "taskCompleted": "Tarea completada",
-    "ran": "Ejecutó",
     "tool": "Herramienta",
     "thinking": "Pensando",
     "toolSummary": {
@@ -73,49 +59,25 @@
       "createdTask": "Creó tarea: {{description}}",
       "todoOperation": "{{operation}} tareas pendientes"
     },
-    "fixScript": "Corregir Script",
     "subagent": {
       "defaultType": "Subagente"
-    }
+    },
+    "loadingEarlierMessages": "Cargando mensajes anteriores"
   },
   "language": {
     "browserDefault": "Predeterminado del navegador"
   },
   "states": {
-    "error": "Error",
-    "loading": "Cargando...",
-    "loadingHistory": "Cargando historial",
-    "reconnecting": "Reconectando",
-    "saving": "Guardando...",
-    "success": "Éxito"
-  },
-  "orgMembers": {
-    "moreCount": "+{{count}} más"
+    "loading": "Cargando..."
   },
   "orgSwitcher": {
-    "title": "Cambiar Organización",
-    "description": "Selecciona una organización para cambiar.",
-    "loadError": "No se pudieron cargar las organizaciones. Por favor, inténtalo de nuevo.",
-    "noOrganizations": "No eres miembro de ninguna organización.",
-    "menuItem": "Organización",
-    "loadingPlaceholder": "Cargando organizaciones...",
-    "selectPlaceholder": "Seleccionar una organización",
-    "currentBadge": " (actual)",
     "organizations": "Organizaciones",
-    "createOrganization": "Crear organización",
-    "orgSettings": "Configuración de la organización",
-    "migrate": "Migrar"
-  },
-  "navbar": {
-    "tryNewUI": "prueba la nueva interfaz"
+    "orgSettings": "Configuración de la organización"
   },
   "ok": "OK",
   "error": "Error",
   "signIn": "Iniciar sesión",
   "signOut": "Cerrar sesión",
-  "devMode": {
-    "banner": "Modo de Desarrollo - Esta es una compilación de desarrollo"
-  },
   "oauth": {
     "title": "Iniciar sesión en Vibe Kanban",
     "description": "Inicia sesión para unirte a organizaciones y compartir tareas con tu equipo",
@@ -220,20 +182,8 @@
     "placeholder": "Agregar notas sobre este espacio de trabajo...",
     "selectWorkspace": "Selecciona un espacio de trabajo para ver notas"
   },
-  "repos": {
-    "loading": "Cargando repositorios...",
-    "noRecentRepos": "No se encontraron repositorios recientes",
-    "noReposAdded": "No se agregaron repositorios",
-    "noReposAddedHint": "Agregue uno o más repositorios a este espacio de trabajo desde las opciones a continuación"
-  },
   "actions": {
-    "browseRepos": "Explorar repos en disco",
-    "createNewRepo": "Crear nuevo repo en disco",
-    "viewInChangesPanel": "Ver en panel de cambios",
     "copyPath": "Copiar ruta",
-    "copyWorktreePath": "Copiar ruta del worktree",
-    "openInIde": "Abrir en IDE",
-    "repoSettings": "Configuración del repositorio",
     "cancel": "Cancelar",
     "saveChanges": "Guardar cambios",
     "copied": "Copiado",
@@ -262,36 +212,6 @@
     "defaultPlaceholder": "Escribe un comando o busca...",
     "selectBranch": "Select Branch",
     "selectBranchFor": "Select Branch for {{repoName}}"
-  },
-  "chatBox": {
-    "variants": "Variantes",
-    "customise": "Personalizar"
-  },
-  "projects": {
-    "noProjectFound": "No se encontró ningún proyecto",
-    "createFirstPrompt": "Crea un proyecto primero para comenzar a trabajar en tareas.",
-    "createNew": "Crear nuevo proyecto",
-    "noProjectsFound": "No se encontraron proyectos"
-  },
-  "betaWorkspaces": {
-    "title": "Prueba la nueva interfaz",
-    "intro": "Hemos reconstruido la interfaz de Vibe Kanban desde cero, y has sido invitado a probarla.",
-    "newUiDescription": "La nueva interfaz está optimizada para el trabajo diario: gestionar agentes, previsualizar cambios y revisar código. También desbloquea funciones que no están disponibles en la interfaz anterior:",
-    "newFeatures": {
-      "multiRepo": "Edita múltiples repositorios al mismo tiempo",
-      "multiAgent": "Ejecuta múltiples conversaciones de agentes (incluso entre diferentes agentes) en un solo espacio de trabajo",
-      "commandBar": "Navegación más rápida con la barra de comandos"
-    },
-    "oldUiDescription": "Por ahora, algunas cosas todavía permanecen en la interfaz actual:",
-    "oldFeatures": {
-      "kanban": "Gestión de tareas en el tablero kanban",
-      "settings": "Cambiar configuración",
-      "projects": "Gestión de proyectos"
-    },
-    "transition": "Durante la transición en las próximas semanas, te moverás entre ambas.",
-    "optOutNote": "¿Quieres salir? Puedes volver a la interfaz actual en cualquier momento en Configuración.",
-    "joinBeta": "Unirse a Beta",
-    "maybeLater": "Quizás más tarde"
   },
   "workspacesGuide": {
     "welcome": {
@@ -427,34 +347,23 @@
     "noCommands": "No hay comandos disponibles para este agente."
   },
   "kanban": {
-    "noStatusesFound": "No se encontraron estados para este proyecto",
     "noVisibleStatuses": "Todos los estados están ocultos. Usa la configuración de visualización o cambia a otra pestaña para ver los problemas.",
     "noProjectFound": "No se encontró el proyecto",
-    "noOrganizationFound": "No se encontró la organización",
     "unassigned": "Sin asignar",
     "noTagsAvailable": "No hay etiquetas disponibles",
     "createNewIssue": "Crear nuevo issue",
-    "createNewTag": "Crear nueva etiqueta",
     "searchTags": "Buscar etiquetas...",
     "selectColorFor": "Seleccionar color para",
     "createTag": "Crear",
-    "filesCount": "{{count}} Archivos",
-    "attachmentsTitle": "Adjuntos ({{count}})",
-    "deleteAttachmentAria": "Eliminar {{filename}}",
     "noPrCreated": "No se creó PR",
     "noCommentsYet": "Sin comentarios aún",
     "createdBy": "Creado por",
     "comments": "Comentarios",
     "enterCommentPlaceholder": "Ingresa tu comentario aquí...",
-    "attachImage": "Adjuntar imagen",
     "attachFile": "Adjuntar archivo",
     "attachFileHint": "Adjuntar archivos (máx. 20MB por archivo)",
-    "attach": "Adjuntar",
-    "dropImagesHere": "Suelta imágenes aquí",
     "dropFilesHere": "Suelta archivos aquí",
-    "imageDropHint": "PNG, JPG, GIF hasta 20MB",
     "fileDropHint": "Cualquier tipo de archivo hasta 20MB",
-    "unknownFile": "Archivo desconocido",
     "unknownUser": "Usuario desconocido",
     "deletedUser": "Usuario eliminado",
     "replyQuotePrefix": "escribió:",
@@ -464,7 +373,7 @@
     "issueTitlePlaceholder": "Título del issue...",
     "issueDescriptionPlaceholder": "Ingresa la descripción de la tarea...",
     "createDraftWorkspaceImmediately": "Crear workspace borrador inmediatamente",
-    "createDraftWorkspaceDescription": "Marca para crear automáticamente un workspace",
+    "createDraftWorkspaceDescription": "Después de crear la incidencia, abrir el formulario de creación de workspace con los datos de la incidencia",
     "createIssue": "Crear tarea",
     "newIssue": "Nuevo issue",
     "previewCodeBlock": "[Bloque de código]",
@@ -474,20 +383,16 @@
     "previewFileWithName": "[Archivo: {{name}}]",
     "imageAttachmentNameFallback": "Adjunto",
     "removeImage": "Eliminar imagen",
-    "maxImagesAtOnce": "Máximo {{count}} imágenes a la vez",
     "maxFilesAtOnce": "Máximo {{count}} archivos a la vez",
-    "fileNotImage": "El archivo {{filename}} no es una imagen",
     "fileExceedsLimit": "El archivo {{filename}} supera el límite de 20MB",
     "unknownError": "Error desconocido",
     "failedToUploadFile": "No se pudo subir {{filename}}: {{message}}",
     "downloadAttachment": "Descargar archivo adjunto",
-    "downloadAttachmentAria": "Descargar {{filename}}",
     "subIssues": "Subtareas",
     "noSubIssues": "Sin subtareas",
     "markIndependentIssue": "Marcar como problema independiente",
     "parentIssue": "Padre",
     "subIssueIndicator": "↳",
-    "showSubIssues": "Mostrar subtareas",
     "viewTabs": {
       "active": "Activo",
       "all": "Todo"
@@ -571,7 +476,7 @@
       },
       "organizations": {
         "title": "Invite your team",
-        "content": "We've automatically created a personal organization, and initial project so you can easily get started with Vibe Kanban. You can also create new organizations and invite your team to collaborate."
+        "content": "We've automatically created a personal organization and initial project so you can get started with Vibe Kanban. Export your cloud data before shutdown."
       }
     }
   },
@@ -585,7 +490,11 @@
         "recent": "Recientes",
         "browse": "Explorar",
         "create": "Crear"
-      }
+      },
+      "setupHintTitle": "Scripts de Configuración",
+      "setupHint": "Consejo: Configura los scripts de instalación para este repositorio en Ajustes → Repositorios",
+      "setupHintDismiss": "Cerrar",
+      "setupHintLink": "Configure in Settings"
     }
   },
   "modelSelector": {
@@ -595,18 +504,24 @@
     "permissionAuto": "Auto",
     "permissionAsk": "Preguntar",
     "permissionPlan": "Plan",
-    "nextTurn": "Siguiente turno",
     "agent": "Agente",
     "default": "Predeterminado",
-    "model": "Modelo",
-    "providers": "Proveedores"
+    "model": "Modelo"
+  },
+  "crashScreen": {
+    "title": "Algo salió mal",
+    "description": "La aplicación encontró un error inesperado.",
+    "reload": "Recargar",
+    "showDetails": "Mostrar detalles",
+    "hideDetails": "Ocultar detalles"
   },
   "syncError": {
     "networkErrors": "Errores de red",
     "streamsAffected": "{{count}} flujo afectado",
     "streamsAffected_other": "{{count}} flujos afectados",
     "status": "(estado {{status}})",
-    "refreshPage": "Actualizar página"
+    "refreshPage": "Actualizar página",
+    "remoteAuthUnavailable": "La autenticación remota no está disponible temporalmente. Es posible que algunas funciones remotas no funcionen hasta que se recupere."
   },
   "onboardingSignIn": {
     "subtitle": "Sign in to continue",
@@ -618,28 +533,17 @@
     "yes": "Yes",
     "no": "No"
   },
-  "migration": {
-    "allProjectsMigrated": "Todos tus proyectos ya han sido migrados a la nube.",
-    "continueToProjects": "Continuar a los proyectos"
-  },
   "appBar": {
     "kanban": {
-      "tooltip": "Kanban",
+      "tooltip": "Inicia sesión para ver proyectos",
       "title": "Tableros Kanban",
-      "description": "Inicia sesión para organizar tus agentes de codificación con tableros kanban.",
-      "migrateOldProjects": "Migrar proyectos antiguos"
+      "description": "Inicia sesión para organizar tus agentes de codificación con tableros kanban."
     }
   },
   "errors": {
     "generic": "An unexpected error occurred"
   },
   "personal": "Personal",
-  "changeStatus": {
-    "title": "Change Status",
-    "descriptionSingle": "Change status for \"{{title}}\"",
-    "descriptionMultiple": "Change status for {{count}} issues",
-    "action": "Change Status"
-  },
   "askQuestion": {
     "title": "El agente está haciendo una pregunta",
     "selectMultiple": "seleccionar varios",
@@ -647,6 +551,5 @@
     "submitting": "Enviando respuestas...",
     "answeredCount": "Respondió {{count}} pregunta",
     "answeredCount_other": "Respondió {{count}} preguntas"
-  },
-  "kanban.board": "Board"
+  }
 }

@@ -6,9 +6,10 @@ use tracing::{info, instrument, warn};
 
 use crate::{
     azure_blob::AzureBlobService,
-    db::attachments::AttachmentRepository,
-    db::blobs::BlobRepository,
-    db::pending_uploads::PendingUploadRepository,
+    db::{
+        attachments::AttachmentRepository, blobs::BlobRepository,
+        pending_uploads::PendingUploadRepository,
+    },
 };
 
 const EXPIRED_BATCH_SIZE: i64 = 100;
@@ -16,7 +17,7 @@ const DEFAULT_INTERVAL: Duration = Duration::from_secs(3600);
 
 /// Spawns a background task that periodically cleans up orphan attachments and
 /// expired pending uploads. Call once during server startup.
-pub fn spawn_cleanup_task(pool: PgPool, azure: AzureBlobService) -> JoinHandle<()> {
+pub(crate) fn spawn_cleanup_task(pool: PgPool, azure: AzureBlobService) -> JoinHandle<()> {
     let interval = std::env::var("ATTACHMENT_CLEANUP_INTERVAL_SECS")
         .ok()
         .and_then(|v| v.parse::<u64>().ok())
@@ -82,10 +83,10 @@ async fn cleanup_expired_attachments(
                     if let Err(e) = azure.delete_blob(&blob.blob_path).await {
                         warn!(blob_path = %blob.blob_path, error = %e, "Failed to delete Azure blob");
                     }
-                    if let Some(thumb_path) = &blob.thumbnail_blob_path {
-                        if let Err(e) = azure.delete_blob(thumb_path).await {
-                            warn!(blob_path = %thumb_path, error = %e, "Failed to delete Azure thumbnail");
-                        }
+                    if let Some(thumb_path) = &blob.thumbnail_blob_path
+                        && let Err(e) = azure.delete_blob(thumb_path).await
+                    {
+                        warn!(blob_path = %thumb_path, error = %e, "Failed to delete Azure thumbnail");
                     }
                 }
             }

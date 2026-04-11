@@ -2,32 +2,47 @@
 resolver = "3"
 members = [
     "crates/api-types",
+    "crates/relay-client",
     "crates/server",
+    "crates/relay-types",
     "crates/trusted-key-auth",
     "crates/mcp",
     "crates/db",
     "crates/executors",
     "crates/services",
+    "crates/worktree-manager",
+    "crates/workspace-manager",
     "crates/relay-control",
-    "crates/server-info",
+    "crates/relay-protocol",
+    "crates/relay-ws",
+    "crates/ws-bridge",
+    "crates/relay-hosts",
+    "crates/client-info",
+    "crates/remote-info",
     "crates/utils",
     "crates/git",
     "crates/git-host",
     "crates/local-deployment",
     "crates/deployment",
     "crates/review",
+    "crates/embedded-ssh",
+    "crates/desktop-bridge",
+    "crates/tauri-app",
+    "crates/preview-proxy",
+    "crates/relay-tunnel-core",
+    "crates/relay-webrtc",
 ]
 exclude = ["crates/remote", "crates/relay-tunnel"]
 
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }
 axum = { version = "0.8.4", features = ["macros", "multipart", "ws"] }
-tower-http = { version = "0.5", features = ["cors", "request-id", "trace", "fs", "validate-request"] }
+tower-http = { version = "0.5", features = ["cors", "request-id", "trace", "fs", "validate-request", "compression-gzip", "compression-br"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 anyhow = "1.0"
 git2 = { version = "0.20.3", default-features = false }
-reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls-webpki-roots-no-provider"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "query", "stream", "rustls"] }
 rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
 thiserror = "2.0.12"
 tracing = "0.1.43"
@@ -36,13 +51,10 @@ ts-rs = { git = "https://github.com/xazukx/ts-rs.git", branch = "use-ts-enum", f
 schemars = { version = "1.0.4", features = ["derive", "chrono04", "uuid1", "preserve_order"] }
 serde_with = "3"
 async-trait = "0.1"
+aws-lc-sys = "=0.37.0"
+aws-lc-rs = "=1.16.0"
 
 [profile.release]
 debug = 1
 split-debuginfo = "packed"
 strip = true
-
-# Patches for codex-core's forked tokio-tungstenite with proxy support
-[patch.crates-io]
-tokio-tungstenite = { git = "https://github.com/openai-oss-forks/tokio-tungstenite", rev = "132f5b39c862e3a970f731d709608b3e6276d5f6" }
-tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "9200079d3b54a1ff51072e24d81fd354f085156f" }

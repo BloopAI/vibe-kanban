@@ -1,13 +1,14 @@
 import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDropzone } from 'react-dropzone';
-import { useCreateMode } from '@/shared/hooks/useCreateMode';
+import { useCreateMode } from '@/features/create-mode/model/useCreateMode';
 import { AgentIcon } from '@/shared/components/AgentIcon';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import { useCreateWorkspace } from '@/shared/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/shared/hooks/useCreateAttachments';
 import { useExecutorConfig } from '@/shared/hooks/useExecutorConfig';
+import { saveProjectRepoDefaults } from '@/shared/hooks/useProjectRepoDefaults';
 import { getSortedExecutorVariantKeys } from '@/shared/lib/executor';
 import {
   toPrettyCase,
@@ -53,8 +54,8 @@ export function CreateChatBoxContainer({
     preferredExecutorConfig,
     executorConfig: draftConfig,
     setExecutorConfig: setDraftConfig,
-    images: draftImages,
-    setImages: setDraftImages,
+    attachments: draftAttachments,
+    setAttachments: setDraftAttachments,
   } = useCreateMode();
 
   const { createWorkspace } = useCreateWorkspace();
@@ -79,7 +80,7 @@ export function CreateChatBoxContainer({
   const showRepoPickerStep = !hasSelectedRepos || isSelectingRepos;
   const showChatStep = hasSelectedRepos && !isSelectingRepos;
 
-  // Attachment handling - insert markdown and track image IDs
+  // Attachment handling - insert markdown and track attachment IDs
   const handleInsertMarkdown = useCallback(
     (markdown: string) => {
       const newMessage = message.trim()
@@ -90,16 +91,17 @@ export function CreateChatBoxContainer({
     [message, setMessage]
   );
 
-  const { uploadFiles, getImageIds, clearAttachments, localImages } =
-    useCreateAttachments(handleInsertMarkdown, draftImages, setDraftImages);
+  const { uploadFiles, getAttachmentIds, clearAttachments, localAttachments } =
+    useCreateAttachments(
+      handleInsertMarkdown,
+      draftAttachments,
+      setDraftAttachments
+    );
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      const imageFiles = acceptedFiles.filter((f) =>
-        f.type.startsWith('image/')
-      );
-      if (imageFiles.length > 0) {
-        uploadFiles(imageFiles);
+      if (acceptedFiles.length > 0) {
+        uploadFiles(acceptedFiles);
       }
     },
     [uploadFiles]
@@ -107,7 +109,6 @@ export function CreateChatBoxContainer({
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'image/*': [] },
     disabled: createWorkspace.isPending || !hasSelectedRepos,
     noClick: true,
     noKeyboard: true,
@@ -239,7 +240,7 @@ export function CreateChatBoxContainer({
             issue_id: linkedIssue.issueId,
           }
         : null,
-      image_ids: getImageIds(),
+      attachment_ids: getAttachmentIds(),
     };
     const linkToIssue = linkedIssue
       ? {
@@ -257,7 +258,12 @@ export function CreateChatBoxContainer({
       onWorkspaceCreated(result.workspace.id);
     }
 
-    // Clear attachments and draft after successful creation
+    if (linkedIssue?.remoteProjectId) {
+      saveProjectRepoDefaults(linkedIssue.remoteProjectId, data.repos).catch(
+        (err) => console.warn('Failed to save project repo defaults:', err)
+      );
+    }
+
     clearAttachments();
     await clearDraft();
   }, [
@@ -268,7 +274,7 @@ export function CreateChatBoxContainer({
     targetBranches,
     createWorkspace,
     onWorkspaceCreated,
-    getImageIds,
+    getAttachmentIds,
     clearAttachments,
     clearDraft,
     linkedIssue,
@@ -328,7 +334,7 @@ export function CreateChatBoxContainer({
                     repoId,
                     executor,
                     onPasteFiles,
-                    localImages,
+                    localAttachments,
                   }) => (
                     <WYSIWYGEditor
                       placeholder="Describe the task..."
@@ -342,7 +348,7 @@ export function CreateChatBoxContainer({
                       executor={executor}
                       autoFocus
                       onPasteFiles={onPasteFiles}
-                      localImages={localImages}
+                      localAttachments={localAttachments}
                       sendShortcut={config?.send_message_shortcut}
                     />
                   )}
@@ -380,7 +386,7 @@ export function CreateChatBoxContainer({
                     ) : undefined
                   }
                   onPasteFiles={uploadFiles}
-                  localImages={localImages}
+                  localAttachments={localAttachments}
                   dropzone={{ getRootProps, getInputProps, isDragActive }}
                   onEditRepos={() => setIsSelectingRepos(true)}
                   repoSummaryLabel={repoSummaryLabel}

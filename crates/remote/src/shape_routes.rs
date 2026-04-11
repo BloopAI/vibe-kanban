@@ -4,7 +4,8 @@ use api_types::{
     ListIssueAssigneesResponse, ListIssueCommentReactionsResponse, ListIssueCommentsResponse,
     ListIssueFollowersResponse, ListIssueRelationshipsResponse, ListIssueTagsResponse,
     ListIssuesResponse, ListProjectStatusesResponse, ListProjectsResponse,
-    ListPullRequestsResponse, ListTagsResponse, Notification, OrganizationMember, User, Workspace,
+    ListPullRequestIssuesResponse, ListPullRequestsResponse, ListTagsResponse, Notification,
+    OrganizationMember, SearchIssuesRequest, User, Workspace,
 };
 use axum::{
     Json,
@@ -23,7 +24,8 @@ use crate::{
         issue_relationships::IssueRelationshipRepository, issue_tags::IssueTagRepository,
         issues::IssueRepository, notifications::NotificationRepository, organization_members,
         project_statuses::ProjectStatusRepository, projects::ProjectRepository,
-        pull_requests::PullRequestRepository, tags::TagRepository, workspaces::WorkspaceRepository,
+        pull_request_issues::PullRequestIssueRepository, pull_requests::PullRequestRepository,
+        tags::TagRepository, workspaces::WorkspaceRepository,
     },
     routes::{
         error::ErrorResponse,
@@ -70,25 +72,111 @@ struct ListWorkspacesResponse {
 pub fn all_shape_routes() -> Vec<ShapeRoute> {
     vec![
         // Organization-scoped
-        ShapeRoute::new(&shapes::PROJECTS_SHAPE, ShapeScope::Org, "/fallback/projects", fallback_list_projects),
-        ShapeRoute::new(&shapes::NOTIFICATIONS_SHAPE, ShapeScope::OrgWithUser, "/fallback/notifications", fallback_list_notifications),
-        ShapeRoute::new(&shapes::ORGANIZATION_MEMBERS_SHAPE, ShapeScope::Org, "/fallback/organization_members", fallback_list_organization_members),
-        ShapeRoute::new(&shapes::USERS_SHAPE, ShapeScope::Org, "/fallback/users", fallback_list_users),
+        ShapeRoute::new(
+            &shapes::PROJECTS_SHAPE,
+            ShapeScope::Org,
+            "/fallback/projects",
+            fallback_list_projects,
+        ),
+        ShapeRoute::new(
+            &shapes::NOTIFICATIONS_SHAPE,
+            ShapeScope::User,
+            "/fallback/notifications",
+            fallback_list_notifications,
+        ),
+        ShapeRoute::new(
+            &shapes::ORGANIZATION_MEMBERS_SHAPE,
+            ShapeScope::Org,
+            "/fallback/organization_members",
+            fallback_list_organization_members,
+        ),
+        ShapeRoute::new(
+            &shapes::USERS_SHAPE,
+            ShapeScope::Org,
+            "/fallback/users",
+            fallback_list_users,
+        ),
         // Project-scoped
-        ShapeRoute::new(&shapes::PROJECT_TAGS_SHAPE, ShapeScope::Project, "/fallback/tags", fallback_list_tags),
-        ShapeRoute::new(&shapes::PROJECT_PROJECT_STATUSES_SHAPE, ShapeScope::Project, "/fallback/project_statuses", fallback_list_project_statuses),
-        ShapeRoute::new(&shapes::PROJECT_ISSUES_SHAPE, ShapeScope::Project, "/fallback/issues", fallback_list_issues),
-        ShapeRoute::new(&shapes::USER_WORKSPACES_SHAPE, ShapeScope::User, "/fallback/user_workspaces", fallback_list_user_workspaces),
-        ShapeRoute::new(&shapes::PROJECT_WORKSPACES_SHAPE, ShapeScope::Project, "/fallback/project_workspaces", fallback_list_project_workspaces),
+        ShapeRoute::new(
+            &shapes::PROJECT_TAGS_SHAPE,
+            ShapeScope::Project,
+            "/fallback/tags",
+            fallback_list_tags,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_PROJECT_STATUSES_SHAPE,
+            ShapeScope::Project,
+            "/fallback/project_statuses",
+            fallback_list_project_statuses,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_ISSUES_SHAPE,
+            ShapeScope::Project,
+            "/fallback/issues",
+            fallback_list_issues,
+        ),
+        ShapeRoute::new(
+            &shapes::USER_WORKSPACES_SHAPE,
+            ShapeScope::User,
+            "/fallback/user_workspaces",
+            fallback_list_user_workspaces,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_WORKSPACES_SHAPE,
+            ShapeScope::Project,
+            "/fallback/project_workspaces",
+            fallback_list_project_workspaces,
+        ),
         // Project-scoped issue-related
-        ShapeRoute::new(&shapes::PROJECT_ISSUE_ASSIGNEES_SHAPE, ShapeScope::Project, "/fallback/issue_assignees", fallback_list_issue_assignees),
-        ShapeRoute::new(&shapes::PROJECT_ISSUE_FOLLOWERS_SHAPE, ShapeScope::Project, "/fallback/issue_followers", fallback_list_issue_followers),
-        ShapeRoute::new(&shapes::PROJECT_ISSUE_TAGS_SHAPE, ShapeScope::Project, "/fallback/issue_tags", fallback_list_issue_tags),
-        ShapeRoute::new(&shapes::PROJECT_ISSUE_RELATIONSHIPS_SHAPE, ShapeScope::Project, "/fallback/issue_relationships", fallback_list_issue_relationships),
-        ShapeRoute::new(&shapes::PROJECT_PULL_REQUESTS_SHAPE, ShapeScope::Project, "/fallback/pull_requests", fallback_list_pull_requests),
+        ShapeRoute::new(
+            &shapes::PROJECT_ISSUE_ASSIGNEES_SHAPE,
+            ShapeScope::Project,
+            "/fallback/issue_assignees",
+            fallback_list_issue_assignees,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_ISSUE_FOLLOWERS_SHAPE,
+            ShapeScope::Project,
+            "/fallback/issue_followers",
+            fallback_list_issue_followers,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_ISSUE_TAGS_SHAPE,
+            ShapeScope::Project,
+            "/fallback/issue_tags",
+            fallback_list_issue_tags,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
+            ShapeScope::Project,
+            "/fallback/issue_relationships",
+            fallback_list_issue_relationships,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_PULL_REQUESTS_SHAPE,
+            ShapeScope::Project,
+            "/fallback/pull_requests",
+            fallback_list_pull_requests,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_PULL_REQUEST_ISSUES_SHAPE,
+            ShapeScope::Project,
+            "/fallback/pull_request_issues",
+            fallback_list_pull_request_issues,
+        ),
         // Issue-scoped
-        ShapeRoute::new(&shapes::ISSUE_COMMENTS_SHAPE, ShapeScope::Issue, "/fallback/issue_comments", fallback_list_issue_comments),
-        ShapeRoute::new(&shapes::ISSUE_REACTIONS_SHAPE, ShapeScope::Issue, "/fallback/issue_comment_reactions", fallback_list_issue_comment_reactions),
+        ShapeRoute::new(
+            &shapes::ISSUE_COMMENTS_SHAPE,
+            ShapeScope::Issue,
+            "/fallback/issue_comments",
+            fallback_list_issue_comments,
+        ),
+        ShapeRoute::new(
+            &shapes::ISSUE_REACTIONS_SHAPE,
+            ShapeScope::Issue,
+            "/fallback/issue_comment_reactions",
+            fallback_list_issue_comment_reactions,
+        ),
     ]
 }
 
@@ -116,23 +204,21 @@ async fn fallback_list_projects(
 async fn fallback_list_notifications(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Query(query): Query<OrgFallbackQuery>,
+    Query(_query): Query<NoQueryParams>,
 ) -> Result<Json<ListNotificationsResponse>, ErrorResponse> {
-    ensure_member_access(state.pool(), query.organization_id, ctx.user.id).await?;
-
-    let notifications = NotificationRepository::list_by_organization_and_user(
-        state.pool(),
-        query.organization_id,
-        ctx.user.id,
-    )
-    .await
-    .map_err(|error| {
-        tracing::error!(?error, organization_id = %query.organization_id, "failed to list notifications (fallback)");
-        ErrorResponse::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "failed to list notifications",
-        )
-    })?;
+    let notifications = NotificationRepository::list_by_user(state.pool(), ctx.user.id, true)
+        .await
+        .map_err(|error| {
+            tracing::error!(
+                ?error,
+                user_id = %ctx.user.id,
+                "failed to list notifications (fallback)"
+            );
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to list notifications",
+            )
+        })?;
 
     Ok(Json(ListNotificationsResponse { notifications }))
 }
@@ -227,14 +313,32 @@ async fn fallback_list_issues(
 ) -> Result<Json<ListIssuesResponse>, ErrorResponse> {
     ensure_project_access(state.pool(), ctx.user.id, query.project_id).await?;
 
-    let issues = IssueRepository::list_by_project(state.pool(), query.project_id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, project_id = %query.project_id, "failed to list issues (fallback)");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list issues")
-        })?;
+    let response = IssueRepository::search(
+        state.pool(),
+        &SearchIssuesRequest {
+            project_id: query.project_id,
+            status_id: None,
+            status_ids: None,
+            priority: None,
+            parent_issue_id: None,
+            search: None,
+            simple_id: None,
+            assignee_user_id: None,
+            tag_id: None,
+            tag_ids: None,
+            sort_field: None,
+            sort_direction: None,
+            limit: None,
+            offset: None,
+        },
+    )
+    .await
+    .map_err(|error| {
+        tracing::error!(?error, project_id = %query.project_id, "failed to list issues (fallback)");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list issues")
+    })?;
 
-    Ok(Json(ListIssuesResponse { issues }))
+    Ok(Json(response))
 }
 
 async fn fallback_list_project_workspaces(
@@ -357,6 +461,29 @@ async fn fallback_list_pull_requests(
         })?;
 
     Ok(Json(ListPullRequestsResponse { pull_requests }))
+}
+
+async fn fallback_list_pull_request_issues(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Query(query): Query<ProjectFallbackQuery>,
+) -> Result<Json<ListPullRequestIssuesResponse>, ErrorResponse> {
+    ensure_project_access(state.pool(), ctx.user.id, query.project_id).await?;
+
+    let pull_request_issues =
+        PullRequestIssueRepository::list_by_project(state.pool(), query.project_id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, project_id = %query.project_id, "failed to list pull request issues (fallback)");
+                ErrorResponse::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "failed to list pull request issues",
+                )
+            })?;
+
+    Ok(Json(ListPullRequestIssuesResponse {
+        pull_request_issues,
+    }))
 }
 
 // =============================================================================

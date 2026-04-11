@@ -31,22 +31,18 @@ env:
 
 jobs:
   bump-version:
-    runs-on: ubuntu-latest-m
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     outputs:
       new_tag: ${{ steps.version.outputs.new_tag }}
       new_version: ${{ steps.version.outputs.new_version }}
       branch_suffix: ${{ steps.branch.outputs.suffix }}
     steps:
-      - name: Cache cargo-edit
-        uses: actions/cache@v5
-        id: cache-cargo-edit
-        with:
-          path: ~/.cargo/bin/cargo-set-version
-          key: cargo-edit-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}
-
       - name: Install cargo-edit
-        if: steps.cache-cargo-edit.outputs.cache-hit != 'true'
-        run: cargo install cargo-edit
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+        with:
+          tool: cargo-edit
+          git: https://github.com/killercup/cargo-edit
+          rev: 96a3879fe3bafda6d0f943b642997fbf03e235cd # v0.13.9
 
       - uses: actions/checkout@v6
         with:
@@ -59,7 +55,7 @@ jobs:
       - name: Setup SSH Agent for private dependencies
         id: ssh-setup
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-        uses: webfactory/ssh-agent@v0.9.0
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
         with:
           ssh-private-key: ${{ secrets.VK_PRIVATE_DEPLOY_KEY }}
 
@@ -115,16 +111,26 @@ jobs:
           fi
 
           # Update npx-cli package.json to match
-          cd npx-cli
-          npm version $new_version --no-git-tag-version --allow-same-version
-          cd ..
+          (
+            cd npx-cli
+            npm version $new_version --no-git-tag-version --allow-same-version
+          )
 
           # Update web app package.json to match
-          cd packages/local-web
-          npm version $new_version --no-git-tag-version --allow-same-version
-          cd ..
+          (
+            cd packages/local-web
+            npm version $new_version --no-git-tag-version --allow-same-version
+          )
 
           cargo set-version --workspace "$new_version"
+
+          node -e "
+            const fs = require('fs');
+            const path = 'crates/tauri-app/tauri.conf.json';
+            const conf = JSON.parse(fs.readFileSync(path, 'utf8'));
+            conf.version = '$new_version';
+            fs.writeFileSync(path, JSON.stringify(conf, null, 2) + '\n');
+          "
 
           echo "New version: $new_version"
           echo "new_version=$new_version" >> $GITHUB_OUTPUT
@@ -132,7 +138,10 @@ jobs:
 
       - name: Update remote crate lockfile
         if: ${{ steps.ssh-setup.outcome == 'success' }}
-        run: cargo generate-lockfile --manifest-path crates/remote/Cargo.toml
+        run: cargo metadata --format-version 1 --manifest-path crates/remote/Cargo.toml > /dev/null
+
+      - name: Update relay-tunnel crate lockfile
+        run: cargo metadata --format-version 1 --manifest-path crates/relay-tunnel/Cargo.toml > /dev/null
 
       - name: Stop SSH agent
         if: ${{ steps.ssh-setup.outcome == 'success' }}
@@ -142,9 +151,10 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add package.json pnpm-lock.yaml npx-cli/package.json packages/local-web/package.json Cargo.lock
+          git add package.json pnpm-lock.yaml npx-cli/package.json npx-cli/package-lock.json packages/local-web/package.json crates/tauri-app/tauri.conf.json Cargo.lock
           git add $(find . -name Cargo.toml)
           [ -f crates/remote/Cargo.lock ] && git add crates/remote/Cargo.lock || true
+          [ -f crates/relay-tunnel/Cargo.lock ] && git add crates/relay-tunnel/Cargo.lock || true
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Release ${{ steps.version.outputs.new_tag }}"
           git push
@@ -152,7 +162,7 @@ jobs:
 
   build-frontend:
     needs: bump-version
-    runs-on: ubuntu-latest-x64-l
+    runs-on: blacksmith-16vcpu-ubuntu-2404
     env:
       VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY: ${{ secrets.PUBLIC_REACT_VIRTUOSO_LICENSE_KEY }}
       VITE_VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
@@ -182,7 +192,7 @@ jobs:
           VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
       - name: Create Sentry release
-        uses: getsentry/action-release@v3
+        uses: getsentry/action-release@dab6548b3c03c4717878099e43782cf5be654289 # v3
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -208,13 +218,13 @@ jobs:
       matrix:
         include:
           - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest-x64-l
+            os: blacksmith-16vcpu-ubuntu-2404
             name: linux-x64
           - target: aarch64-unknown-linux-musl
-            os: ubuntu-latest-arm64-l
+            os: blacksmith-16vcpu-ubuntu-2404-arm
             name: linux-arm64
           - target: x86_64-pc-windows-msvc
-            os: ubuntu-latest-x64-l
+            os: blacksmith-16vcpu-ubuntu-2404
             name: windows-x64
           - target: x86_64-apple-darwin
             os: macos-15-xlarge
@@ -223,7 +233,7 @@ jobs:
             os: macos-15-xlarge
             name: macos-arm64
           - target: aarch64-pc-windows-msvc
-            os: ubuntu-latest-x64-l
+            os: blacksmith-16vcpu-ubuntu-2404
             name: windows-arm64
     env:
       CARGO_INCREMENTAL: "0"
@@ -248,7 +258,7 @@ jobs:
           key: rust-toolchain-${{ runner.os }}-${{ matrix.target }}-${{ env.RUST_TOOLCHAIN }}
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: ${{ matrix.target }}
@@ -287,11 +297,19 @@ jobs:
 
       - name: Install cargo zigbuild
         if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
-        run: cargo install --locked cargo-zigbuild --version 0.20.1
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+        with:
+          tool: cargo-zigbuild
+          git: https://github.com/rust-cross/cargo-zigbuild
+          rev: bbb57ac6a5eb90f53617a5c218fda03080599e4a # v0.20.1
 
       - name: Install cargo xwin
         if: runner.os == 'Linux' && contains(matrix.target, 'windows')
-        run: cargo install --locked cargo-xwin --version ${{ env.CARGO_XWIN_VERSION }}
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+        with:
+          tool: cargo-xwin
+          git: https://github.com/rust-cross/cargo-xwin
+          rev: 635a9559d49d719e79e0f60d92eb44447faf3212 # v0.20.2
 
       - name: Cache xwin downloads
         if: runner.os == 'Linux' && contains(matrix.target, 'windows')
@@ -310,9 +328,11 @@ jobs:
             target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
 
       - name: Setup cargo-sweep
-        shell: bash
-        run: |
-          cargo install --locked cargo-sweep --version 0.8.0
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+        with:
+          tool: cargo-sweep
+          git: https://github.com/holmgr/cargo-sweep
+          rev: 82f42d3593923db6fe715b299036512d91ddb35e # v0.8.0
 
       - name: Download frontend artifact
         uses: actions/download-artifact@v7
@@ -323,7 +343,7 @@ jobs:
       - name: Build backend (Linux)
         if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
         run: |
-          cargo zigbuild --release --target ${{ matrix.target }} -p server -p mcp -p review --bin server --bin mcp_task_server --bin review
+          cargo zigbuild --release --target ${{ matrix.target }} -p server -p mcp -p review --bin server --bin vibe-kanban-mcp --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
@@ -339,7 +359,7 @@ jobs:
           elif [[ "${{ matrix.target }}" == "aarch64-apple-darwin" ]]; then
             export MACOSX_DEPLOYMENT_TARGET=11.0
           fi
-          cargo build --release --target ${{ matrix.target }} -p server -p mcp -p review --bin server --bin mcp_task_server --bin review
+          cargo build --release --target ${{ matrix.target }} -p server -p mcp -p review --bin server --bin vibe-kanban-mcp --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
@@ -358,7 +378,7 @@ jobs:
             export DEFAULT_CC=clang-cl
             export CC_aarch64_pc_windows_msvc="${{ github.workspace }}/scripts/ring-cc-wrapper.sh"
           fi
-          cargo xwin build --cross-compiler clang-cl --release --target ${{ matrix.target }} -p server -p mcp -p review --bin server --bin mcp_task_server --bin review
+          cargo xwin build --cross-compiler clang-cl --release --target ${{ matrix.target }} -p server -p mcp -p review --bin server --bin vibe-kanban-mcp --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
@@ -370,7 +390,7 @@ jobs:
           CARGO_PROFILE_RELEASE_DEBUG: 0
 
       - name: Setup Sentry CLI
-        uses: matbour/setup-sentry-cli@v2
+        uses: matbour/setup-sentry-cli@3e938c54b3018bdd019973689ef984e033b0454b # v2
         with:
           token: ${{ secrets.SENTRY_AUTH_TOKEN }}
           organization: ${{ secrets.SENTRY_ORG }}
@@ -387,11 +407,11 @@ jobs:
           mkdir -p dist
           if [[ "${{ matrix.name }}" == *"windows"* ]]; then
             cp target/${{ matrix.target }}/release/server.exe dist/vibe-kanban-${{ matrix.name }}.exe
-            cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/vibe-kanban-mcp-${{ matrix.name }}.exe
+            cp target/${{ matrix.target }}/release/vibe-kanban-mcp.exe dist/vibe-kanban-mcp-${{ matrix.name }}.exe
             cp target/${{ matrix.target }}/release/review.exe dist/vibe-kanban-review-${{ matrix.name }}.exe
           else
             cp target/${{ matrix.target }}/release/server dist/vibe-kanban-${{ matrix.name }}
-            cp target/${{ matrix.target }}/release/mcp_task_server dist/vibe-kanban-mcp-${{ matrix.name }}
+            cp target/${{ matrix.target }}/release/vibe-kanban-mcp dist/vibe-kanban-mcp-${{ matrix.name }}
             cp target/${{ matrix.target }}/release/review dist/vibe-kanban-review-${{ matrix.name }}
           fi
 
@@ -426,7 +446,7 @@ jobs:
         if: runner.os == 'macOS'
         uses: BloopAI/apple-code-sign-action@v1
         with:
-          input_path: target/${{ matrix.target }}/release/mcp_task_server
+          input_path: target/${{ matrix.target }}/release/vibe-kanban-mcp
           output_path: vibe-kanban-mcp
           p12_file: certificate.p12
           p12_password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -495,7 +515,7 @@ jobs:
 
   package-npx-cli:
     needs: [bump-version, build-frontend, build-backend]
-    runs-on: ubuntu-latest-m
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     strategy:
       # NOTE: This matrix must be kept in sync with build-backend job above
       # GitHub Actions doesn't support YAML anchors, so duplication is unavoidable
@@ -587,7 +607,7 @@ jobs:
 
   upload-to-r2:
     needs: [bump-version, package-npx-cli]
-    runs-on: ubuntu-latest-m
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v6
         with:
@@ -679,9 +699,406 @@ jobs:
             --endpoint-url "$ENDPOINT" \
             --recursive
 
+  build-tauri:
+    needs: [bump-version, build-frontend]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-15-xlarge
+            platform: darwin-aarch64
+          - target: x86_64-apple-darwin
+            os: macos-15-xlarge
+            platform: darwin-x86_64
+          - target: x86_64-unknown-linux-gnu
+            os: blacksmith-16vcpu-ubuntu-2404
+            platform: linux-x86_64
+          - target: aarch64-unknown-linux-gnu
+            os: blacksmith-16vcpu-ubuntu-2404-arm
+            platform: linux-aarch64
+          - target: x86_64-pc-windows-msvc
+            os: blacksmith-16vcpu-ubuntu-2404
+            platform: windows-x86_64
+          - target: aarch64-pc-windows-msvc
+            os: blacksmith-16vcpu-ubuntu-2404
+            platform: windows-aarch64
+    env:
+      CARGO_INCREMENTAL: "0"
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+      SCCACHE_CACHE_SIZE: "10G"
+      CARGO_HOME: ${{ github.workspace }}/.cargo
+      RUSTUP_HOME: ${{ github.workspace }}/.rustup
+      XWIN_CACHE_DIR: ${{ github.workspace }}/.xwin-cache
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.bump-version.outputs.new_tag }}
+
+      - name: Setup sccache
+        uses: BloopAI/sccache-action@main
+
+      - name: Cache Rust toolchain
+        uses: actions/cache@v5
+        with:
+          path: .rustup/toolchains
+          key: rust-toolchain-${{ runner.os }}-${{ matrix.target }}-${{ env.RUST_TOOLCHAIN }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v5
+        with:
+          path: |
+            .cargo/registry/cache
+            .cargo/registry/index
+            .cargo/git/db
+            .cargo/bin
+            .cargo/.crates.toml
+            .cargo/.crates2.json
+          key: cargo-tauri-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-tauri-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
+
+      - name: Cache target
+        uses: actions/cache@v5
+        with:
+          path: target
+          key: tauri-target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            tauri-target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ github.ref_name }}-
+            tauri-target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
+
+      - name: Setup cargo-sweep
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+        with:
+          tool: cargo-sweep
+          git: https://github.com/holmgr/cargo-sweep
+          rev: 82f42d3593923db6fe715b299036512d91ddb35e # v0.8.0
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux' && contains(matrix.target, 'linux')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential \
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev \
+            libxdo-dev file pkg-config xdg-utils
+
+      - name: Install Windows cross-compilation dependencies
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        run: |
+          sudo apt-get update
+          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
+            clang libclang-dev lld llvm nasm cmake ninja-build nsis \
+            clang-19 clang-tools-19 llvm-19 lld-19 \
+            meson valac bison gobject-introspection libgirepository1.0-dev \
+            libglib2.0-dev libgsf-1-dev libgcab-dev libmsi-dev
+          echo "/usr/lib/llvm-19/bin" >> $GITHUB_PATH
+
+      - name: Build and install wixl
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        env:
+          RUSTC_WRAPPER: ""
+        run: |
+          cd /tmp
+          curl -sL https://download.gnome.org/sources/msitools/0.103/msitools-0.103.tar.xz -o msitools-0.103.tar.xz
+          echo "d17622eebbf37fa4c09b59be0bc8db08b26be300a6731c74da1ebce262bce839  msitools-0.103.tar.xz" | sha256sum -c -
+          tar xJf msitools-0.103.tar.xz
+          cd msitools-0.103
+          meson setup builddir --prefix=/usr
+          meson compile -C builddir wixl
+          sudo install -m755 builddir/tools/wixl/wixl /usr/local/bin/wixl
+          sudo install -m644 builddir/libmsi/libmsi-1.0.so.0.0.0 /usr/local/lib/
+          sudo ln -sf libmsi-1.0.so.0.0.0 /usr/local/lib/libmsi-1.0.so.0
+          sudo ln -sf libmsi-1.0.so.0 /usr/local/lib/libmsi-1.0.so
+          sudo ldconfig
+          sudo mkdir -p /usr/share/wixl-0.103/ext
+          sudo cp -r data/ext/ui /usr/share/wixl-0.103/ext/
+          cd / && rm -rf /tmp/msitools-0.103
+          wixl --version
+
+      - name: Install cargo-xwin
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+        with:
+          tool: cargo-xwin
+          git: https://github.com/rust-cross/cargo-xwin
+          rev: 635a9559d49d719e79e0f60d92eb44447faf3212 # v0.20.2
+
+      - name: Cache xwin downloads
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/.xwin-cache
+          key: xwin-${{ runner.os }}-${{ matrix.target }}-cargo-xwin-${{ env.CARGO_XWIN_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install Tauri CLI
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+        with:
+          tool: tauri-cli@2
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: frontend-dist
+          path: packages/local-web/dist/
+
+      - name: Patch tauri.conf.json for CI
+        run: |
+          node -e "
+            const fs = require('fs');
+            const conf = JSON.parse(fs.readFileSync('crates/tauri-app/tauri.conf.json', 'utf8'));
+            // Inject the real updater endpoint (replaces __TAURI_UPDATE_ENDPOINT__ placeholder)
+            const endpoint = '${{ secrets.R2_BINARIES_PUBLIC_URL }}/binaries/tauri-update/latest.json';
+            conf.plugins.updater.endpoints = conf.plugins.updater.endpoints.map(e =>
+              e === '__TAURI_UPDATE_ENDPOINT__' ? endpoint : e
+            );
+            fs.writeFileSync('crates/tauri-app/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
+          "
+
+      - name: Set up Apple notarization key
+        if: runner.os == 'macOS'
+        env:
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
+        run: |
+          # Write the .p8 key file where Tauri/notarytool can find it
+          mkdir -p ~/.private_keys
+          KEY_PATH="$HOME/.private_keys/AuthKey_${API_KEY_ID}.p8"
+          printf '%s' "$API_PRIVATE_KEY" > "$KEY_PATH"
+
+          echo "APPLE_API_KEY=$API_KEY_ID" >> $GITHUB_ENV
+          echo "APPLE_API_ISSUER=$API_ISSUER" >> $GITHUB_ENV
+          echo "APPLE_API_KEY_PATH=$KEY_PATH" >> $GITHUB_ENV
+
+      - name: Build Tauri app
+        run: |
+          if [[ "${{ matrix.target }}" == "aarch64-pc-windows-msvc" ]]; then
+            # ring requires clang on arm64 windows cross-compile
+            chmod +x scripts/ring-cc-wrapper.sh scripts/clang
+            export PATH="${{ github.workspace }}/scripts:$PATH"
+            export RING_CC=/usr/lib/llvm-19/bin/clang
+            export DEFAULT_CC=clang-cl
+            export CC_aarch64_pc_windows_msvc="${{ github.workspace }}/scripts/ring-cc-wrapper.sh"
+            export CARGO_PROFILE_RELEASE_DEBUG=0
+          fi
+
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            cargo tauri build --runner cargo-xwin --target ${{ matrix.target }} --ci
+          else
+            cargo tauri build --target ${{ matrix.target }} --ci
+          fi
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_KEY: ${{ env.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ env.APPLE_API_ISSUER }}
+          APPLE_API_KEY_PATH: ${{ env.APPLE_API_KEY_PATH }}
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
+          VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+          VK_SHARED_RELAY_API_BASE: ${{ secrets.VK_SHARED_RELAY_API_BASE }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+      - name: Build MSI with wixl
+        if: contains(matrix.target, 'windows')
+        run: |
+          node scripts/build-tauri-msi.js \
+            --target ${{ matrix.target }} \
+            --version ${{ needs.bump-version.outputs.new_version }}
+
+      # TODO: Re-enable Windows code signing once Azure Trusted Signing 403 is resolved
+      # - name: Setup Jsign
+      #   if: contains(matrix.target, 'windows')
+      #   id: jsign
+      #   uses: ./.github/actions/setup-jsign
+      #
+      # - name: Install JRE for Jsign
+      #   if: contains(matrix.target, 'windows')
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y default-jre-headless
+      #
+      # - name: Azure CLI login
+      #   if: contains(matrix.target, 'windows') && env.AZURE_ENDPOINT != ''
+      #   uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
+      #   with:
+      #     creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+      #     allow-no-subscriptions: true
+      #   env:
+      #     AZURE_ENDPOINT: ${{ secrets.AZURE_ENDPOINT }}
+      #
+      # - name: Sign Windows artifacts with Azure Trusted Signing
+      #   if: contains(matrix.target, 'windows') && env.AZURE_ENDPOINT != ''
+      #   env:
+      #     AZURE_ENDPOINT: ${{ secrets.AZURE_ENDPOINT }}
+      #     AZURE_CODE_SIGNING_NAME: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
+      #     AZURE_CERT_PROFILE_NAME: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
+      #   run: |
+      #     TOKEN=$(az account get-access-token --resource https://codesigning.azure.net --query accessToken -o tsv)
+      #
+      #     # Extract hostname from endpoint URL
+      #     KEYSTORE=$(echo "$AZURE_ENDPOINT" | sed 's|https\?://||;s|/.*||')
+      #
+      #     # Sign all exe and msi files in the bundle directory
+      #     find target/${{ matrix.target }}/release/bundle -type f \( -name "*.exe" -o -name "*.msi" \) | while read file; do
+      #       echo "Signing: $file"
+      #       java -jar "${{ steps.jsign.outputs.jar-path }}" \
+      #         --storetype TRUSTEDSIGNING \
+      #         --keystore "$KEYSTORE" \
+      #         --storepass "$TOKEN" \
+      #         --alias "${AZURE_CODE_SIGNING_NAME}/${AZURE_CERT_PROFILE_NAME}" \
+      #         --tsaurl http://timestamp.acs.microsoft.com \
+      #         --tsmode RFC3161 \
+      #         "$file"
+      #     done
+
+      - name: Collect updater artifacts and installers
+        run: |
+          mkdir -p tauri-artifacts/${{ matrix.platform }}
+          # Collect updater artifacts (.sig files and their corresponding bundles)
+          find target/${{ matrix.target }}/release/bundle -name "*.sig" | while read sig; do
+            artifact="${sig%.sig}"
+            if [ -f "$artifact" ]; then
+              cp "$artifact" "tauri-artifacts/${{ matrix.platform }}/"
+              cp "$sig" "tauri-artifacts/${{ matrix.platform }}/"
+              echo "Collected updater artifact: $(basename $artifact)"
+            fi
+          done
+          # Collect installer files for GitHub Release (DMG, AppImage, deb, msi, NSIS exe)
+          find target/${{ matrix.target }}/release/bundle \
+            \( -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.msi" -o -name "*-setup.exe" \) | while read f; do
+            cp "$f" "tauri-artifacts/${{ matrix.platform }}/"
+            echo "Collected installer: $(basename $f)"
+          done
+          echo "All artifacts for ${{ matrix.platform }}:"
+          ls -la tauri-artifacts/${{ matrix.platform }}/
+
+      - name: Clean up signing keys
+        if: always() && runner.os == 'macOS'
+        run: rm -rf ~/.private_keys
+
+      - name: Upload Tauri artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: tauri-artifacts-${{ matrix.platform }}
+          path: tauri-artifacts/
+          retention-days: 1
+
+      - name: Sweep Cargo target cache
+        if: always()
+        run: |
+          cargo sweep --maxsize 10GB
+          cargo sweep --time 30
+
+  upload-tauri-update:
+    needs: [bump-version, build-tauri]
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.bump-version.outputs.new_tag }}
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Download all Tauri artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: tauri-artifacts-*
+          path: tauri-artifacts/
+          merge-multiple: true
+
+      - name: List Tauri artifacts
+        run: find tauri-artifacts/
+
+      - name: Generate updater manifest
+        run: |
+          node scripts/generate-tauri-update-json.js \
+            --version "${{ needs.bump-version.outputs.new_version }}" \
+            --notes "Release ${{ needs.bump-version.outputs.new_tag }}" \
+            --artifacts-dir ./tauri-artifacts \
+            --download-base "${{ secrets.R2_BINARIES_PUBLIC_URL }}/binaries/${{ needs.bump-version.outputs.new_tag }}/tauri" \
+            --output latest.json
+          echo "Generated latest.json:"
+          cat latest.json
+
+      - name: Generate desktop manifest for NPX CLI
+        run: |
+          node scripts/generate-desktop-manifest.js \
+            --version "${{ needs.bump-version.outputs.new_version }}" \
+            --artifacts-dir ./tauri-artifacts \
+            --output desktop-manifest.json
+          echo "Generated desktop-manifest.json:"
+          cat desktop-manifest.json
+
+      - name: Configure AWS CLI for R2
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.R2_BINARIES_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.R2_BINARIES_SECRET_ACCESS_KEY }}
+          aws configure set default.region auto
+
+      - name: Upload Tauri artifacts and update manifest to R2
+        run: |
+          TAG="${{ needs.bump-version.outputs.new_tag }}"
+          ENDPOINT="${{ secrets.R2_BINARIES_ENDPOINT }}"
+          BUCKET="${{ secrets.R2_BINARIES_BUCKET }}"
+
+          # Upload individual platform artifacts
+          for platform in darwin-aarch64 darwin-x86_64 linux-x86_64 linux-aarch64 windows-x86_64 windows-aarch64; do
+            if [ -d "tauri-artifacts/$platform" ]; then
+              for file in tauri-artifacts/$platform/*; do
+                [ -f "$file" ] || continue
+                # Skip .sig files from artifact upload (signatures are in latest.json)
+                [[ "$file" == *.sig ]] && continue
+                filename=$(basename "$file")
+                echo "Uploading $filename for $platform..."
+                aws s3 cp "$file" \
+                  "s3://$BUCKET/binaries/$TAG/tauri/$platform/$filename" \
+                  --endpoint-url "$ENDPOINT"
+              done
+            fi
+          done
+
+          # Upload latest.json alongside the tag artifacts (NOT to the fixed
+          # update endpoint). The fixed endpoint is only updated when a
+          # pre-release is promoted to a full release (see publish.yml).
+          echo "Uploading updater manifest for tag..."
+          aws s3 cp latest.json \
+            "s3://$BUCKET/binaries/$TAG/tauri/latest.json" \
+            --endpoint-url "$ENDPOINT" --content-type "application/json"
+
+          echo "Update manifest uploaded to: binaries/$TAG/tauri/latest.json"
+
+          # Upload desktop manifest for NPX CLI auto-install
+          echo "Uploading desktop manifest..."
+          aws s3 cp desktop-manifest.json \
+            "s3://$BUCKET/binaries/$TAG/tauri/desktop-manifest.json" \
+            --endpoint-url "$ENDPOINT" --content-type "application/json"
+
+          echo "Desktop manifest uploaded to: binaries/$TAG/tauri/desktop-manifest.json"
+
   create-prerelease:
-    needs: [bump-version, build-frontend, upload-to-r2]
-    runs-on: ubuntu-latest-m
+    needs: [bump-version, build-frontend, upload-to-r2, upload-tauri-update]
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v6
         with:
@@ -692,6 +1109,21 @@ jobs:
         with:
           name: frontend-dist
           path: packages/local-web/dist/
+
+      - name: Download Tauri artifacts for release
+        uses: actions/download-artifact@v7
+        with:
+          pattern: tauri-artifacts-*
+          path: tauri-release/
+          merge-multiple: true
+
+      - name: Collect Tauri installers for release
+        run: |
+          mkdir -p tauri-installers
+          find tauri-release \( -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.msi" -o -name "*-setup.exe" \) \
+            -exec cp {} tauri-installers/ \;
+          echo "Tauri installers for release:"
+          ls -la tauri-installers/ 2>/dev/null || echo "No installers found"
 
       - name: List downloaded artifacts
         run: |
@@ -707,16 +1139,22 @@ jobs:
       - name: Setup Node for npm pack
         uses: ./.github/actions/setup-node
 
-      - name: Inject R2 URL and tag, then Pack
+      - name: Install npx-cli dependencies
         run: |
           cd npx-cli
-          # Replace placeholders with actual values
-          sed -i "s|__R2_PUBLIC_URL__|${{ secrets.R2_BINARIES_PUBLIC_URL }}|g" bin/download.js
-          sed -i "s|__BINARY_TAG__|${{ needs.bump-version.outputs.new_tag }}|g" bin/download.js
+          npm ci
+
+      - name: Build npx-cli TypeScript, inject secrets, and Pack
+        run: |
+          cd npx-cli
+          npm run build
+          # Replace placeholders in the bundled output
+          sed -i "s|__R2_PUBLIC_URL__|${{ secrets.R2_BINARIES_PUBLIC_URL }}|g" bin/cli.js
+          sed -i "s|__BINARY_TAG__|${{ needs.bump-version.outputs.new_tag }}|g" bin/cli.js
           npm pack
 
       - name: Create GitHub Pre-Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         with:
           tag_name: ${{ needs.bump-version.outputs.new_tag }}
           name: Pre-release ${{ needs.bump-version.outputs.new_tag }}
@@ -725,3 +1163,4 @@ jobs:
           files: |
             vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip
             npx-cli/vibe-kanban-*.tgz
+            tauri-installers/*

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckIcon, XIcon } from '@phosphor-icons/react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useNavigate } from '@tanstack/react-router';
 import { ThemeMode } from 'shared/types';
 import {
   OAuthDialog,
@@ -12,10 +12,15 @@ import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useTheme } from '@/shared/hooks/useTheme';
 import { OAuthSignInButton } from '@vibe/ui/components/OAuthButtons';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
+import { oauthApi, type AuthMethodsResponse } from '@/shared/lib/api';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
-import { resolveAppPath } from '@/shared/lib/routes/pathResolution';
-import { toWorkspacesCreate } from '@/shared/lib/routes/navigation';
+import { isTauriApp } from '@/shared/lib/platform';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+
+type OnboardingDestination =
+  | { kind: 'workspaces-create' }
+  | { kind: 'project'; projectId: string };
 
 const COMPARISON_ROWS = [
   {
@@ -53,6 +58,8 @@ const REMOTE_ONBOARDING_EVENTS = {
 type SignInCompletionMethod =
   | 'continue_logged_in'
   | 'skip_sign_in'
+  | 'auth_dialog'
+  | 'local_auth'
   | 'oauth_github'
   | 'oauth_google';
 function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
@@ -65,7 +72,7 @@ function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
 }
 
 export function OnboardingSignInPage() {
-  const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const { t } = useTranslation('common');
   const { theme } = useTheme();
   const posthog = usePostHog();
@@ -76,9 +83,23 @@ export function OnboardingSignInPage() {
   const [saving, setSaving] = useState(false);
   const isCompletingOnboardingRef = useRef(false);
   const hasTrackedStageViewRef = useRef(false);
+  const hasRedirectedToRootRef = useRef(false);
   const [pendingProvider, setPendingProvider] = useState<OAuthProvider | null>(
     null
   );
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const {
+    data: authMethods,
+    error: authMethodsError,
+    isError: isAuthMethodsError,
+  } = useQuery({
+    queryKey: ['auth', 'methods'],
+    queryFn: (): Promise<AuthMethodsResponse> => oauthApi.authMethods(),
+    staleTime: 60_000,
+  });
+  const hasLocalAuth = authMethods?.local_auth_enabled ?? false;
+  const oauthProviders = authMethods?.oauth_providers ?? [];
+  const hasOAuthProviders = oauthProviders.length > 0;
 
   const trackRemoteOnboardingEvent = useCallback(
     (eventName: string, properties: Record<string, unknown> = {}) => {
@@ -108,15 +129,30 @@ export function OnboardingSignInPage() {
     hasTrackedStageViewRef.current = true;
   }, [config, isLoggedIn, loading, trackRemoteOnboardingEvent]);
 
-  const getOnboardingDestination = async (): Promise<string> => {
+  useEffect(() => {
+    if (!config?.remote_onboarding_acknowledged) {
+      return;
+    }
+    if (isCompletingOnboardingRef.current || hasRedirectedToRootRef.current) {
+      return;
+    }
+
+    hasRedirectedToRootRef.current = true;
+    appNavigation.goToRoot({ replace: true });
+  }, [appNavigation, config?.remote_onboarding_acknowledged]);
+
+  const getOnboardingDestination = async (): Promise<OnboardingDestination> => {
     const firstProjectDestination =
       await getFirstProjectDestination(setSelectedOrgId);
-    if (!firstProjectDestination) {
+    if (
+      !firstProjectDestination ||
+      firstProjectDestination.kind !== 'project'
+    ) {
       trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.STAGE_FAILED, {
         stage: 'sign_in',
         reason: 'destination_lookup_failed',
       });
-      return '/workspaces/create';
+      return { kind: 'workspaces-create' };
     }
 
     return firstProjectDestination;
@@ -156,12 +192,18 @@ export function OnboardingSignInPage() {
     trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.STAGE_COMPLETED, {
       stage: 'sign_in',
       method: options.method,
-      destination,
+      destination_kind: destination.kind,
+      destination_project_id:
+        destination.kind === 'project' ? destination.projectId : null,
     });
-    navigate({
-      ...(resolveAppPath(destination) ?? toWorkspacesCreate()),
-      replace: true,
-    });
+    switch (destination.kind) {
+      case 'workspaces-create':
+        appNavigation.goToWorkspacesCreate({ replace: true });
+        return;
+      case 'project':
+        appNavigation.goToProject(destination.projectId, { replace: true });
+        return;
+    }
   };
 
   const handleProviderSignIn = async (provider: OAuthProvider) => {
@@ -173,18 +215,36 @@ export function OnboardingSignInPage() {
     });
 
     setPendingProvider(provider);
-    const profile = await OAuthDialog.show({ initialProvider: provider });
+    const didSignIn = await OAuthDialog.show({ initialProvider: provider });
     setPendingProvider(null);
 
     trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.PROVIDER_RESULT, {
       stage: 'sign_in',
       provider,
-      result: profile ? 'success' : 'cancelled',
+      result: didSignIn ? 'success' : 'cancelled',
     });
+
+    if (didSignIn) {
+      await finishOnboarding({
+        method: provider === 'github' ? 'oauth_github' : 'oauth_google',
+      });
+    }
+  };
+
+  const handleDialogSignIn = async () => {
+    if (saving || pendingProvider || isAuthDialogOpen) return;
+
+    setIsAuthDialogOpen(true);
+    let profile = null;
+    try {
+      profile = await OAuthDialog.show({});
+    } finally {
+      setIsAuthDialogOpen(false);
+    }
 
     if (profile) {
       await finishOnboarding({
-        method: provider === 'github' ? 'oauth_github' : 'oauth_google',
+        method: 'auth_dialog',
       });
     }
   };
@@ -201,11 +261,17 @@ export function OnboardingSignInPage() {
     config.remote_onboarding_acknowledged &&
     !isCompletingOnboardingRef.current
   ) {
-    return <Navigate to="/" replace />;
+    return null;
   }
 
   return (
     <div className="h-screen overflow-auto bg-primary">
+      {isTauriApp() && (
+        <div
+          data-tauri-drag-region
+          className="fixed inset-x-0 top-0 h-10 z-10"
+        />
+      )}
       <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center px-base py-double">
         <div className="rounded-sm border border-border bg-secondary p-double space-y-double">
           <header className="space-y-double text-center">
@@ -223,12 +289,24 @@ export function OnboardingSignInPage() {
             )}
           </header>
 
+          {isAuthMethodsError && !isLoggedIn && (
+            <div className="rounded-sm border border-error/30 bg-error/10 p-base">
+              <p className="text-sm text-high">
+                {authMethodsError instanceof Error
+                  ? authMethodsError.message
+                  : 'Failed to load available sign-in methods.'}
+              </p>
+            </div>
+          )}
+
           {isLoggedIn ? (
             <section className="space-y-base">
               <p className="text-sm text-normal text-center">
                 {t('onboardingSignIn.signedInAs', {
                   name:
-                    loginStatus.profile.username || loginStatus.profile.email,
+                    loginStatus.profile?.username ||
+                    loginStatus.profile?.email ||
+                    'your account',
                 })}
               </p>
               <div className="flex justify-end">
@@ -244,20 +322,36 @@ export function OnboardingSignInPage() {
           ) : (
             <>
               <section className="flex flex-col items-center gap-2">
-                <OAuthSignInButton
-                  provider="github"
-                  onClick={() => void handleProviderSignIn('github')}
-                  disabled={saving || pendingProvider !== null}
-                  loading={pendingProvider === 'github'}
-                  loadingText="Opening GitHub..."
-                />
-                <OAuthSignInButton
-                  provider="google"
-                  onClick={() => void handleProviderSignIn('google')}
-                  disabled={saving || pendingProvider !== null}
-                  loading={pendingProvider === 'google'}
-                  loadingText="Opening Google..."
-                />
+                {!isAuthMethodsError && hasLocalAuth ? (
+                  <PrimaryButton
+                    value={isAuthDialogOpen ? 'Opening sign in...' : 'Sign in'}
+                    onClick={() => void handleDialogSignIn()}
+                    disabled={
+                      saving || pendingProvider !== null || isAuthDialogOpen
+                    }
+                  />
+                ) : !isAuthMethodsError ? (
+                  <>
+                    {hasOAuthProviders && oauthProviders.includes('github') && (
+                      <OAuthSignInButton
+                        provider="github"
+                        onClick={() => void handleProviderSignIn('github')}
+                        disabled={saving || pendingProvider !== null}
+                        loading={pendingProvider === 'github'}
+                        loadingText="Opening GitHub..."
+                      />
+                    )}
+                    {hasOAuthProviders && oauthProviders.includes('google') && (
+                      <OAuthSignInButton
+                        provider="google"
+                        onClick={() => void handleProviderSignIn('google')}
+                        disabled={saving || pendingProvider !== null}
+                        loading={pendingProvider === 'google'}
+                        loadingText="Opening Google..."
+                      />
+                    )}
+                  </>
+                ) : null}
               </section>
 
               <div className="flex justify-center">
