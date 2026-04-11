@@ -375,14 +375,21 @@ export const useJsonPatchWsStream = <T extends object>(
       if (wsRef.current) {
         const ws = wsRef.current;
 
-        // Clear all event handlers first to prevent callbacks after cleanup
-        ws.onopen = null;
+        // Clear message/error/close handlers to prevent stale callbacks
         ws.onmessage = null;
         ws.onerror = null;
         ws.onclose = null;
 
-        // Close regardless of state
-        ws.close();
+        if (ws.readyState === WebSocket.CONNECTING) {
+          // If still connecting, defer the close until onopen fires.
+          // Closing a WebSocket in CONNECTING state causes browsers to log
+          // "WebSocket is closed before the connection is established" —
+          // replacing onopen with a clean-close avoids that noise entirely.
+          ws.onopen = () => ws.close(1000, 'cleanup');
+        } else {
+          ws.onopen = null;
+          ws.close();
+        }
         wsRef.current = null;
       }
       if (retryTimerRef.current) {
