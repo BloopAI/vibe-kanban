@@ -8,7 +8,7 @@ use deployment::{Deployment, DeploymentError};
 use services::services::container::ContainerService;
 use tokio_util::sync::CancellationToken;
 use tower_http::validate_request::ValidateRequestHeaderLayer;
-use utils::assets::asset_dir;
+use utils::{assets::asset_dir, port_file::write_port_file_with_proxy_and_backend_url};
 
 use crate::{
     DeploymentImpl, middleware::origin::validate_origin, routes, runtime::relay_registration,
@@ -116,6 +116,17 @@ pub async fn start_with_bind(
     let proxy_port = proxy_listener.local_addr()?.port();
 
     tracing::info!("Server on :{port}, Preview proxy on :{proxy_port}");
+
+    let backend_url = format!("http://localhost:{port}");
+    if let Err(error) = write_port_file_with_proxy_and_backend_url(
+        port,
+        Some(proxy_port),
+        Some(backend_url.clone()),
+    )
+    .await
+    {
+        tracing::warn!("Failed to write discovery port file for {backend_url}: {error}");
+    }
 
     Ok(ServerHandle {
         port,
