@@ -50,6 +50,52 @@ pub struct WorkspacePanelStateData {
     pub is_left_main_panel_visible: bool,
 }
 
+/// Workspace sidebar PR filter state
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkspacePrFilterData {
+    #[default]
+    All,
+    HasPr,
+    NoPr,
+}
+
+/// Workspace sidebar sort field
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkspaceSortByData {
+    #[default]
+    UpdatedAt,
+    CreatedAt,
+}
+
+/// Workspace sidebar sort order
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkspaceSortOrderData {
+    Asc,
+    #[default]
+    Desc,
+}
+
+/// Workspace sidebar filter state
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+pub struct WorkspaceFilterStateData {
+    #[serde(default)]
+    pub project_ids: Vec<String>,
+    #[serde(default)]
+    pub pr_filter: WorkspacePrFilterData,
+}
+
+/// Workspace sidebar sort state
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+pub struct WorkspaceSortStateData {
+    #[serde(default)]
+    pub sort_by: WorkspaceSortByData,
+    #[serde(default)]
+    pub sort_order: WorkspaceSortOrderData,
+}
+
 /// Data for UI preferences scratch (global preferences stored per-user or per-device)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct UiPreferencesData {
@@ -83,6 +129,27 @@ pub struct UiPreferencesData {
     /// Workspace-specific panel states
     #[serde(default)]
     pub workspace_panel_states: std::collections::HashMap<String, WorkspacePanelStateData>,
+    /// Workspace sidebar filter preferences
+    #[serde(default)]
+    pub workspace_filters: WorkspaceFilterStateData,
+    /// Workspace sidebar sort preferences
+    #[serde(default)]
+    pub workspace_sort: WorkspaceSortStateData,
+    /// Last selected organization ID
+    #[serde(default)]
+    pub selected_org_id: Option<String>,
+    /// Last selected project ID
+    #[serde(default)]
+    pub selected_project_id: Option<String>,
+    /// Default setting for creating a draft workspace from new issues
+    #[serde(default)]
+    pub create_draft_workspace_by_default: Option<bool>,
+    /// Kanban project view selections (active view per project)
+    #[serde(default)]
+    pub kanban_project_view_selections: std::collections::HashMap<String, serde_json::Value>,
+    /// Kanban project view preferences (filters, toggles per project per view)
+    #[serde(default)]
+    pub kanban_project_view_preferences: std::collections::HashMap<String, serde_json::Value>,
 }
 
 /// Linked issue data for draft workspace scratch
@@ -94,18 +161,29 @@ pub struct DraftWorkspaceLinkedIssue {
     pub remote_project_id: String,
 }
 
+/// Uploaded attachment stored in a draft workspace
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct DraftWorkspaceAttachment {
+    pub id: Uuid,
+    pub file_path: String,
+    pub original_name: String,
+    #[serde(default)]
+    pub mime_type: Option<String>,
+    pub size_bytes: i64,
+}
+
 /// Data for a draft workspace scratch (new workspace creation)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct DraftWorkspaceData {
     pub message: String,
-    #[serde(default)]
-    pub project_id: Option<Uuid>,
     #[serde(default)]
     pub repos: Vec<DraftWorkspaceRepo>,
     #[serde(default, alias = "selected_profile", alias = "config")]
     pub executor_config: Option<ExecutorConfig>,
     #[serde(default)]
     pub linked_issue: Option<DraftWorkspaceLinkedIssue>,
+    #[serde(default)]
+    pub attachments: Vec<DraftWorkspaceAttachment>,
 }
 
 /// Repository entry in a draft workspace
@@ -113,6 +191,12 @@ pub struct DraftWorkspaceData {
 pub struct DraftWorkspaceRepo {
     pub repo_id: Uuid,
     pub target_branch: String,
+}
+
+/// Data for project repo defaults scratch (default repos/branches per project)
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct ProjectRepoDefaultsData {
+    pub repos: Vec<DraftWorkspaceRepo>,
 }
 
 /// Data for a draft issue scratch (issue creation on kanban board)
@@ -156,6 +240,7 @@ pub enum ScratchPayload {
     PreviewSettings(PreviewSettingsData),
     WorkspaceNotes(WorkspaceNotesData),
     UiPreferences(UiPreferencesData),
+    ProjectRepoDefaults(ProjectRepoDefaultsData),
 }
 
 impl ScratchPayload {

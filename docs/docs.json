@@ -25,6 +25,10 @@
         "pages": [
           "index",
           "getting-started",
+          "browser-testing",
+          "issue-management",
+          "reviewing-code",
+          "remote-access",
           {
             "group": "Supported Coding Agents",
             "expanded": true,
@@ -57,7 +61,6 @@
           "workspaces/interface",
           "workspaces/command-bar",
           "workspaces/multi-repo-sessions",
-          "workspaces/preview",
           "workspaces/changes",
           "workspaces/git-operations"
         ]
@@ -67,7 +70,6 @@
         "pages": [
           "cloud/index",
           "cloud/getting-started",
-          "cloud/migration",
           "cloud/authentication",
           "cloud/organizations",
           "cloud/team-members",
@@ -118,7 +120,8 @@
       {
         "group": "Help",
         "pages": [
-          "troubleshooting"
+          "troubleshooting",
+          "responsible-disclosure"
         ]
       }
     ]
@@ -158,6 +161,16 @@
       "apiHost": "https://eu.i.posthog.com"
     }
   },
+  "redirects": [
+    {
+      "source": "/workspaces/preview",
+      "destination": "/browser-testing"
+    },
+    {
+      "source": "/remote-control",
+      "destination": "/remote-access"
+    }
+  ],
   "footer": {
     "socials": {
       "github": "https://github.com/BloopAI/vibe-kanban",

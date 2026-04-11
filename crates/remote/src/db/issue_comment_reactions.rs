@@ -1,11 +1,10 @@
+use api_types::{DeleteResponse, IssueCommentReaction, MutationResponse};
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use thiserror::Error;
-use api_types::IssueCommentReaction;
 use uuid::Uuid;
 
 use super::get_txid;
-use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum IssueCommentReactionError {
@@ -40,6 +39,29 @@ impl IssueCommentReactionRepository {
         Ok(record)
     }
 
+    pub async fn list_by_issue(
+        pool: &PgPool,
+        issue_id: Uuid,
+    ) -> Result<Vec<IssueCommentReaction>, IssueCommentReactionError> {
+        let records = sqlx::query_as!(
+            IssueCommentReaction,
+            r#"
+            SELECT
+                id          AS "id!: Uuid",
+                comment_id  AS "comment_id!: Uuid",
+                user_id     AS "user_id!: Uuid",
+                emoji       AS "emoji!",
+                created_at  AS "created_at!: DateTime<Utc>"
+            FROM issue_comment_reactions
+            WHERE comment_id IN (SELECT id FROM issue_comments WHERE issue_id = $1)
+            "#,
+            issue_id
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok(records)
+    }
+
     pub async fn create(
         pool: &PgPool,
         id: Option<Uuid>,
@@ -47,7 +69,7 @@ impl IssueCommentReactionRepository {
         user_id: Uuid,
         emoji: String,
     ) -> Result<MutationResponse<IssueCommentReaction>, IssueCommentReactionError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         let id = id.unwrap_or_else(Uuid::new_v4);
         let created_at = Utc::now();
         let data = sqlx::query_as!(
@@ -83,7 +105,7 @@ impl IssueCommentReactionRepository {
         id: Uuid,
         emoji: Option<String>,
     ) -> Result<MutationResponse<IssueCommentReaction>, IssueCommentReactionError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         let data = sqlx::query_as!(
             IssueCommentReaction,
             r#"
@@ -113,7 +135,7 @@ impl IssueCommentReactionRepository {
         pool: &PgPool,
         id: Uuid,
     ) -> Result<DeleteResponse, IssueCommentReactionError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         sqlx::query!("DELETE FROM issue_comment_reactions WHERE id = $1", id)
             .execute(&mut *tx)
             .await?;

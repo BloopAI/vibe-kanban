@@ -14,13 +14,13 @@ use crate::{DeploymentImpl, error::ApiError, middleware::load_session_middleware
 
 /// Request body for queueing a follow-up message
 #[derive(Debug, Deserialize, TS)]
-pub struct QueueMessageRequest {
+struct QueueMessageRequest {
     pub message: String,
     pub executor_config: ExecutorConfig,
 }
 
 /// Queue a follow-up message to be executed when the current execution finishes
-pub async fn queue_message(
+async fn queue_message(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<QueueMessageRequest>,
@@ -50,7 +50,7 @@ pub async fn queue_message(
 }
 
 /// Cancel a queued follow-up message
-pub async fn cancel_queued_message(
+async fn cancel_queued_message(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<QueueStatus>>, ApiError> {
@@ -72,7 +72,7 @@ pub async fn cancel_queued_message(
 }
 
 /// Get the current queue status for a session's workspace
-pub async fn get_queue_status(
+async fn get_queue_status(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<QueueStatus>>, ApiError> {
@@ -81,7 +81,7 @@ pub async fn get_queue_status(
     Ok(ResponseJson(ApiResponse::success(status)))
 }
 
-pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
+pub(super) fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
         .route(
             "/",

@@ -1,3 +1,7 @@
+use api_types::{
+    CreateTagRequest, DeleteResponse, ListTagsQuery, ListTagsResponse, MutationResponse, Tag,
+    UpdateTagRequest,
+};
 use axum::{
     Json,
     extract::{Extension, Path, Query, State},
@@ -10,14 +14,12 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_project_access,
 };
-use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
     db::{tags::TagRepository, types::is_valid_hsl_color},
     mutation_definition::MutationBuilder,
 };
-use api_types::{CreateTagRequest, ListTagsQuery, ListTagsResponse, Tag, UpdateTagRequest};
 
 /// Mutation definition for Tags - provides both router and TypeScript metadata.
 pub fn mutation() -> MutationBuilder<Tag, CreateTagRequest, UpdateTagRequest> {

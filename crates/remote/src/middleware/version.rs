@@ -5,7 +5,7 @@ use axum::{
     response::Response,
 };
 
-pub async fn add_version_headers(request: Request<Body>, next: Next) -> Response {
+pub(crate) async fn add_version_headers(request: Request<Body>, next: Next) -> Response {
     let mut response = next.run(request).await;
 
     response.headers_mut().insert(

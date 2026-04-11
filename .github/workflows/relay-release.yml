@@ -1,0 +1,22 @@
+name: Create Relay Release
+
+on:
+  repository_dispatch:
+    types: [relay-deploy-success]
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
+        with:
+          tag_name: ${{ github.event.client_payload.tag }}
+          name: ${{ github.event.client_payload.tag }}
+          generate_release_notes: true
+          body: |
+            ## Relay Tunnel Service Release
+
+            Deployed to ${{ github.event.client_payload.environment }}

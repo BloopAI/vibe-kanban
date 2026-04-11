@@ -1,0 +1,28 @@
+name: Relay Deploy Dev
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - crates/relay-tunnel/**
+  workflow_dispatch:
+
+jobs:
+  run-relay-deploy:
+    name: Deploy Relay Dev
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Dispatch dev relay deployment workflow
+        uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4.0.1
+        with:
+          token: ${{ secrets.REMOTE_DEPLOYMENT_TOKEN }}
+          repository: BloopAI/vibe-kanban-remote-deployment
+          event-type: vibe-kanban-relay-deploy-dev
+          client-payload: |
+            {
+              "ref": "${{ github.ref_name }}",
+              "sha": "${{ github.sha }}"
+            }

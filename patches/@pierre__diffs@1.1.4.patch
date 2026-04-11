@@ -1,0 +1,157 @@
+diff --git a/dist/components/Virtualizer.js b/dist/components/Virtualizer.js
+index e4b89af8d90823d381c95f95fa0f6a9d904f6c76..8068f79512e6735cba0d6d616138e4bdb22b8086 100644
+--- a/dist/components/Virtualizer.js
++++ b/dist/components/Virtualizer.js
+@@ -44,6 +44,28 @@ var Virtualizer = class Virtualizer {
+ 	scrollHeightDirty = true;
+ 	renderedObservers = 0;
+ 	connectQueue = /* @__PURE__ */ new Map();
++	pendingScrollRequest;
++	scrollFileToTop(fileElement) {
++		this.finishPendingScrollRequest();
++		return new Promise((resolve) => {
++			this.pendingScrollRequest = {
++				anchor: { fileElement, fileTypeOffset: "top", fileOffset: 0, lineIndex: void 0, lineOffset: void 0 },
++				resolve
++			};
++			this.scrollDirty = true;
++			queueRender(this.computeRenderRangeAndEmit);
++		});
++	}
++	finishPendingScrollRequest(request = this.pendingScrollRequest) {
++		if (request == null) return;
++		if (this.pendingScrollRequest === request) this.pendingScrollRequest = void 0;
++		request.resolve();
++	}
++	isAnchorSatisfied(anchor) {
++		const scrollContainer = this.getScrollContainerElement();
++		const top = getRelativeBoundingTop(anchor.fileElement, scrollContainer);
++		return Math.abs(top - anchor.fileOffset) <= 1;
++	}
+ 	constructor(config) {
+ 		this.config = {
+ 			...DEFAULT_VIRTUALIZER_CONFIG,
+@@ -153,6 +175,7 @@ var Virtualizer = class Virtualizer {
+ 		}
+ 	}
+ 	cleanUp() {
++		this.finishPendingScrollRequest();
+ 		this.resizeObserver?.disconnect();
+ 		this.resizeObserver = void 0;
+ 		this.intersectionObserver?.disconnect();
+@@ -217,8 +240,12 @@ var Virtualizer = class Virtualizer {
+ 	};
+ 	computeRenderRangeAndEmit = () => {
+ 		if (Virtualizer.__STOP) return;
++		const pendingScrollRequest = this.pendingScrollRequest;
++		const pendingAnchor = pendingScrollRequest?.anchor;
+ 		const wrapperDirty = this.heightDirty || this.scrollHeightDirty;
+-		if (!this.scrollDirty && !this.scrollHeightDirty && !this.heightDirty && this.renderedObservers === this.observers.size && !this.visibleInstancesDirty && this.instancesChanged.size === 0) return;
++		const hadVisibleInstancesDirty = this.visibleInstancesDirty;
++		const hadInstanceChanges = this.instancesChanged.size > 0;
++		if (pendingAnchor == null && !this.scrollDirty && !this.scrollHeightDirty && !this.heightDirty && this.renderedObservers === this.observers.size && !this.visibleInstancesDirty && this.instancesChanged.size === 0) return;
+ 		if (this.instancesChanged.size === 0) {
+ 			const windowSpecs = createWindowFromScrollPosition({
+ 				scrollTop: this.getScrollTop(),
+@@ -227,47 +254,57 @@ var Virtualizer = class Virtualizer {
+ 				fitPerfectly: false,
+ 				overscrollSize: this.config.overscrollSize
+ 			});
+-			if (areVirtualWindowSpecsEqual(this.windowSpecs, windowSpecs) && this.renderedObservers === this.observers.size && !this.visibleInstancesDirty && this.instancesChanged.size === 0) return;
++			if (pendingAnchor == null && areVirtualWindowSpecsEqual(this.windowSpecs, windowSpecs) && this.renderedObservers === this.observers.size && !this.visibleInstancesDirty && this.instancesChanged.size === 0) return;
+ 			this.windowSpecs = windowSpecs;
+ 		}
+ 		this.visibleInstancesDirty = false;
+ 		this.renderedObservers = this.observers.size;
+-		const anchor = this.getScrollAnchor(this.height);
++		const anchor = pendingAnchor ?? this.getScrollAnchor(this.height);
+ 		const updatedInstances = /* @__PURE__ */ new Set();
+ 		for (const instance$1 of wrapperDirty ? this.observers.values() : this.visibleInstances.values()) if (instance$1.onRender(wrapperDirty)) updatedInstances.add(instance$1);
+ 		for (const instance$1 of this.instancesChanged) {
+ 			if (updatedInstances.has(instance$1)) continue;
+ 			if (instance$1.onRender(wrapperDirty)) updatedInstances.add(instance$1);
+ 		}
+-		this.scrollFix(anchor);
++		const didScrollFix = this.scrollFix(anchor);
+ 		if (this.instancesChanged.size > 0) this.markDOMDirty();
+ 		for (const instance$1 of updatedInstances) instance$1.reconcileHeights();
+-		if (this.instancesChanged.size > 0 || wrapperDirty) queueRender(this.computeRenderRangeAndEmit);
++		const hadUpdatedInstances = updatedInstances.size > 0;
++		const shouldKeepPendingScroll = pendingAnchor != null && (!this.visibleInstances.has(pendingAnchor.fileElement) || !this.isAnchorSatisfied(pendingAnchor) || didScrollFix || wrapperDirty || hadVisibleInstancesDirty || hadInstanceChanges || hadUpdatedInstances);
++		if (pendingScrollRequest != null && !shouldKeepPendingScroll) this.finishPendingScrollRequest(pendingScrollRequest);
++		if (shouldKeepPendingScroll || this.instancesChanged.size > 0 || wrapperDirty) queueRender(this.computeRenderRangeAndEmit);
+ 		updatedInstances.clear();
+ 		this.instancesChanged.clear();
+ 	};
+ 	scrollFix(anchor) {
+-		if (anchor == null) return;
++		if (anchor == null) return false;
+ 		const scrollContainer = this.getScrollContainerElement();
+ 		const { lineIndex, lineOffset, fileElement, fileOffset, fileTypeOffset } = anchor;
+ 		if (lineIndex != null && lineOffset != null) {
+ 			const element = fileElement.shadowRoot?.querySelector(`[data-line][data-line-index="${lineIndex}"]`);
+ 			if (element instanceof HTMLElement) {
+ 				const top$1 = getRelativeBoundingTop(element, scrollContainer);
+-				if (top$1 !== lineOffset) {
+-					const scrollOffset = top$1 - lineOffset;
+-					this.applyScrollFix(scrollOffset);
++				if (Math.abs(top$1 - lineOffset) > 1) {
++					this.applyScrollFix(top$1 - lineOffset);
++					return true;
+ 				}
+-				return;
++				return false;
+ 			}
+ 		}
+ 		const top = getRelativeBoundingTop(fileElement, scrollContainer);
+ 		if (fileTypeOffset === "top") {
+-			if (top !== fileOffset) this.applyScrollFix(top - fileOffset);
++			if (Math.abs(top - fileOffset) > 1) {
++				this.applyScrollFix(top - fileOffset);
++				return true;
++			}
+ 		} else {
+ 			const bottom = top + fileElement.getBoundingClientRect().height;
+-			if (bottom !== fileOffset) this.applyScrollFix(bottom - fileOffset);
++			if (Math.abs(bottom - fileOffset) > 1) {
++				this.applyScrollFix(bottom - fileOffset);
++				return true;
++			}
+ 		}
++		return false;
+ 	}
+ 	applyScrollFix(scrollOffset) {
+ 		if (this.root == null || this.root instanceof Document) window.scrollTo({
+diff --git a/dist/react/Virtualizer.js b/dist/react/Virtualizer.js
+index 94b415c314670073f195668de8700ec1d2a87aff..bf97b94859ca9bd869c289b82b233150f988b6c4 100644
+--- a/dist/react/Virtualizer.js
++++ b/dist/react/Virtualizer.js
+@@ -2,15 +2,16 @@
+ 
+ 
+ import { Virtualizer as Virtualizer$1 } from "../components/Virtualizer.js";
+-import { createContext, useCallback, useContext, useState } from "react";
++import { createContext, forwardRef, useCallback, useContext, useImperativeHandle, useState } from "react";
+ import { jsx } from "react/jsx-runtime";
+ 
+ //#region src/react/Virtualizer.tsx
+ const VirtualizerContext = createContext(void 0);
+-function Virtualizer({ children, config, className, style, contentClassName, contentStyle }) {
++const Virtualizer = forwardRef(function Virtualizer({ children, config, className, style, contentClassName, contentStyle }, externalRef) {
+ 	const [instance] = useState(() => {
+ 		return typeof window !== "undefined" ? new Virtualizer$1(config) : void 0;
+ 	});
++	useImperativeHandle(externalRef, () => instance ?? null, [instance]);
+ 	const ref = useCallback((node) => {
+ 		if (node != null) instance?.setup(node);
+ 		else instance?.cleanUp();
+@@ -28,7 +29,8 @@ function Virtualizer({ children, config, className, style, contentClassName, con
+ 			})
+ 		})
+ 	});
+-}
++});
++Virtualizer.displayName = "Virtualizer";
+ function useVirtualizer() {
+ 	return useContext(VirtualizerContext);
+ }

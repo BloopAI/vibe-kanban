@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT n.nspname AS schema_name, c.relname AS table_name\n           FROM pg_publication_rel pr\n           JOIN pg_publication p ON pr.prpubid = p.oid\n           JOIN pg_class c ON pr.prrelid = c.oid\n           JOIN pg_namespace n ON c.relnamespace = n.oid\n           WHERE p.pubname = 'electric_publication_default'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "schema_name",
+        "type_info": "Name"
+      },
+      {
+        "ordinal": 1,
+        "name": "table_name",
+        "type_info": "Name"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "ce7908cdeecd4b4b94c92256bd800c165567ebe5644cfd702a9e4c0bb24091d4"
+}

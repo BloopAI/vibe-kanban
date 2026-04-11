@@ -1,9 +1,9 @@
 <p align="center">
   <a href="https://vibekanban.com">
     <picture>
-      <source srcset="frontend/public/vibe-kanban-logo-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="frontend/public/vibe-kanban-logo.svg" media="(prefers-color-scheme: light)">
-      <img src="frontend/public/vibe-kanban-logo.svg" alt="Vibe Kanban Logo">
+      <source srcset="packages/public/vibe-kanban-logo-dark.svg" media="(prefers-color-scheme: dark)">
+      <source srcset="packages/public/vibe-kanban-logo.svg" media="(prefers-color-scheme: light)">
+      <img src="packages/public/vibe-kanban-logo.svg" alt="Vibe Kanban Logo">
     </picture>
   </a>
 </p>
@@ -19,24 +19,33 @@
   <a href="https://jobs.polymer.co/vibe-kanban?source=github"><strong>We're hiring!</strong></a>
 </h1>
 
-![](frontend/public/vibe-kanban-screenshot-overview.png)
+![](packages/public/vibe-kanban-screenshot-overview.png)
 
 ## Overview
 
-AI coding agents are increasingly writing the world's code and human engineers now spend the majority of their time planning, reviewing, and orchestrating tasks. Vibe Kanban streamlines this process, enabling you to:
+In a world where software engineers spend most of their time planning and reviewing coding agents, the most impactful way to ship more is to get faster at planning and review.
 
-- Easily switch between different coding agents
-- Orchestrate the execution of multiple coding agents in parallel or in sequence
-- Quickly review work and start dev servers
-- Track the status of tasks that your coding agents are working on
-- Centralise configuration of coding agent MCP configs
-- Open projects remotely via SSH when running Vibe Kanban on a remote server
+Vibe Kanban is built for this. Use kanban issues to plan work, either privately or with your team. When you're ready to begin, create workspaces where coding agents can execute.
 
-You can watch a video overview [here](https://youtu.be/TFT3KnZOOAk).
+- **Plan with kanban issues** — create, prioritise, and assign issues on a kanban board
+- **Run coding agents in workspaces** — each workspace gives an agent a branch, a terminal, and a dev server
+- **Review diffs and leave inline comments** — send feedback directly to the agent without leaving the UI
+- **Preview your app** — built-in browser with devtools, inspect mode, and device emulation
+- **Switch between 10+ coding agents** — Claude Code, Codex, Gemini CLI, GitHub Copilot, Amp, Cursor, OpenCode, Droid, CCR, and Qwen Code
+- **Create pull requests and merge** — open PRs with AI-generated descriptions, review on GitHub, and merge
+
+![](packages/public/vibe-kanban-screenshot-workspace.png)
+
+One command. Describe the work, review the diff, ship it.
+
+```bash
+npx vibe-kanban
+```
+
 
 ## Installation
 
-Make sure you have authenticated with your favourite coding agent. A full list of supported coding agents can be found in the [docs](https://vibekanban.com/docs). Then in your terminal run:
+Make sure you have authenticated with your favourite coding agent. A full list of supported coding agents can be found in the [docs](https://vibekanban.com/docs/supported-coding-agents). Then in your terminal run:
 
 ```bash
 npx vibe-kanban
@@ -44,12 +53,12 @@ npx vibe-kanban
 
 ## Documentation
 
-Please head to the [website](https://vibekanban.com/docs) for the latest documentation and user guides.
+Head to the [website](https://vibekanban.com/docs) for the latest documentation and user guides.
 
 ## Self-Hosting
 
-Want to host your own Vibe Kanban Cloud instance? See our [self-hosting guide](https://vibekanban.com/docs/self-hosting).
-  
+Want to host your own Vibe Kanban Cloud instance? See our [self-hosting guide](https://vibekanban.com/docs/self-hosting/deploy-docker).
+
 ## Support
 
 We use [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) for feature requests. Please open a discussion to create a feature request. For bugs please open an issue on this repo.
@@ -63,7 +72,7 @@ We would prefer that ideas and changes are first raised with the core team via [
 ### Prerequisites
 
 - [Rust](https://rustup.rs/) (latest stable)
-- [Node.js](https://nodejs.org/) (>=18)
+- [Node.js](https://nodejs.org/) (>=20)
 - [pnpm](https://pnpm.io/) (>=8)
 
 Additional development tools:
@@ -83,15 +92,15 @@ pnpm i
 pnpm run dev
 ```
 
-This will start the backend and frontend. A blank DB will be copied from the `dev_assets_seed` folder.
+This will start the backend and web app. A blank DB will be copied from the `dev_assets_seed` folder.
 
-### Building the frontend
+### Building the web app
 
-To build just the frontend:
+To build just the web app:
 
 ```bash
-cd frontend
-pnpm build
+cd packages/local-web
+pnpm run build
 ```
 
 ### Build from source (macOS)
@@ -115,6 +124,9 @@ The following environment variables can be configured at build time or runtime:
 | `MCP_PORT` | Runtime | Value of `BACKEND_PORT` | MCP server connection port |
 | `DISABLE_WORKTREE_CLEANUP` | Runtime | Not set | Disable all git worktree cleanup including orphan and expired workspace cleanup (for debugging) |
 | `VK_ALLOWED_ORIGINS` | Runtime | Not set | Comma-separated list of origins that are allowed to make backend API requests (e.g., `https://my-vibekanban-frontend.com`) |
+| `VK_SHARED_API_BASE` | Runtime | Not set | Base URL for the remote/cloud API used by the local desktop app |
+| `VK_SHARED_RELAY_API_BASE` | Runtime | Not set | Base URL for the relay API used by tunnel-mode connections |
+| `VK_TUNNEL` | Runtime | Not set | Enable relay tunnel mode when set (requires relay API base URL) |
 
 **Build-time variables** must be set when running `pnpm run build`. **Runtime variables** are read when the application starts.
 
@@ -147,4 +159,4 @@ When running Vibe Kanban on a remote server (e.g., via systemctl, Docker, or clo
 
 When configured, the "Open in VSCode" buttons will generate URLs like `vscode://vscode-remote/ssh-remote+user@host/path` that open your local editor and connect to the remote server.
 
-See the [documentation](https://vibekanban.com/docs/configuration-customisation/global-settings#remote-ssh-configuration) for detailed setup instructions.
+See the [documentation](https://vibekanban.com/docs/settings/general) for detailed setup instructions.

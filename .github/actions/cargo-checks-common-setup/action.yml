@@ -33,19 +33,19 @@ runs:
 
     - name: Install Rust toolchain
       if: ${{ inputs.components == '' }}
-      uses: dtolnay/rust-toolchain@stable
+      uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
       with:
         toolchain: ${{ inputs.toolchain }}
 
     - name: Install Rust toolchain with components
       if: ${{ inputs.components != '' }}
-      uses: dtolnay/rust-toolchain@stable
+      uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
       with:
         toolchain: ${{ inputs.toolchain }}
         components: ${{ inputs.components }}
 
     - name: Cache Rust dependencies
-      uses: Swatinem/rust-cache@v2
+      uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
       env:
         RUST_CACHE_DEBUG: true
       with:

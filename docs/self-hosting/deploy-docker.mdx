@@ -13,7 +13,9 @@ This guide covers deploying Vibe Kanban Cloud on any Linux server using Docker C
   - **10GB disk space**
   - A **domain name** pointing to your server
 - **SSL certificate** (we'll use Caddy for automatic HTTPS)
-- OAuth credentials from [GitHub](https://github.com/settings/developers) or [Google](https://console.cloud.google.com/apis/credentials)
+- One authentication method:
+  - OAuth credentials from [GitHub](https://github.com/settings/developers) or [Google](https://console.cloud.google.com/apis/credentials), or
+  - bootstrap local auth credentials for a single self-hosted admin user
 
 ## Step 1: Prepare Your Server
 
@@ -34,7 +36,11 @@ git clone https://github.com/BloopAI/vibe-kanban.git
 cd vibe-kanban
 ```
 
-## Step 2: Configure OAuth
+## Step 2: Configure Authentication
+
+Choose one of these options:
+
+### Option A: OAuth
 
 Update your OAuth application callback URLs to use your domain:
 
@@ -47,6 +53,17 @@ Update your OAuth application callback URLs to use your domain:
 - **Authorized redirect URI**: `https://your-domain.com/v1/oauth/google/callback`
 </Tab>
 </Tabs>
+
+### Option B: Bootstrap Local Auth
+
+If you do not want to configure OAuth yet, you can bootstrap a single local admin login:
+
+```env
+SELF_HOST_LOCAL_AUTH_EMAIL=admin@example.com
+SELF_HOST_LOCAL_AUTH_PASSWORD=replace_with_a_strong_password
+```
+
+This is useful for initial self-hosted setup, but it is a single shared credential pair rather than a full multi-user identity system.
 
 ## Step 3: Create Environment File
 
@@ -67,11 +84,16 @@ DB_PASSWORD=<secure_database_password>
 # Your domain
 DOMAIN=your-domain.com
 
-# OAuth — configure at least one provider. Leave the other empty or remove it.
+# Relay API base URL (required if you enable relay/tunnel)
+VITE_RELAY_API_BASE_URL=https://relay.your-domain.com
+
+# Authentication — configure at least one provider, or set bootstrap local auth credentials.
 GITHUB_OAUTH_CLIENT_ID=your_github_client_id
 GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
 GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
+SELF_HOST_LOCAL_AUTH_EMAIL=
+SELF_HOST_LOCAL_AUTH_PASSWORD=
 
 # Email (optional — leave empty to disable invitation emails)
 LOOPS_EMAIL_API_KEY=
@@ -79,6 +101,19 @@ LOOPS_EMAIL_API_KEY=
 # User whitelist (optional — leave empty to allow all users)
 # Comma-separated list of allowed email addresses
 ALLOWED_USERS=admin@example.com,user@example.com
+
+# Loops transactional email template IDs (optional — defaults are the upstream templates).
+# Override these with your own Loops account template IDs if using a custom Loops account.
+LOOPS_INVITE_TEMPLATE_ID=cmhvy2wgs3s13z70i1pxakij9
+LOOPS_REVIEW_READY_TEMPLATE_ID=cmj47k5ge16990iylued9by17
+LOOPS_REVIEW_FAILED_TEMPLATE_ID=cmj49ougk1c8s0iznavijdqpo
+
+# Attachments (optional — only set when you want issue attachments enabled)
+AZURE_STORAGE_ACCOUNT_NAME=
+AZURE_STORAGE_ACCOUNT_KEY=
+AZURE_STORAGE_CONTAINER_NAME=issue-attachments
+AZURE_STORAGE_ENDPOINT_URL=
+AZURE_STORAGE_PUBLIC_ENDPOINT_URL=
 ```
 
 <Info>
@@ -124,7 +159,7 @@ services:
       start_period: 5s
 
   electric:
-    image: electricsql/electric:1.3.3
+    image: electricsql/electric:1.4.13
     working_dir: /app
     restart: unless-stopped
     environment:
@@ -148,6 +183,8 @@ services:
     build:
       context: ../..
       dockerfile: crates/remote/Dockerfile
+      args:
+        VITE_RELAY_API_BASE_URL: ${VITE_RELAY_API_BASE_URL:-}
     restart: unless-stopped
     depends_on:
       remote-db:
@@ -166,6 +203,16 @@ services:
       ELECTRIC_ROLE_PASSWORD: ${ELECTRIC_ROLE_PASSWORD}
       LOOPS_EMAIL_API_KEY: ${LOOPS_EMAIL_API_KEY:-}
       ALLOWED_USERS: ${ALLOWED_USERS:-}
+      LOOPS_INVITE_TEMPLATE_ID: ${LOOPS_INVITE_TEMPLATE_ID:-cmhvy2wgs3s13z70i1pxakij9}
+      LOOPS_REVIEW_READY_TEMPLATE_ID: ${LOOPS_REVIEW_READY_TEMPLATE_ID:-cmj47k5ge16990iylued9by17}
+      LOOPS_REVIEW_FAILED_TEMPLATE_ID: ${LOOPS_REVIEW_FAILED_TEMPLATE_ID:-cmj49ougk1c8s0iznavijdqpo}
+      SELF_HOST_LOCAL_AUTH_EMAIL: ${SELF_HOST_LOCAL_AUTH_EMAIL:-}
+      SELF_HOST_LOCAL_AUTH_PASSWORD: ${SELF_HOST_LOCAL_AUTH_PASSWORD:-}
+      AZURE_STORAGE_ACCOUNT_NAME:
+      AZURE_STORAGE_ACCOUNT_KEY:
+      AZURE_STORAGE_CONTAINER_NAME:
+      AZURE_STORAGE_ENDPOINT_URL:
+      AZURE_STORAGE_PUBLIC_ENDPOINT_URL:
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8081/v1/health"]
       interval: 5s
@@ -182,13 +229,17 @@ volumes:
 
 ## Step 5: Create Caddyfile
 
-Create a `Caddyfile` in the `crates/remote` directory for automatic HTTPS:
+Create a `Caddyfile` in the `crates/remote` directory for automatic HTTPS (core app/API):
 
 ```text Caddyfile
 {$DOMAIN} {
     reverse_proxy remote-server:8081
 }
 ```
+
+<Info>
+This base deployment serves the main Cloud app/API only. Relay/tunnel support is optional and requires additional relay routing plus wildcard DNS/TLS for your relay domain.
+</Info>
 
 ## Step 6: Deploy
 
@@ -210,8 +261,46 @@ The first build takes 10-15 minutes. Subsequent deployments are faster as Docker
 
 1. Open `https://your-domain.com` in your browser
 2. You should see the Vibe Kanban Cloud login page
-3. Sign in with your OAuth provider
+3. Sign in with your configured auth method
 4. Create your first organisation and project
+
+## Optional: Enable Relay/Tunnel in Production
+
+Relay/tunnel support requires:
+
+1. A running `relay-server` service
+2. Reverse proxy routing for both `relay.your-domain.com` and `*.relay.your-domain.com`
+3. A wildcard certificate for `*.relay.your-domain.com` (or equivalent managed TLS at your edge)
+4. `VITE_RELAY_API_BASE_URL` set to your public relay API base URL before building `remote-server`
+
+### Add relay-server to docker compose
+
+```yaml docker-compose.prod.yml
+  relay-server:
+    build:
+      context: ../..
+      dockerfile: crates/relay-tunnel/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      remote-db:
+        condition: service_healthy
+    environment:
+      RUST_LOG: info
+      SERVER_DATABASE_URL: postgres://remote:${DB_PASSWORD:-remote}@remote-db:5432/remote
+      RELAY_LISTEN_ADDR: 0.0.0.0:8082
+      VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET}
+```
+
+### Add relay proxy routes
+
+Your reverse proxy must route:
+
+- `relay.your-domain.com` -> `relay-server:8082`
+- `*.relay.your-domain.com` -> `relay-server:8082`
+
+<Warning>
+Standard ACME HTTP challenge does not issue wildcard certificates. For wildcard relay hostnames, use a DNS-based ACME challenge or another edge provider that can terminate wildcard TLS certificates.
+</Warning>
 
 ## Updating
 

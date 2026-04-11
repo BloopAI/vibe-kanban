@@ -98,35 +98,29 @@ impl acp::Client for AcpClient {
         }
 
         let tool_call_id = args.tool_call.tool_call_id.0.to_string();
+        let tool_name = args.tool_call.fields.title.as_deref().unwrap_or("tool");
         let approval_service = self
             .approvals
             .as_ref()
             .ok_or(ExecutorApprovalError::ServiceUnavailable)
             .map_err(|_| acp::Error::invalid_request())?;
 
+        let approval_id = match approval_service.create_tool_approval(tool_name).await {
+            Ok(id) => id,
+            Err(err) => return self.handle_approval_error(err, &tool_call_id),
+        };
+
+        self.send_event(AcpEvent::ApprovalRequested {
+            tool_call_id: tool_call_id.clone(),
+            approval_id: approval_id.clone(),
+        });
+
         let status = match approval_service
-            .request_tool_approval(
-                args.tool_call.fields.title.as_deref().unwrap_or("tool"),
-                serde_json::json!({ "tool_call": args.tool_call }),
-                &tool_call_id,
-                self.cancel.clone(),
-            )
+            .wait_tool_approval(&approval_id, self.cancel.clone())
             .await
         {
             Ok(s) => s,
-            Err(ExecutorApprovalError::Cancelled) => {
-                debug!("ACP approval cancelled for tool_call_id={}", tool_call_id);
-                return Ok(acp::RequestPermissionResponse::new(
-                    acp::RequestPermissionOutcome::Cancelled,
-                ));
-            }
-            Err(err) => {
-                tracing::error!(
-                    "ACP approval failed for tool_call_id={}: {err}",
-                    tool_call_id
-                );
-                return Err(acp::Error::internal_error());
-            }
+            Err(err) => return self.handle_approval_error(err, &tool_call_id),
         };
 
         // Map our ApprovalStatus to ACP outcome
@@ -258,5 +252,30 @@ impl acp::Client for AcpClient {
 
     async fn ext_notification(&self, _args: acp::ExtNotification) -> Result<(), acp::Error> {
         Ok(())
+    }
+}
+
+impl AcpClient {
+    fn handle_approval_error(
+        &self,
+        err: ExecutorApprovalError,
+        tool_call_id: &str,
+    ) -> Result<acp::RequestPermissionResponse, acp::Error> {
+        if let ExecutorApprovalError::Cancelled = err {
+            debug!("ACP approval cancelled for tool_call_id={}", tool_call_id);
+            Ok(acp::RequestPermissionResponse::new(
+                acp::RequestPermissionOutcome::Cancelled,
+            ))
+        } else {
+            tracing::error!(
+                "ACP approval wait failed for tool_call_id={}: {err}",
+                tool_call_id
+            );
+            self.send_event(AcpEvent::ApprovalResponse(ApprovalResponse {
+                tool_call_id: tool_call_id.to_string(),
+                status: ApprovalStatus::TimedOut,
+            }));
+            Err(acp::Error::internal_error())
+        }
     }
 }

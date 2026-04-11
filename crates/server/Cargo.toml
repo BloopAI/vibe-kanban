@@ -1,6 +1,6 @@
 [package]
 name = "server"
-version = "0.1.13"
+version = "0.1.42"
 edition = "2024"
 default-run = "server"
 
@@ -14,8 +14,24 @@ executors = { path = "../executors" }
 local-deployment = { path = "../local-deployment" }
 utils = { path = "../utils" }
 git = { path = "../git" }
+git-host = { path = "../git-host" }
 db = { path = "../db" }
 services = { path = "../services" }
+worktree-manager = { path = "../worktree-manager" }
+workspace-manager = { path = "../workspace-manager" }
+embedded-ssh = { path = "../embedded-ssh" }
+relay-control = { path = "../relay-control" }
+relay-protocol = { path = "../relay-protocol" }
+relay-ws = { path = "../relay-ws" }
+relay-client = { path = "../relay-client" }
+relay-hosts = { path = "../relay-hosts" }
+relay-types = { path = "../relay-types" }
+relay-tunnel-core = { path = "../relay-tunnel-core" }
+relay-webrtc = { path = "../relay-webrtc" }
+ws-bridge = { path = "../ws-bridge" }
+desktop-bridge = { path = "../desktop-bridge" }
+preview-proxy = { path = "../preview-proxy" }
+trusted-key-auth = { path = "../trusted-key-auth" }
 tokio = { workspace = true }
 shlex = "1.3.0"
 tokio-util = { version = "0.7", features = ["io"] }
@@ -30,26 +46,32 @@ chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true }
 tower-http = { workspace = true }
-rmcp = { version = "0.5.0", features = ["server", "transport-io"] }
 schemars = { workspace = true }
-sentry = { version = "0.41.0", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest"] }
+sentry = { version = "0.46.2", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest", "rustls"] }
 reqwest = { workspace = true }
 rustls = { workspace = true }
+aws-lc-sys = { workspace = true }
+aws-lc-rs = { workspace = true }
 strip-ansi-escapes = "0.2.1"
 thiserror = { workspace = true }
 os_info = "3.12.0"
 futures-util = "0.3"
+http = "1"
 base64 = "0.22"
-git2 = { workspace = true }
 mime_guess = "2.0"
 rust-embed = "8.2"
 url = "2.5"
 rand = { version = "0.8", features = ["std"] }
+spake2 = { version = "0.5.0-pre.0", features = ["getrandom"] }
 sha2 = "0.10"
-regex = "1"
+ed25519-dalek = "2.2.0"
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-native-roots"] }
 
 [build-dependencies]
 dotenv = "0.15"
+
+[dev-dependencies]
+tempfile = "3"
 
 [features]
 default = []

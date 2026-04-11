@@ -1,5 +1,9 @@
 use std::borrow::Cow;
 
+use api_types::{
+    AuthMethodsResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
+    HandoffRedeemResponse, LocalLoginRequest, LocalLoginResponse, ProfileResponse, ProviderProfile,
+};
 use axum::{
     Json, Router,
     extract::{Extension, Path, Query, State},
@@ -10,33 +14,39 @@ use axum::{
 use serde::Deserialize;
 use tracing::warn;
 use url::Url;
-use api_types::{
-    HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse,
-    ProfileResponse, ProviderProfile,
-};
 use uuid::Uuid;
 
 use crate::{
     AppState,
-    auth::{CallbackResult, HandoffError, RequestContext},
+    audit::{self, AuditAction, AuditEvent},
+    auth::{
+        CallbackResult, HandoffError, LocalAuthError, RequestContext, auth_methods_response,
+        login as local_login_flow,
+    },
     db::{oauth::OAuthHandoffError, oauth_accounts::OAuthAccountRepository},
 };
 
-pub fn public_router() -> Router<AppState> {
+pub(super) fn public_router() -> Router<AppState> {
     Router::new()
+        .route("/auth/methods", get(auth_methods))
+        .route("/auth/local/login", post(local_login))
         .route("/oauth/web/init", post(web_init))
         .route("/oauth/web/redeem", post(web_redeem))
         .route("/oauth/{provider}/start", get(authorize_start))
         .route("/oauth/{provider}/callback", get(authorize_callback))
 }
 
-pub fn protected_router() -> Router<AppState> {
+async fn auth_methods(State(state): State<AppState>) -> Json<AuthMethodsResponse> {
+    Json(auth_methods_response(&state))
+}
+
+pub(super) fn protected_router() -> Router<AppState> {
     Router::new()
         .route("/profile", get(profile))
         .route("/oauth/logout", post(logout))
 }
 
-pub async fn web_init(
+async fn web_init(
     State(state): State<AppState>,
     Json(payload): Json<HandoffInitRequest>,
 ) -> Response {
@@ -62,12 +72,11 @@ pub async fn web_init(
     }
 }
 
-pub async fn web_redeem(
+async fn web_redeem(
     State(state): State<AppState>,
     Json(payload): Json<HandoffRedeemRequest>,
 ) -> Response {
     let handoff = state.handoff();
-
     match handoff
         .redeem(payload.handoff_id, &payload.app_code, &payload.app_verifier)
         .await
@@ -80,6 +89,14 @@ pub async fn web_redeem(
                     serde_json::json!({ "email": result.email }),
                 );
             }
+
+            audit::emit(
+                AuditEvent::system(AuditAction::AuthLogin)
+                    .user(result.user_id, None)
+                    .resource("auth_session", None)
+                    .http("POST", "/v1/oauth/web/redeem", 200)
+                    .description("User logged in via OAuth"),
+            );
 
             (
                 StatusCode::OK,
@@ -94,12 +111,20 @@ pub async fn web_redeem(
     }
 }
 
+async fn local_login(
+    State(state): State<AppState>,
+    Json(payload): Json<LocalLoginRequest>,
+) -> Result<Json<LocalLoginResponse>, LocalAuthError> {
+    let response = local_login_flow(&state, &payload).await?;
+    Ok(Json(response))
+}
+
 #[derive(Debug, Deserialize)]
-pub struct StartQuery {
+struct StartQuery {
     handoff_id: Uuid,
 }
 
-pub async fn authorize_start(
+async fn authorize_start(
     State(state): State<AppState>,
     Path(provider): Path<String>,
     Query(query): Query<StartQuery>,
@@ -120,13 +145,13 @@ pub async fn authorize_start(
 }
 
 #[derive(Debug, Deserialize)]
-pub struct CallbackQuery {
+struct CallbackQuery {
     state: Option<String>,
     code: Option<String>,
     error: Option<String>,
 }
 
-pub async fn authorize_callback(
+async fn authorize_callback(
     State(state): State<AppState>,
     Path(provider): Path<String>,
     Query(query): Query<CallbackQuery>,
@@ -187,7 +212,7 @@ pub async fn authorize_callback(
     }
 }
 
-pub async fn profile(
+async fn profile(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
 ) -> Json<ProfileResponse> {
@@ -214,7 +239,7 @@ pub async fn profile(
     })
 }
 
-pub async fn logout(
+async fn logout(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
 ) -> Response {
@@ -222,17 +247,26 @@ pub async fn logout(
 
     let repo = AuthSessionRepository::new(state.pool());
 
-    match repo.revoke(ctx.session_id).await {
-        Ok(_) | Err(AuthSessionError::NotFound) => StatusCode::NO_CONTENT.into_response(),
+    let (response, status) = match repo.revoke(ctx.session_id).await {
+        Ok(_) | Err(AuthSessionError::NotFound) => (StatusCode::NO_CONTENT.into_response(), 204u16),
         Err(AuthSessionError::Database(error)) => {
             warn!(?error, session_id = %ctx.session_id, "failed to revoke auth session");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            (StatusCode::INTERNAL_SERVER_ERROR.into_response(), 500u16)
         }
         Err(error) => {
             warn!(?error, session_id = %ctx.session_id, "failed to revoke auth session");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            (StatusCode::INTERNAL_SERVER_ERROR.into_response(), 500u16)
         }
-    }
+    };
+
+    audit::emit(
+        AuditEvent::from_request(&ctx, AuditAction::AuthLogout)
+            .resource("auth_session", Some(ctx.session_id))
+            .http("POST", "/v1/oauth/logout", status)
+            .description("User logged out"),
+    );
+
+    response
 }
 
 fn init_error_response(error: HandoffError) -> Response {

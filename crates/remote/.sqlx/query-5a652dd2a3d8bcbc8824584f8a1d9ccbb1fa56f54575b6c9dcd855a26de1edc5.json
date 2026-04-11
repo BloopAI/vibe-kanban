@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.pubname AS pubname, n.nspname AS schema_name, c.relname AS table_name\n           FROM pg_publication_rel pr\n           JOIN pg_publication p ON pr.prpubid = p.oid\n           JOIN pg_class c ON pr.prrelid = c.oid\n           JOIN pg_namespace n ON c.relnamespace = n.oid\n           WHERE p.pubname = ANY($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pubname",
+        "type_info": "Name"
+      },
+      {
+        "ordinal": 1,
+        "name": "schema_name",
+        "type_info": "Name"
+      },
+      {
+        "ordinal": 2,
+        "name": "table_name",
+        "type_info": "Name"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "NameArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5a652dd2a3d8bcbc8824584f8a1d9ccbb1fa56f54575b6c9dcd855a26de1edc5"
+}

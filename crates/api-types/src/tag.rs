@@ -36,7 +36,7 @@ pub struct ListTagsQuery {
     pub project_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ListTagsResponse {
     pub tags: Vec<Tag>,
 }

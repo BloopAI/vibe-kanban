@@ -25,7 +25,7 @@ use crate::{
 
 // ========== Public Routes ==========
 
-pub fn public_router() -> Router<AppState> {
+pub(super) fn public_router() -> Router<AppState> {
     Router::new()
         .route("/github/webhook", post(handle_webhook))
         .route("/github/app/callback", get(handle_callback))
@@ -33,7 +33,7 @@ pub fn public_router() -> Router<AppState> {
 
 // ========== Protected Routes ==========
 
-pub fn protected_router() -> Router<AppState> {
+pub(super) fn protected_router() -> Router<AppState> {
     Router::new()
         .route(
             "/organizations/{org_id}/github-app/install-url",
@@ -59,12 +59,12 @@ pub fn protected_router() -> Router<AppState> {
 // ========== Types ==========
 
 #[derive(Debug, Serialize)]
-pub struct InstallUrlResponse {
+struct InstallUrlResponse {
     pub install_url: String,
 }
 
 #[derive(Debug, Serialize)]
-pub struct GitHubAppStatusResponse {
+struct GitHubAppStatusResponse {
     pub installed: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub installation: Option<InstallationDetails>,
@@ -72,7 +72,7 @@ pub struct GitHubAppStatusResponse {
 }
 
 #[derive(Debug, Serialize)]
-pub struct InstallationDetails {
+struct InstallationDetails {
     pub id: String,
     pub github_installation_id: i64,
     pub github_account_login: String,
@@ -83,7 +83,7 @@ pub struct InstallationDetails {
 }
 
 #[derive(Debug, Serialize)]
-pub struct RepositoryDetails {
+struct RepositoryDetails {
     pub id: String,
     pub github_repo_id: i64,
     pub repo_full_name: String,
@@ -91,29 +91,29 @@ pub struct RepositoryDetails {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct CallbackQuery {
+struct CallbackQuery {
     pub installation_id: Option<i64>,
     pub state: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct TriggerPrReviewRequest {
+struct TriggerPrReviewRequest {
     /// GitHub PR URL, e.g., "https://github.com/owner/repo/pull/123"
     pub pr_url: String,
 }
 
 #[derive(Debug, Serialize)]
-pub struct TriggerPrReviewResponse {
+struct TriggerPrReviewResponse {
     pub review_id: Uuid,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct UpdateRepoReviewEnabledRequest {
+struct UpdateRepoReviewEnabledRequest {
     pub enabled: bool,
 }
 
 #[derive(Debug, Serialize)]
-pub struct BulkUpdateReviewEnabledResponse {
+struct BulkUpdateReviewEnabledResponse {
     pub updated_count: u64,
 }
 
@@ -121,7 +121,7 @@ pub struct BulkUpdateReviewEnabledResponse {
 
 /// GET /v1/organizations/:org_id/github-app/install-url
 /// Returns URL to install the GitHub App for this organization
-pub async fn get_install_url(
+async fn get_install_url(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(org_id): Path<Uuid>,
@@ -186,7 +186,7 @@ pub async fn get_install_url(
 
 /// GET /v1/organizations/:org_id/github-app/status
 /// Returns the GitHub App installation status for this organization
-pub async fn get_status(
+async fn get_status(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(org_id): Path<Uuid>,
@@ -250,7 +250,7 @@ pub async fn get_status(
 
 /// DELETE /v1/organizations/:org_id/github-app
 /// Removes the local installation record (does not uninstall from GitHub)
-pub async fn uninstall(
+async fn uninstall(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(org_id): Path<Uuid>,
@@ -282,7 +282,7 @@ pub async fn uninstall(
 
 /// PATCH /v1/organizations/:org_id/github-app/repositories/:repo_id/review-enabled
 /// Toggle whether a repository should trigger PR reviews
-pub async fn update_repo_review_enabled(
+async fn update_repo_review_enabled(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path((org_id, repo_id)): Path<(Uuid, Uuid)>,
@@ -342,7 +342,7 @@ pub async fn update_repo_review_enabled(
 
 /// GET /v1/organizations/:org_id/github-app/repositories
 /// Fetches repositories from GitHub API, syncs to DB, and returns the list
-pub async fn fetch_repositories(
+async fn fetch_repositories(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(org_id): Path<Uuid>,
@@ -413,7 +413,7 @@ pub async fn fetch_repositories(
 
 /// PATCH /v1/organizations/:org_id/github-app/repositories/review-enabled
 /// Bulk toggle review_enabled for all repositories
-pub async fn bulk_update_review_enabled(
+async fn bulk_update_review_enabled(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(org_id): Path<Uuid>,
@@ -463,7 +463,7 @@ pub async fn bulk_update_review_enabled(
 
 /// GET /v1/github/app/callback
 /// Handles redirect from GitHub after app installation
-pub async fn handle_callback(
+async fn handle_callback(
     State(state): State<AppState>,
     Query(query): Query<CallbackQuery>,
 ) -> Response {
@@ -606,7 +606,7 @@ pub async fn handle_callback(
 
 /// POST /v1/github/webhook
 /// Handles webhook events from GitHub
-pub async fn handle_webhook(
+async fn handle_webhook(
     State(state): State<AppState>,
     headers: HeaderMap,
     body: Bytes,
@@ -1076,7 +1076,7 @@ fn parse_pr_url(url: &str) -> Option<(String, String, u64)> {
 
 /// POST /v1/debug/pr-review/trigger
 /// Manually trigger a PR review for debugging purposes
-pub async fn trigger_pr_review(
+async fn trigger_pr_review(
     State(state): State<AppState>,
     Json(payload): Json<TriggerPrReviewRequest>,
 ) -> Result<Json<TriggerPrReviewResponse>, ErrorResponse> {

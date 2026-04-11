@@ -31,6 +31,8 @@ use ts_rs::TS;
 
 use crate::AppState;
 
+type MutationMarker<E, C, U> = fn() -> (E, C, U);
+
 // =============================================================================
 // HasJsonPayload - Structural trait linking handlers to their payload types
 // =============================================================================
@@ -49,10 +51,7 @@ impl<A, B, C, D, T> HasJsonPayload<T> for (A, B, C, D, Json<T>) {}
 impl<A, B, C, D, E0, T> HasJsonPayload<T> for (A, B, C, D, E0, Json<T>) {}
 impl<A, B, C, D, E0, F, T> HasJsonPayload<T> for (A, B, C, D, E0, F, Json<T>) {}
 impl<A, B, C, D, E0, F, G, T> HasJsonPayload<T> for (A, B, C, D, E0, F, G, Json<T>) {}
-impl<A, B, C, D, E0, F, G, H, T> HasJsonPayload<T>
-    for (A, B, C, D, E0, F, G, H, Json<T>)
-{
-}
+impl<A, B, C, D, E0, F, G, H, T> HasJsonPayload<T> for (A, B, C, D, E0, F, G, H, Json<T>) {}
 
 // =============================================================================
 // MutationDefinition - Metadata for TypeScript generation
@@ -81,7 +80,7 @@ pub struct MutationBuilder<E, C = (), U = ()> {
     table: &'static str,
     base_route: MethodRouter<AppState>,
     id_route: MethodRouter<AppState>,
-    _phantom: PhantomData<fn() -> (E, C, U)>,
+    _phantom: PhantomData<MutationMarker<E, C, U>>,
 }
 
 impl<E: TS + Send + Sync + 'static> MutationBuilder<E, NoCreate, NoUpdate> {

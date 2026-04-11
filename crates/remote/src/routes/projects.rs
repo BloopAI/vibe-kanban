@@ -1,7 +1,12 @@
+use api_types::{
+    BulkUpdateProjectsRequest, BulkUpdateProjectsResponse, CreateProjectRequest, DeleteResponse,
+    ListProjectsQuery, ListProjectsResponse, MutationResponse, Project, UpdateProjectRequest,
+};
 use axum::{
     Json,
     extract::{Extension, Path, Query, State},
     http::StatusCode,
+    routing::post,
 };
 use tracing::instrument;
 use uuid::Uuid;
@@ -10,15 +15,11 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_member_access,
 };
-use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{projects::ProjectRepository, types::is_valid_hsl_color},
+    db::{get_txid, projects::ProjectRepository, types::is_valid_hsl_color},
     mutation_definition::MutationBuilder,
-};
-use api_types::{
-    CreateProjectRequest, ListProjectsQuery, ListProjectsResponse, Project, UpdateProjectRequest,
 };
 
 /// Mutation definition for Projects - provides both router and TypeScript metadata.
@@ -32,7 +33,9 @@ pub fn mutation() -> MutationBuilder<Project, CreateProjectRequest, UpdateProjec
 }
 
 pub fn router() -> axum::Router<AppState> {
-    mutation().router()
+    mutation()
+        .router()
+        .route("/projects/bulk", post(bulk_update_projects))
 }
 
 #[instrument(
@@ -156,14 +159,114 @@ async fn update_project(
         ));
     }
 
-    let response = ProjectRepository::update(state.pool(), project_id, payload.name, payload.color)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, "failed to update project");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-        })?;
+    let response = ProjectRepository::update(
+        state.pool(),
+        project_id,
+        payload.name,
+        payload.color,
+        payload.sort_order,
+    )
+    .await
+    .map_err(|error| {
+        tracing::error!(?error, "failed to update project");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
 
     Ok(Json(response))
+}
+
+#[instrument(
+    name = "projects.bulk_update",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, count = payload.updates.len())
+)]
+async fn bulk_update_projects(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Json(payload): Json<BulkUpdateProjectsRequest>,
+) -> Result<Json<BulkUpdateProjectsResponse>, ErrorResponse> {
+    if payload.updates.is_empty() {
+        return Ok(Json(BulkUpdateProjectsResponse {
+            data: vec![],
+            txid: 0,
+        }));
+    }
+
+    let first_project = ProjectRepository::find_by_id(state.pool(), payload.updates[0].id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to find first project");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to find project")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
+
+    let organization_id = first_project.organization_id;
+    ensure_member_access(state.pool(), organization_id, ctx.user.id).await?;
+
+    let mut tx = crate::db::begin_tx(state.pool()).await.map_err(|error| {
+        tracing::error!(?error, "failed to begin transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    let mut results = Vec::with_capacity(payload.updates.len());
+
+    for item in payload.updates {
+        let project = ProjectRepository::find_by_id(&mut *tx, item.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, project_id = %item.id, "failed to find project");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to find project")
+            })?
+            .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
+
+        if project.organization_id != organization_id {
+            return Err(ErrorResponse::new(
+                StatusCode::BAD_REQUEST,
+                "all projects must belong to the same organization",
+            ));
+        }
+
+        if let Some(ref color) = item.changes.color
+            && !is_valid_hsl_color(color)
+        {
+            return Err(ErrorResponse::new(
+                StatusCode::BAD_REQUEST,
+                "Invalid color format. Expected HSL format: 'H S% L%'",
+            ));
+        }
+
+        let updated = ProjectRepository::update_partial(
+            &mut *tx,
+            item.id,
+            item.changes.name,
+            item.changes.color,
+            item.changes.sort_order,
+        )
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, project_id = %item.id, "failed to update project");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to update project",
+            )
+        })?;
+
+        results.push(updated);
+    }
+
+    let txid = get_txid(&mut *tx).await.map_err(|error| {
+        tracing::error!(?error, "failed to get txid");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+    tx.commit().await.map_err(|error| {
+        tracing::error!(?error, "failed to commit transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    Ok(Json(BulkUpdateProjectsResponse {
+        data: results,
+        txid,
+    }))
 }
 
 #[instrument(

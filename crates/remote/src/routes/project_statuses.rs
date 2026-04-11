@@ -1,3 +1,7 @@
+use api_types::{
+    CreateProjectStatusRequest, DeleteResponse, ListProjectStatusesQuery,
+    ListProjectStatusesResponse, MutationResponse, ProjectStatus, UpdateProjectStatusRequest,
+};
 use axum::{
     Json,
     extract::{Extension, Path, Query, State},
@@ -13,20 +17,16 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_project_access,
 };
-use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
     db::{get_txid, project_statuses::ProjectStatusRepository, types::is_valid_hsl_color},
     mutation_definition::MutationBuilder,
 };
-use api_types::{
-    CreateProjectStatusRequest, ListProjectStatusesQuery, ListProjectStatusesResponse,
-    ProjectStatus, UpdateProjectStatusRequest,
-};
 
 /// Mutation definition for ProjectStatus - provides both router and TypeScript metadata.
-pub fn mutation() -> MutationBuilder<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest> {
+pub fn mutation()
+-> MutationBuilder<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest> {
     MutationBuilder::new("project_statuses")
         .list(list_project_statuses)
         .get(get_project_status)
@@ -260,7 +260,7 @@ async fn bulk_update_project_statuses(
     let project_id = first_status.project_id;
     ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
 
-    let mut tx = state.pool().begin().await.map_err(|error| {
+    let mut tx = crate::db::begin_tx(state.pool()).await.map_err(|error| {
         tracing::error!(?error, "failed to begin transaction");
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;

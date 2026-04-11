@@ -1,71 +1,149 @@
 ---
-title: "Install & Run Vibe Kanban"
-description: "Complete installation guide for Vibe Kanban on macOS, Linux, and Windows"
-sidebarTitle: "Installation"
+title: "Get Started"
+description: "Launch Vibe Kanban, connect a coding agent, and go from zero to pull request"
+sidebarTitle: "Get Started"
 ---
 
-## Supported Systems
+Vibe Kanban keeps you organised while running multiple coding agents in parallel by streamlining how you plan and review their work.
 
-We build and test Vibe Kanban on the following systems:
+## 1. Launch Vibe Kanban
 
-- macOS (Intel and Apple Silicon)
-- Linux
-- Windows
+Start the Vibe Kanban client and open the UI in your browser:
 
-## Prerequisites
 
-Before installing Vibe Kanban, ensure you have:
+```bash
+npx vibe-kanban
+```
 
-- **Node.js**: Latest LTS version recommended
-- **Coding agent authentication**: Authenticate with your preferred coding agents outside of Vibe Kanban
+## 2. Confirm your preferences
 
-## Safety Notice
+The first time you run Vibe Kanban, you'll be asked to set your preferred:
 
-<Warning>
-Vibe Kanban runs AI agents with --dangerously-skip-permissions/--yolo flags by default so they can work autonomously without constant approval prompts. Each task runs in an isolated git worktree, preventing agents from interfering with each other.
-Agents can still perform system-level actions, so review their work and keep backups.
-</Warning>
+- Coding agent
+- IDE
+- Notification preferences
 
-## Installation & Setup
+<Info>
+These preferences can be changed at any time from the settings dialog
+</Info>
 
-<Steps>
-<Step title="Authenticate with a coding agent">
-  Before launching Vibe Kanban, ensure you're authenticated with at least one [supported coding agent](/supported-coding-agents). Follow the installation and authentication instructions for your preferred agent.
-</Step>
+<Frame>
+  <img src="/images/onboarding-basic-setup.png" alt="Placeholder image for preferences setup: coding agent, IDE, and sound notifications." />
+</Frame>
 
-<Step title="Install and launch Vibe Kanban">
-  Open a terminal and run:
+## 3. Sign-in to Vibe Kanban
 
-  ```bash
-  npx vibe-kanban
-  ```
+You can use a GitHub or Google account.
 
-  <Check>
-  The application will bind to a random free port, print the URL in the terminal, and automatically open in your default browser.
-  </Check>
-</Step>
+<Frame>
+  <img src="/images/onboarding-sign-in.png" alt="Vibe Kanban onboarding screen showing Sign in to continue with GitHub and Google buttons" />
+</Frame>
 
-<Step title="Complete initial setup">
-  Complete the setup dialogs to configure your coding agent and editor preferences. GitHub integration relies on the GitHub CLI and is configured when needed.
-</Step>
+<Info>
+If you want to skip sign-in for now, click **More options** → **I understand, continue without signing in**. You'll still be able to create workspaces, but the kanban board, issues, and team features will be unavailable.
+</Info>
 
-<Step title="Create your first workspace">
-  You'll land on the Workspaces page. Click the **+** button to [create a workspace](/workspaces/creating-workspaces) with your project repositories.
-</Step>
+## 4. Navigate the kanban board
 
-<Step title="Add tasks">
-  Start tracking your work by [creating issues](/cloud/issues) or describing tasks directly in the workspace chat.
-</Step>
+After you sign in, we automatically create a personal organisation and an initial project for you, and take you straight there.
 
-<Step title="Optional: GitHub integration">
-  Vibe Kanban uses the [GitHub CLI](https://cli.github.com/) for creating pull requests. Ensure `gh` is installed and authenticated on your system, or follow the setup prompts when creating your first pull request.
-</Step>
+<Frame>
+  <img src="/images/onboarding-projects.png" alt="The projects page" />
+</Frame>
 
-<Step title="Optional: Set up MCP integration">
-  Streamline task creation with coding agents by [setting up MCP integration](/integrations/vibe-kanban-mcp-server).
-</Step>
-</Steps>
+**Navigating the kanban board:**
 
-<Tip>
-To use a fixed port, specify the `PORT` environment variable: `PORT=8080 npx vibe-kanban`
-</Tip>
+1. The app bar, used for navigating between projects, the workspaces page (we'll come onto this later) and user settings
+2. Issues appear as cards on the kanban board
+3. The 'new issue' button, for creating issues
+4. The right hand panel where details for the currently selected or draft issue is shown
+
+## 5. Create an issue
+
+**Issues** are a core concept of Vibe Kanban, they represent a bug, feature or piece of work to be done. At a minimum, issues consist of a title and description, but you can also add priorities, tags and even connect issues together with parent/child relationships.
+
+<Frame>
+  <img src="/images/onboarding-create-issue.png" alt="Create issue" />
+</Frame>
+
+When you've filled out the details press 'create issue'.
+
+## 6. Create a workspace
+
+**Workspaces** are another core concept of Vibe Kanban, they represent a space to work on an issue with a coding agent. When you create a workspace, Vibe Kanban automatically creates git worktrees for your selected repositories, and launches your coding agent.
+
+<Frame>
+  <img src="/images/onboarding-create-workspace.png" alt="The create workspace button" />
+</Frame>
+
+To create a workspace, make sure the issue you created is selected and click the 'create' button in the workspaces window.
+
+<Frame>
+  <img src="/images/onboarding-workspaces-repo.png" alt="Workspaces repos" />
+</Frame>
+
+When you create a workspace, you'll need to specify repositories you'd like to work on, as well as the branches of those repositories to base the git worktrees on.
+
+<Frame>
+  <img src="/images/onboarding-workspaces-prompt.png" alt="Workspaces prompt" />
+</Frame>
+
+You'll also need to specify your desired coding agent configuration (e.g. model, effort level, plan mode).
+
+<Frame>
+  <img src="/images/onboarding-workspaces-logs.png" alt="Workspaces logs" />
+</Frame>
+
+Upon creation, the coding agent will immediately begin executing with the given prompt.
+
+<Info>
+  You can connect multiple workspaces to an issue, this is useful for working on larger features and allows you to run multiple coding agents in parallel.
+
+  Workspaces don't *have* to be connected to an issue, which is useful for quick actions like asking questions about a codebase.
+</Info>
+
+## 7. Reviewing a workspace
+
+So far we've been viewing the workspace side-by-side with our kanban board. However, if we want more room to review the code changes or test them in a browser, we can open the workspace in the **workspaces view**.
+
+<Frame>
+  <img src="/images/onboarding-workspaces-open.png" alt="Workspaces open" />
+</Frame>
+
+To access the workspaces view, click the **Open Workspace** button.
+
+<Frame>
+  <img src="/images/onboarding-workspaces-page.png" alt="Workspaces page" />
+</Frame>
+
+Depending on what you'd like to do, you can view code changes or preview changes to websites in a browser using the floating navigation buttons (3).
+
+You can also navigate back to either your project (1) or the parent issue (2).
+
+## 8. Merging a workspace
+
+When you're ready to merge the changes in a workspace, you can either open a GitHub pull request or merge the workspace branch locally.
+
+<Frame>
+  <img src="/images/onboarding-workspaces-merge.png" alt="Workspaces merge" />
+</Frame>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Previewing changes" icon="browser" href="/workspaces/preview">
+    Set up a dev server, preview your app, and click-to-component to jump straight to source
+  </Card>
+
+  <Card title="Setup and cleanup scripts" icon="terminal" href="/settings/projects-repositories">
+    Automate dependency installs, builds, and teardown so every workspace starts clean
+  </Card>
+
+  <Card title="Reviewing code changes" icon="code-compare" href="/workspaces/changes">
+    Review diffs, prompt the agent with feedback, and iterate before merging
+  </Card>
+
+  <Card title="Working with sub-issues" icon="diagram-subtask" href="/core-features/subtasks">
+    Break large features into smaller pieces and track progress across sub-issues
+  </Card>
+</CardGroup>

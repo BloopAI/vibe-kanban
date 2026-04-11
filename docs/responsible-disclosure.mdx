@@ -1,0 +1,110 @@
+---
+title: "Responsible Disclosure"
+description: "How to report security vulnerabilities to Vibe Kanban responsibly"
+---
+
+**Last updated:** *February 28, 2026*
+
+At **Vibe Kanban**, we take the security of our platform and the safety of
+our customers' data seriously. We welcome responsible reports of potential
+security vulnerabilities to help us identify and resolve issues quickly and
+securely.
+
+## How to Report a Security Issue
+
+If you believe you've discovered a vulnerability in Vibe Kanban that falls
+within scope, please send an email to:
+
+[**security@bloop.com**](mailto:security@bloop.com)
+
+When submitting a report, include the following where possible:
+
+- **Summary** of the vulnerability and its potential impact
+- **Steps to reproduce** the issue (screenshots or clear descriptions help)
+- **Environment details** (OS, browser, device, etc.)
+- **Proof-of-concept code** or any relevant exploit details
+
+Upon receipt of your report, we will:
+
+1. Acknowledge it in a timely manner.
+2. Investigate and triage the issue.
+3. Communicate with you for clarification or retesting if needed.
+4. Work to remediate the issue and keep you updated.
+
+## What's In Scope
+
+The following services and assets are currently in scope for responsible
+disclosure:
+
+- https://cloud.vibekanban.com (remote server)
+- https://relay.vibekanban.com (relay server)
+
+In most cases, we will only reward the following types of vulnerabilities:
+- Arbitrary code execution
+- SQL injection
+
+If you are unsure whether something is in scope, please contact us before
+testing.
+
+## What's Out of Scope
+
+To ensure everyone's safety and to focus on issues that genuinely affect our
+users, the following are considered out of scope:
+
+- Automated scanning without prior coordination
+- Social engineering targeting Vibe Kanban personnel
+- Rate-limiting or missing headers that do not lead to material harm
+- Brute force or denial-of-service attacks
+- Attacks requiring physical access to systems or interception of another
+  user's network traffic
+- Theoretical vulnerabilities without a practical proof of exploitability
+
+## Please Do Not
+
+- Access or modify any data that does not belong to you
+- Disrupt our services or cause downtime
+- Share details of the issue publicly before we have had a chance to fix it
+
+## Report Format Recommendations
+
+To help us diagnose issues efficiently, reports should include:
+
+- A clear **summary and title** of the issue
+- Affected URL(s) or components
+- Exact **steps to reproduce**, including screenshots where appropriate
+- Environment and version details
+- Proof-of-concept code or payloads
+
+## Safe Harbour & Recognition
+
+We respect the efforts of security researchers who act in good faith and follow
+this Responsible Disclosure policy. Provided you comply with this policy,
+**Vibe Kanban will not pursue legal action** against individuals reporting
+vulnerabilities responsibly.
+
+Researchers who submit valid and impactful reports may also receive
+**recognition** or other discretionary rewards, at Vibe Kanban's sole
+discretion.
+
+## Confidentiality
+
+All information you share with us as part of your report will be handled
+confidentially. We will not disclose sensitive details publicly before
+remediation, and we will coordinate with you if public acknowledgement is
+planned.
+
+## Bounty & Rewards
+
+Vibe Kanban may offer monetary rewards for qualifying vulnerability reports.
+
+For critical, well-documented disclosures that demonstrate clear impact
+(such as remote code execution), we may pay up to $5,000 USD per vulnerability.
+
+Rewards are determined at our sole discretion and depend on factors such as:
+
+- Severity and impact of the issue
+- Quality and clarity of the report
+- Reproducibility
+- Whether the vulnerability is previously unknown
+
+Not all reports will qualify for a reward.

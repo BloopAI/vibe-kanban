@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use axum::{
     Router,
     extract::{Path, Query, State},
@@ -5,26 +7,28 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, post},
 };
-use db::models::{
-    project::SearchResult,
-    repo::{Repo, UpdateRepo},
-};
+use db::models::repo::{Repo, SearchResult, UpdateRepo};
 use deployment::Deployment;
 use git::{GitBranch, GitRemote};
+use git_host::{GitHostError, GitHostProvider, GitHostService, ProviderKind, PullRequestDetail};
 use serde::{Deserialize, Serialize};
-use services::services::{
-    file_search::SearchQuery,
-    git_host::{GitHostError, GitHostProvider, GitHostService, OpenPrInfo, ProviderKind},
-};
+use services::services::file_search::SearchQuery;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{
-    DeploymentImpl,
-    error::ApiError,
-    routes::projects::{OpenEditorRequest, OpenEditorResponse},
-};
+use crate::{DeploymentImpl, error::ApiError};
+
+#[derive(serde::Deserialize)]
+pub struct OpenEditorRequest {
+    pub editor_type: Option<String>,
+    pub git_repo_path: Option<PathBuf>,
+}
+
+#[derive(Debug, serde::Serialize, ts_rs::TS)]
+pub struct OpenEditorResponse {
+    pub url: Option<String>,
+}
 
 #[derive(Debug, Deserialize, TS)]
 pub struct RegisterRepoRequest {
@@ -245,7 +249,7 @@ pub async fn list_open_prs(
     State(deployment): State<DeploymentImpl>,
     Path(repo_id): Path<Uuid>,
     Query(query): Query<ListPrsQuery>,
-) -> Result<ResponseJson<ApiResponse<Vec<OpenPrInfo>, ListPrsError>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<Vec<PullRequestDetail>, ListPrsError>>, ApiError> {
     let repo = deployment
         .repo()
         .get_by_id(&deployment.db().pool, repo_id)
@@ -290,16 +294,91 @@ pub async fn list_open_prs(
     }
 }
 
+#[derive(Debug, Deserialize)]
+pub struct PrInfoQuery {
+    pub url: String,
+}
+
+pub async fn get_pr_info(
+    State(_deployment): State<DeploymentImpl>,
+    Query(query): Query<PrInfoQuery>,
+) -> Result<ResponseJson<ApiResponse<PullRequestDetail, ListPrsError>>, ApiError> {
+    let git_host = match GitHostService::from_url(&query.url) {
+        Ok(host) => host,
+        Err(GitHostError::UnsupportedProvider) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                ListPrsError::UnsupportedProvider,
+            )));
+        }
+        Err(e) => {
+            tracing::error!("Failed to create git host service: {}", e);
+            return Ok(ResponseJson(ApiResponse::error(&e.to_string())));
+        }
+    };
+
+    match git_host.get_pr_status(&query.url).await {
+        Ok(info) => Ok(ResponseJson(ApiResponse::success(info))),
+        Err(GitHostError::CliNotInstalled { provider }) => Ok(ResponseJson(
+            ApiResponse::error_with_data(ListPrsError::CliNotInstalled { provider }),
+        )),
+        Err(GitHostError::AuthFailed(message)) => Ok(ResponseJson(ApiResponse::error_with_data(
+            ListPrsError::AuthFailed { message },
+        ))),
+        Err(GitHostError::UnsupportedProvider) => Ok(ResponseJson(ApiResponse::error_with_data(
+            ListPrsError::UnsupportedProvider,
+        ))),
+        Err(e) => {
+            tracing::error!("Failed to get PR info for {}: {}", query.url, e);
+            Ok(ResponseJson(ApiResponse::error(&e.to_string())))
+        }
+    }
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct DeleteRepoConflict {
+    pub message: String,
+    pub workspaces: Vec<String>,
+}
+
+pub async fn delete_repo(
+    State(deployment): State<DeploymentImpl>,
+    Path(repo_id): Path<Uuid>,
+) -> Result<
+    (
+        StatusCode,
+        ResponseJson<ApiResponse<(), DeleteRepoConflict>>,
+    ),
+    ApiError,
+> {
+    let active = Repo::active_workspace_names(&deployment.db().pool, repo_id).await?;
+    if !active.is_empty() {
+        return Ok((
+            StatusCode::CONFLICT,
+            ResponseJson(ApiResponse::error_with_data(DeleteRepoConflict {
+                message: format!("Repository is used by {} active workspace(s)", active.len()),
+                workspaces: active,
+            })),
+        ));
+    }
+
+    Repo::delete(&deployment.db().pool, repo_id).await?;
+    Ok((StatusCode::OK, ResponseJson(ApiResponse::success(()))))
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/repos", get(get_repos).post(register_repo))
         .route("/repos/recent", get(get_recent_repos))
         .route("/repos/init", post(init_repo))
         .route("/repos/batch", post(get_repos_batch))
-        .route("/repos/{repo_id}", get(get_repo).put(update_repo))
+        .route(
+            "/repos/{repo_id}",
+            get(get_repo).put(update_repo).delete(delete_repo),
+        )
         .route("/repos/{repo_id}/branches", get(get_repo_branches))
         .route("/repos/{repo_id}/remotes", get(get_repo_remotes))
         .route("/repos/{repo_id}/prs", get(list_open_prs))
+        .route("/repos/pr-info", get(get_pr_info))
         .route("/repos/{repo_id}/search", get(search_repo))
         .route("/repos/{repo_id}/open-editor", post(open_repo_in_editor))
 }

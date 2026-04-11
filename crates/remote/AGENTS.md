@@ -115,7 +115,7 @@ This generates both the Axum router and TypeScript type metadata (via `HasJsonPa
 - **OAuth** (`auth/provider.rs`): GitHub and Google. At least one must be configured. Empty env vars are treated as disabled.
 - **Membership**: All resource routes check organisation/project membership before DB access. Use `RequestContext` from the middleware to get user info.
 
-## Frontend (`remote-frontend/`)
+## Frontend (`packages/remote-web/`)
 
 - React 18 + React Router 7 + Vite + Tailwind
 - Built during Docker image creation, served from `/srv/static`

@@ -22,6 +22,11 @@ use crate::{
     profile::ExecutorConfig,
 };
 
+const SUPPRESSED_STDERR_PATTERNS: &[&str] = &[
+    "was started but never ended. Skipping metrics.",
+    "YOLO mode is enabled. All tool calls will be automatically approved.",
+];
+
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
 pub struct Gemini {
@@ -41,7 +46,7 @@ pub struct Gemini {
 
 impl Gemini {
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
-        let mut builder = CommandBuilder::new("npx -y @google/gemini-cli@0.27.0");
+        let mut builder = CommandBuilder::new("npx -y @google/gemini-cli@0.29.3");
 
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model.as_str()]);
@@ -82,10 +87,7 @@ impl StandardCodingAgentExecutor for Gemini {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let mut harness = AcpAgentHarness::new();
-        if let Some(model) = &self.model {
-            harness = harness.with_model(model);
-        }
+        let harness = AcpAgentHarness::new();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let gemini_command = self.build_command_builder()?.build_initial()?;
         let approvals = if self.yolo.unwrap_or(false) {
@@ -113,10 +115,7 @@ impl StandardCodingAgentExecutor for Gemini {
         _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let mut harness = AcpAgentHarness::new();
-        if let Some(model) = &self.model {
-            harness = harness.with_model(model);
-        }
+        let harness = AcpAgentHarness::new();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let gemini_command = self.build_command_builder()?.build_follow_up(&[])?;
         let approvals = if self.yolo.unwrap_or(false) {
@@ -142,7 +141,11 @@ impl StandardCodingAgentExecutor for Gemini {
         msg_store: Arc<MsgStore>,
         worktree_path: &Path,
     ) -> Vec<tokio::task::JoinHandle<()>> {
-        super::acp::normalize_logs(msg_store, worktree_path)
+        super::acp::normalize_logs_with_suppressed_stderr_patterns(
+            msg_store,
+            worktree_path,
+            SUPPRESSED_STDERR_PATTERNS,
+        )
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
@@ -201,6 +204,12 @@ impl StandardCodingAgentExecutor for Gemini {
         let options = ExecutorDiscoveredOptions {
             model_selector: ModelSelectorConfig {
                 models: vec![
+                    ModelInfo {
+                        id: "gemini-3.1-pro-preview".to_string(),
+                        name: "Gemini 3.1 Pro Preview".to_string(),
+                        provider_id: None,
+                        reasoning_options: vec![],
+                    },
                     ModelInfo {
                         id: "gemini-3-pro-preview".to_string(),
                         name: "Gemini 3 Pro".to_string(),

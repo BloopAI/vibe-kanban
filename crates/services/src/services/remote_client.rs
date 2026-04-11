@@ -3,19 +3,24 @@
 use std::time::Duration;
 
 use api_types::{
-    AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
-    CreateIssueRequest, CreateOrganizationRequest, CreateOrganizationResponse,
-    CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest, GetInvitationResponse,
-    GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
-    HandoffRedeemResponse, Issue, ListAttachmentsResponse, ListInvitationsResponse,
-    ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse,
-    ListProjectStatusesResponse, ListProjectsResponse, MutationResponse, Organization,
-    ProfileResponse, RevokeInvitationRequest, TokenRefreshRequest, TokenRefreshResponse,
-    UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
-    UpdateOrganizationRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
+    AcceptInvitationResponse, AuthMethodsResponse, CreateInvitationRequest,
+    CreateInvitationResponse, CreateIssueAssigneeRequest, CreateIssueRelationshipRequest,
+    CreateIssueRequest, CreateIssueTagRequest, CreateOrganizationRequest,
+    CreateOrganizationResponse, CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest,
+    GetInvitationResponse, GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse,
+    HandoffRedeemRequest, HandoffRedeemResponse, Issue, IssueAssignee, IssueRelationship, IssueTag,
+    ListAttachmentsResponse, ListInvitationsResponse, ListIssueAssigneesResponse,
+    ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse,
+    ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse,
+    ListPullRequestsResponse, ListTagsResponse, LocalLoginRequest, LocalLoginResponse,
+    MutationResponse, Organization, ProfileResponse, PullRequest, RevokeInvitationRequest,
+    SearchIssuesRequest, Tag, TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest,
+    UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
+    UpdatePullRequestApiRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
+use relay_types::{ListRelayHostsResponse, RelayHost};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -32,8 +37,6 @@ pub enum RemoteClientError {
     Transport(String),
     #[error("timeout")]
     Timeout,
-    #[error("token refresh timed out")]
-    TokenRefreshTimeout,
     #[error("http {status}: {body}")]
     Http { status: u16, body: String },
     #[error("api error: {0:?}")]
@@ -51,12 +54,36 @@ pub enum RemoteClientError {
 }
 
 impl RemoteClientError {
+    pub fn generic_degraded_slug() -> &'static str {
+        "remote_auth_unavailable"
+    }
+
     /// Returns true if the error is transient and should be retried.
-    pub fn should_retry(&self) -> bool {
+    fn should_retry(&self) -> bool {
         match self {
             Self::Transport(_) | Self::Timeout => true,
             Self::Http { status, .. } => (500..=599).contains(status),
             _ => false,
+        }
+    }
+
+    fn is_definitive_auth_failure(&self) -> bool {
+        match self {
+            Self::Auth => true,
+            Self::Api(code) => code.is_definitive_auth_failure(),
+            _ => false,
+        }
+    }
+
+    pub fn degraded_slug(&self) -> Option<&'static str> {
+        match self {
+            Self::Timeout | Self::Transport(_) | Self::Storage(_) | Self::Serde(_) => {
+                Some(Self::generic_degraded_slug())
+            }
+            Self::Http { status, .. } if (500..=599).contains(status) => {
+                Some(Self::generic_degraded_slug())
+            }
+            _ => None,
         }
     }
 }
@@ -72,6 +99,24 @@ pub enum HandoffErrorCode {
     AccessDenied,
     InternalError,
     Other(String),
+}
+
+impl HandoffErrorCode {
+    fn is_definitive_auth_failure(&self) -> bool {
+        match self {
+            Self::Expired | Self::AccessDenied => true,
+            Self::Other(code) => matches!(
+                code.as_str(),
+                "invalid_token"
+                    | "expired_token"
+                    | "session_revoked"
+                    | "token_reuse_detected"
+                    | "provider_token_revoked"
+                    | "identity_error"
+            ),
+            _ => false,
+        }
+    }
 }
 
 fn map_error_code(code: Option<&str>) -> HandoffErrorCode {
@@ -91,12 +136,6 @@ fn map_error_code(code: Option<&str>) -> HandoffErrorCode {
 #[derive(Deserialize)]
 struct ApiErrorResponse {
     error: String,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct RequestTimeoutOptions {
-    timeout: Duration,
-    retry_on_timeout: bool,
 }
 
 /// HTTP client for the remote OAuth server with automatic retries.
@@ -128,7 +167,6 @@ impl Clone for RemoteClient {
 
 impl RemoteClient {
     const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
-    const TOKEN_REFRESH_REQUEST_TIMEOUT: Duration = Duration::from_mins(5);
     const TOKEN_REFRESH_LEEWAY_SECS: i64 = 20;
 
     pub fn new(base_url: &str, auth_context: AuthContext) -> Result<Self, RemoteClientError> {
@@ -182,6 +220,7 @@ impl RemoteClient {
                 if let Some(token) = latest.access_token.as_ref()
                     && !latest.expires_soon(leeway)
                 {
+                    self.auth_context.clear_remote_auth_degraded_slug().await;
                     return Ok(token.clone());
                 }
 
@@ -189,20 +228,21 @@ impl RemoteClient {
             };
 
             match refreshed {
-                Ok(updated) => updated.access_token.ok_or(RemoteClientError::Auth),
-                Err(RemoteClientError::Auth) => {
-                    let _ = self.auth_context.clear_credentials().await;
-                    Err(RemoteClientError::Auth)
+                Ok(updated) => {
+                    self.auth_context.clear_remote_auth_degraded_slug().await;
+                    updated.access_token.ok_or(RemoteClientError::Auth)
                 }
-                Err(RemoteClientError::TokenRefreshTimeout) => {
-                    tracing::error!(
-                        "Refresh token request timed out after {} minutes. Discarding the refresh token and forcing re-login.",
-                        Self::TOKEN_REFRESH_REQUEST_TIMEOUT.as_secs() / 60
-                    );
+                Err(err) if err.is_definitive_auth_failure() => {
                     let _ = self.auth_context.clear_credentials().await;
-                    Err(RemoteClientError::TokenRefreshTimeout)
+                    self.auth_context.clear_remote_auth_degraded_slug().await;
+                    Err(err)
                 }
-                Err(err) => Err(err),
+                Err(err) => {
+                    if let Some(slug) = err.degraded_slug() {
+                        self.auth_context.set_remote_auth_degraded_slug(slug).await;
+                    }
+                    Err(err)
+                }
             }
         })
     }
@@ -225,6 +265,7 @@ impl RemoteClient {
             .save_credentials(&new_creds)
             .await
             .map_err(|e| RemoteClientError::Storage(e.to_string()))?;
+        self.auth_context.clear_remote_auth_degraded_slug().await;
         Ok(new_creds)
     }
 
@@ -236,26 +277,9 @@ impl RemoteClient {
             refresh_token: refresh_token.to_string(),
         };
 
-        let timeout_options = RequestTimeoutOptions {
-            timeout: Self::TOKEN_REFRESH_REQUEST_TIMEOUT,
-            retry_on_timeout: false,
-        };
-
-        self.post_public_with_timeout_options("/v1/tokens/refresh", Some(&request), timeout_options)
+        self.post_public("/v1/tokens/refresh", Some(&request))
             .await
-            .map_err(|e| {
-                if matches!(e, RemoteClientError::Timeout) {
-                    RemoteClientError::TokenRefreshTimeout
-                } else {
-                    e
-                }
-            })
             .map_err(|e| self.map_api_error(e))
-    }
-
-    /// Returns the base URL for the client.
-    pub fn base_url(&self) -> &str {
-        self.base.as_str()
     }
 
     /// Returns a valid access token for use-cases like maintaining a websocket connection.
@@ -283,6 +307,19 @@ impl RemoteClient {
             .map_err(|e| self.map_api_error(e))
     }
 
+    pub async fn local_login(
+        &self,
+        request: &LocalLoginRequest,
+    ) -> Result<LocalLoginResponse, RemoteClientError> {
+        self.post_public("/v1/auth/local/login", Some(request))
+            .await
+            .map_err(|e| self.map_api_error(e))
+    }
+
+    pub async fn auth_methods(&self) -> Result<AuthMethodsResponse, RemoteClientError> {
+        self.get_public("/v1/auth/methods").await
+    }
+
     /// Gets an invitation by token (public, no auth required).
     pub async fn get_invitation(
         &self,
@@ -302,8 +339,7 @@ impl RemoteClient {
     where
         B: Serialize,
     {
-        self.send_internal(method, path, requires_auth, body, None)
-            .await
+        self.send_internal(method, path, requires_auth, body).await
     }
 
     async fn send_internal<B>(
@@ -312,17 +348,34 @@ impl RemoteClient {
         path: &str,
         requires_auth: bool,
         body: Option<&B>,
-        timeout_options: Option<RequestTimeoutOptions>,
     ) -> Result<reqwest::Response, RemoteClientError>
     where
         B: Serialize,
+    {
+        self.send_internal_with_request(method, path, requires_auth, |req| {
+            if let Some(body) = body {
+                req.json(body)
+            } else {
+                req
+            }
+        })
+        .await
+    }
+
+    async fn send_internal_with_request<F>(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        requires_auth: bool,
+        customize_request: F,
+    ) -> Result<reqwest::Response, RemoteClientError>
+    where
+        F: Fn(reqwest::RequestBuilder) -> reqwest::RequestBuilder,
     {
         let url = self
             .base
             .join(path)
             .map_err(|e| RemoteClientError::Url(e.to_string()))?;
-
-        let retry_on_timeout = timeout_options.is_none_or(|o| o.retry_on_timeout);
 
         let operation = || async {
             let mut req = self
@@ -331,18 +384,12 @@ impl RemoteClient {
                 .header("X-Client-Version", env!("CARGO_PKG_VERSION"))
                 .header("X-Client-Type", "local-backend");
 
-            if let Some(t) = timeout_options.map(|o| o.timeout) {
-                req = req.timeout(t);
-            }
-
             if requires_auth {
                 let token = self.require_token().await?;
                 req = req.bearer_auth(token);
             }
 
-            if let Some(b) = body {
-                req = req.json(b);
-            }
+            req = customize_request(req);
 
             let res = req.send().await.map_err(map_reqwest_error)?;
 
@@ -365,12 +412,7 @@ impl RemoteClient {
                     .with_max_times(2)
                     .with_jitter(),
             )
-            .when(move |e: &RemoteClientError| {
-                if !e.should_retry() {
-                    return false;
-                }
-                retry_on_timeout || !matches!(e, RemoteClientError::Timeout)
-            })
+            .when(RemoteClientError::should_retry)
             .notify(|e, dur| {
                 warn!(
                     "Remote call failed, retrying after {:.2}s: {}",
@@ -400,30 +442,6 @@ impl RemoteClient {
         B: Serialize,
     {
         let res = self.send(reqwest::Method::POST, path, false, body).await?;
-        res.json::<T>()
-            .await
-            .map_err(|e| RemoteClientError::Serde(e.to_string()))
-    }
-
-    async fn post_public_with_timeout_options<T, B>(
-        &self,
-        path: &str,
-        body: Option<&B>,
-        timeout_options: RequestTimeoutOptions,
-    ) -> Result<T, RemoteClientError>
-    where
-        T: for<'de> Deserialize<'de>,
-        B: Serialize,
-    {
-        let res = self
-            .send_internal(
-                reqwest::Method::POST,
-                path,
-                false,
-                body,
-                Some(timeout_options),
-            )
-            .await?;
         res.json::<T>()
             .await
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
@@ -629,6 +647,12 @@ impl RemoteClient {
         .await
     }
 
+    /// Lists relay hosts visible to the current user.
+    pub async fn list_relay_hosts(&self) -> Result<Vec<RelayHost>, RemoteClientError> {
+        let response: ListRelayHostsResponse = self.get_authed("/v1/hosts").await?;
+        Ok(response.hosts)
+    }
+
     /// Deletes a workspace on the remote server by its local workspace ID.
     pub async fn delete_workspace(
         &self,
@@ -697,6 +721,21 @@ impl RemoteClient {
         Ok(())
     }
 
+    /// Triggers issue-status sync for a workspace that was merged locally without a PR.
+    pub async fn sync_issue_status_from_local_workspace_merge(
+        &self,
+        local_workspace_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
+        self.send(
+            reqwest::Method::POST,
+            &format!("/v1/workspaces/{local_workspace_id}/sync_issue_status_from_local_merge"),
+            true,
+            None::<&()>,
+        )
+        .await?;
+        Ok(())
+    }
+
     /// Creates a workspace on the remote server, linking it to a local workspace and an issue.
     pub async fn create_workspace(
         &self,
@@ -721,6 +760,14 @@ impl RemoteClient {
     ) -> Result<ListIssuesResponse, RemoteClientError> {
         self.get_authed(&format!("/v1/issues?project_id={project_id}"))
             .await
+    }
+
+    /// Searches issues for a project using the canonical JSON request shape.
+    pub async fn search_issues(
+        &self,
+        request: &SearchIssuesRequest,
+    ) -> Result<ListIssuesResponse, RemoteClientError> {
+        self.post_authed("/v1/issues/search", Some(request)).await
     }
 
     /// Gets a single issue by ID.
@@ -759,6 +806,137 @@ impl RemoteClient {
         res.json::<DeleteResponse>()
             .await
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    // ── Issue Assignees ────────────────────────────────────────────────
+
+    /// Lists assignees for an issue.
+    pub async fn list_issue_assignees(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListIssueAssigneesResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/issue_assignees?issue_id={issue_id}"))
+            .await
+    }
+
+    /// Gets a single issue assignee by ID.
+    pub async fn get_issue_assignee(
+        &self,
+        issue_assignee_id: Uuid,
+    ) -> Result<IssueAssignee, RemoteClientError> {
+        self.get_authed(&format!("/v1/issue_assignees/{issue_assignee_id}"))
+            .await
+    }
+
+    /// Creates a new issue assignee.
+    pub async fn create_issue_assignee(
+        &self,
+        request: &CreateIssueAssigneeRequest,
+    ) -> Result<MutationResponse<IssueAssignee>, RemoteClientError> {
+        self.post_authed("/v1/issue_assignees", Some(request)).await
+    }
+
+    /// Deletes an issue assignee.
+    pub async fn delete_issue_assignee(
+        &self,
+        issue_assignee_id: Uuid,
+    ) -> Result<DeleteResponse, RemoteClientError> {
+        let res = self
+            .send(
+                reqwest::Method::DELETE,
+                &format!("/v1/issue_assignees/{issue_assignee_id}"),
+                true,
+                None::<&()>,
+            )
+            .await?;
+        res.json::<DeleteResponse>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    // ── Tags ───────────────────────────────────────────────────────────
+
+    /// Lists tags for a project.
+    pub async fn list_tags(&self, project_id: Uuid) -> Result<ListTagsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/tags?project_id={project_id}"))
+            .await
+    }
+
+    /// Gets a single tag by ID.
+    pub async fn get_tag(&self, tag_id: Uuid) -> Result<Tag, RemoteClientError> {
+        self.get_authed(&format!("/v1/tags/{tag_id}")).await
+    }
+
+    // ── Issue Tags ─────────────────────────────────────────────────────
+
+    /// Lists tags attached to an issue.
+    pub async fn list_issue_tags(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListIssueTagsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/issue_tags?issue_id={issue_id}"))
+            .await
+    }
+
+    /// Gets a single issue-tag relation by ID.
+    pub async fn get_issue_tag(&self, issue_tag_id: Uuid) -> Result<IssueTag, RemoteClientError> {
+        self.get_authed(&format!("/v1/issue_tags/{issue_tag_id}"))
+            .await
+    }
+
+    /// Attaches a tag to an issue.
+    pub async fn create_issue_tag(
+        &self,
+        request: &CreateIssueTagRequest,
+    ) -> Result<MutationResponse<IssueTag>, RemoteClientError> {
+        self.post_authed("/v1/issue_tags", Some(request)).await
+    }
+
+    /// Removes a tag from an issue.
+    pub async fn delete_issue_tag(
+        &self,
+        issue_tag_id: Uuid,
+    ) -> Result<DeleteResponse, RemoteClientError> {
+        let res = self
+            .send(
+                reqwest::Method::DELETE,
+                &format!("/v1/issue_tags/{issue_tag_id}"),
+                true,
+                None::<&()>,
+            )
+            .await?;
+        res.json::<DeleteResponse>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    // ── Issue Relationships ────────────────────────────────────────────
+
+    /// Lists relationships for an issue.
+    pub async fn list_issue_relationships(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListIssueRelationshipsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/issue_relationships?issue_id={issue_id}"))
+            .await
+    }
+
+    /// Creates a new issue relationship.
+    pub async fn create_issue_relationship(
+        &self,
+        request: &CreateIssueRelationshipRequest,
+    ) -> Result<MutationResponse<IssueRelationship>, RemoteClientError> {
+        self.post_authed("/v1/issue_relationships", Some(request))
+            .await
+    }
+
+    /// Deletes an issue relationship.
+    pub async fn delete_issue_relationship(
+        &self,
+        relationship_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
+        self.delete_authed(&format!("/v1/issue_relationships/{relationship_id}"))
+            .await
     }
 
     // ── Remote Projects ─────────────────────────────────────────────────
@@ -807,6 +985,25 @@ impl RemoteClient {
         )
         .await?;
         Ok(())
+    }
+
+    /// Updates a pull request status on the remote server.
+    pub async fn update_pull_request(
+        &self,
+        request: UpdatePullRequestApiRequest,
+    ) -> Result<PullRequest, RemoteClientError> {
+        let response: MutationResponse<PullRequest> =
+            self.patch_authed("/v1/pull_requests", &request).await?;
+        Ok(response.data)
+    }
+
+    /// Lists pull requests linked to an issue.
+    pub async fn list_pull_requests(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListPullRequestsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/pull_requests?issue_id={issue_id}"))
+            .await
     }
 
     /// Lists attachments for an issue on the remote server.

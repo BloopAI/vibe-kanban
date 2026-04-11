@@ -66,11 +66,11 @@ coverage/
 .storybook-out
 
 .env
-frontend/dist
-remote-frontend/dist
+packages/**/dist
 
 build-npm-package-codesign.sh
 
+npx-cli/bin/
 npx-cli/dist
 npx-cli/vibe-kanban-*
 vibe-kanban-*.tgz
@@ -79,10 +79,19 @@ vibe-kanban-*.tgz
 .dev-ports.json
 
 dev_assets
-/frontend/.env.sentry-build-plugin
+/packages/web/.env.sentry-build-plugin
 .ssh
 
 vibe-kanban-cloud/
 
 .jj
 .sisyphus/
+
+# Vite temp files
+*.timestamp-*.mjs
+
+# Mobile testing (per-developer, do not commit)
+*.ts.net.crt
+*.ts.net.key
+Caddyfile
+Caddyfile.dev

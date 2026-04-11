@@ -10,9 +10,11 @@ pub struct RemoteServerConfig {
     pub listen_addr: String,
     pub server_public_base_url: Option<String>,
     pub auth: AuthConfig,
+    pub refresh_token_overlap_secs: i64,
     pub electric_url: String,
     pub electric_secret: Option<SecretString>,
     pub electric_role_password: Option<SecretString>,
+    pub electric_publication_names: Vec<String>,
     pub r2: Option<R2Config>,
     pub azure_blob: Option<AzureBlobConfig>,
     pub review_worker_base_url: Option<String>,
@@ -91,7 +93,11 @@ pub struct AzureBlobConfig {
 impl AzureBlobConfig {
     pub fn from_env() -> Result<Option<Self>, ConfigError> {
         let account_name = match env::var("AZURE_STORAGE_ACCOUNT_NAME") {
-            Ok(v) => v,
+            Ok(v) if !v.trim().is_empty() => v,
+            Ok(_) => {
+                tracing::info!("AZURE_STORAGE_ACCOUNT_NAME is empty, Azure Blob storage disabled");
+                return Ok(None);
+            }
             Err(_) => {
                 tracing::info!("AZURE_STORAGE_ACCOUNT_NAME not set, Azure Blob storage disabled");
                 return Ok(None);
@@ -100,18 +106,27 @@ impl AzureBlobConfig {
 
         tracing::info!("AZURE_STORAGE_ACCOUNT_NAME is set, checking other Azure Blob env vars");
 
-        let account_key = env::var("AZURE_STORAGE_ACCOUNT_KEY")
-            .map_err(|_| ConfigError::MissingVar("AZURE_STORAGE_ACCOUNT_KEY"))?;
+        let account_key = match env::var("AZURE_STORAGE_ACCOUNT_KEY") {
+            Ok(v) if !v.trim().is_empty() => v,
+            Ok(_) | Err(_) => return Err(ConfigError::MissingVar("AZURE_STORAGE_ACCOUNT_KEY")),
+        };
 
         let container_name = env::var("AZURE_STORAGE_CONTAINER_NAME")
-            .unwrap_or_else(|_| "issue-attachments".to_string());
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| "issue-attachments".to_string());
 
-        let endpoint_url = env::var("AZURE_STORAGE_ENDPOINT_URL").ok();
-        let public_endpoint_url = env::var("AZURE_STORAGE_PUBLIC_ENDPOINT_URL").ok();
+        let endpoint_url = env::var("AZURE_STORAGE_ENDPOINT_URL")
+            .ok()
+            .filter(|value| !value.trim().is_empty());
+        let public_endpoint_url = env::var("AZURE_STORAGE_PUBLIC_ENDPOINT_URL")
+            .ok()
+            .filter(|value| !value.trim().is_empty());
 
         let auth_mode = match env::var("AZURE_MANAGED_IDENTITY_CLIENT_ID") {
-            Ok(client_id) => AzureAuthMode::EntraId { client_id },
+            Ok(client_id) if !client_id.trim().is_empty() => AzureAuthMode::EntraId { client_id },
             Err(_) => AzureAuthMode::SharedKey,
+            Ok(_) => AzureAuthMode::SharedKey,
         };
 
         let presign_expiry_secs = env::var("AZURE_BLOB_PRESIGN_EXPIRY_SECS")
@@ -211,6 +226,12 @@ impl RemoteServerConfig {
 
         let auth = AuthConfig::from_env()?;
 
+        let refresh_token_overlap_secs = env::var("REFRESH_TOKEN_OVERLAP_SECS")
+            .ok()
+            .and_then(|value| value.parse::<i64>().ok())
+            .filter(|value| *value >= 0 && *value <= 300)
+            .unwrap_or(60);
+
         let electric_url =
             env::var("ELECTRIC_URL").map_err(|_| ConfigError::MissingVar("ELECTRIC_URL"))?;
 
@@ -221,6 +242,10 @@ impl RemoteServerConfig {
         let electric_role_password = env::var("ELECTRIC_ROLE_PASSWORD")
             .ok()
             .map(|s| SecretString::new(s.into()));
+        let electric_publication_names = match env::var("ELECTRIC_PUBLICATION_NAMES") {
+            Ok(value) => parse_publication_names(&value)?,
+            Err(_) => Vec::new(),
+        };
 
         let r2 = R2Config::from_env()?;
         let azure_blob = AzureBlobConfig::from_env()?;
@@ -253,9 +278,11 @@ impl RemoteServerConfig {
             listen_addr,
             server_public_base_url,
             auth,
+            refresh_token_overlap_secs,
             electric_url,
             electric_secret,
             electric_role_password,
+            electric_publication_names,
             r2,
             azure_blob,
             review_worker_base_url,
@@ -264,6 +291,34 @@ impl RemoteServerConfig {
             allowed_users,
         })
     }
+}
+
+fn parse_publication_names(value: &str) -> Result<Vec<String>, ConfigError> {
+    let mut names = Vec::new();
+
+    for raw in value.split(',') {
+        let name = raw.trim();
+        if name.is_empty() {
+            continue;
+        }
+        if !is_valid_identifier(name) {
+            return Err(ConfigError::InvalidVar("ELECTRIC_PUBLICATION_NAMES"));
+        }
+        names.push(name.to_string());
+    }
+
+    Ok(names)
+}
+
+fn is_valid_identifier(value: &str) -> bool {
+    let mut chars = value.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    if !(first.is_ascii_alphabetic() || first == '_') {
+        return false;
+    }
+    chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
 #[derive(Debug, Clone)]
@@ -290,9 +345,49 @@ impl OAuthProviderConfig {
 }
 
 #[derive(Debug, Clone)]
+pub struct LocalAuthConfig {
+    email: String,
+    password: SecretString,
+}
+
+impl LocalAuthConfig {
+    fn from_env() -> Result<Option<Self>, ConfigError> {
+        let email = env::var("SELF_HOST_LOCAL_AUTH_EMAIL")
+            .ok()
+            .filter(|v| !v.trim().is_empty());
+        let password = env::var("SELF_HOST_LOCAL_AUTH_PASSWORD")
+            .ok()
+            .filter(|v| !v.is_empty());
+
+        let (email, password) = match (email, password) {
+            (None, None) => return Ok(None),
+            (Some(email), Some(password)) => (email, password),
+            (None, Some(_)) => return Err(ConfigError::MissingVar("SELF_HOST_LOCAL_AUTH_EMAIL")),
+            (Some(_), None) => {
+                return Err(ConfigError::MissingVar("SELF_HOST_LOCAL_AUTH_PASSWORD"));
+            }
+        };
+
+        Ok(Some(Self {
+            email,
+            password: SecretString::new(password.into()),
+        }))
+    }
+
+    pub fn email(&self) -> &str {
+        &self.email
+    }
+
+    pub fn password(&self) -> &SecretString {
+        &self.password
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct AuthConfig {
     github: Option<OAuthProviderConfig>,
     google: Option<OAuthProviderConfig>,
+    local: Option<LocalAuthConfig>,
     jwt_secret: SecretString,
     public_base_url: String,
 }
@@ -328,7 +423,9 @@ impl AuthConfig {
             _ => None,
         };
 
-        if github.is_none() && google.is_none() {
+        let local = LocalAuthConfig::from_env()?;
+
+        if github.is_none() && google.is_none() && local.is_none() {
             return Err(ConfigError::NoOAuthProviders);
         }
 
@@ -338,6 +435,7 @@ impl AuthConfig {
         Ok(Self {
             github,
             google,
+            local,
             jwt_secret,
             public_base_url,
         })
@@ -349,6 +447,10 @@ impl AuthConfig {
 
     pub fn google(&self) -> Option<&OAuthProviderConfig> {
         self.google.as_ref()
+    }
+
+    pub fn local(&self) -> Option<&LocalAuthConfig> {
+        self.local.as_ref()
     }
 
     pub fn jwt_secret(&self) -> &SecretString {

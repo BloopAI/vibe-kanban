@@ -1,11 +1,50 @@
 use api_types::UpsertPullRequestRequest;
+use db::models::workspace::Workspace;
+use git::GitService;
+use sqlx::SqlitePool;
 use tracing::{debug, error};
 use uuid::Uuid;
 
 use super::{
-    diff_stream::DiffStats,
+    diff_stream::{self, DiffStats},
     remote_client::{RemoteClient, RemoteClientError},
 };
+
+async fn update_workspace_on_remote(
+    client: &RemoteClient,
+    workspace_id: Uuid,
+    name: Option<Option<String>>,
+    archived: Option<bool>,
+    stats: Option<&DiffStats>,
+) {
+    match client
+        .update_workspace(
+            workspace_id,
+            name,
+            archived,
+            stats.map(|s| s.files_changed as i32),
+            stats.map(|s| s.lines_added as i32),
+            stats.map(|s| s.lines_removed as i32),
+        )
+        .await
+    {
+        Ok(()) => {
+            debug!("Synced workspace {} to remote", workspace_id);
+        }
+        Err(RemoteClientError::Auth) => {
+            debug!("Workspace {} sync skipped: not authenticated", workspace_id);
+        }
+        Err(RemoteClientError::Http { status: 404, .. }) => {
+            debug!(
+                "Workspace {} disappeared from remote before update, skipping sync",
+                workspace_id
+            );
+        }
+        Err(e) => {
+            error!("Failed to sync workspace {} to remote: {}", workspace_id, e);
+        }
+    }
+}
 
 /// Syncs workspace data to the remote server.
 /// First checks if the workspace exists on remote, then updates if it does.
@@ -40,22 +79,62 @@ pub async fn sync_workspace_to_remote(
     }
 
     // Workspace exists, proceed with update
+    update_workspace_on_remote(client, workspace_id, name, archived, stats).await;
+}
+
+/// Syncs issue status to remote for a workspace merged locally without a PR.
+pub async fn sync_local_workspace_merge_to_remote(client: &RemoteClient, workspace_id: Uuid) {
     match client
-        .update_workspace(
-            workspace_id,
-            name,
-            archived,
-            stats.map(|s| s.files_changed as i32),
-            stats.map(|s| s.lines_added as i32),
-            stats.map(|s| s.lines_removed as i32),
-        )
+        .sync_issue_status_from_local_workspace_merge(workspace_id)
         .await
     {
         Ok(()) => {
-            debug!("Synced workspace {} to remote", workspace_id);
+            debug!(
+                "Synced local workspace merge status to remote for workspace {}",
+                workspace_id
+            );
+        }
+        Err(RemoteClientError::Auth) => {
+            debug!(
+                "Local workspace merge sync skipped for workspace {}: not authenticated",
+                workspace_id
+            );
+        }
+        Err(RemoteClientError::Http { status: 404, .. }) => {
+            debug!(
+                "Local workspace merge sync skipped for workspace {}: workspace not found on remote",
+                workspace_id
+            );
         }
         Err(e) => {
-            error!("Failed to sync workspace {} to remote: {}", workspace_id, e);
+            error!(
+                "Failed to sync local workspace merge status for workspace {}: {}",
+                workspace_id, e
+            );
+        }
+    }
+}
+
+async fn upsert_pr_on_remote(client: &RemoteClient, request: UpsertPullRequestRequest) {
+    let number = request.number;
+    let workspace_id = request.local_workspace_id;
+
+    // Workspace exists, proceed with PR upsert
+    match client.upsert_pull_request(request).await {
+        Ok(()) => {
+            debug!("Synced PR #{} to remote", number);
+        }
+        Err(RemoteClientError::Auth) => {
+            debug!("PR #{} sync skipped: not authenticated", number);
+        }
+        Err(RemoteClientError::Http { status: 404, .. }) => {
+            debug!(
+                "PR #{} workspace {} not found on remote, skipping sync",
+                number, workspace_id
+            );
+        }
+        Err(e) => {
+            error!("Failed to sync PR #{} to remote: {}", number, e);
         }
     }
 }
@@ -86,15 +165,58 @@ pub async fn sync_pr_to_remote(client: &RemoteClient, request: UpsertPullRequest
         Ok(true) => {}
     }
 
-    let number = request.number;
+    upsert_pr_on_remote(client, request).await;
+}
 
-    // Workspace exists, proceed with PR upsert
-    match client.upsert_pull_request(request).await {
-        Ok(()) => {
-            debug!("Synced PR #{} to remote", number);
-        }
+/// Syncs all linked workspaces and their PRs to the remote server.
+/// Used after login to catch up on any changes made while logged out.
+pub async fn sync_all_linked_workspaces(
+    client: &RemoteClient,
+    pool: &SqlitePool,
+    git: &GitService,
+) {
+    // Sync workspace stats
+    let workspaces = match Workspace::fetch_all(pool).await {
+        Ok(ws) => ws,
         Err(e) => {
-            error!("Failed to sync PR #{} to remote: {}", number, e);
+            error!("Failed to fetch workspaces for post-login sync: {}", e);
+            return;
         }
+    };
+
+    for workspace in &workspaces {
+        match client.workspace_exists(workspace.id).await {
+            Ok(true) => {}
+            Ok(false) => {
+                debug!(
+                    "Workspace {} not found on remote, skipping post-login sync",
+                    workspace.id
+                );
+                continue;
+            }
+            Err(RemoteClientError::Auth) => {
+                debug!("Post-login workspace sync skipped: not authenticated");
+                return;
+            }
+            Err(e) => {
+                error!(
+                    "Failed to check workspace {} existence on remote during post-login sync: {}",
+                    workspace.id, e
+                );
+                continue;
+            }
+        }
+
+        let stats = diff_stream::compute_diff_stats(pool, git, workspace).await;
+        update_workspace_on_remote(
+            client,
+            workspace.id,
+            workspace.name.clone().map(Some),
+            Some(workspace.archived),
+            stats.as_ref(),
+        )
+        .await;
     }
+
+    debug!("Post-login workspace sync completed");
 }

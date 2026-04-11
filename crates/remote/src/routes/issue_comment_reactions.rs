@@ -1,3 +1,8 @@
+use api_types::{
+    CreateIssueCommentReactionRequest, DeleteResponse, IssueComment, IssueCommentReaction,
+    ListIssueCommentReactionsQuery, ListIssueCommentReactionsResponse, MutationResponse,
+    NotificationPayload, NotificationType, UpdateIssueCommentReactionRequest,
+};
 use axum::{
     Json,
     extract::{Extension, Path, Query, State},
@@ -10,25 +15,24 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_issue_access,
 };
-use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
     db::{
         issue_comment_reactions::IssueCommentReactionRepository,
-        issue_comments::IssueCommentRepository,
+        issue_comments::IssueCommentRepository, issues::IssueRepository,
+        organization_members::is_member,
     },
     mutation_definition::MutationBuilder,
-};
-use api_types::{
-    CreateIssueCommentReactionRequest, IssueCommentReaction, ListIssueCommentReactionsQuery,
-    ListIssueCommentReactionsResponse, UpdateIssueCommentReactionRequest,
+    notifications::send_issue_notifications,
 };
 
 /// Mutation definition for IssueCommentReaction - provides both router and TypeScript metadata.
-pub fn mutation(
-) -> MutationBuilder<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>
-{
+pub fn mutation() -> MutationBuilder<
+    IssueCommentReaction,
+    CreateIssueCommentReactionRequest,
+    UpdateIssueCommentReactionRequest,
+> {
     MutationBuilder::new("issue_comment_reactions")
         .list(list_issue_comment_reactions)
         .get(get_issue_comment_reaction)
@@ -39,6 +43,47 @@ pub fn mutation(
 
 pub fn router() -> axum::Router<AppState> {
     mutation().router()
+}
+
+async fn notify_comment_author_about_reaction(
+    state: &AppState,
+    organization_id: Uuid,
+    actor_user_id: Uuid,
+    comment: &IssueComment,
+    emoji: &str,
+) {
+    let Some(comment_author_id) = comment.author_id else {
+        return;
+    };
+
+    if comment_author_id == actor_user_id
+        || !is_member(state.pool(), organization_id, comment_author_id)
+            .await
+            .unwrap_or(false)
+    {
+        return;
+    }
+
+    let Ok(Some(issue)) = IssueRepository::find_by_id(state.pool(), comment.issue_id).await else {
+        return;
+    };
+
+    send_issue_notifications(
+        state.pool(),
+        organization_id,
+        actor_user_id,
+        &[comment_author_id],
+        &issue,
+        NotificationType::IssueCommentReaction,
+        NotificationPayload {
+            comment_preview: Some(comment.message.chars().take(100).collect::<String>()),
+            emoji: Some(emoji.to_owned()),
+            ..Default::default()
+        },
+        Some(comment.id),
+        Some(issue.id),
+    )
+    .await;
 }
 
 #[instrument(
@@ -127,7 +172,7 @@ async fn create_issue_comment_reaction(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "comment not found"))?;
 
-    ensure_issue_access(state.pool(), ctx.user.id, comment.issue_id).await?;
+    let organization_id = ensure_issue_access(state.pool(), ctx.user.id, comment.issue_id).await?;
 
     let response = IssueCommentReactionRepository::create(
         state.pool(),
@@ -141,6 +186,15 @@ async fn create_issue_comment_reaction(
         tracing::error!(?error, "failed to create reaction");
         db_error(error, "failed to create reaction")
     })?;
+
+    notify_comment_author_about_reaction(
+        &state,
+        organization_id,
+        ctx.user.id,
+        &comment,
+        &response.data.emoji,
+    )
+    .await;
 
     Ok(Json(response))
 }
@@ -180,7 +234,7 @@ async fn update_issue_comment_reaction(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "comment not found"))?;
 
-    ensure_issue_access(state.pool(), ctx.user.id, comment.issue_id).await?;
+    let organization_id = ensure_issue_access(state.pool(), ctx.user.id, comment.issue_id).await?;
 
     let response = IssueCommentReactionRepository::update(
         state.pool(),
@@ -192,6 +246,15 @@ async fn update_issue_comment_reaction(
         tracing::error!(?error, "failed to update reaction");
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
+
+    notify_comment_author_about_reaction(
+        &state,
+        organization_id,
+        ctx.user.id,
+        &comment,
+        &response.data.emoji,
+    )
+    .await;
 
     Ok(Json(response))
 }

@@ -4,6 +4,7 @@ use aes_gcm::{
     Aes256Gcm, Key, Nonce,
     aead::{Aead, AeadCore, KeyInit, OsRng},
 };
+use api_types::User;
 use base64::{
     Engine as _,
     engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
@@ -16,11 +17,10 @@ use sha2::{Digest, Sha256};
 use thiserror::Error;
 use uuid::Uuid;
 
-use api_types::User;
 use crate::{auth::provider::ProviderTokenDetails, db::auth::AuthSession};
 
-pub const ACCESS_TOKEN_TTL_SECONDS: i64 = 120;
-pub const REFRESH_TOKEN_TTL_DAYS: i64 = 365;
+pub(super) const ACCESS_TOKEN_TTL_SECONDS: i64 = 120;
+pub(super) const REFRESH_TOKEN_TTL_DAYS: i64 = 365;
 const DEFAULT_JWT_LEEWAY_SECONDS: u64 = 60;
 
 #[derive(Debug, Error)]
@@ -46,7 +46,7 @@ pub enum JwtError {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AccessTokenClaims {
+pub(super) struct AccessTokenClaims {
     pub sub: Uuid,
     pub session_id: Uuid,
     pub iat: i64,
@@ -55,14 +55,16 @@ pub struct AccessTokenClaims {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RefreshTokenClaims {
+pub(super) struct RefreshTokenClaims {
     pub sub: Uuid,
     pub session_id: Uuid,
     pub jti: Uuid,
     pub iat: i64,
     pub exp: i64,
     pub aud: String,
-    pub provider_tokens_blob: String, // Encrypted JSON blob containing provider tokens
+    pub provider: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_tokens_blob: Option<String>, // Legacy claim for older refresh tokens
 }
 
 #[derive(Debug, Clone)]
@@ -77,7 +79,8 @@ pub struct RefreshTokenDetails {
     pub user_id: Uuid,
     pub session_id: Uuid,
     pub refresh_token_id: Uuid,
-    pub provider_token_details: ProviderTokenDetails,
+    pub provider: String,
+    pub legacy_provider_token_details: Option<ProviderTokenDetails>,
 }
 
 #[derive(Clone)]
@@ -90,7 +93,6 @@ pub struct Tokens {
     pub access_token: String,
     pub refresh_token: String,
     pub refresh_token_id: Uuid,
-    pub encrypted_provider_tokens: String,
 }
 
 impl JwtService {
@@ -104,33 +106,45 @@ impl JwtService {
         &self,
         session: &AuthSession,
         user: &User,
-        provider_token: ProviderTokenDetails,
+        provider: &str,
     ) -> Result<Tokens, JwtError> {
         let now = Utc::now();
         let refresh_token_id = Uuid::new_v4();
 
+        self.generate_tokens_for_refresh_token_id(session, user.id, provider, refresh_token_id, now)
+    }
+
+    pub fn generate_tokens_for_refresh_token_id(
+        &self,
+        session: &AuthSession,
+        user_id: Uuid,
+        provider: &str,
+        refresh_token_id: Uuid,
+        issued_at: DateTime<Utc>,
+    ) -> Result<Tokens, JwtError> {
+        let now = Utc::now();
+
         // Access token, short-lived (~2 minutes)
         let access_exp = now + ChronoDuration::seconds(ACCESS_TOKEN_TTL_SECONDS);
         let access_claims = AccessTokenClaims {
-            sub: user.id,
+            sub: user_id,
             session_id: session.id,
             iat: now.timestamp(),
             exp: access_exp.timestamp(),
             aud: "access".to_string(),
         };
 
-        let encrypted_provider_tokens = self.encrypt_provider_tokens(&provider_token)?;
-
         // Refresh token, long-lived (~1 year)
-        let refresh_exp = now + ChronoDuration::days(REFRESH_TOKEN_TTL_DAYS);
+        let refresh_exp = issued_at + ChronoDuration::days(REFRESH_TOKEN_TTL_DAYS);
         let refresh_claims = RefreshTokenClaims {
-            sub: user.id,
+            sub: user_id,
             session_id: session.id,
             jti: refresh_token_id,
-            iat: now.timestamp(),
+            iat: issued_at.timestamp(),
             exp: refresh_exp.timestamp(),
             aud: "refresh".to_string(),
-            provider_tokens_blob: encrypted_provider_tokens.clone(),
+            provider: Some(provider.to_string()),
+            provider_tokens_blob: None,
         };
 
         let encoding_key = EncodingKey::from_base64_secret(self.secret.expose_secret())?;
@@ -151,7 +165,6 @@ impl JwtService {
             access_token,
             refresh_token,
             refresh_token_id,
-            encrypted_provider_tokens,
         })
     }
 
@@ -208,13 +221,26 @@ impl JwtService {
         let decoding_key = DecodingKey::from_base64_secret(self.secret.expose_secret())?;
         let data = decode::<RefreshTokenClaims>(token, &decoding_key, &validation)?;
         let claims = data.claims;
-        let provider_token_details = self.decrypt_provider_tokens(&claims.provider_tokens_blob)?;
+
+        let (provider, legacy_provider_token_details) =
+            if let Some(provider) = claims.provider.as_ref().filter(|p| !p.trim().is_empty()) {
+                (provider.to_string(), None)
+            } else if let Some(provider_tokens_blob) = claims.provider_tokens_blob.as_deref() {
+                let provider_token_details = self.decrypt_provider_tokens(provider_tokens_blob)?;
+                (
+                    provider_token_details.provider.clone(),
+                    Some(provider_token_details),
+                )
+            } else {
+                return Err(JwtError::InvalidToken);
+            };
 
         Ok(RefreshTokenDetails {
             user_id: claims.sub,
             session_id: claims.session_id,
             refresh_token_id: claims.jti,
-            provider_token_details,
+            provider,
+            legacy_provider_token_details,
         })
     }
 

@@ -25,6 +25,66 @@ pub struct CreateWorkspaceParams {
 pub struct WorkspaceRepository;
 
 impl WorkspaceRepository {
+    pub async fn list_by_owner(
+        pool: &PgPool,
+        owner_user_id: Uuid,
+    ) -> Result<Vec<Workspace>, WorkspaceError> {
+        let records = sqlx::query_as!(
+            Workspace,
+            r#"
+            SELECT
+                id                  AS "id!: Uuid",
+                project_id          AS "project_id!: Uuid",
+                owner_user_id       AS "owner_user_id!: Uuid",
+                issue_id            AS "issue_id: Uuid",
+                local_workspace_id  AS "local_workspace_id: Uuid",
+                name                AS "name: String",
+                archived            AS "archived!: bool",
+                files_changed       AS "files_changed: i32",
+                lines_added         AS "lines_added: i32",
+                lines_removed       AS "lines_removed: i32",
+                created_at          AS "created_at!: DateTime<Utc>",
+                updated_at          AS "updated_at!: DateTime<Utc>"
+            FROM workspaces
+            WHERE owner_user_id = $1
+            "#,
+            owner_user_id
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok(records)
+    }
+
+    pub async fn list_by_project(
+        pool: &PgPool,
+        project_id: Uuid,
+    ) -> Result<Vec<Workspace>, WorkspaceError> {
+        let records = sqlx::query_as!(
+            Workspace,
+            r#"
+            SELECT
+                id                  AS "id!: Uuid",
+                project_id          AS "project_id!: Uuid",
+                owner_user_id       AS "owner_user_id!: Uuid",
+                issue_id            AS "issue_id: Uuid",
+                local_workspace_id  AS "local_workspace_id: Uuid",
+                name                AS "name: String",
+                archived            AS "archived!: bool",
+                files_changed       AS "files_changed: i32",
+                lines_added         AS "lines_added: i32",
+                lines_removed       AS "lines_removed: i32",
+                created_at          AS "created_at!: DateTime<Utc>",
+                updated_at          AS "updated_at!: DateTime<Utc>"
+            FROM workspaces
+            WHERE project_id = $1
+            "#,
+            project_id
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok(records)
+    }
+
     pub async fn create(
         pool: &PgPool,
         params: CreateWorkspaceParams,

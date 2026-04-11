@@ -1,8 +1,10 @@
 packages:
-  - frontend
-  - remote-frontend
+  - packages/*
 
 onlyBuiltDependencies:
   - '@sentry/cli'
   - core-js
   - esbuild
+
+patchedDependencies:
+  '@pierre/diffs@1.1.4': patches/@pierre__diffs@1.1.4.patch

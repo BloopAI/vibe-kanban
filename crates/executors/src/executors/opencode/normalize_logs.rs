@@ -1,20 +1,28 @@
 use std::{collections::HashMap, path::Path, sync::Arc};
 
+type MessageId = String;
+type PartId = String;
+
 use futures::StreamExt;
 use serde::Deserialize;
 use serde_json::Value;
-use workspace_utils::{approvals::ApprovalStatus, msg_store::MsgStore, path::make_path_relative};
+use workspace_utils::{
+    approvals::{ApprovalStatus, QuestionStatus},
+    msg_store::MsgStore,
+    path::make_path_relative,
+};
 
 use super::types::{
-    MessageInfo, MessageRole, OpencodeExecutorEvent, Part, PermissionAskedEvent, SdkEvent, SdkTodo,
-    SessionStatus, ToolPart, ToolStateUpdate,
+    MessageInfo, MessagePartDeltaEvent, MessageRole, OpencodeExecutorEvent, Part,
+    PermissionAskedEvent, QuestionInfo, SdkEvent, SdkTodo, SessionStatus, ToolPart,
+    ToolStateUpdate,
 };
 use crate::{
     approvals::ToolCallMetadata,
     logs::{
-        ActionType, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
-        NormalizedEntryError, NormalizedEntryType, TodoItem, TokenUsageInfo, ToolResult,
-        ToolStatus,
+        ActionType, AnsweredQuestion, AskUserQuestionItem, AskUserQuestionOption,
+        CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry, NormalizedEntryError,
+        NormalizedEntryType, TodoItem, TokenUsageInfo, ToolResult, ToolStatus,
         stderr_processor::normalize_stderr_logs,
         utils::{
             EntryIndexProvider,
@@ -33,7 +41,7 @@ fn system_message(content: String) -> NormalizedEntry {
     }
 }
 
-pub fn normalize_logs(
+pub(super) fn normalize_logs(
     msg_store: Arc<MsgStore>,
     worktree_path: &Path,
 ) -> Vec<tokio::task::JoinHandle<()>> {
@@ -105,11 +113,37 @@ pub fn normalize_logs(
                         },
                     );
                 }
+                OpencodeExecutorEvent::ApprovalRequested {
+                    tool_call_id,
+                    approval_id,
+                }
+                | OpencodeExecutorEvent::QuestionAsked {
+                    tool_call_id,
+                    approval_id,
+                } => {
+                    state.handle_approval_requested(
+                        &tool_call_id,
+                        approval_id,
+                        &worktree_path,
+                        &msg_store,
+                    );
+                }
                 OpencodeExecutorEvent::ApprovalResponse {
                     tool_call_id,
                     status,
                 } => {
                     state.handle_approval_response(
+                        &tool_call_id,
+                        status,
+                        &worktree_path,
+                        &msg_store,
+                    );
+                }
+                OpencodeExecutorEvent::QuestionResponse {
+                    tool_call_id,
+                    status,
+                } => {
+                    state.handle_question_response(
                         &tool_call_id,
                         status,
                         &worktree_path,
@@ -170,13 +204,21 @@ enum UpdateMode {
     Set,
 }
 
+#[derive(Debug, Clone, Copy)]
+enum PartKind {
+    AssistantText,
+    Thinking,
+}
+
 #[derive(Default)]
 struct LogState {
     entry_index: EntryIndexProvider,
     msg_store: Arc<MsgStore>,
     message_roles: HashMap<String, MessageRole>,
-    assistant_text: HashMap<String, StreamingText>,
-    thinking_text: HashMap<String, StreamingText>,
+    assistant_text: HashMap<PartId, StreamingText>,
+    thinking_text: HashMap<PartId, StreamingText>,
+    part_kinds: HashMap<PartId, (MessageId, PartKind)>,
+    pending_deltas: HashMap<PartId, Vec<String>>,
     tool_states: HashMap<String, ToolCallState>,
     approvals: HashMap<String, ApprovalStatus>,
     model_system_message_emitted: bool,
@@ -193,6 +235,8 @@ impl LogState {
             message_roles: HashMap::new(),
             assistant_text: HashMap::new(),
             thinking_text: HashMap::new(),
+            part_kinds: HashMap::new(),
+            pending_deltas: HashMap::new(),
             tool_states: HashMap::new(),
             approvals: HashMap::new(),
             model_system_message_emitted: false,
@@ -227,6 +271,9 @@ impl LogState {
                     msg_store,
                 );
             }
+            SdkEvent::MessagePartDelta(event) => {
+                self.handle_part_delta(event, msg_store);
+            }
             SdkEvent::TodoUpdated(event) => {
                 self.handle_todo_updated(&event.todos, msg_store);
             }
@@ -240,9 +287,14 @@ impl LogState {
             SdkEvent::PermissionAsked(event) => {
                 self.handle_permission_asked(event, worktree_path, msg_store);
             }
+            SdkEvent::QuestionAsked(event) => {
+                self.handle_question_asked(event, worktree_path, msg_store);
+            }
             SdkEvent::PermissionReplied
             | SdkEvent::MessageRemoved
             | SdkEvent::MessagePartRemoved
+            | SdkEvent::QuestionReplied
+            | SdkEvent::QuestionRejected
             | SdkEvent::CommandExecuted
             | SdkEvent::SessionDiff
             | SdkEvent::TuiSessionSelect => {}
@@ -368,13 +420,18 @@ impl LogState {
     ) {
         match part {
             Part::Text(part) => {
-                if self.message_roles.get(&part.message_id) != Some(&MessageRole::Assistant) {
-                    tracing::debug!(
-                        "Skipping text part for non-assistant message_id {}",
-                        part.message_id
-                    );
+                let stream_key = part.id.clone().unwrap_or_else(|| part.message_id.clone());
+
+                self.part_kinds.insert(
+                    stream_key.clone(),
+                    (part.message_id.clone(), PartKind::AssistantText),
+                );
+
+                if self.message_roles.get(&part.message_id) == Some(&MessageRole::User) {
                     return;
                 }
+
+                let buffered = self.pending_deltas.remove(&stream_key);
 
                 let (text, mode) = if let Some(delta) = delta {
                     (delta, UpdateMode::Append)
@@ -383,17 +440,40 @@ impl LogState {
                 };
 
                 let entry_index = self.entry_index.clone();
+
+                if let Some(pending) = buffered {
+                    let combined: String = pending.into_iter().collect();
+                    update_streaming_text(
+                        &entry_index,
+                        &combined,
+                        NormalizedEntryType::AssistantMessage,
+                        &stream_key,
+                        &mut self.assistant_text,
+                        msg_store,
+                        UpdateMode::Set,
+                    );
+                }
+
                 update_streaming_text(
                     &entry_index,
                     text,
                     NormalizedEntryType::AssistantMessage,
-                    &part.message_id,
+                    &stream_key,
                     &mut self.assistant_text,
                     msg_store,
                     mode,
                 );
             }
             Part::Reasoning(part) => {
+                let stream_key = part.id.clone().unwrap_or_else(|| part.message_id.clone());
+
+                self.part_kinds.insert(
+                    stream_key.clone(),
+                    (part.message_id.clone(), PartKind::Thinking),
+                );
+
+                let buffered = self.pending_deltas.remove(&stream_key);
+
                 let (text, mode) = if let Some(delta) = delta {
                     (delta, UpdateMode::Append)
                 } else {
@@ -401,11 +481,25 @@ impl LogState {
                 };
 
                 let entry_index = self.entry_index.clone();
+
+                if let Some(pending) = buffered {
+                    let combined: String = pending.into_iter().collect();
+                    update_streaming_text(
+                        &entry_index,
+                        &combined,
+                        NormalizedEntryType::Thinking,
+                        &stream_key,
+                        &mut self.thinking_text,
+                        msg_store,
+                        UpdateMode::Set,
+                    );
+                }
+
                 update_streaming_text(
                     &entry_index,
                     text,
                     NormalizedEntryType::Thinking,
-                    &part.message_id,
+                    &stream_key,
                     &mut self.thinking_text,
                     msg_store,
                     mode,
@@ -438,6 +532,76 @@ impl LogState {
             }
             Part::Other => {}
         }
+    }
+
+    fn handle_part_delta(&mut self, event: MessagePartDeltaEvent, msg_store: &Arc<MsgStore>) {
+        if event.field != "text" || event.delta.is_empty() {
+            return;
+        }
+
+        let Some((message_id, kind)) = self.part_kinds.get(&event.part_id) else {
+            self.pending_deltas
+                .entry(event.part_id)
+                .or_default()
+                .push(event.delta);
+            return;
+        };
+        let message_id = message_id.clone();
+        let kind = *kind;
+
+        let entry_index = self.entry_index.clone();
+        match kind {
+            PartKind::AssistantText => {
+                if self.message_roles.get(&message_id) == Some(&MessageRole::User) {
+                    return;
+                }
+                update_streaming_text(
+                    &entry_index,
+                    &event.delta,
+                    NormalizedEntryType::AssistantMessage,
+                    &event.part_id,
+                    &mut self.assistant_text,
+                    msg_store,
+                    UpdateMode::Append,
+                );
+            }
+            PartKind::Thinking => {
+                update_streaming_text(
+                    &entry_index,
+                    &event.delta,
+                    NormalizedEntryType::Thinking,
+                    &event.part_id,
+                    &mut self.thinking_text,
+                    msg_store,
+                    UpdateMode::Append,
+                );
+            }
+        }
+    }
+
+    fn handle_approval_requested(
+        &mut self,
+        tool_call_id: &str,
+        approval_id: String,
+        worktree_path: &Path,
+        msg_store: &Arc<MsgStore>,
+    ) {
+        let Some(tool_state) = self.tool_states.get_mut(tool_call_id) else {
+            return;
+        };
+
+        tool_state.approval = Some(ApprovalStatus::Pending);
+        tool_state.approval_id = Some(approval_id);
+
+        let Some(index) = tool_state.index else {
+            return;
+        };
+
+        replace_normalized_entry(
+            msg_store,
+            index,
+            tool_state.to_normalized_entry(worktree_path),
+        );
     }
 
     fn handle_approval_response(
@@ -490,6 +654,46 @@ impl LogState {
             index,
             tool_state.to_normalized_entry(worktree_path),
         );
+    }
+
+    fn handle_question_response(
+        &mut self,
+        tool_call_id: &str,
+        status: QuestionStatus,
+        worktree_path: &Path,
+        msg_store: &Arc<MsgStore>,
+    ) {
+        if let Some(tool_state) = self.tool_states.get_mut(tool_call_id) {
+            tool_state.set_question_status(status.clone());
+
+            if let Some(index) = tool_state.index {
+                replace_normalized_entry(
+                    msg_store,
+                    index,
+                    tool_state.to_normalized_entry(worktree_path),
+                );
+            }
+        }
+
+        if let QuestionStatus::Answered { answers } = &status {
+            let qa_pairs: Vec<AnsweredQuestion> = answers
+                .iter()
+                .map(|qa| AnsweredQuestion {
+                    question: qa.question.clone(),
+                    answer: qa.answer.clone(),
+                })
+                .collect();
+            self.add_normalized_entry(NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::UserAnsweredQuestions { answers: qa_pairs },
+                content: format!(
+                    "Answered {} question{}",
+                    answers.len(),
+                    if answers.len() != 1 { "s" } else { "" }
+                ),
+                metadata: None,
+            });
+        }
     }
 
     fn handle_permission_asked(
@@ -561,6 +765,45 @@ impl LogState {
         }
     }
 
+    fn handle_question_asked(
+        &mut self,
+        event: super::types::QuestionAskedEvent,
+        worktree_path: &Path,
+        msg_store: &Arc<MsgStore>,
+    ) {
+        let call_id = event
+            .tool
+            .as_ref()
+            .map(|tool| tool.call_id.trim())
+            .filter(|id| !id.is_empty())
+            .unwrap_or_else(|| event.id.trim());
+        if call_id.is_empty() {
+            return;
+        }
+
+        let questions = parse_question_items_from_info(&event.questions);
+        let tool_input = serde_json::json!({ "questions": event.questions });
+
+        let tool_state = self
+            .tool_states
+            .entry(call_id.to_string())
+            .or_insert_with(|| ToolCallState::new(call_id.to_string()));
+
+        tool_state.set_tool_name("question".to_string());
+        tool_state.state = ToolStateStatus::Pending;
+        tool_state.data = ToolData::Question { questions };
+        tool_state.apply_tool_data(Some(tool_input), None, None, None);
+        tool_state.set_approval(ApprovalStatus::Pending);
+
+        let entry = tool_state.to_normalized_entry(worktree_path);
+        if let Some(index) = tool_state.index {
+            replace_normalized_entry(msg_store, index, entry);
+        } else {
+            let index = add_normalized_entry(msg_store, &self.entry_index, entry);
+            tool_state.index = Some(index);
+        }
+    }
+
     fn add_normalized_entry(&mut self, entry: NormalizedEntry) -> usize {
         add_normalized_entry(&self.msg_store, &self.entry_index, entry)
     }
@@ -577,8 +820,8 @@ fn update_streaming_text(
     entry_index: &EntryIndexProvider,
     text: &str,
     entry_type: NormalizedEntryType,
-    message_id: &str,
-    map: &mut HashMap<String, StreamingText>,
+    stream_key: &str,
+    map: &mut HashMap<PartId, StreamingText>,
     msg_store: &Arc<MsgStore>,
     mode: UpdateMode,
 ) {
@@ -586,14 +829,14 @@ fn update_streaming_text(
         return;
     }
 
-    let is_new = !map.contains_key(message_id);
+    let is_new = !map.contains_key(stream_key);
 
     if is_new && text == "\n" {
         return;
     }
 
     let state = map
-        .entry(message_id.to_string())
+        .entry(stream_key.to_string())
         .or_insert_with(|| StreamingText {
             index: entry_index.next(),
             content: String::new(),
@@ -621,6 +864,8 @@ struct ToolCallState {
     state: ToolStateStatus,
     title: Option<String>,
     approval: Option<ApprovalStatus>,
+    question: Option<QuestionStatus>,
+    approval_id: Option<String>,
     data: ToolData,
 }
 
@@ -658,6 +903,9 @@ enum ToolData {
         subagent_type: Option<String>,
         output: Option<String>,
     },
+    Question {
+        questions: Vec<AskUserQuestionItem>,
+    },
     Other {
         input: Option<Value>,
         metadata: Option<Value>,
@@ -690,6 +938,8 @@ impl ToolCallState {
             state: ToolStateStatus::Unknown,
             title: None,
             approval: None,
+            question: None,
+            approval_id: None,
             data: ToolData::Other {
                 input: None,
                 metadata: None,
@@ -721,7 +971,14 @@ impl ToolCallState {
         self.approval = Some(approval);
     }
 
+    fn set_question_status(&mut self, question: QuestionStatus) {
+        self.question = Some(question);
+    }
+
     fn tool_status(&self) -> ToolStatus {
+        if let Some(status) = self.question.as_ref().map(ToolStatus::from_question_status) {
+            return status;
+        }
         if let Some(ApprovalStatus::Denied { reason }) = &self.approval {
             return ToolStatus::Denied {
                 reason: reason.clone(),
@@ -729,6 +986,13 @@ impl ToolCallState {
         }
         if matches!(self.approval, Some(ApprovalStatus::TimedOut)) {
             return ToolStatus::TimedOut;
+        }
+        if matches!(self.approval, Some(ApprovalStatus::Pending))
+            && let Some(ref id) = self.approval_id
+        {
+            return ToolStatus::PendingApproval {
+                approval_id: id.clone(),
+            };
         }
         match self.state {
             ToolStateStatus::Completed => ToolStatus::Success,
@@ -897,6 +1161,13 @@ impl ToolCallState {
                     *task_output = Some(o);
                 }
             }
+            ToolData::Question { questions } => {
+                if let Some(items) =
+                    input.and_then(|v| v.get("questions").and_then(Value::as_array).cloned())
+                {
+                    *questions = parse_question_items(&items);
+                }
+            }
             ToolData::Unknown => {
                 // Upgrade Unknown to Other when we receive tool data
                 self.data = ToolData::Other {
@@ -981,6 +1252,7 @@ impl ToolCallState {
                 subagent_type: None,
                 output: None,
             },
+            "question" => ToolData::Question { questions: vec![] },
             _ => return,
         };
 
@@ -1085,6 +1357,9 @@ impl ToolCallState {
                     .as_deref()
                     .map(|o| ToolResult::markdown(o.to_string())),
             },
+            ToolData::Question { questions } => ActionType::AskUserQuestion {
+                questions: questions.clone(),
+            },
             ToolData::Unknown => ActionType::Tool {
                 tool_name: self.tool_name.clone(),
                 arguments: None,
@@ -1121,6 +1396,13 @@ impl ToolCallState {
                     "Task".to_string()
                 } else {
                     format!("Task: `{description}`")
+                }
+            }
+            ActionType::AskUserQuestion { questions } => {
+                if questions.len() == 1 {
+                    questions[0].question.clone()
+                } else {
+                    format!("{} questions", questions.len())
                 }
             }
             _ => String::new(),
@@ -1216,7 +1498,15 @@ fn make_relative_path(path: &str, worktree_path: &Path) -> String {
 fn fingerprint_todos(todos: &[SdkTodo]) -> String {
     let mut parts = todos
         .iter()
-        .map(|t| format!("{}:{}:{}:{}", t.id, t.status, t.priority, t.content))
+        .map(|t| {
+            format!(
+                "{}:{}:{}:{}",
+                t.id.as_deref().unwrap_or(""),
+                t.status,
+                t.priority,
+                t.content
+            )
+        })
         .collect::<Vec<_>>();
     parts.sort();
     parts.join("|")
@@ -1247,4 +1537,31 @@ fn extract_file_path_from_permission_metadata(metadata: &Value) -> Option<&str> 
     } else {
         Some(trimmed)
     }
+}
+
+fn parse_question_items_from_info(items: &[QuestionInfo]) -> Vec<AskUserQuestionItem> {
+    items
+        .iter()
+        .map(|q| AskUserQuestionItem {
+            question: q.question.clone(),
+            header: q.header.clone(),
+            options: q
+                .options
+                .iter()
+                .map(|o| AskUserQuestionOption {
+                    label: o.label.clone(),
+                    description: o.description.clone(),
+                })
+                .collect(),
+            multi_select: q.multiple.unwrap_or(false),
+        })
+        .collect()
+}
+
+fn parse_question_items(items: &[Value]) -> Vec<AskUserQuestionItem> {
+    let infos: Vec<QuestionInfo> = items
+        .iter()
+        .filter_map(|v| serde_json::from_value(v.clone()).ok())
+        .collect();
+    parse_question_items_from_info(&infos)
 }

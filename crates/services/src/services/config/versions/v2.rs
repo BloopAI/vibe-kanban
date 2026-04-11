@@ -18,6 +18,7 @@ impl From<v1::EditorConfig> for EditorConfig {
             old.custom_command,
             None,
             None,
+            true,
         )
     }
 }
@@ -36,7 +37,7 @@ impl From<v1::EditorType> for EditorType {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
-pub struct Config {
+pub(crate) struct Config {
     pub config_version: String,
     pub theme: ThemeMode,
     pub profile: String,
@@ -52,7 +53,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
+    pub(crate) fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
         let old_config = match serde_json::from_str::<v1::Config>(raw_config) {
             Ok(cfg) => cfg,
             Err(e) => {
@@ -209,6 +210,7 @@ pub enum SoundFile {
     AbstractSound3,
     AbstractSound4,
     CowMooing,
+    Fahhhhh,
     PhoneVibration,
     Rooster,
 }
@@ -221,6 +223,7 @@ impl SoundFile {
             SoundFile::AbstractSound3 => "abstract-sound3.wav",
             SoundFile::AbstractSound4 => "abstract-sound4.wav",
             SoundFile::CowMooing => "cow-mooing.wav",
+            SoundFile::Fahhhhh => "fahhhhh.wav",
             SoundFile::PhoneVibration => "phone-vibration.wav",
             SoundFile::Rooster => "rooster.wav",
         }

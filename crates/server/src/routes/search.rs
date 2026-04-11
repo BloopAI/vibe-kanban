@@ -4,7 +4,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::get,
 };
-use db::models::{project::SearchResult, repo::Repo};
+use db::models::repo::{Repo, SearchResult};
 use deployment::Deployment;
 use serde::Deserialize;
 use services::services::file_search::{SearchMode, SearchQuery};
@@ -53,7 +53,7 @@ pub async fn search_files(
     };
 
     let results = deployment
-        .project()
+        .repo()
         .search_files(
             deployment.file_search_cache().as_ref(),
             &repos,

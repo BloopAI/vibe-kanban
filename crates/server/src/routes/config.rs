@@ -4,10 +4,7 @@ use api_types::LoginStatus;
 use axum::{
     Json, Router,
     body::Body,
-    extract::{
-        Path, Query, State,
-        ws::{WebSocket, WebSocketUpgrade},
-    },
+    extract::{Path, Query, State, ws::Message},
     http,
     response::{IntoResponse, Json as ResponseJson, Response},
     routing::{get, put},
@@ -29,13 +26,19 @@ use services::services::{
         save_config_to_file,
     },
     container::ContainerService,
+    remote_client::RemoteClientError,
 };
 use tokio::fs;
 use ts_rs::TS;
 use utils::{assets::config_path, log_msg::LogMsg, response::ApiResponse};
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError};
+use crate::{
+    DeploymentImpl,
+    error::ApiError,
+    middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
+    runtime::relay_registration,
+};
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
@@ -84,15 +87,18 @@ impl Environment {
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct UserSystemInfo {
+    pub version: String,
     pub config: Config,
-    pub analytics_user_id: String,
+    pub machine_id: String,
     pub login_status: LoginStatus,
+    pub remote_auth_degraded: Option<String>,
     #[serde(flatten)]
     pub profiles: ExecutorConfigs,
     pub environment: Environment,
     /// Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
     pub capabilities: HashMap<String, Vec<BaseAgentCapability>>,
     pub shared_api_base: Option<String>,
+    pub preview_proxy_port: Option<u16>,
 }
 
 // TODO: update frontend, BE schema has changed, this replaces GET /config and /config/constants
@@ -100,18 +106,58 @@ pub struct UserSystemInfo {
 async fn get_user_system_info(
     State(deployment): State<DeploymentImpl>,
 ) -> ResponseJson<ApiResponse<UserSystemInfo>> {
-    let config = deployment.config().read().await;
-    let login_status = tokio::time::timeout(
+    let config = deployment.config().read().await.clone();
+    let login_status = match tokio::time::timeout(
         std::time::Duration::from_secs(2),
         deployment.get_login_status(),
     )
     .await
-    .unwrap_or(LoginStatus::LoggedOut);
+    {
+        Ok(status) => status,
+        Err(_) => {
+            tracing::warn!("timed out determining login status for /api/info");
+
+            let auth_context = deployment.auth_context();
+            let cached_profile = auth_context.cached_profile().await;
+
+            match auth_context.get_credentials().await {
+                Some(_) => {
+                    if auth_context.remote_auth_degraded_slug().await.is_none() {
+                        auth_context
+                            .set_remote_auth_degraded_slug(
+                                RemoteClientError::generic_degraded_slug(),
+                            )
+                            .await;
+                    }
+
+                    deployment
+                        .track_if_analytics_allowed(
+                            "login_status_timeout",
+                            serde_json::json!({
+                                "has_cached_profile": cached_profile.is_some(),
+                            }),
+                        )
+                        .await;
+
+                    LoginStatus::LoggedIn {
+                        profile: cached_profile,
+                    }
+                }
+                None => {
+                    auth_context.clear_profile().await;
+                    auth_context.clear_remote_auth_degraded_slug().await;
+                    LoginStatus::LoggedOut
+                }
+            }
+        }
+    };
 
     let user_system_info = UserSystemInfo {
-        config: config.clone(),
-        analytics_user_id: deployment.user_id().to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        config,
+        machine_id: deployment.user_id().to_string(),
         login_status,
+        remote_auth_degraded: deployment.auth_context().remote_auth_degraded_slug().await,
         profiles: ExecutorConfigs::get_cached(),
         environment: Environment::new(),
         capabilities: {
@@ -124,7 +170,8 @@ async fn get_user_system_info(
             }
             caps
         },
-        shared_api_base: deployment.shared_api_base(),
+        shared_api_base: deployment.remote_info().get_api_base(),
+        preview_proxy_port: deployment.client_info().get_preview_proxy_port(),
     };
 
     ResponseJson(ApiResponse::success(user_system_info))
@@ -196,12 +243,18 @@ async fn track_config_events(deployment: &DeploymentImpl, old: &Config, new: &Co
 async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &Config) {
     track_config_events(deployment, old, new).await;
 
-    if !old.disclaimer_acknowledged && new.disclaimer_acknowledged {
-        // Spawn auto project setup as background task to avoid blocking config response
-        let deployment_clone = deployment.clone();
-        tokio::spawn(async move {
-            deployment_clone.trigger_auto_project_setup().await;
-        });
+    let old_host_nickname = relay_registration::clean_host_nickname(old, deployment.user_id());
+    let new_host_nickname = relay_registration::clean_host_nickname(new, deployment.user_id());
+
+    match (old.relay_enabled, new.relay_enabled) {
+        (false, true) => relay_registration::spawn_relay(deployment).await,
+        (true, false) => relay_registration::stop_relay(deployment).await,
+        (true, true) => {
+            if old_host_nickname != new_host_nickname {
+                relay_registration::spawn_relay(deployment).await;
+            }
+        }
+        (false, false) => (),
     }
 }
 
@@ -475,9 +528,10 @@ async fn check_editor_availability(
     // Construct a minimal EditorConfig for checking
     let editor_config = EditorConfig::new(
         query.editor_type,
-        None, // custom_command
-        None, // remote_ssh_host
-        None, // remote_ssh_user
+        None,  // custom_command
+        None,  // remote_ssh_host
+        None,  // remote_ssh_user
+        false, // auto_install_extension
     );
 
     let available = editor_config.check_availability().await;
@@ -537,13 +591,15 @@ async fn get_agent_preset_options(
 pub struct ExecutorDiscoveredOptionsStreamQuery {
     executor: BaseCodingAgent,
     #[serde(default)]
+    session_id: Option<Uuid>,
+    #[serde(default)]
     workspace_id: Option<Uuid>,
     #[serde(default)]
     repo_id: Option<Uuid>,
 }
 
 pub async fn stream_executor_discovered_options_ws(
-    ws: WebSocketUpgrade,
+    ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ExecutorDiscoveredOptionsStreamQuery>,
 ) -> impl IntoResponse {
@@ -555,20 +611,17 @@ pub async fn stream_executor_discovered_options_ws(
 }
 
 async fn handle_executor_discovered_options_ws(
-    socket: WebSocket,
+    mut socket: MaybeSignedWebSocket,
     deployment: DeploymentImpl,
     query: ExecutorDiscoveredOptionsStreamQuery,
 ) -> anyhow::Result<()> {
-    use futures_util::{SinkExt, StreamExt};
-
-    let (mut sender, mut receiver) = socket.split();
-
-    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
+    use futures_util::StreamExt;
 
     match deployment
         .container()
         .discover_executor_options(
             ExecutorProfileId::new(query.executor),
+            query.session_id,
             query.workspace_id,
             query.repo_id,
         )
@@ -576,32 +629,47 @@ async fn handle_executor_discovered_options_ws(
     {
         Ok(Some(mut stream)) => {
             if let Some(patch) = stream.next().await {
-                let _ = sender
+                let _ = socket
                     .send(LogMsg::JsonPatch(patch).to_ws_message_unchecked())
                     .await;
             }
 
-            let _ = sender.send(LogMsg::Ready.to_ws_message_unchecked()).await;
+            let _ = socket.send(LogMsg::Ready.to_ws_message_unchecked()).await;
 
-            while let Some(patch) = stream.next().await {
-                if sender
-                    .send(LogMsg::JsonPatch(patch).to_ws_message_unchecked())
-                    .await
-                    .is_err()
-                {
-                    break;
+            loop {
+                tokio::select! {
+                    patch = stream.next() => {
+                        let Some(patch) = patch else {
+                            break;
+                        };
+                        if socket
+                            .send(LogMsg::JsonPatch(patch).to_ws_message_unchecked())
+                            .await
+                            .is_err()
+                        {
+                            break;
+                        }
+                    }
+                    inbound = socket.recv() => {
+                        match inbound {
+                            Ok(Some(Message::Close(_))) => break,
+                            Ok(Some(_)) => {}
+                            Ok(None) => break,
+                            Err(_) => break,
+                        }
+                    }
                 }
             }
         }
         Ok(None) => {
-            let _ = sender.send(LogMsg::Ready.to_ws_message_unchecked()).await;
+            let _ = socket.send(LogMsg::Ready.to_ws_message_unchecked()).await;
         }
         Err(e) => {
             tracing::warn!("Failed to start discovered options stream: {}", e);
         }
     }
 
-    let _ = sender
+    let _ = socket
         .send(LogMsg::Finished.to_ws_message_unchecked())
         .await;
     Ok(())

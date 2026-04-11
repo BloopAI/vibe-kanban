@@ -1,0 +1,150 @@
+---
+title: "Issue Management"
+description: "Create, organise, and track issues from first draft to done on the kanban board"
+---
+
+Issues are the fundamental unit of work in Vibe Kanban. They represent a bug, feature, or piece of work to be done — and they become the prompt your coding agent receives when you create a workspace. This guide walks you through the full issue lifecycle.
+
+## 1. Create your first issue
+
+You can create an issue from the **+** button on any column header, or from the **New Issue** button in the filter bar.
+
+<Frame>
+  <img src="/images/issue-mgmt-create-button.png" alt="Kanban board showing the New Issue button in the header and the plus button on a column" />
+</Frame>
+
+Use the **Team** and **Personal** tabs to switch between all project issues and only those assigned to you.
+
+<Frame>
+  <img src="/images/issue-mgmt-team-personal.png" alt="Filter bar showing the Team and Personal tabs" />
+</Frame>
+
+Give your issue a clear, specific title that describes the outcome you want. The issue panel opens on the right where you can fill in the details.
+
+<Frame>
+  <img src="/images/issue-mgmt-create-panel.png" alt="New issue panel with title field and description editor" />
+</Frame>
+
+## 2. Write an effective description
+
+The description is where you provide context for your coding agent. Use the rich text editor to format your instructions with bold, italic, lists, and inline code. You can also use markdown shortcuts for headings (`#`) and links (`[text](url)`).
+
+<Frame>
+  <img style={{maxHeight: "300px"}} src="/images/issue-mgmt-description.png" alt="Issue description editor with formatted text including headings and code blocks" />
+</Frame>
+
+A good description makes the difference between an agent that delivers exactly what you need and one that goes off track.
+
+| Element | Weak example | Strong example |
+|---------|-------------|----------------|
+| **Title** | "Fix bug" | "Fix login timeout on slow connections" |
+| **Description** | "It's broken" | "Users on 3G see a timeout after 5 s. Expected: graceful retry with exponential backoff." |
+
+<Tip>
+Your issue description becomes the prompt your coding agent receives. The more specific you are, the better the result.
+</Tip>
+
+## 3. Set priority, assignee, and tags
+
+Use priority to signal urgency, assign the issue to a team member, and add tags to categorise your work.
+
+<Frame>
+  <img src="/images/issue-mgmt-priority-tags.png" alt="Issue panel showing the priority dropdown and tags selector" />
+</Frame>
+
+| Priority | When to use |
+|----------|-------------|
+| **Urgent** | Production is down or users are blocked |
+| **High** | Important work that should be picked up next |
+| **Medium** | Standard work in the current sprint |
+| **Low** | Nice-to-have improvements or future ideas |
+
+<Info>
+Tags are project-specific. You can manage them from the tag selector when editing an issue.
+</Info>
+
+## 4. Manage issues on the kanban board
+
+Drag and drop issues between columns to change their status, or within a column to reorder them.
+
+<Frame>
+  <img src="/images/issue-mgmt-kanban-board.png" alt="Kanban board showing issues being dragged between columns" />
+</Frame>
+
+| Column | What it means |
+|--------|---------------|
+| **To do** | Work that hasn't started yet |
+| **In progress** | An agent or person is actively working on this |
+| **In review** | Work is done and waiting for your review |
+| **Done** | Completed and verified |
+
+The **Backlog** and **Cancelled** columns are hidden by default — switch to the **All** tab to see them.
+
+<Frame>
+  <img src="/images/issue-mgmt-all-tab.png" alt="All tab selected showing Backlog and Cancelled statuses alongside the default columns" />
+</Frame>
+
+<Tip>
+To reorder issues within a column, make sure sorting is set to **Manual**. Other sort modes (Priority, Created, Updated) override manual ordering.
+</Tip>
+
+## 5. Break work down with sub-issues
+
+Large features are easier to manage when you break them into smaller, agent-sized tasks. Sub-issues let you create parent/child relationships between issues.
+
+To add a sub-issue, open the parent issue and scroll to the **Sub-Issues** section. You have two options: click the **+** button to create a new sub-issue, or click the link button to connect an existing issue as a child.
+
+<Frame>
+  <img style={{maxHeight: "300px"}} src="/images/issue-mgmt-sub-issues.png" alt="Sub-issues section showing child issues with mixed statuses" />
+</Frame>
+
+Key rules for sub-issues:
+
+- Each sub-issue has its own **independent status** — completing all children does not auto-complete the parent
+- Sub-issues show a **Parent** link so you can navigate back to the parent issue
+
+## 6. Connect issues to workspaces
+
+A workspace is where your coding agent does the actual work. Open an issue and scroll to the **Workspaces** section. You have two options: click the **+** button to create a new workspace, or click the link button to connect an existing one.
+
+<Frame>
+  <img style={{maxHeight: "300px"}} src="/images/issue-mgmt-link-workspace.png" alt="Issue panel showing the Workspaces section with Create and link buttons" />
+</Frame>
+
+<Info>
+You can connect multiple workspaces to a single issue — useful for running agents in parallel on different parts of the same feature.
+</Info>
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="Issue doesn't appear on the board">
+- Check your active filters — click **Clear All** to reset them
+- The issue might be in **Backlog** or **Cancelled** — switch to the **All** tab to see hidden statuses
+</Accordion>
+
+<Accordion title="Can't drag issues to reorder them">
+Sort mode must be set to **Manual**. If sorting is set to Priority, Created, or another mode, drag-to-reorder is disabled. Change the sort option in the board header.
+</Accordion>
+
+<Accordion title="Description changes aren't saving">
+Changes auto-save after a brief delay. Check your internet connection if changes aren't persisting, and try refreshing the page.
+</Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Filtering & Sorting" icon="filter" href="/cloud/filtering">
+    Find issues quickly with search, filters, and sorting
+  </Card>
+
+  <Card title="Kanban Board" icon="table-columns" href="/cloud/kanban-board">
+    Learn more about the board layout and collaboration
+  </Card>
+
+  <Card title="Workspaces" icon="terminal" href="/workspaces/index">
+    Understand how workspaces connect to issues
+  </Card>
+</CardGroup>
+

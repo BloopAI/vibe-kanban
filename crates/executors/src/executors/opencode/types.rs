@@ -2,12 +2,12 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use workspace_utils::approvals::ApprovalStatus;
+use workspace_utils::approvals::{ApprovalStatus, QuestionStatus};
 
 /// JSON log events emitted by the OpenCode SDK executor.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum OpencodeExecutorEvent {
+pub(super) enum OpencodeExecutorEvent {
     StartupLog {
         message: String,
     },
@@ -24,9 +24,21 @@ pub enum OpencodeExecutorEvent {
         total_tokens: u32,
         model_context_window: u32,
     },
+    ApprovalRequested {
+        tool_call_id: String,
+        approval_id: String,
+    },
     ApprovalResponse {
         tool_call_id: String,
         status: ApprovalStatus,
+    },
+    QuestionAsked {
+        tool_call_id: String,
+        approval_id: String,
+    },
+    QuestionResponse {
+        tool_call_id: String,
+        status: QuestionStatus,
     },
     SystemMessage {
         content: String,
@@ -49,6 +61,7 @@ pub(super) struct SdkEventEnvelope {
 pub(super) enum SdkEvent {
     MessageUpdated(MessageUpdatedEvent),
     MessagePartUpdated(MessagePartUpdatedEvent),
+    MessagePartDelta(MessagePartDeltaEvent),
     MessageRemoved,
     MessagePartRemoved,
     PermissionAsked(PermissionAskedEvent),
@@ -59,6 +72,9 @@ pub(super) enum SdkEvent {
     SessionCompacted,
     SessionError(SessionErrorEvent),
     TodoUpdated(TodoUpdatedEvent),
+    QuestionAsked(QuestionAskedEvent),
+    QuestionReplied,
+    QuestionRejected,
     CommandExecuted,
     TuiSessionSelect,
     Unknown { type_: String, properties: Value },
@@ -74,6 +90,9 @@ impl SdkEvent {
             }
             "message.part.updated" => {
                 SdkEvent::MessagePartUpdated(serde_json::from_value(envelope.properties).ok()?)
+            }
+            "message.part.delta" => {
+                SdkEvent::MessagePartDelta(serde_json::from_value(envelope.properties).ok()?)
             }
             "message.removed" => SdkEvent::MessageRemoved,
             "message.part.removed" => SdkEvent::MessagePartRemoved,
@@ -93,6 +112,11 @@ impl SdkEvent {
             "todo.updated" => {
                 SdkEvent::TodoUpdated(serde_json::from_value(envelope.properties).ok()?)
             }
+            "question.asked" => {
+                SdkEvent::QuestionAsked(serde_json::from_value(envelope.properties).ok()?)
+            }
+            "question.replied" => SdkEvent::QuestionReplied,
+            "question.rejected" => SdkEvent::QuestionRejected,
             "command.executed" => SdkEvent::CommandExecuted,
             "tui.session.select" => SdkEvent::TuiSessionSelect,
             _ => SdkEvent::Unknown {
@@ -188,6 +212,17 @@ pub(super) struct MessagePartUpdatedEvent {
 }
 
 #[derive(Debug, Deserialize)]
+pub(super) struct MessagePartDeltaEvent {
+    #[allow(dead_code)]
+    #[serde(rename = "messageID")]
+    pub(super) message_id: String,
+    #[serde(rename = "partID")]
+    pub(super) part_id: String,
+    pub(super) field: String,
+    pub(super) delta: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub(super) struct PermissionAskedEvent {
     #[allow(dead_code)]
     pub(super) id: String,
@@ -204,6 +239,40 @@ pub(super) struct PermissionAskedEvent {
 pub(super) struct PermissionToolInfo {
     #[serde(rename = "callID")]
     pub(super) call_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct QuestionAskedEvent {
+    pub(super) id: String,
+    pub(super) questions: Vec<QuestionInfo>,
+    #[serde(default)]
+    pub(super) tool: Option<QuestionAskedTool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct QuestionAskedTool {
+    #[allow(dead_code)]
+    #[serde(rename = "messageID")]
+    pub(super) message_id: String,
+    #[serde(rename = "callID")]
+    pub(super) call_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(super) struct QuestionInfo {
+    pub(super) question: String,
+    pub(super) header: String,
+    #[serde(default)]
+    pub(super) options: Vec<QuestionOption>,
+    #[serde(default)]
+    pub(super) multiple: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(super) struct QuestionOption {
+    pub(super) label: String,
+    #[serde(default)]
+    pub(super) description: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -232,7 +301,8 @@ pub(super) struct TodoUpdatedEvent {
 
 #[derive(Debug, Deserialize)]
 pub(super) struct SdkTodo {
-    pub(super) id: String,
+    #[serde(default)]
+    pub(super) id: Option<String>,
     pub(super) content: String,
     pub(super) status: String,
     pub(super) priority: String,
@@ -253,6 +323,8 @@ pub(super) enum Part {
 
 #[derive(Debug, Deserialize)]
 pub(super) struct TextPart {
+    #[serde(default)]
+    pub(super) id: Option<String>,
     #[serde(rename = "messageID")]
     pub(super) message_id: String,
     pub(super) text: String,
@@ -356,7 +428,7 @@ pub(super) struct Config {
 }
 
 #[derive(Debug, Deserialize, Default)]
-pub struct ProviderModelInfo {
+pub(super) struct ProviderModelInfo {
     #[serde(default)]
     pub id: String,
     #[serde(default)]
@@ -370,13 +442,13 @@ pub struct ProviderModelInfo {
 }
 
 #[derive(Debug, Deserialize, Default)]
-pub struct ProviderModelLimit {
+pub(super) struct ProviderModelLimit {
     #[serde(default, deserialize_with = "deserialize_f64_as_u32")]
     pub context: u32,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ProviderInfo {
+pub(super) struct ProviderInfo {
     pub id: String,
     #[serde(default)]
     pub name: String,
@@ -385,7 +457,7 @@ pub struct ProviderInfo {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ProviderListResponse {
+pub(super) struct ProviderListResponse {
     pub all: Vec<ProviderInfo>,
     #[serde(default)]
     pub connected: Vec<String>,

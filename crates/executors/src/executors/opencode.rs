@@ -1,7 +1,7 @@
 use std::{cmp::Ordering, path::Path, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use command_group::AsyncGroupChild;
 use convert_case::{Case, Casing};
 use derivative::Derivative;
 use futures::StreamExt;
@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use tokio::{io::AsyncBufReadExt, process::Command};
 use ts_rs::TS;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{command_ext::GroupSpawnNoWindowExt, msg_store::MsgStore};
 
 use crate::{
     approvals::ExecutorApprovalService,
@@ -89,7 +89,7 @@ type ServerPassword = String;
 
 impl Opencode {
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
-        let builder = CommandBuilder::new("npx -y opencode-ai@1.1.59")
+        let builder = CommandBuilder::new("npx -y opencode-ai@1.2.27")
             // Pass hostname/port as separate args so OpenCode treats them as explicitly set
             // (it checks `process.argv.includes(\"--port\")` / `\"--hostname\"`).
             .extend_params(["serve", "--hostname", "127.0.0.1", "--port", "0"]);
@@ -130,7 +130,7 @@ impl Opencode {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
-        let child = command.group_spawn()?;
+        let child = command.group_spawn_no_window()?;
 
         Ok((child, server_password))
     }
@@ -182,11 +182,7 @@ impl Opencode {
 
         // Prepare config values that will be moved into the spawned task
         let directory = current_dir.to_string_lossy().to_string();
-        let approvals = if self.auto_approve {
-            None
-        } else {
-            self.approvals.clone()
-        };
+        let approvals = self.approvals.clone();
         let model = self.model.clone();
         let model_variant = self.variant.clone();
         let agent = self.agent.clone();
@@ -781,32 +777,22 @@ fn setup_permissions_env(auto_approve: bool, env: &ExecutionEnv) -> ExecutionEnv
     let mut env = env.clone();
 
     let permissions = match env.get("OPENCODE_PERMISSION") {
-        Some(existing) => merge_question_deny(existing),
+        Some(existing) => Some(existing.to_string()),
         None => build_default_permissions(auto_approve),
     };
 
-    env.insert("OPENCODE_PERMISSION", &permissions);
+    if let Some(permissions) = permissions {
+        env.insert("OPENCODE_PERMISSION", &permissions);
+    }
     env
 }
 
-fn build_default_permissions(auto_approve: bool) -> String {
+fn build_default_permissions(auto_approve: bool) -> Option<String> {
     if auto_approve {
-        r#"{"question":"deny"}"#.to_string()
+        None
     } else {
-        r#"{"edit":"ask","bash":"ask","webfetch":"ask","doom_loop":"ask","external_directory":"ask","question":"deny"}"#.to_string()
+        Some(r#"{"edit":"ask","bash":"ask","webfetch":"ask","doom_loop":"ask","external_directory":"ask","question":"allow"}"#.to_string())
     }
-}
-
-fn merge_question_deny(existing_json: &str) -> String {
-    let mut permissions: Map<String, serde_json::Value> =
-        serde_json::from_str(existing_json.trim()).unwrap_or_default();
-
-    permissions.insert(
-        "question".to_string(),
-        serde_json::Value::String("deny".to_string()),
-    );
-
-    serde_json::to_string(&permissions).unwrap_or_else(|_| r#"{"question":"deny"}"#.to_string())
 }
 
 fn setup_compaction_env(auto_compact: bool, env: &ExecutionEnv) -> ExecutionEnv {

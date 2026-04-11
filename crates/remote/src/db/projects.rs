@@ -1,11 +1,10 @@
+use api_types::{DeleteResponse, MutationResponse, Project};
 use chrono::{DateTime, Utc};
 use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
-use api_types::Project;
 use uuid::Uuid;
 
 use super::{get_txid, project_statuses::ProjectStatusRepository, tags::TagRepository};
-use api_types::{DeleteResponse, MutationResponse};
 
 /// Default color for the initial project created with personal organizations
 /// HSL format: "H S% L%" (blue - matches "To do" status)
@@ -41,6 +40,7 @@ impl ProjectRepository {
                 organization_id  AS "organization_id!: Uuid",
                 name             AS "name!",
                 color            AS "color!",
+                sort_order       AS "sort_order!",
                 created_at       AS "created_at!: DateTime<Utc>",
                 updated_at       AS "updated_at!: DateTime<Utc>"
             FROM projects
@@ -70,15 +70,27 @@ impl ProjectRepository {
             Project,
             r#"
             INSERT INTO projects (
-                id, organization_id, name, color,
+                id, organization_id, name, color, sort_order,
                 created_at, updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6)
+            VALUES (
+                $1,
+                $2,
+                $3,
+                $4,
+                COALESCE(
+                    (SELECT MAX(sort_order) + 1 FROM projects WHERE organization_id = $2),
+                    0
+                ),
+                $5,
+                $6
+            )
             RETURNING
                 id               AS "id!: Uuid",
                 organization_id  AS "organization_id!: Uuid",
                 name             AS "name!",
                 color            AS "color!",
+                sort_order       AS "sort_order!",
                 created_at       AS "created_at!: DateTime<Utc>",
                 updated_at       AS "updated_at!: DateTime<Utc>"
             "#,
@@ -110,11 +122,12 @@ impl ProjectRepository {
                 organization_id  AS "organization_id!: Uuid",
                 name             AS "name!",
                 color            AS "color!",
+                sort_order       AS "sort_order!",
                 created_at       AS "created_at!: DateTime<Utc>",
                 updated_at       AS "updated_at!: DateTime<Utc>"
             FROM projects
             WHERE organization_id = $1
-            ORDER BY created_at DESC
+            ORDER BY sort_order ASC, created_at DESC
             "#,
             organization_id
         )
@@ -131,41 +144,61 @@ impl ProjectRepository {
         id: Uuid,
         name: Option<String>,
         color: Option<String>,
+        sort_order: Option<i32>,
     ) -> Result<MutationResponse<Project>, ProjectError> {
-        let mut tx = pool.begin().await?;
-        let updated_at = Utc::now();
-        let data = sqlx::query_as!(
-            Project,
-            r#"
-            UPDATE projects
-            SET
-                name = COALESCE($1, name),
-                color = COALESCE($2, color),
-                updated_at = $3
-            WHERE id = $4
-            RETURNING
-                id               AS "id!: Uuid",
-                organization_id  AS "organization_id!: Uuid",
-                name             AS "name!",
-                color            AS "color!",
-                created_at       AS "created_at!: DateTime<Utc>",
-                updated_at       AS "updated_at!: DateTime<Utc>"
-            "#,
-            name,
-            color,
-            updated_at,
-            id
-        )
-        .fetch_one(&mut *tx)
-        .await?;
+        let mut tx = super::begin_tx(pool).await?;
+        let data = Self::update_partial(&mut *tx, id, name, color, sort_order).await?;
 
         let txid = get_txid(&mut *tx).await?;
         tx.commit().await?;
         Ok(MutationResponse { data, txid })
     }
 
+    /// Updates project fields using a provided executor (used by bulk update transactions).
+    pub async fn update_partial<'e, E>(
+        executor: E,
+        id: Uuid,
+        name: Option<String>,
+        color: Option<String>,
+        sort_order: Option<i32>,
+    ) -> Result<Project, ProjectError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let updated_at = Utc::now();
+        let record = sqlx::query_as!(
+            Project,
+            r#"
+            UPDATE projects
+            SET
+                name = COALESCE($1, name),
+                color = COALESCE($2, color),
+                sort_order = COALESCE($3, sort_order),
+                updated_at = $4
+            WHERE id = $5
+            RETURNING
+                id               AS "id!: Uuid",
+                organization_id  AS "organization_id!: Uuid",
+                name             AS "name!",
+                color            AS "color!",
+                sort_order       AS "sort_order!",
+                created_at       AS "created_at!: DateTime<Utc>",
+                updated_at       AS "updated_at!: DateTime<Utc>"
+            "#,
+            name,
+            color,
+            sort_order,
+            updated_at,
+            id
+        )
+        .fetch_one(executor)
+        .await?;
+
+        Ok(record)
+    }
+
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, ProjectError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         sqlx::query!("DELETE FROM projects WHERE id = $1", id)
             .execute(&mut *tx)
             .await?;
@@ -228,7 +261,7 @@ impl ProjectRepository {
         name: String,
         color: String,
     ) -> Result<MutationResponse<Project>, ProjectError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
 
         let project = Self::create(&mut *tx, id, organization_id, name, color).await?;
 

@@ -24,7 +24,7 @@ use crate::executors::{
 
 /// OpenCode slash command with known variants and custom fallback.
 #[derive(Debug, Clone)]
-pub enum OpencodeSlashCommand {
+pub(super) enum OpencodeSlashCommand {
     Compact,
     Commands,
     Models {
@@ -42,17 +42,17 @@ pub enum OpencodeSlashCommand {
 
 impl OpencodeSlashCommand {
     /// Parse a prompt string into a slash command.
-    pub fn parse(prompt: &str) -> Option<Self> {
+    pub(super) fn parse(prompt: &str) -> Option<Self> {
         parse_slash_command(prompt)
     }
 
     /// Returns true if this command requires an existing session.
-    pub fn requires_existing_session(&self) -> bool {
+    pub(super) fn requires_existing_session(&self) -> bool {
         matches!(self, Self::Compact)
     }
 
     /// Returns true if this command should fork the session.
-    pub fn should_fork_session(&self) -> bool {
+    pub(super) fn should_fork_session(&self) -> bool {
         true
     }
 }
@@ -77,7 +77,7 @@ impl<'a> From<SlashCommandCall<'a>> for OpencodeSlashCommand {
 }
 
 /// Build the list of hardcoded slash commands for discovery.
-pub fn hardcoded_slash_commands() -> Vec<SlashCommandDescription> {
+pub(super) fn hardcoded_slash_commands() -> Vec<SlashCommandDescription> {
     vec![
         SlashCommandDescription {
             name: "compact".to_string(),
@@ -333,7 +333,7 @@ async fn log_result_and_done(log_writer: &LogWriter, message: String) -> Result<
 }
 
 /// Execute a slash command using the OpenCode SDK.
-pub async fn execute(
+pub(super) async fn execute(
     config: RunConfig,
     command: OpencodeSlashCommand,
     log_writer: LogWriter,
@@ -449,6 +449,7 @@ pub async fn execute(
     };
 
     let (control_tx, mut control_rx) = mpsc::unbounded_channel::<ControlEvent>();
+    let pending_approvals = sdk::PendingApprovals::new();
     let event_resp = tokio::select! {
         _ = cancel.cancelled() => return Ok(()),
         res = sdk::connect_event_stream(&client, &config.base_url, &config.directory, None) => res?,
@@ -463,6 +464,7 @@ pub async fn execute(
             approvals: config.approvals.clone(),
             auto_approve: config.auto_approve,
             control_tx,
+            pending_approvals: pending_approvals.clone(),
             models_cache_key: config.models_cache_key.clone(),
             cancel: cancel.clone(),
         },
@@ -511,8 +513,13 @@ pub async fn execute(
         _ => unreachable!("handled non-session commands earlier"),
     };
 
-    let request_result =
-        sdk::run_request_with_control(request_fut, &mut control_rx, cancel.clone()).await;
+    let request_result = sdk::run_request_with_control(
+        request_fut,
+        &mut control_rx,
+        &pending_approvals,
+        cancel.clone(),
+    )
+    .await;
 
     if cancel.is_cancelled() {
         sdk::send_abort(&client, &config.base_url, &config.directory, &session_id).await;

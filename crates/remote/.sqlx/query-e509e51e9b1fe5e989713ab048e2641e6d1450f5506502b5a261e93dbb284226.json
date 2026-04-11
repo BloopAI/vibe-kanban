@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                n.id AS \"id!: Uuid\",\n                n.notification_type AS \"notification_type!: NotificationType\",\n                n.payload AS \"payload!: sqlx::types::Json<NotificationPayload>\",\n                n.issue_id AS \"issue_id?: Uuid\",\n                n.created_at AS \"created_at!\",\n                COALESCE(NULLIF(actor.first_name, ''), NULLIF(actor.username, ''), 'Someone') AS \"actor_name!\"\n            FROM notifications n\n            LEFT JOIN users actor\n                ON actor.id = NULLIF(n.payload->>'actor_user_id', '')::uuid\n            WHERE n.user_id = $1\n              AND n.created_at >= $2\n              AND n.created_at < $3\n              AND n.dismissed_at IS NULL\n              AND n.seen = FALSE\n              AND NOT EXISTS (\n                  SELECT 1\n                  FROM notification_digest_deliveries d\n                  WHERE d.notification_id = n.id\n              )\n            ORDER BY n.created_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "notification_type!: NotificationType",
+        "type_info": {
+          "Custom": {
+            "name": "notification_type",
+            "kind": {
+              "Enum": [
+                "issue_comment_added",
+                "issue_status_changed",
+                "issue_assignee_changed",
+                "issue_deleted",
+                "issue_title_changed",
+                "issue_description_changed",
+                "issue_priority_changed",
+                "issue_unassigned",
+                "issue_comment_reaction"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "payload!: sqlx::types::Json<NotificationPayload>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "issue_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "actor_name!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      null
+    ]
+  },
+  "hash": "e509e51e9b1fe5e989713ab048e2641e6d1450f5506502b5a261e93dbb284226"
+}

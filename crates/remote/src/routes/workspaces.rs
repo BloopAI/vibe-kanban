@@ -1,3 +1,4 @@
+use api_types::{DeleteWorkspaceRequest, UpdateWorkspaceRequest, Workspace};
 use axum::{
     Json, Router,
     extract::{Extension, Path, State},
@@ -12,15 +13,17 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_project_access,
 };
-use api_types::{DeleteWorkspaceRequest, UpdateWorkspaceRequest, Workspace};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{issues::IssueRepository, workspaces::{CreateWorkspaceParams, WorkspaceRepository}},
+    db::{
+        issues::IssueRepository,
+        workspaces::{CreateWorkspaceParams, WorkspaceRepository},
+    },
 };
 
 #[derive(Debug, Deserialize)]
-pub struct CreateWorkspaceRequest {
+struct CreateWorkspaceRequest {
     pub project_id: Uuid,
     pub local_workspace_id: Option<Uuid>,
     pub issue_id: Option<Uuid>,
@@ -31,7 +34,7 @@ pub struct CreateWorkspaceRequest {
     pub lines_removed: Option<i32>,
 }
 
-pub fn router() -> Router<AppState> {
+pub(super) fn router() -> Router<AppState> {
     Router::new()
         .route(
             "/workspaces",
@@ -40,6 +43,10 @@ pub fn router() -> Router<AppState> {
                 .delete(delete_workspace),
         )
         .route("/workspaces/{workspace_id}", delete(unlink_workspace))
+        .route(
+            "/workspaces/{local_workspace_id}/sync_issue_status_from_local_merge",
+            post(sync_issue_status_from_local_merge),
+        )
         .route(
             "/workspaces/by-local-id/{local_workspace_id}",
             get(get_workspace_by_local_id),
@@ -87,10 +94,7 @@ async fn create_workspace(
             IssueRepository::sync_issue_from_workspace_created(state.pool(), issue_id, ctx.user.id)
                 .await
         {
-            tracing::warn!(
-                ?error,
-                "failed to sync issue from workspace creation"
-            );
+            tracing::warn!(?error, "failed to sync issue from workspace creation");
         }
 
         if let Some(analytics) = state.analytics() {
@@ -148,6 +152,45 @@ async fn update_workspace(
     })?;
 
     Ok(Json(updated))
+}
+
+#[instrument(
+    name = "workspaces.sync_issue_status_from_local_merge",
+    skip(state, ctx),
+    fields(local_workspace_id = %local_workspace_id, user_id = %ctx.user.id)
+)]
+async fn sync_issue_status_from_local_merge(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(local_workspace_id): Path<Uuid>,
+) -> Result<StatusCode, ErrorResponse> {
+    let workspace = WorkspaceRepository::find_by_local_id(state.pool(), local_workspace_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, local_workspace_id = %local_workspace_id, "failed to find workspace");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to find workspace")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "workspace not found"))?;
+
+    ensure_project_access(state.pool(), ctx.user.id, workspace.project_id).await?;
+
+    let Some(issue_id) = workspace.issue_id else {
+        return Ok(StatusCode::NO_CONTENT);
+    };
+
+    let mut conn = state.pool().acquire().await.map_err(|error| {
+        tracing::error!(?error, "failed to acquire connection");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    IssueRepository::sync_status_from_local_workspace_merge(&mut conn, issue_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, issue_id = %issue_id, "failed to sync issue status");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[instrument(
@@ -236,7 +279,10 @@ async fn get_workspace_by_local_id(
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to find workspace");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to find workspace")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to find workspace",
+            )
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "workspace not found"))?;
 

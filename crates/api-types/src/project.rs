@@ -11,6 +11,7 @@ pub struct Project {
     pub organization_id: Uuid,
     pub name: String,
     pub color: String,
+    pub sort_order: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -32,6 +33,8 @@ pub struct UpdateProjectRequest {
     pub name: Option<String>,
     #[serde(default, deserialize_with = "some_if_present")]
     pub color: Option<String>,
+    #[serde(default, deserialize_with = "some_if_present")]
+    pub sort_order: Option<i32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -42,4 +45,22 @@ pub struct ListProjectsQuery {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ListProjectsResponse {
     pub projects: Vec<Project>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BulkUpdateProjectItem {
+    pub id: Uuid,
+    #[serde(flatten)]
+    pub changes: UpdateProjectRequest,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BulkUpdateProjectsRequest {
+    pub updates: Vec<BulkUpdateProjectItem>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BulkUpdateProjectsResponse {
+    pub data: Vec<Project>,
+    pub txid: i64,
 }

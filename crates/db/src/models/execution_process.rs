@@ -14,10 +14,8 @@ use uuid::Uuid;
 
 use super::{
     execution_process_repo_state::{CreateExecutionProcessRepoState, ExecutionProcessRepoState},
-    project::Project,
     repo::Repo,
     session::Session,
-    task::Task,
     workspace::Workspace,
     workspace_repo::WorkspaceRepo,
 };
@@ -86,21 +84,11 @@ pub struct CreateExecutionProcess {
     pub run_reason: ExecutionProcessRunReason,
 }
 
-#[derive(Debug, Deserialize, TS)]
-#[allow(dead_code)]
-pub struct UpdateExecutionProcess {
-    pub status: Option<ExecutionProcessStatus>,
-    pub exit_code: Option<i64>,
-    pub completed_at: Option<DateTime<Utc>>,
-}
-
 #[derive(Debug)]
 pub struct ExecutionContext {
     pub execution_process: ExecutionProcess,
     pub session: Session,
     pub workspace: Workspace,
-    pub task: Task,
-    pub project: Project,
     pub repos: Vec<Repo>,
 }
 
@@ -283,26 +271,22 @@ impl ExecutionProcess {
         .await
     }
 
-    /// Find running dev servers for a specific project
-    pub async fn find_running_dev_servers_by_project(
+    /// Check if there's a running coding agent process for a session
+    pub async fn has_running_coding_agent_for_session(
         pool: &SqlitePool,
-        project_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            ExecutionProcess,
-            r#"SELECT ep.id as "id!: Uuid", ep.session_id as "session_id!: Uuid", ep.run_reason as "run_reason!: ExecutionProcessRunReason", ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
-                      ep.status as "status!: ExecutionProcessStatus", ep.exit_code,
-                      ep.dropped as "dropped!: bool", ep.started_at as "started_at!: DateTime<Utc>", ep.completed_at as "completed_at?: DateTime<Utc>", ep.created_at as "created_at!: DateTime<Utc>", ep.updated_at as "updated_at!: DateTime<Utc>"
+        session_id: Uuid,
+    ) -> Result<bool, sqlx::Error> {
+        let count: i64 = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) as "count!: i64"
                FROM execution_processes ep
-               JOIN sessions s ON ep.session_id = s.id
-               JOIN workspaces w ON s.workspace_id = w.id
-               JOIN tasks t ON w.task_id = t.id
-               WHERE ep.status = 'running' AND ep.run_reason = 'devserver' AND t.project_id = ?
-               ORDER BY ep.created_at ASC"#,
-            project_id
+               WHERE ep.session_id = $1
+                 AND ep.status = 'running'
+                 AND ep.run_reason = 'codingagent'"#,
+            session_id
         )
-        .fetch_all(pool)
-        .await
+        .fetch_one(pool)
+        .await?;
+        Ok(count > 0)
     }
 
     /// Check if there are running processes (excluding dev servers) for a workspace (across all sessions)
@@ -358,35 +342,6 @@ impl ExecutionProcess {
     }
 
     /// Find latest execution process by session and run reason
-    pub async fn find_latest_by_session_and_run_reason(
-        pool: &SqlitePool,
-        session_id: Uuid,
-        run_reason: &ExecutionProcessRunReason,
-    ) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            ExecutionProcess,
-            r#"SELECT
-                    ep.id as "id!: Uuid",
-                    ep.session_id as "session_id!: Uuid",
-                    ep.run_reason as "run_reason!: ExecutionProcessRunReason",
-                    ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
-                    ep.status as "status!: ExecutionProcessStatus",
-                    ep.exit_code,
-                    ep.dropped as "dropped!: bool",
-                    ep.started_at as "started_at!: DateTime<Utc>",
-                    ep.completed_at as "completed_at?: DateTime<Utc>",
-                    ep.created_at as "created_at!: DateTime<Utc>",
-                    ep.updated_at as "updated_at!: DateTime<Utc>"
-               FROM execution_processes ep
-               WHERE ep.session_id = ? AND ep.run_reason = ? AND ep.dropped = FALSE
-               ORDER BY ep.created_at DESC LIMIT 1"#,
-            session_id,
-            run_reason
-        )
-        .fetch_optional(pool)
-        .await
-    }
-
     /// Find latest execution process by workspace and run reason (across all sessions)
     pub async fn find_latest_by_workspace_and_run_reason(
         pool: &SqlitePool,
@@ -555,11 +510,6 @@ impl ExecutionProcess {
         Ok(result.flatten())
     }
 
-    /// Get the parent Session for this execution process
-    pub async fn parent_session(&self, pool: &SqlitePool) -> Result<Option<Session>, sqlx::Error> {
-        Session::find_by_id(pool, self.session_id).await
-    }
-
     /// Get both the parent Workspace and Session for this execution process
     pub async fn parent_workspace_and_session(
         &self,
@@ -593,22 +543,12 @@ impl ExecutionProcess {
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
-        let task = Task::find_by_id(pool, workspace.task_id)
-            .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
-
-        let project = Project::find_by_id(pool, task.project_id)
-            .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
-
         let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
 
         Ok(ExecutionContext {
             execution_process,
             session,
             workspace,
-            task,
-            project,
             repos,
         })
     }
@@ -678,25 +618,30 @@ impl ExecutionProcess {
             LatestProcessInfo,
             r#"
             SELECT
-                s.workspace_id as "workspace_id!: Uuid",
-                ep.id as "execution_process_id!: Uuid",
-                ep.session_id as "session_id!: Uuid",
-                ep.status as "status!: ExecutionProcessStatus",
-                ep.completed_at as "completed_at?: DateTime<Utc>"
-            FROM execution_processes ep
-            JOIN sessions s ON ep.session_id = s.id
-            JOIN workspaces w ON s.workspace_id = w.id
-            WHERE w.archived = $1
-              AND ep.run_reason IN ('codingagent', 'setupscript', 'cleanupscript')
-              AND ep.dropped = FALSE
-              AND ep.created_at = (
-                  SELECT MAX(ep2.created_at)
-                  FROM execution_processes ep2
-                  JOIN sessions s2 ON ep2.session_id = s2.id
-                  WHERE s2.workspace_id = s.workspace_id
-                    AND ep2.run_reason IN ('codingagent', 'setupscript', 'cleanupscript')
-                    AND ep2.dropped = FALSE
-              )
+                workspace_id as "workspace_id!: Uuid",
+                execution_process_id as "execution_process_id!: Uuid",
+                session_id as "session_id!: Uuid",
+                status as "status!: ExecutionProcessStatus",
+                completed_at as "completed_at?: DateTime<Utc>"
+            FROM (
+                SELECT
+                    s.workspace_id,
+                    ep.id as execution_process_id,
+                    ep.session_id,
+                    ep.status,
+                    ep.completed_at,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY s.workspace_id
+                        ORDER BY ep.created_at DESC
+                    ) as rn
+                FROM execution_processes ep
+                JOIN sessions s ON ep.session_id = s.id
+                JOIN workspaces w ON s.workspace_id = w.id
+                WHERE w.archived = $1
+                  AND ep.run_reason IN ('codingagent', 'setupscript', 'cleanupscript')
+                  AND ep.dropped = FALSE
+            )
+            WHERE rn = 1
             "#,
             archived
         )

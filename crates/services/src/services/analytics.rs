@@ -142,6 +142,7 @@ pub fn generate_user_id() -> String {
 
     #[cfg(target_os = "windows")]
     {
+        use utils::command_ext::NoWindowExt;
         // Use PowerShell to get machine GUID from registry
         if let Ok(output) = std::process::Command::new("powershell")
             .args(&[
@@ -149,6 +150,7 @@ pub fn generate_user_id() -> String {
                 "-Command",
                 "(Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Cryptography').MachineGuid",
             ])
+            .no_window()
             .output()
         {
             if output.status.success() {

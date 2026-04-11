@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT w.name AS \"name: String\"\n               FROM workspaces w\n               JOIN workspace_repos wr ON wr.workspace_id = w.id\n               WHERE wr.repo_id = $1\n                 AND w.archived = FALSE",
+  "describe": {
+    "columns": [
+      {
+        "name": "name: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "2c71bf4dd5683e0dedf2341e52880ff2c0765659d3cf53d62faa54adc91071dd"
+}

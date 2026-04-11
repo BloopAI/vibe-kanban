@@ -5,22 +5,19 @@ pub mod config;
 pub mod container;
 pub mod diff_stream;
 pub mod events;
+pub mod execution_process;
+pub mod file;
 pub mod file_ranker;
 pub mod file_search;
 pub mod filesystem;
 pub mod filesystem_watcher;
-pub mod git_host;
-pub mod image;
-pub mod migration;
 pub mod notification;
 pub mod oauth_credentials;
 pub mod pr_monitor;
-pub mod project;
+
 #[cfg(feature = "qa-mode")]
 pub mod qa_repos;
 pub mod queued_message;
 pub mod remote_client;
 pub mod remote_sync;
 pub mod repo;
-pub mod workspace_manager;
-pub mod worktree_manager;

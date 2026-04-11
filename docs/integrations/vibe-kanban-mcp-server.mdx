@@ -3,7 +3,7 @@ title: "Vibe Kanban MCP Server"
 description: "Configure the Vibe Kanban MCP server"
 ---
 
-Vibe Kanban exposes a local MCP (Model Context Protocol) server, allowing you to manage projects and tasks from external MCP clients like Claude Desktop, Raycast, or even coding agents running within Vibe Kanban itself.
+Vibe Kanban exposes a local MCP (Model Context Protocol) server, allowing you to manage organisations, projects, issues, workspaces, and repositories from external MCP clients like Claude Desktop, Raycast, or even coding agents running within Vibe Kanban itself.
 
 <Note>
 This page covers connecting **external MCP clients** to Vibe Kanban's MCP server. For configuring MCP servers **within** Vibe Kanban for your coding agents, see the [MCP Server Configuration](/integrations/mcp-server-configuration) guide.
@@ -30,7 +30,7 @@ This works if you're adding the Vibe Kanban MCP server to any [supported coding 
 3. Click the `Save Settings` button
 
 <Frame>
-<img src="/images/vk-mcp-server-config.jpeg" alt="MCP Servers configuration page showing how to add Vibe Kanban MCP server" />
+<img src="/images/vk-mcp-server-config.png" alt="MCP Servers configuration page showing how to add Vibe Kanban MCP server" />
 </Frame>
 
 ### Option 2: Manual Configuration
@@ -50,56 +50,114 @@ Add the following configuration to your agent's MCP servers configuration:
 }
 ```
 
+`--mcp` launches the local MCP stdio server. Any additional arguments after `--mcp` are passed through to the `vibe-kanban-mcp` binary.
+
 ## Available MCP Tools
 
-The Vibe Kanban MCP server provides the following tools for managing projects, tasks, and task execution:
+The Vibe Kanban MCP server provides tools for managing organisations, projects, issues, workspaces, and task execution.
 
-### Project Operations
-
-| Tool | Purpose | Required Parameters | Optional Parameters | Returns |
-|------|---------|-------------------|-------------------|---------|
-| `list_projects` | Fetch all projects | None | None | List of projects with metadata |
-| `list_repos` | List repositories in a project | `project_id` | None | List of repositories with IDs |
+<Note>
+Many tools accept an optional `project_id` or `organization_id` parameter. When running inside a workspace linked to a remote project, these are inferred automatically from context and can be omitted. The exception is `list_projects`, which always requires an explicit `organization_id`.
+</Note>
 
 ### Context
 
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |
 |------|---------|-------------------|-------------------|---------|
-| `get_context` | Get current workspace context (only available within an active workspace session) | None | None | Project, task, and workspace metadata |
+| `get_context` | Get current workspace context (only available within an active workspace session) | None | None | Project, issue, and workspace metadata |
 
-### Task Management
+### Organisation Operations
 
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |
 |------|---------|-------------------|-------------------|---------|
-| `list_tasks` | List tasks in a project | `project_id` | `status`<br/>`limit` | List of tasks with execution state |
-| `create_task` | Create a new task | `project_id`<br/>`title` | `description` | Created task ID and confirmation |
-| `get_task` | Get task details | `task_id` | None | Full task information |
-| `update_task` | Update task details | `task_id` | `title`<br/>`description`<br/>`status` | Updated task information |
-| `delete_task` | Delete a task | `task_id` | None | Deletion confirmation |
+| `list_organizations` | List all available organisations | None | None | List of organisations with IDs, names, and slugs |
+| `list_org_members` | List members of an organisation | None | `organization_id` | List of members with user IDs, roles, and profile info |
+
+### Project Operations
+
+| Tool | Purpose | Required Parameters | Optional Parameters | Returns |
+|------|---------|-------------------|-------------------|---------|
+| `list_projects` | List projects in an organisation | `organization_id` | None | List of projects with IDs and names |
+
+### Issue Management
+
+| Tool | Purpose | Required Parameters | Optional Parameters | Returns |
+|------|---------|-------------------|-------------------|---------|
+| `list_issues` | List issues in a project | None | `project_id`<br/>`status`<br/>`priority`<br/>`search`<br/>`simple_id`<br/>`parent_issue_id`<br/>`assignee_user_id`<br/>`tag_id`<br/>`tag_name`<br/>`limit`<br/>`offset` | Paginated list of issues with PR info |
+| `create_issue` | Create a new issue | `title` | `project_id`<br/>`description`<br/>`priority`<br/>`parent_issue_id` | Created issue ID |
+| `get_issue` | Get detailed issue information | `issue_id` | None | Full issue details with tags, relationships, sub-issues, and PRs |
+| `update_issue` | Update an existing issue | `issue_id` | `title`<br/>`description`<br/>`status`<br/>`priority`<br/>`parent_issue_id` | Updated issue details |
+| `delete_issue` | Delete an issue | `issue_id` | None | Deletion confirmation |
+| `list_issue_priorities` | List allowed priority values | None | None | List of priorities: urgent, high, medium, low |
+
+<Tip>
+For `update_issue`, the `parent_issue_id` field supports three states: omit it entirely to leave the parent unchanged, pass `null` to un-nest the issue from its parent, or pass a UUID to set a new parent.
+</Tip>
+
+### Issue Assignees
+
+| Tool | Purpose | Required Parameters | Optional Parameters | Returns |
+|------|---------|-------------------|-------------------|---------|
+| `list_issue_assignees` | List assignees for an issue | `issue_id` | None | List of assignees with user IDs |
+| `assign_issue` | Assign a user to an issue | `issue_id`<br/>`user_id` | None | Issue assignee ID |
+| `unassign_issue` | Remove an assignee from an issue | `issue_assignee_id` | None | Unassignment confirmation |
+
+### Issue Tags
+
+| Tool | Purpose | Required Parameters | Optional Parameters | Returns |
+|------|---------|-------------------|-------------------|---------|
+| `list_tags` | List tags for a project | None | `project_id` | List of tags with IDs, names, and colours |
+| `list_issue_tags` | List tags attached to an issue | `issue_id` | None | List of issue-tag relations |
+| `add_issue_tag` | Attach a tag to an issue | `issue_id`<br/>`tag_id` | None | Issue-tag relation ID |
+| `remove_issue_tag` | Remove a tag from an issue | `issue_tag_id` | None | Removal confirmation |
+
+### Issue Relationships
+
+| Tool | Purpose | Required Parameters | Optional Parameters | Returns |
+|------|---------|-------------------|-------------------|---------|
+| `create_issue_relationship` | Create a relationship between two issues | `issue_id`<br/>`related_issue_id`<br/>`relationship_type` | None | Relationship ID |
+| `delete_issue_relationship` | Delete a relationship between issues | `relationship_id` | None | Deletion confirmation |
+
+Supported relationship types: `blocking`, `related`, `has_duplicate`.
 
 ### Repository Management
 
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |
 |------|---------|-------------------|-------------------|---------|
-| `list_repos` | List repositories in a project | `project_id` | None | List of repositories with IDs and names |
+| `list_repos` | List all repositories | None | None | List of repositories with IDs and names |
 | `get_repo` | Get repository details including scripts | `repo_id` | None | Repository info with setup, cleanup, and dev server scripts |
-| `update_setup_script` | Update a repository's setup script | `repo_id` | `script` | Update confirmation |
-| `update_cleanup_script` | Update a repository's cleanup script | `repo_id` | `script` | Update confirmation |
-| `update_dev_server_script` | Update a repository's dev server script | `repo_id` | `script` | Update confirmation |
+| `update_setup_script` | Update a repository's setup script | `repo_id`<br/>`script` | None | Update confirmation |
+| `update_cleanup_script` | Update a repository's cleanup script | `repo_id`<br/>`script` | None | Update confirmation |
+| `update_dev_server_script` | Update a repository's dev server script | `repo_id`<br/>`script` | None | Update confirmation |
 
-### Task Execution
+### Workspace Management
 
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |
 |------|---------|-------------------|-------------------|---------|
-| `start_workspace_session` | Start working on a task with a coding agent | `task_id`<br/>`executor`<br/>`repos` | `variant` | Task ID and workspace ID |
+| `list_workspaces` | List local workspaces | None | `archived`<br/>`pinned`<br/>`branch`<br/>`name_search`<br/>`limit`<br/>`offset` | Paginated list of workspaces |
+| `update_workspace` | Update a workspace's properties | None | `workspace_id`<br/>`archived`<br/>`pinned`<br/>`name` | Updated workspace details |
+| `delete_workspace` | Delete a local workspace | None | `workspace_id`<br/>`delete_remote`<br/>`delete_branches` | Deletion confirmation |
+| `link_workspace_issue` | Link a workspace to a remote issue | `workspace_id`<br/>`issue_id` | None | Link confirmation |
 
-The `repos` parameter is an array of objects with:
+### Workspace Sessions
+
+| Tool | Purpose | Required Parameters | Optional Parameters | Returns |
+|------|---------|-------------------|-------------------|---------|
+| `start_workspace` | Create a workspace and start its first coding-agent session | `name`<br/>`executor`<br/>`repositories` | `prompt`<br/>`variant`<br/>`issue_id` | Workspace ID |
+| `create_session` | Create a session in an existing workspace | None | `workspace_id`<br/>`executor` | Session summary |
+| `list_sessions` | List sessions for a workspace | None | `workspace_id` | Session list |
+| `run_session_prompt` | Run a coding-agent prompt inside an existing session | `session_id`<br/>`prompt` | None | Execution details |
+| `get_execution` | Inspect execution status and final message | `execution_id` | None | Execution details |
+
+The `repositories` parameter is an array of objects with:
 - `repo_id`: The repository ID (UUID)
-- `base_branch`: The base branch for this repository
+- `branch`: The branch for this repository
+
+When `issue_id` is provided, the workspace is automatically linked to the remote issue. If `prompt` is omitted, the linked issue's title and description are used as the workspace prompt.
 
 ### Supported Executors
 
-When using `start_workspace_session`, the following executors are supported (case-insensitive, accepts hyphens or underscores):
+When using `start_workspace`, the following executors are supported (case-insensitive, accepts hyphens or underscores):
 
 - `claude-code` / `CLAUDE_CODE`
 - `amp` / `AMP`
@@ -116,13 +174,13 @@ When using `start_workspace_session`, the following executors are supported (cas
 Once you have the MCP server configured, you can leverage it to streamline your project planning and execution workflow:
 
 1. **Plan Your Work**: Describe a large feature or project to your MCP client
-2. **Request Task Creation**: At the end of your task description, simply add "then turn this plan into tasks"
-3. **Automatic Task Generation**: Your MCP client will use the Vibe Kanban MCP server to automatically create structured tasks in your project
-4. **Start Task Execution**: Use `start_workspace_session` to programmatically begin work on tasks with specific coding agents
+2. **Request Issue Creation**: At the end of your description, simply add "then turn this plan into issues"
+3. **Automatic Issue Generation**: Your MCP client will use the Vibe Kanban MCP server to automatically create structured issues in your project
+4. **Start Workspaces**: Use `start_workspace` to programmatically begin work on issues with specific coding agents
 
 ## Example Usage
 
-### Planning and Task Creation
+### Planning and Issue Creation
 
 ```
 I need to build a user authentication system with the following features:
@@ -132,56 +190,59 @@ I need to build a user authentication system with the following features:
 - Session management
 - Protected routes
 
-Then turn this plan into tasks.
+Then turn this plan into issues.
 ```
 
-Your MCP client will use the `create_task` tool to break this down into individual tasks and add them to your Vibe Kanban project automatically.
+Your MCP client will use the `create_issue` tool to break this down into individual issues and add them to your Vibe Kanban project automatically.
 
-### Starting Task Execution
+### Starting a Workspace Session
 
-After tasks are created, you can start work on them programmatically:
+After issues are created, you can start work on them programmatically:
 
 ```
-Start working on the user registration task using Claude Code on the main branch.
+Start working on the user registration issue using Claude Code on the main branch.
 ```
 
-Your MCP client will use the `start_workspace_session` tool with parameters like:
+Your MCP client will use the `start_workspace` tool with parameters like:
 ```json
 {
-  "task_id": "123e4567-e89b-12d3-a456-426614174000",
+  "name": "User registration with email validation",
   "executor": "claude-code",
-  "repos": [
+  "repositories": [
     {
       "repo_id": "987fcdeb-51a2-3d4e-b678-426614174001",
-      "base_branch": "main"
+      "branch": "main"
     }
-  ]
+  ],
+  "issue_id": "123e4567-e89b-12d3-a456-426614174000"
 }
 ```
 
-This creates a new task attempt, generates a feature branch, and starts the coding agent in an isolated environment.
+This creates a new workspace, links it to the issue, generates a feature branch, and starts the coding agent in an isolated environment.
 
 ### Complete Workflow Example
 
 ```
-1. List all projects to find the project ID
-2. List todo tasks in the project
-3. Create a new task for "Add user profile page"
-4. Start a task attempt for the new task using Amp on the develop branch
+1. List organisations to find the organisation ID
+2. List projects in the organisation to find the project ID
+3. List issues in the project filtered by status
+4. Create a new issue for "Add user profile page"
+5. Assign a team member to the issue
+6. Start a workspace session for the issue using Amp on the develop branch
 ```
 
-Each step uses the appropriate MCP tool (`list_projects`, `list_tasks`, `create_task`, `start_workspace_session`) to manage the complete workflow from planning to execution.
+Each step uses the appropriate MCP tool (`list_organizations`, `list_projects`, `list_issues`, `create_issue`, `assign_issue`, `start_workspace`) to manage the complete workflow from planning to execution.
 
 ### Internal Coding Agents (Within Vibe Kanban)
 
 A powerful workflow involves using coding agents within Vibe Kanban that are also connected to the Vibe Kanban MCP server:
 
-1. **Create a Planning Task**: Create a task with a custom agent profile configured with a planning prompt. See [Agent Configurations](/settings/agent-configurations) for details on creating custom profiles.
+1. **Create a Planning Issue**: Create an issue with a custom agent profile configured with a planning prompt. See [Agent Configurations](/settings/agent-configurations) for details on creating custom profiles.
 2. **Explore and Plan**: The coding agent explores the codebase and develops a comprehensive plan
-3. **Generate Tasks**: Ask the coding agent to "create a series of individual tasks for this plan"
-4. **Automatic Population**: The agent uses the MCP server to populate individual tasks directly in the Vibe Kanban interface
+3. **Generate Issues**: Ask the coding agent to "create a series of individual issues for this plan"
+4. **Automatic Population**: The agent uses the MCP server to populate individual issues directly in the Vibe Kanban interface
 
-This creates a seamless workflow where high-level planning automatically generates actionable tasks in your project board.
+This creates a seamless workflow where high-level planning automatically generates actionable issues in your project board.
 
 ## Installation Instructions for MCP Clients
 

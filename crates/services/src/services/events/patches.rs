@@ -1,6 +1,5 @@
 use db::models::{
-    execution_process::ExecutionProcess, project::Project, scratch::Scratch,
-    task::TaskWithAttemptStatus, workspace::WorkspaceWithStatus,
+    execution_process::ExecutionProcess, scratch::Scratch, workspace::WorkspaceWithStatus,
 };
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
 use uuid::Uuid;
@@ -8,85 +7,6 @@ use uuid::Uuid;
 // Shared helper to escape JSON Pointer segments
 fn escape_pointer_segment(s: &str) -> String {
     s.replace('~', "~0").replace('/', "~1")
-}
-
-/// Helper functions for creating task-specific patches
-pub mod task_patch {
-    use super::*;
-
-    fn task_path(task_id: Uuid) -> String {
-        format!("/tasks/{}", escape_pointer_segment(&task_id.to_string()))
-    }
-
-    /// Create patch for adding a new task
-    pub fn add(task: &TaskWithAttemptStatus) -> Patch {
-        Patch(vec![PatchOperation::Add(AddOperation {
-            path: task_path(task.id)
-                .try_into()
-                .expect("Task path should be valid"),
-            value: serde_json::to_value(task).expect("Task serialization should not fail"),
-        })])
-    }
-
-    /// Create patch for updating an existing task
-    pub fn replace(task: &TaskWithAttemptStatus) -> Patch {
-        Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: task_path(task.id)
-                .try_into()
-                .expect("Task path should be valid"),
-            value: serde_json::to_value(task).expect("Task serialization should not fail"),
-        })])
-    }
-
-    /// Create patch for removing a task
-    pub fn remove(task_id: Uuid) -> Patch {
-        Patch(vec![PatchOperation::Remove(RemoveOperation {
-            path: task_path(task_id)
-                .try_into()
-                .expect("Task path should be valid"),
-        })])
-    }
-}
-
-/// Helper functions for creating project-specific patches
-pub mod project_patch {
-    use super::*;
-
-    fn project_path(project_id: Uuid) -> String {
-        format!(
-            "/projects/{}",
-            escape_pointer_segment(&project_id.to_string())
-        )
-    }
-
-    /// Create patch for adding a new project
-    pub fn add(project: &Project) -> Patch {
-        Patch(vec![PatchOperation::Add(AddOperation {
-            path: project_path(project.id)
-                .try_into()
-                .expect("Project path should be valid"),
-            value: serde_json::to_value(project).expect("Project serialization should not fail"),
-        })])
-    }
-
-    /// Create patch for updating an existing project
-    pub fn replace(project: &Project) -> Patch {
-        Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: project_path(project.id)
-                .try_into()
-                .expect("Project path should be valid"),
-            value: serde_json::to_value(project).expect("Project serialization should not fail"),
-        })])
-    }
-
-    /// Create patch for removing a project
-    pub fn remove(project_id: Uuid) -> Patch {
-        Patch(vec![PatchOperation::Remove(RemoveOperation {
-            path: project_path(project_id)
-                .try_into()
-                .expect("Project path should be valid"),
-        })])
-    }
 }
 
 /// Helper functions for creating execution process-specific patches
@@ -211,6 +131,54 @@ pub mod scratch_patch {
                 "payload": { "type": scratch_type_str },
                 "deleted": true
             }),
+        })])
+    }
+}
+
+/// Helper functions for creating approval-specific patches.
+pub mod approvals_patch {
+    use super::*;
+
+    const PENDING_PATH: &str = "/pending";
+
+    fn pending_path(approval_id: &str) -> String {
+        format!("{}/{}", PENDING_PATH, escape_pointer_segment(approval_id))
+    }
+
+    pub fn snapshot(pending: &[crate::services::approvals::ApprovalInfo]) -> Patch {
+        let pending: serde_json::Map<String, serde_json::Value> = pending
+            .iter()
+            .map(|info| {
+                (
+                    info.approval_id.clone(),
+                    serde_json::to_value(info).unwrap_or(serde_json::Value::Null),
+                )
+            })
+            .collect();
+
+        Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: PENDING_PATH
+                .try_into()
+                .expect("Pending approvals path should be valid"),
+            value: serde_json::Value::Object(pending),
+        })])
+    }
+
+    pub fn created(info: &crate::services::approvals::ApprovalInfo) -> Patch {
+        let value = serde_json::to_value(info).unwrap_or(serde_json::Value::Null);
+        Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: pending_path(&info.approval_id)
+                .try_into()
+                .expect("Approval path should be valid"),
+            value,
+        })])
+    }
+
+    pub fn resolved(approval_id: &str) -> Patch {
+        Patch(vec![PatchOperation::Remove(RemoveOperation {
+            path: pending_path(approval_id)
+                .try_into()
+                .expect("Approval path should be valid"),
         })])
     }
 }

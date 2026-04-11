@@ -1,19 +1,11 @@
 use std::borrow::Cow;
 
-use git2::{DiffOptions, Patch};
 use serde::{Deserialize, Serialize};
 use similar::TextDiff;
 use ts_rs::TS;
 use uuid::Uuid;
 
 // Structs compatible with props: https://github.com/MrWangJustToDo/git-diff-view
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-pub struct FileDiffDetails {
-    pub file_name: Option<String>,
-    pub content: Option<String>,
-}
 
 // Worktree diffs for the diffs tab: minimal, no hunks, optional full contents
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -69,25 +61,6 @@ fn create_unified_diff_hunks(old: &str, new: &str) -> Vec<String> {
 pub fn create_unified_diff(file_path: &str, old: &str, new: &str) -> String {
     let hunks = create_unified_diff_hunks(old, new);
     concatenate_diff_hunks(file_path, &hunks)
-}
-
-/// Compute addition/deletion counts between two text snapshots.
-pub fn compute_line_change_counts(old: &str, new: &str) -> (usize, usize) {
-    let old = ensure_newline(old);
-    let new = ensure_newline(new);
-
-    let mut opts = DiffOptions::new();
-    opts.context_lines(0);
-
-    match Patch::from_buffers(old.as_bytes(), None, new.as_bytes(), None, Some(&mut opts))
-        .and_then(|patch| patch.line_stats())
-    {
-        Ok((_, adds, dels)) => (adds, dels),
-        Err(e) => {
-            tracing::error!("git2 diff failed: {}", e);
-            (0, 0)
-        }
-    }
 }
 
 // ensure a line ends with a newline character
@@ -217,11 +190,16 @@ fn fix_hunk_headers(hunks: Vec<String>) -> Vec<String> {
     new_hunks
 }
 
-/// Creates a full unified diff with the file path in the header,
+/// Creates a full unified diff with the file path in the header.
+///
+/// Outputs git-diff format (`diff --git` prefix) so that downstream parsers
+/// (e.g. @pierre/diffs) split on `^diff --git` boundaries instead of
+/// `^---\s+\S`, which collides with deleted lines starting with `-- `.
 pub fn concatenate_diff_hunks(file_path: &str, hunks: &[String]) -> String {
     let mut unified_diff = String::new();
 
-    let header = format!("--- a/{file_path}\n+++ b/{file_path}\n");
+    let header =
+        format!("diff --git a/{file_path} b/{file_path}\n--- a/{file_path}\n+++ b/{file_path}\n");
 
     unified_diff.push_str(&header);
 

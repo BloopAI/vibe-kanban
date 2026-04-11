@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pubname FROM pg_publication WHERE pubname = ANY($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pubname",
+        "type_info": "Name"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "NameArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c30d54026d89b9cf9c938f5aff5cf09ca12af2ab456094aac9a417473645b7e4"
+}

@@ -1,3 +1,7 @@
+use api_types::{
+    CreateIssueTagRequest, DeleteResponse, IssueTag, ListIssueTagsQuery, ListIssueTagsResponse,
+    MutationResponse,
+};
 use axum::{
     Json,
     extract::{Extension, Path, Query, State},
@@ -10,15 +14,11 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_issue_access,
 };
-use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
     db::issue_tags::IssueTagRepository,
     mutation_definition::{MutationBuilder, NoUpdate},
-};
-use api_types::{
-    CreateIssueTagRequest, IssueTag, ListIssueTagsQuery, ListIssueTagsResponse,
 };
 
 /// Mutation definition for IssueTag - provides both router and TypeScript metadata.

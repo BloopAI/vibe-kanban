@@ -1,0 +1,15 @@
+localhost:3001, relay.localhost:3001, *.relay.localhost:3001 {
+    tls internal
+
+    @relay host relay.localhost *.relay.localhost
+    handle @relay {
+        reverse_proxy 127.0.0.1:8082
+    }
+
+    @app expression `{http.request.host} == "localhost:3001" || {http.request.host} == "localhost"`
+    handle @app {
+        reverse_proxy 127.0.0.1:3000
+    }
+
+    respond "not found" 404
+}

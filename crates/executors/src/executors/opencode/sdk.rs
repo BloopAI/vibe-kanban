@@ -15,10 +15,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::{
     io::{AsyncWrite, AsyncWriteExt, BufWriter},
-    sync::{Mutex as AsyncMutex, mpsc},
+    sync::{Mutex as AsyncMutex, mpsc, oneshot},
 };
 use tokio_util::sync::CancellationToken;
-use workspace_utils::approvals::ApprovalStatus;
+use workspace_utils::approvals::{ApprovalStatus, QuestionAnswer, QuestionStatus};
 
 use super::{
     slash_commands,
@@ -31,29 +31,35 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub struct LogWriter {
+pub(super) struct LogWriter {
     writer: Arc<AsyncMutex<BufWriter<Box<dyn AsyncWrite + Send + Unpin>>>>,
 }
 
 impl LogWriter {
-    pub fn new(writer: impl AsyncWrite + Send + Unpin + 'static) -> Self {
+    pub(super) fn new(writer: impl AsyncWrite + Send + Unpin + 'static) -> Self {
         Self {
             writer: Arc::new(AsyncMutex::new(BufWriter::new(Box::new(writer)))),
         }
     }
 
-    pub async fn log_event(&self, event: &OpencodeExecutorEvent) -> Result<(), ExecutorError> {
+    pub(super) async fn log_event(
+        &self,
+        event: &OpencodeExecutorEvent,
+    ) -> Result<(), ExecutorError> {
         let raw =
             serde_json::to_string(event).map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
         self.log_raw(&raw).await
     }
 
-    pub async fn log_error(&self, message: String) -> Result<(), ExecutorError> {
+    pub(super) async fn log_error(&self, message: String) -> Result<(), ExecutorError> {
         self.log_event(&OpencodeExecutorEvent::Error { message })
             .await
     }
 
-    pub async fn log_slash_command_result(&self, message: String) -> Result<(), ExecutorError> {
+    pub(super) async fn log_slash_command_result(
+        &self,
+        message: String,
+    ) -> Result<(), ExecutorError> {
         self.log_event(&OpencodeExecutorEvent::SlashCommandResult { message })
             .await
     }
@@ -71,7 +77,7 @@ impl LogWriter {
 }
 
 #[derive(Clone)]
-pub struct RunConfig {
+pub(super) struct RunConfig {
     pub base_url: String,
     pub directory: String,
     pub prompt: String,
@@ -91,7 +97,7 @@ pub struct RunConfig {
 }
 
 /// Generate a cryptographically secure random password for OpenCode server auth.
-pub fn generate_server_password() -> String {
+pub(super) fn generate_server_password() -> String {
     rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(32)
@@ -112,7 +118,7 @@ struct SessionResponse {
 
 /// Information about a discovered command.
 #[derive(Debug, Deserialize, Clone)]
-pub struct CommandInfo {
+pub(super) struct CommandInfo {
     pub name: String,
     #[serde(default)]
     pub description: Option<String>,
@@ -120,7 +126,7 @@ pub struct CommandInfo {
 
 /// Information about an agent.
 #[derive(Debug, Deserialize, Clone)]
-pub struct AgentInfo {
+pub(super) struct AgentInfo {
     pub name: String,
     #[serde(default)]
     pub description: Option<String>,
@@ -128,7 +134,7 @@ pub struct AgentInfo {
 
 /// Configuration response from the server.
 #[derive(Debug, Deserialize)]
-pub struct ConfigResponse {
+pub(super) struct ConfigResponse {
     #[serde(default)]
     pub model: Option<String>,
     #[serde(default)]
@@ -137,14 +143,14 @@ pub struct ConfigResponse {
 
 /// Provider configuration response.
 #[derive(Debug, Deserialize)]
-pub struct ConfigProvidersResponse {
+pub(super) struct ConfigProvidersResponse {
     pub providers: Vec<ProviderInfo>,
     pub default: HashMap<String, String>,
 }
 
 /// LSP server status.
 #[derive(Debug, Deserialize, Clone)]
-pub struct LspStatus {
+pub(super) struct LspStatus {
     pub name: String,
     pub root: String,
     pub status: String,
@@ -152,7 +158,7 @@ pub struct LspStatus {
 
 /// Formatter status.
 #[derive(Debug, Deserialize, Clone)]
-pub struct FormatterStatus {
+pub(super) struct FormatterStatus {
     pub name: String,
     pub extensions: Vec<String>,
     pub enabled: bool,
@@ -170,7 +176,7 @@ struct PromptRequest {
 }
 
 #[derive(Debug, Serialize, Clone)]
-pub struct ModelSpec {
+pub(super) struct ModelSpec {
     #[serde(rename = "providerID")]
     pub provider_id: String,
     #[serde(rename = "modelID")]
@@ -184,42 +190,70 @@ struct TextPartInput {
 }
 
 #[derive(Debug, Clone)]
-pub enum ControlEvent {
+pub(super) enum ControlEvent {
     Idle,
     AuthRequired { message: String },
     SessionError { message: String },
     Disconnected,
 }
 
-pub async fn run_session(
+#[derive(Clone)]
+pub(crate) struct PendingApprovals {
+    inner: Arc<AsyncMutex<Vec<oneshot::Receiver<()>>>>,
+}
+
+impl PendingApprovals {
+    pub(crate) fn new() -> Self {
+        Self {
+            inner: Arc::new(AsyncMutex::new(Vec::new())),
+        }
+    }
+
+    async fn push(&self) -> oneshot::Sender<()> {
+        let (tx, rx) = oneshot::channel();
+        self.inner.lock().await.push(rx);
+        tx
+    }
+
+    async fn wait(&self, cancel: CancellationToken) -> bool {
+        let mut waited = false;
+        loop {
+            let receivers = {
+                let mut guard = self.inner.lock().await;
+                if guard.is_empty() {
+                    return waited;
+                }
+                waited = true;
+                guard.drain(..).collect::<Vec<_>>()
+            };
+
+            for rx in receivers {
+                tokio::select! {
+                    _ = cancel.cancelled() => return waited,
+                    _ = rx => {}
+                }
+            }
+        }
+    }
+}
+
+pub(super) async fn run_session(
     config: RunConfig,
     log_writer: LogWriter,
     cancel: CancellationToken,
 ) -> Result<(), ExecutorError> {
-    let client = reqwest::Client::builder()
-        .default_headers(build_default_headers(
-            &config.directory,
-            &config.server_password,
-        ))
-        .build()
-        .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
+    let client = build_opencode_client(&config.directory, &config.server_password)?;
 
     run_session_inner(config, log_writer, client, cancel).await
 }
 
-pub async fn run_slash_command(
+pub(super) async fn run_slash_command(
     config: RunConfig,
     log_writer: LogWriter,
     command: slash_commands::OpencodeSlashCommand,
     cancel: CancellationToken,
 ) -> Result<(), ExecutorError> {
-    let client = reqwest::Client::builder()
-        .default_headers(build_default_headers(
-            &config.directory,
-            &config.server_password,
-        ))
-        .build()
-        .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
+    let client = build_opencode_client(&config.directory, &config.server_password)?;
 
     slash_commands::execute(config, command, log_writer, client, cancel.clone()).await
 }
@@ -257,6 +291,7 @@ async fn run_session_inner(
     let model = config.model.as_deref().and_then(parse_model);
 
     let (control_tx, mut control_rx) = mpsc::unbounded_channel::<ControlEvent>();
+    let pending_approvals = PendingApprovals::new();
 
     let event_resp = tokio::select! {
         _ = cancel.cancelled() => return Ok(()),
@@ -272,6 +307,7 @@ async fn run_session_inner(
             approvals: config.approvals.clone(),
             auto_approve: config.auto_approve,
             control_tx,
+            pending_approvals: pending_approvals.clone(),
             models_cache_key: config.models_cache_key.clone(),
             cancel: cancel.clone(),
         },
@@ -288,7 +324,13 @@ async fn run_session_inner(
         config.model_variant.clone(),
         config.agent.clone(),
     ));
-    let prompt_result = run_request_with_control(prompt_fut, &mut control_rx, cancel.clone()).await;
+    let prompt_result = run_request_with_control(
+        prompt_fut,
+        &mut control_rx,
+        &pending_approvals,
+        cancel.clone(),
+    )
+    .await;
 
     if cancel.is_cancelled() {
         send_abort(&client, &config.base_url, &config.directory, &session_id).await;
@@ -297,6 +339,7 @@ async fn run_session_inner(
     }
 
     if let Err(err) = prompt_result {
+        let _ = pending_approvals.wait(cancel.clone()).await;
         event_handle.abort();
         return Err(err);
     }
@@ -327,14 +370,21 @@ async fn run_session_inner(
             config.model_variant.clone(),
             config.agent.clone(),
         ));
-        let reminder_result =
-            run_request_with_control(reminder_fut, &mut control_rx, cancel.clone()).await;
+        let reminder_result = run_request_with_control(
+            reminder_fut,
+            &mut control_rx,
+            &pending_approvals,
+            cancel.clone(),
+        )
+        .await;
 
         if let Err(e) = reminder_result {
             // Log but don't fail the session on commit reminder errors
             tracing::warn!("Commit reminder prompt failed: {e}");
         }
     }
+
+    let _ = pending_approvals.wait(cancel.clone()).await;
 
     if cancel.is_cancelled() {
         send_abort(&client, &config.base_url, &config.directory, &session_id).await;
@@ -361,15 +411,29 @@ fn build_default_headers(directory: &str, password: &str) -> HeaderMap {
 
 /// Build HTTP client with OpenCode authentication headers.
 /// Uses Basic Auth: "opencode:{password}" base64 encoded.
-pub fn build_authenticated_client(
+pub(super) fn build_authenticated_client(
     directory: &str,
     password: &str,
 ) -> Result<reqwest::Client, ExecutorError> {
+    build_opencode_client(directory, password)
+}
+
+fn build_opencode_client(
+    directory: &str,
+    password: &str,
+) -> Result<reqwest::Client, ExecutorError> {
+    const OPENCODE_HTTP_TIMEOUT: Duration = Duration::from_secs(180);
+    const OPENCODE_CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
+
     reqwest::Client::builder()
         .default_headers(build_default_headers(directory, password))
+        .connect_timeout(OPENCODE_CONNECT_TIMEOUT)
+        .timeout(OPENCODE_HTTP_TIMEOUT)
         .build()
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
+
+const OPENCODE_PROMPT_TIMEOUT: Duration = Duration::from_hours(24 * 7);
 
 fn append_session_error(session_error: &mut Option<String>, message: String) {
     match session_error {
@@ -381,9 +445,10 @@ fn append_session_error(session_error: &mut Option<String>, message: String) {
     }
 }
 
-pub async fn run_request_with_control<F>(
+pub(super) async fn run_request_with_control<F>(
     mut request_fut: F,
     control_rx: &mut mpsc::UnboundedReceiver<ControlEvent>,
+    pending_approvals: &PendingApprovals,
     cancel: CancellationToken,
 ) -> Result<(), ExecutorError>
 where
@@ -414,6 +479,10 @@ where
             return Ok(());
         }
         return Err(err);
+    }
+
+    if pending_approvals.wait(cancel.clone()).await {
+        idle_seen = false;
     }
 
     if !idle_seen {
@@ -447,7 +516,7 @@ where
     Ok(())
 }
 
-pub async fn wait_for_health(
+pub(super) async fn wait_for_health(
     client: &reqwest::Client,
     base_url: &str,
 ) -> Result<(), ExecutorError> {
@@ -485,7 +554,7 @@ pub async fn wait_for_health(
     }
 }
 
-pub async fn create_session(
+pub(super) async fn create_session(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -512,7 +581,7 @@ pub async fn create_session(
     Ok(session.id)
 }
 
-pub async fn fork_session(
+pub(super) async fn fork_session(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -564,6 +633,7 @@ async fn prompt(
     let resp = client
         .post(format!("{base_url}/session/{session_id}/message"))
         .query(&[("directory", directory)])
+        .timeout(OPENCODE_PROMPT_TIMEOUT)
         .json(&req)
         .send()
         .await
@@ -627,7 +697,7 @@ struct SessionCommandRequest {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn session_command(
+pub(super) async fn session_command(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -649,6 +719,7 @@ pub async fn session_command(
     let resp = client
         .post(format!("{base_url}/session/{session_id}/command"))
         .query(&[("directory", directory)])
+        .timeout(OPENCODE_PROMPT_TIMEOUT)
         .json(&req)
         .send()
         .await
@@ -704,7 +775,7 @@ struct SummarizeRequest {
     auto: bool,
 }
 
-pub async fn session_summarize(
+pub(super) async fn session_summarize(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -720,6 +791,7 @@ pub async fn session_summarize(
     let resp = client
         .post(format!("{base_url}/session/{session_id}/summarize"))
         .query(&[("directory", directory)])
+        .timeout(OPENCODE_PROMPT_TIMEOUT)
         .json(&req)
         .send()
         .await
@@ -736,7 +808,7 @@ pub async fn session_summarize(
     Ok(())
 }
 
-pub async fn list_commands(
+pub(super) async fn list_commands(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -757,7 +829,7 @@ pub async fn list_commands(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-pub async fn list_agents(
+pub(super) async fn list_agents(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -778,7 +850,7 @@ pub async fn list_agents(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-pub async fn config_get(
+pub(super) async fn config_get(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -799,7 +871,7 @@ pub async fn config_get(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-pub async fn list_config_providers(
+pub(super) async fn list_config_providers(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -820,7 +892,7 @@ pub async fn list_config_providers(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-pub async fn list_providers(
+pub(super) async fn list_providers(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -841,7 +913,7 @@ pub async fn list_providers(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-pub async fn mcp_status(
+pub(super) async fn mcp_status(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -862,7 +934,7 @@ pub async fn mcp_status(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-pub async fn lsp_status(
+pub(super) async fn lsp_status(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -883,7 +955,7 @@ pub async fn lsp_status(
         .map_err(|err| ExecutorError::Io(io::Error::other(err)))
 }
 
-pub async fn formatter_status(
+pub(super) async fn formatter_status(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -915,7 +987,7 @@ async fn build_response_error(resp: reqwest::Response, context: &str) -> Executo
     )))
 }
 
-pub async fn send_abort(
+pub(super) async fn send_abort(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -959,7 +1031,7 @@ fn parse_model_strict(model: &str) -> Option<ModelSpec> {
     })
 }
 
-pub async fn resolve_compaction_model(
+pub(super) async fn resolve_compaction_model(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -1001,7 +1073,7 @@ pub async fn resolve_compaction_model(
     )))
 }
 
-pub async fn connect_event_stream(
+pub(super) async fn connect_event_stream(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
@@ -1035,7 +1107,7 @@ pub async fn connect_event_stream(
     Ok(resp)
 }
 
-pub struct EventListenerConfig {
+pub(super) struct EventListenerConfig {
     pub client: reqwest::Client,
     pub base_url: String,
     pub directory: String,
@@ -1044,11 +1116,15 @@ pub struct EventListenerConfig {
     pub approvals: Option<Arc<dyn ExecutorApprovalService>>,
     pub auto_approve: bool,
     pub control_tx: mpsc::UnboundedSender<ControlEvent>,
+    pub pending_approvals: PendingApprovals,
     pub models_cache_key: String,
     pub cancel: CancellationToken,
 }
 
-pub async fn spawn_event_listener(config: EventListenerConfig, initial_resp: reqwest::Response) {
+pub(super) async fn spawn_event_listener(
+    config: EventListenerConfig,
+    initial_resp: reqwest::Response,
+) {
     let EventListenerConfig {
         client,
         base_url,
@@ -1058,6 +1134,7 @@ pub async fn spawn_event_listener(config: EventListenerConfig, initial_resp: req
         approvals,
         auto_approve,
         control_tx,
+        pending_approvals,
         models_cache_key,
         cancel,
     } = config;
@@ -1111,6 +1188,7 @@ pub async fn spawn_event_listener(config: EventListenerConfig, initial_resp: req
                 approvals: approvals.clone(),
                 auto_approve,
                 control_tx: &control_tx,
+                pending_approvals: &pending_approvals,
                 base_retry_delay: &mut base_retry_delay,
                 last_event_id: &mut last_event_id,
                 models_cache_key: &models_cache_key,
@@ -1167,6 +1245,7 @@ pub(super) struct EventStreamContext<'a> {
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool,
     control_tx: &'a mpsc::UnboundedSender<ControlEvent>,
+    pending_approvals: &'a PendingApprovals,
     base_retry_delay: &'a mut Duration,
     last_event_id: &'a mut Option<String>,
     /// Cache key for model context windows, derived from config that affects available models.
@@ -1235,6 +1314,16 @@ async fn process_event_stream(
             "message.updated" => {
                 maybe_emit_token_usage(&ctx, &data).await;
             }
+            "session.status" => {
+                if let Some(status) = data
+                    .pointer("/properties/status/type")
+                    .and_then(Value::as_str)
+                    && status.eq_ignore_ascii_case("idle")
+                {
+                    let _ = ctx.control_tx.send(ControlEvent::Idle);
+                    return Ok(EventStreamOutcome::Idle);
+                }
+            }
             "session.idle" => {
                 let _ = ctx.control_tx.send(ControlEvent::Idle);
                 return Ok(EventStreamOutcome::Idle);
@@ -1259,6 +1348,129 @@ async fn process_event_stream(
 
                 let _ = ctx.control_tx.send(ControlEvent::SessionError { message });
             }
+            "question.asked" => {
+                let request_id = data
+                    .pointer("/properties/id")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
+
+                if request_id.is_empty() || !ctx.seen_permissions.insert(request_id.clone()) {
+                    continue;
+                }
+
+                let tool_call_id = data
+                    .pointer("/properties/tool/callID")
+                    .and_then(Value::as_str)
+                    .map(str::trim)
+                    .filter(|id| !id.is_empty())
+                    .unwrap_or(request_id.as_str())
+                    .to_string();
+
+                let questions = data
+                    .pointer("/properties/questions")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default();
+                let question_count = questions.len().max(1);
+
+                let approvals = ctx.approvals.clone();
+                let client = ctx.client.clone();
+                let base_url = ctx.base_url.to_string();
+                let directory = ctx.directory.to_string();
+                let log_writer = ctx.log_writer.clone();
+                let cancel = ctx.cancel.clone();
+                let done_tx = ctx.pending_approvals.push().await;
+                tokio::spawn(async move {
+                    let status = match create_question_approval(approvals.clone(), question_count)
+                        .await
+                    {
+                        Ok(created) => {
+                            let _ = log_writer
+                                .log_event(&OpencodeExecutorEvent::QuestionAsked {
+                                    tool_call_id: tool_call_id.clone(),
+                                    approval_id: created.approval_id.clone(),
+                                })
+                                .await;
+
+                            match wait_question_approval(approvals, &created.approval_id, cancel)
+                                .await
+                            {
+                                Ok(status) => Some(status),
+                                Err(err) => {
+                                    handle_approval_error(
+                                        err,
+                                        &format!("OpenCode question approval wait failed for request_id={request_id}"),
+                                        &log_writer,
+                                        &tool_call_id,
+                                        true,
+                                    ).await;
+                                    None
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            handle_approval_error(
+                                err,
+                                &format!("OpenCode question approval create failed for request_id={request_id}"),
+                                &log_writer,
+                                &tool_call_id,
+                                true,
+                            ).await;
+                            None
+                        }
+                    };
+
+                    if let Some(status) = status {
+                        log_question_response(&log_writer, &tool_call_id, status.clone()).await;
+
+                        match status {
+                            QuestionStatus::Answered { answers } => {
+                                let opencode_answers =
+                                    answers_to_opencode_format(&questions, &answers);
+                                let resp = client
+                                    .post(format!("{base_url}/question/{request_id}/reply"))
+                                    .query(&[("directory", directory.as_str())])
+                                    .json(&serde_json::json!({ "answers": opencode_answers }))
+                                    .send()
+                                    .await;
+                                match resp {
+                                    Ok(resp) if !resp.status().is_success() => {
+                                        let status = resp.status();
+                                        let body = resp.text().await.unwrap_or_default();
+                                        let truncated: String =
+                                            body.chars().take(400).collect::<String>();
+                                        tracing::warn!(
+                                            "OpenCode question reply failed request_id={} status={} body={}",
+                                            request_id,
+                                            status,
+                                            truncated
+                                        );
+                                    }
+                                    Ok(_) => {}
+                                    Err(err) => {
+                                        let is_timeout = err.is_timeout();
+                                        tracing::warn!(
+                                            "OpenCode question reply error request_id={} timeout={}: {err}",
+                                            request_id,
+                                            is_timeout
+                                        );
+                                    }
+                                }
+                            }
+                            QuestionStatus::TimedOut => {
+                                let _ = client
+                                    .post(format!("{base_url}/question/{request_id}/reject"))
+                                    .query(&[("directory", directory.as_str())])
+                                    .send()
+                                    .await;
+                            }
+                        }
+                    }
+
+                    let _ = done_tx.send(());
+                });
+            }
             "permission.asked" => {
                 let request_id = data
                     .pointer("/properties/id")
@@ -1282,11 +1494,6 @@ async fn process_event_stream(
                     .unwrap_or("tool")
                     .to_string();
 
-                let tool_input = data
-                    .get("properties")
-                    .cloned()
-                    .unwrap_or_else(|| serde_json::json!({}));
-
                 let approvals = ctx.approvals.clone();
                 let client = ctx.client.clone();
                 let base_url = ctx.base_url.to_string();
@@ -1294,40 +1501,76 @@ async fn process_event_stream(
                 let log_writer = ctx.log_writer.clone();
                 let auto_approve = ctx.auto_approve;
                 let cancel = ctx.cancel.clone();
+                let done_tx = ctx.pending_approvals.push().await;
                 tokio::spawn(async move {
-                    let status = match request_permission_approval(
+                    let created = match create_permission_approval(
                         auto_approve,
-                        approvals,
+                        approvals.clone(),
                         &permission,
-                        tool_input,
-                        &tool_call_id,
-                        cancel,
                     )
                     .await
                     {
-                        Ok(status) => status,
-                        Err(ExecutorApprovalError::Cancelled) => {
-                            tracing::debug!(
-                                "OpenCode approval cancelled for tool_call_id={}",
-                                tool_call_id
-                            );
+                        Ok(Some(created)) => created,
+                        Ok(None) => {
+                            // Auto-approved, no approval needed
+                            log_approval_response(
+                                &log_writer,
+                                &tool_call_id,
+                                ApprovalStatus::Approved,
+                            )
+                            .await;
+
+                            let _ = client
+                                .post(format!("{base_url}/permission/{request_id}/reply"))
+                                .query(&[("directory", directory.as_str())])
+                                .json(&serde_json::json!({ "reply": "once" }))
+                                .send()
+                                .await;
+                            let _ = done_tx.send(());
                             return;
                         }
                         Err(err) => {
-                            tracing::error!(
-                                "OpenCode approval failed for tool_call_id={}: {err}",
-                                tool_call_id
-                            );
+                            handle_approval_error(
+                                err,
+                                &format!("OpenCode approval create failed for tool_call_id={tool_call_id}"),
+                                &log_writer,
+                                &tool_call_id,
+                                false,
+                            ).await;
+                            let _ = done_tx.send(());
                             return;
                         }
                     };
 
                     let _ = log_writer
-                        .log_event(&OpencodeExecutorEvent::ApprovalResponse {
+                        .log_event(&OpencodeExecutorEvent::ApprovalRequested {
                             tool_call_id: tool_call_id.clone(),
-                            status: status.clone(),
+                            approval_id: created.approval_id.clone(),
                         })
                         .await;
+
+                    let status =
+                        match wait_permission_approval(approvals, &created.approval_id, cancel)
+                            .await
+                        {
+                            Ok(status) => status,
+                            Err(err) => {
+                                handle_approval_error(
+                                err,
+                                &format!(
+                                    "OpenCode approval wait failed for tool_call_id={tool_call_id}"
+                                ),
+                                &log_writer,
+                                &tool_call_id,
+                                false,
+                            )
+                            .await;
+                                let _ = done_tx.send(());
+                                return;
+                            }
+                        };
+
+                    log_approval_response(&log_writer, &tool_call_id, status.clone()).await;
 
                     let (reply, message) = match status {
                         ApprovalStatus::Approved => ("once", None),
@@ -1373,6 +1616,8 @@ async fn process_event_stream(
                         .json(&payload)
                         .send()
                         .await;
+
+                    let _ = done_tx.send(());
                 });
             }
             _ => {}
@@ -1390,7 +1635,11 @@ fn event_matches_session(event_type: &str, event: &Value, session_id: &str) -> b
         "message.part.updated" => event
             .pointer("/properties/part/sessionID")
             .and_then(Value::as_str),
-        "permission.asked" | "permission.replied" | "session.idle" | "session.error" => event
+        "message.part.delta" => event
+            .pointer("/properties/sessionID")
+            .and_then(Value::as_str),
+        "permission.asked" | "permission.replied" | "question.asked" | "question.replied"
+        | "question.rejected" | "session.idle" | "session.error" => event
             .pointer("/properties/sessionID")
             .and_then(Value::as_str),
         _ => event
@@ -1411,30 +1660,130 @@ fn event_matches_session(event_type: &str, event: &Value, session_id: &str) -> b
     extracted == Some(session_id)
 }
 
-async fn request_permission_approval(
+async fn handle_approval_error(
+    err: ExecutorApprovalError,
+    error_context: &str,
+    log_writer: &LogWriter,
+    tool_call_id: &str,
+    is_question: bool,
+) {
+    if matches!(err, ExecutorApprovalError::Cancelled) {
+        return;
+    }
+    tracing::error!("{error_context}: {err}");
+    if is_question {
+        log_question_response(log_writer, tool_call_id, QuestionStatus::TimedOut).await;
+    } else {
+        log_approval_response(
+            log_writer,
+            tool_call_id,
+            ApprovalStatus::Denied {
+                reason: Some(format!("Approval service error: {err}")),
+            },
+        )
+        .await;
+    }
+}
+
+async fn log_approval_response(log_writer: &LogWriter, tool_call_id: &str, status: ApprovalStatus) {
+    let _ = log_writer
+        .log_event(&OpencodeExecutorEvent::ApprovalResponse {
+            tool_call_id: tool_call_id.to_string(),
+            status,
+        })
+        .await;
+}
+
+async fn log_question_response(log_writer: &LogWriter, tool_call_id: &str, status: QuestionStatus) {
+    let _ = log_writer
+        .log_event(&OpencodeExecutorEvent::QuestionResponse {
+            tool_call_id: tool_call_id.to_string(),
+            status,
+        })
+        .await;
+}
+
+struct ApprovalCreated {
+    approval_id: String,
+}
+
+async fn create_permission_approval(
     auto_approve: bool,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     tool_name: &str,
-    tool_input: Value,
-    tool_call_id: &str,
-    cancel: CancellationToken,
-) -> Result<ApprovalStatus, ExecutorApprovalError> {
+) -> Result<Option<ApprovalCreated>, ExecutorApprovalError> {
     if auto_approve {
-        return Ok(ApprovalStatus::Approved);
+        return Ok(None);
     }
 
+    let Some(approvals) = approvals else {
+        return Ok(None);
+    };
+
+    match approvals.create_tool_approval(tool_name).await {
+        Ok(approval_id) => Ok(Some(ApprovalCreated { approval_id })),
+        Err(
+            ExecutorApprovalError::ServiceUnavailable | ExecutorApprovalError::SessionNotRegistered,
+        ) => Ok(None),
+        Err(err) => Err(err),
+    }
+}
+
+async fn wait_permission_approval(
+    approvals: Option<Arc<dyn ExecutorApprovalService>>,
+    approval_id: &str,
+    cancel: CancellationToken,
+) -> Result<ApprovalStatus, ExecutorApprovalError> {
     let Some(approvals) = approvals else {
         return Ok(ApprovalStatus::Approved);
     };
 
-    match approvals
-        .request_tool_approval(tool_name, tool_input, tool_call_id, cancel)
-        .await
-    {
-        Ok(status) => Ok(status),
-        Err(
-            ExecutorApprovalError::ServiceUnavailable | ExecutorApprovalError::SessionNotRegistered,
-        ) => Ok(ApprovalStatus::Approved),
-        Err(err) => Err(err),
-    }
+    approvals.wait_tool_approval(approval_id, cancel).await
+}
+
+async fn create_question_approval(
+    approvals: Option<Arc<dyn ExecutorApprovalService>>,
+    question_count: usize,
+) -> Result<ApprovalCreated, ExecutorApprovalError> {
+    let Some(approvals) = approvals else {
+        return Err(ExecutorApprovalError::ServiceUnavailable);
+    };
+
+    let approval_id = approvals
+        .create_question_approval("question", question_count)
+        .await?;
+    Ok(ApprovalCreated { approval_id })
+}
+
+async fn wait_question_approval(
+    approvals: Option<Arc<dyn ExecutorApprovalService>>,
+    approval_id: &str,
+    cancel: CancellationToken,
+) -> Result<QuestionStatus, ExecutorApprovalError> {
+    let Some(approvals) = approvals else {
+        return Err(ExecutorApprovalError::ServiceUnavailable);
+    };
+
+    approvals.wait_question_answer(approval_id, cancel).await
+}
+
+fn answers_to_opencode_format(questions: &[Value], answers: &[QuestionAnswer]) -> Vec<Vec<String>> {
+    questions
+        .iter()
+        .map(|q| {
+            let question_text = q.get("question").and_then(Value::as_str).unwrap_or("");
+            answers
+                .iter()
+                .find(|qa| qa.question == question_text)
+                .map(|qa| qa.answer.clone())
+                .unwrap_or_else(|| {
+                    tracing::warn!(
+                        ?questions,
+                        ?answers,
+                        "No answer found for question: {question_text}. This may cause issues with OpenCode processing the reply."
+                    );
+                    vec![]
+                })
+        })
+        .collect()
 }

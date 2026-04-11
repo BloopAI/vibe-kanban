@@ -49,7 +49,7 @@ struct PlainTextBuffer {
 
 impl PlainTextBuffer {
     /// Create a new empty buffer
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             lines: Vec::new(),
             total_len: 0,
@@ -57,7 +57,7 @@ impl PlainTextBuffer {
     }
 
     /// Ingest a new text chunk into the buffer.
-    pub fn ingest(&mut self, text_chunk: String) {
+    fn ingest(&mut self, text_chunk: String) {
         debug_assert!(!text_chunk.is_empty());
 
         // Add a new lines or grow the current partial line
@@ -83,7 +83,7 @@ impl PlainTextBuffer {
     }
 
     /// Remove and return the first `n` buffered lines,
-    pub fn drain_lines(&mut self, n: usize) -> Vec<String> {
+    fn drain_lines(&mut self, n: usize) -> Vec<String> {
         let n = n.min(self.lines.len());
         let drained: Vec<String> = self.lines.drain(..n).collect();
 
@@ -97,7 +97,7 @@ impl PlainTextBuffer {
 
     /// Remove and return lines until the content length is at least `len`.
     /// Useful for size-based splitting of content.
-    pub fn drain_size(&mut self, len: usize) -> Vec<String> {
+    fn drain_size(&mut self, len: usize) -> Vec<String> {
         let mut drained_len = 0;
         let mut lines_to_drain = 0;
 
@@ -113,34 +113,34 @@ impl PlainTextBuffer {
     }
 
     /// Empty the buffer, removing and returning all content,
-    pub fn flush(&mut self) -> Vec<String> {
+    fn flush(&mut self) -> Vec<String> {
         let result = self.lines.drain(..).collect();
         self.total_len = 0;
         result
     }
 
     /// Return the total length of content.
-    pub fn total_len(&self) -> usize {
+    fn total_len(&self) -> usize {
         self.total_len
     }
 
     /// View lines.
-    pub fn lines(&self) -> &[String] {
+    fn lines(&self) -> &[String] {
         &self.lines
     }
 
     /// Mutably view lines for in-place transformations.
-    pub fn lines_mut(&mut self) -> &mut Vec<String> {
+    fn lines_mut(&mut self) -> &mut Vec<String> {
         &mut self.lines
     }
 
     /// Recompute cached total length from current lines.
-    pub fn recompute_len(&mut self) {
+    fn recompute_len(&mut self) {
         self.total_len = self.lines.iter().map(|s| s.len()).sum();
     }
 
     /// Get the current partial line.
-    pub fn partial_line(&self) -> Option<&str> {
+    fn partial_line(&self) -> Option<&str> {
         if let Some(last) = self.lines.last()
             && !last.ends_with('\n')
         {
@@ -150,7 +150,7 @@ impl PlainTextBuffer {
     }
 
     /// Check if the buffer is empty.
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         debug_assert!(self.lines.len() == 0 || self.total_len > 0);
         self.total_len == 0
     }

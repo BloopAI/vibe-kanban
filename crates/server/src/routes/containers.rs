@@ -4,28 +4,23 @@ use axum::{
     response::Json as ResponseJson,
     routing::get,
 };
-use db::models::workspace::{Workspace, WorkspaceContext};
+use db::models::{
+    requests::ContainerQuery,
+    workspace::{Workspace, WorkspaceContext},
+};
 use deployment::Deployment;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ContainerQuery {
-    #[serde(rename = "ref")]
-    pub container_ref: String,
-}
-
 #[derive(Debug, Serialize)]
-pub struct ContainerInfo {
-    pub project_id: Uuid,
-    pub task_id: Uuid,
+struct ContainerInfo {
     pub attempt_id: Uuid,
 }
 
-pub async fn get_container_info(
+async fn get_container_info(
     Query(query): Query<ContainerQuery>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ContainerInfo>>, ApiError> {
@@ -35,13 +30,11 @@ pub async fn get_container_info(
             .map_err(ApiError::Database)?;
 
     Ok(ResponseJson(ApiResponse::success(ContainerInfo {
-        project_id: info.project_id,
-        task_id: info.task_id,
         attempt_id: info.workspace_id,
     })))
 }
 
-pub async fn get_context(
+async fn get_context(
     State(deployment): State<DeploymentImpl>,
     Query(payload): Query<ContainerQuery>,
 ) -> Result<ResponseJson<ApiResponse<WorkspaceContext>>, ApiError> {
@@ -54,7 +47,7 @@ pub async fn get_context(
     Ok(ResponseJson(ApiResponse::success(ctx)))
 }
 
-pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
+pub(super) fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
         // NOTE: /containers/info is required by the VSCode extension (vibe-kanban-vscode)
         // to auto-detect workspaces. It maps workspace_id to attempt_id for compatibility.

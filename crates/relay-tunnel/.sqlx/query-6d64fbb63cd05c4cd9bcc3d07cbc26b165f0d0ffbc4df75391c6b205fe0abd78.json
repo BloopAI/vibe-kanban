@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE relay_browser_sessions\n            SET revoked_at = NOW()\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6d64fbb63cd05c4cd9bcc3d07cbc26b165f0d0ffbc4df75391c6b205fe0abd78"
+}

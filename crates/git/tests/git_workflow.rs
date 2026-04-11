@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use git::{DiffTarget, GitCli, GitService};
+use git::{GitCli, GitService};
 use git2::{Repository, build::CheckoutBuilder};
 use tempfile::TempDir;
 use utils::diff::DiffChangeKind;
@@ -181,40 +181,6 @@ fn worktree_clean_detects_staged_deleted_and_renamed() {
 }
 
 #[test]
-fn diff_added_binary_file_has_no_content() {
-    // ensure binary file content is not loaded (null byte guard)
-    let td = TempDir::new().unwrap();
-    let repo_path = init_repo_main(&td);
-    // base
-    let s = GitService::new();
-    let _ = s.commit(&repo_path, "base").unwrap();
-    // branch with binary file
-    create_branch(&repo_path, "feature");
-    checkout_branch(&repo_path, "feature");
-    // write binary with null byte
-    let mut f = fs::File::create(repo_path.join("bin.dat")).unwrap();
-    f.write_all(&[0u8, 1, 2, 3]).unwrap();
-    let _ = s.commit(&repo_path, "add binary").unwrap();
-
-    let s = GitService::new();
-    let diffs = s
-        .get_diffs(
-            DiffTarget::Branch {
-                repo_path: Path::new(&repo_path),
-                branch_name: "feature",
-                base_branch: "main",
-            },
-            None,
-        )
-        .unwrap();
-    let bin = diffs
-        .iter()
-        .find(|d| d.new_path.as_deref() == Some("bin.dat"))
-        .expect("binary diff present");
-    assert!(bin.new_content.is_none());
-}
-
-#[test]
 fn initialize_and_default_branch_and_head_info() {
     let td = TempDir::new().unwrap();
     let repo_path = init_repo_main(&td);
@@ -238,22 +204,6 @@ fn commit_and_is_worktree_clean() {
     let committed = s.commit(&repo_path, "add foo").unwrap();
     assert!(committed);
     assert!(s.is_worktree_clean(&repo_path).unwrap());
-
-    // Verify commit contains file
-    let diffs = s
-        .get_diffs(
-            DiffTarget::Commit {
-                repo_path: Path::new(&repo_path),
-                commit_sha: &s.get_head_info(&repo_path).unwrap().oid,
-            },
-            None,
-        )
-        .unwrap();
-    assert!(
-        diffs
-            .iter()
-            .any(|d| d.new_path.as_deref() == Some("foo.txt"))
-    );
 }
 
 #[test]
@@ -325,35 +275,6 @@ fn get_all_branches_lists_current_and_others() {
 }
 
 #[test]
-fn get_branch_diffs_between_branches() {
-    let td = TempDir::new().unwrap();
-    let repo_path = init_repo_main(&td);
-    let s = GitService::new();
-    // base commit on main
-    write_file(&repo_path, "a.txt", "a\n");
-    let _ = s.commit(&repo_path, "add a").unwrap();
-
-    // create branch and add new file
-    create_branch(&repo_path, "feature");
-    checkout_branch(&repo_path, "feature");
-    write_file(&repo_path, "b.txt", "b\n");
-    let _ = s.commit(&repo_path, "add b").unwrap();
-
-    let s = GitService::new();
-    let diffs = s
-        .get_diffs(
-            DiffTarget::Branch {
-                repo_path: Path::new(&repo_path),
-                branch_name: "feature",
-                base_branch: "main",
-            },
-            None,
-        )
-        .unwrap();
-    assert!(diffs.iter().any(|d| d.new_path.as_deref() == Some("b.txt")));
-}
-
-#[test]
 fn worktree_diff_respects_path_filter() {
     // Use git CLI status diff under the hood
     let td = TempDir::new().unwrap();
@@ -375,13 +296,7 @@ fn worktree_diff_respects_path_filter() {
     let s = GitService::new();
     let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
     let diffs = s
-        .get_diffs(
-            DiffTarget::Worktree {
-                worktree_path: Path::new(&repo_path),
-                base_commit: &base_commit,
-            },
-            Some(&["src"]),
-        )
+        .get_diffs(Path::new(&repo_path), &base_commit, Some(&["src"]))
         .unwrap();
     assert!(
         diffs
@@ -447,13 +362,7 @@ fn worktree_diff_permission_only_change() {
     let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
     // Compute worktree diff vs main on feature
     let diffs = s
-        .get_diffs(
-            DiffTarget::Worktree {
-                worktree_path: Path::new(&repo_path),
-                base_commit: &base_commit,
-            },
-            None,
-        )
+        .get_diffs(Path::new(&repo_path), &base_commit, None)
         .unwrap();
     let d = diffs
         .into_iter()

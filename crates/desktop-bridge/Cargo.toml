@@ -1,0 +1,15 @@
+[package]
+name = "desktop-bridge"
+version = "0.1.42"
+edition = "2024"
+publish = false
+
+[dependencies]
+base64 = "0.22"
+dirs = "5"
+ssh-key = { version = "0.6", features = ["ed25519"] }
+relay-control = { path = "../relay-control" }
+serde = { version = "1.0", features = ["derive"] }
+sha2 = "0.10"
+thiserror = "2.0"
+ts-rs = { git = "https://github.com/xazukx/ts-rs.git", branch = "use-ts-enum", features = ["uuid-impl", "chrono-impl", "no-serde-warnings", "serde-json-impl"] }

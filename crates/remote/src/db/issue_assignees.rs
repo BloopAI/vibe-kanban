@@ -1,11 +1,10 @@
+use api_types::{DeleteResponse, IssueAssignee, MutationResponse};
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use thiserror::Error;
-use api_types::IssueAssignee;
 use uuid::Uuid;
 
 use super::get_txid;
-use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum IssueAssigneeError {
@@ -62,6 +61,28 @@ impl IssueAssigneeRepository {
         Ok(records)
     }
 
+    pub async fn list_by_project(
+        pool: &PgPool,
+        project_id: Uuid,
+    ) -> Result<Vec<IssueAssignee>, IssueAssigneeError> {
+        let records = sqlx::query_as!(
+            IssueAssignee,
+            r#"
+            SELECT
+                id          AS "id!: Uuid",
+                issue_id    AS "issue_id!: Uuid",
+                user_id     AS "user_id!: Uuid",
+                assigned_at AS "assigned_at!: DateTime<Utc>"
+            FROM issue_assignees
+            WHERE issue_id IN (SELECT id FROM issues WHERE project_id = $1)
+            "#,
+            project_id
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok(records)
+    }
+
     pub async fn create(
         pool: &PgPool,
         id: Option<Uuid>,
@@ -69,7 +90,7 @@ impl IssueAssigneeRepository {
         user_id: Uuid,
     ) -> Result<MutationResponse<IssueAssignee>, IssueAssigneeError> {
         let id = id.unwrap_or_else(Uuid::new_v4);
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         let data = sqlx::query_as!(
             IssueAssignee,
             r#"
@@ -94,7 +115,7 @@ impl IssueAssigneeRepository {
     }
 
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, IssueAssigneeError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         sqlx::query!("DELETE FROM issue_assignees WHERE id = $1", id)
             .execute(&mut *tx)
             .await?;
