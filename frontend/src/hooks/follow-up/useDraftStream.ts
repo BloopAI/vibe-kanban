@@ -2,7 +2,11 @@ import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { applyPatch } from 'rfc6902';
 import type { Operation } from 'rfc6902';
-import useWebSocket from 'react-use-websocket';
+import _useWebSocket from 'react-use-websocket';
+// Vite (rolldown) CJS interop: exports the module namespace as default instead of
+// unwrapping exports.default. Guard so this works in both dev and prod.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const useWebSocket = (typeof _useWebSocket === 'function' ? _useWebSocket : (_useWebSocket as any).default) as typeof _useWebSocket;
 import type { Draft, DraftResponse } from 'shared/types';
 import { useProject } from '@/contexts/ProjectContext';
 
