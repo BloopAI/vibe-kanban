@@ -146,8 +146,10 @@ export const useConversationHistory = ({
   attempt,
   onEntriesUpdated,
 }: UseConversationHistoryParams): UseConversationHistoryResult => {
-  const { executionProcessesVisible: executionProcessesRaw } =
-    useExecutionProcessesContext();
+  const {
+    executionProcessesVisible: executionProcessesRaw,
+    isLoading: isExecutionProcessesLoading,
+  } = useExecutionProcessesContext();
 
   // Get effective pagination settings (respects per-conversation overrides)
   const { effectiveLimit } = useEffectivePagination(attempt.id);
@@ -860,12 +862,18 @@ export const useConversationHistory = ({
         return;
       }
 
-      // Waiting for execution processes to load (local attempts)
-      if (
-        executionProcesses?.current.length === 0 ||
-        loadedInitialEntries.current
-      )
+      // Still waiting for the execution-processes WebSocket to deliver its initial snapshot
+      if (isExecutionProcessesLoading) return;
+
+      if (loadedInitialEntries.current) return;
+
+      // WebSocket connected but no execution processes exist for this attempt.
+      // Emit the empty next-action state so the UI exits the loading spinner.
+      if (executionProcesses?.current.length === 0) {
+        emitEntries(displayedExecutionProcesses.current, 'initial', false);
+        loadedInitialEntries.current = true;
         return;
+      }
 
       // Initial entries
       const allInitialEntries = await loadInitialEntries();
@@ -893,11 +901,12 @@ export const useConversationHistory = ({
     attempt.id,
     attempt.origin_node_id,
     idListKey,
+    isExecutionProcessesLoading,
     loadInitialEntries,
     loadRemoteAttemptLogs,
     loadRemainingEntriesInBatches,
     emitEntries,
-  ]); // include idListKey so new processes trigger reload
+  ]); // include idListKey so new processes trigger reload; isExecutionProcessesLoading so we react when WS connects with empty list
 
   useEffect(() => {
     // Create abort signal for cleanup
