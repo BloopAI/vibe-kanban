@@ -420,11 +420,20 @@ impl EventService {
                                 },
                             };
 
-                            let patch =
-                                serde_json::from_value(json!([
-                                    serde_json::to_value(event_patch).unwrap()
-                                ]))
-                                .unwrap();
+                            let event_value = match serde_json::to_value(&event_patch) {
+                                Ok(v) => v,
+                                Err(e) => {
+                                    tracing::error!(error = ?e, "Failed to serialize event patch");
+                                    return;
+                                }
+                            };
+                            let patch = match serde_json::from_value(json!([event_value])) {
+                                Ok(p) => p,
+                                Err(e) => {
+                                    tracing::error!(error = ?e, "Failed to deserialize event patch");
+                                    return;
+                                }
+                            };
 
                             msg_store_for_hook.push_patch(patch);
                         });

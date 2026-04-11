@@ -195,12 +195,25 @@ impl ExecutorConfigs {
 
     /// Get cached executor profiles
     pub fn get_cached() -> ExecutorConfigs {
-        EXECUTOR_PROFILES_CACHE.read().unwrap().clone()
+        let guard = match EXECUTOR_PROFILES_CACHE.read() {
+            Ok(g) => g,
+            Err(e) => {
+                tracing::warn!("ExecutorProfiles cache lock was poisoned, recovering");
+                e.into_inner()
+            }
+        };
+        guard.clone()
     }
 
     /// Reload executor profiles cache
     pub fn reload() {
-        let mut cache = EXECUTOR_PROFILES_CACHE.write().unwrap();
+        let mut cache = match EXECUTOR_PROFILES_CACHE.write() {
+            Ok(g) => g,
+            Err(e) => {
+                tracing::warn!("ExecutorProfiles cache write lock was poisoned, recovering");
+                e.into_inner()
+            }
+        };
         *cache = Self::load();
     }
 

@@ -217,7 +217,7 @@ fn extract_session_metadata(
     let file_mtime = metadata
         .modified()?
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or(std::time::Duration::ZERO)
         .as_millis() as u64;
 
     // Use created timestamp for modified initially (will be updated if file is modified)

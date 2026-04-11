@@ -5,6 +5,7 @@
 //! through a WebSocket interface.
 
 use std::{
+    collections::HashSet,
     io::Read,
     io::Write,
     path::{Path, PathBuf},
@@ -126,7 +127,8 @@ impl TerminalSession {
 /// It supports both tmux-based sessions (preferred) and PTY-based sessions
 /// as a fallback when tmux is not available.
 pub struct TerminalSessionManager {
-    sessions: DashMap<String, Arc<RwLock<TerminalSession>>>,
+    sessions: Arc<DashMap<String, Arc<RwLock<TerminalSession>>>>,
+    creating: Arc<tokio::sync::Mutex<HashSet<String>>>,
     use_tmux: bool,
     tmux_path: Option<PathBuf>,
 }
@@ -134,7 +136,8 @@ pub struct TerminalSessionManager {
 impl Clone for TerminalSessionManager {
     fn clone(&self) -> Self {
         Self {
-            sessions: DashMap::new(),
+            sessions: Arc::clone(&self.sessions),
+            creating: Arc::clone(&self.creating),
             use_tmux: self.use_tmux,
             tmux_path: self.tmux_path.clone(),
         }
@@ -151,7 +154,8 @@ impl TerminalSessionManager {
     /// Create a new TerminalSessionManager.
     pub fn new() -> Self {
         Self {
-            sessions: DashMap::new(),
+            sessions: Arc::new(DashMap::new()),
+            creating: Arc::new(tokio::sync::Mutex::new(HashSet::new())),
             use_tmux: false,
             tmux_path: None,
         }
@@ -231,17 +235,35 @@ impl TerminalSessionManager {
     pub async fn create_session(&self, working_dir: &Path) -> Result<String, TerminalError> {
         let session_id = Self::generate_session_id(working_dir);
 
-        // Check if session already exists
-        if self.sessions.contains_key(&session_id) {
-            return Err(TerminalError::SessionAlreadyExists(session_id));
+        // Atomically claim the session ID — hold mutex only briefly, not across await
+        {
+            let mut creating = self.creating.lock().await;
+            if self.sessions.contains_key(&session_id) || creating.contains(&session_id) {
+                return Err(TerminalError::SessionAlreadyExists(session_id));
+            }
+            creating.insert(session_id.clone());
         }
 
+        // Do the async PTY/tmux work — mutex is NOT held here
+        let result = self.create_session_impl(working_dir, &session_id).await;
+
+        // Always release the claim, whether success or failure
+        self.creating.lock().await.remove(&session_id);
+        result
+    }
+
+    /// Inner implementation for session creation — called after the session ID has been claimed.
+    async fn create_session_impl(
+        &self,
+        working_dir: &Path,
+        session_id: &str,
+    ) -> Result<String, TerminalError> {
         let (output_tx, _) = broadcast::channel(1024);
         let cols = 80;
         let rows = 24;
 
         let backend = if self.use_tmux {
-            self.create_tmux_session(&session_id, working_dir, cols, rows, output_tx.clone())
+            self.create_tmux_session(session_id, working_dir, cols, rows, output_tx.clone())
                 .await?
         } else {
             self.create_pty_session(working_dir, cols, rows, output_tx.clone())
@@ -249,7 +271,7 @@ impl TerminalSessionManager {
         };
 
         let session = TerminalSession {
-            id: session_id.clone(),
+            id: session_id.to_string(),
             working_dir: working_dir.to_path_buf(),
             cols,
             rows,
@@ -258,11 +280,11 @@ impl TerminalSessionManager {
         };
 
         self.sessions
-            .insert(session_id.clone(), Arc::new(RwLock::new(session)));
+            .insert(session_id.to_string(), Arc::new(RwLock::new(session)));
 
         info!(session_id = %session_id, working_dir = %working_dir.display(), "Created terminal session");
 
-        Ok(session_id)
+        Ok(session_id.to_string())
     }
 
     /// Create a tmux-based session.

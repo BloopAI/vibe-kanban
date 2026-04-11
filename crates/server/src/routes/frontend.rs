@@ -30,7 +30,8 @@ async fn serve_file(path: &str) -> impl IntoResponse + use<> {
                 .status(StatusCode::OK)
                 .header(
                     header::CONTENT_TYPE,
-                    HeaderValue::from_str(mime.as_ref()).unwrap(),
+                    HeaderValue::from_str(mime.as_ref())
+                        .unwrap_or_else(|_| HeaderValue::from_static("application/octet-stream")),
                 )
                 .body(Body::from(content.data.into_owned()))
                 .unwrap()

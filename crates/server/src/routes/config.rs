@@ -29,6 +29,8 @@ use utils::{api::oauth::LoginStatus, assets::config_path, response::ApiResponse}
 
 use crate::{DeploymentImpl, error::ApiError};
 
+static CONFIG_WRITE_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/info", get(get_user_system_info))
@@ -118,6 +120,7 @@ async fn update_config(
     State(deployment): State<DeploymentImpl>,
     Json(new_config): Json<Config>,
 ) -> ResponseJson<ApiResponse<Config>> {
+    let _guard = CONFIG_WRITE_LOCK.lock().await;
     let config_path = config_path();
 
     // Validate git branch prefix
