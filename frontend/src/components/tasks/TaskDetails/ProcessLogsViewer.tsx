@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { VList, VListHandle } from 'virtua';
-import { AlertCircle, Radio, Wifi, WifiOff } from 'lucide-react';
+import { AlertCircle, ArrowDown, Radio, Wifi, WifiOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useLogStream } from '@/hooks/useLogStream';
 import {
   useNodeLogStream,
@@ -73,8 +74,6 @@ function ConnectionStatusBadge({
   );
 }
 
-const LARGE_BURST = 10;
-
 export type ProcessLogsViewerContentProps = {
   logs: LogEntry[];
   error: string | null;
@@ -91,25 +90,30 @@ export function ProcessLogsViewerContent({
 }: ProcessLogsViewerContentProps) {
   const listRef = useRef<VListHandle>(null);
   const prevLenRef = useRef(0);
+  const [atBottom, setAtBottom] = useState(true);
 
+  // Reset scroll state when the log source changes (new process)
   useEffect(() => {
     prevLenRef.current = 0;
+    setAtBottom(true);
   }, [sourceKey]);
 
-  // Always follow the latest entry — no atBottom gate needed for a raw logs panel
+  // Auto-follow: scroll to newest entry while user is at the bottom.
+  // Uses smooth:false so onScroll fires once at the final position —
+  // smooth scrolling fires at intermediate positions which can transiently
+  // flip atBottom to false and break the follow loop.
   useEffect(() => {
     const prev = prevLenRef.current;
     const grewBy = logs.length - prev;
     prevLenRef.current = logs.length;
 
-    if (logs.length === 0) return;
-    if (grewBy <= 0) return;
+    if (logs.length === 0 || grewBy <= 0) return;
+    if (!atBottom) return;
 
-    const smooth = grewBy < LARGE_BURST;
     requestAnimationFrame(() => {
-      listRef.current?.scrollToIndex(logs.length - 1, { align: 'end', smooth });
+      listRef.current?.scrollToIndex(logs.length - 1, { align: 'end', smooth: false });
     });
-  }, [logs.length]);
+  }, [logs.length, atBottom]);
 
   return (
     <div className="h-full flex flex-col">
@@ -118,7 +122,7 @@ export function ProcessLogsViewerContent({
           <ConnectionStatusBadge connectionType={connectionType} />
         </div>
       )}
-      <div className="flex-1 min-h-0">
+      <div className="relative flex-1 min-h-0">
         {logs.length === 0 && !error ? (
           <div className="p-4 text-center text-muted-foreground text-sm">
             No logs available
@@ -129,21 +133,42 @@ export function ProcessLogsViewerContent({
             {error}
           </div>
         ) : (
-          <VList
-            ref={listRef}
-            className="flex-1 rounded-lg"
-            data={logs}
-            bufferSize={600}
-          >
-            {(entry, i) => (
-              <RawLogText
-                key={i}
-                content={(entry as LogEntry).content}
-                channel={(entry as LogEntry).type === 'STDERR' ? 'stderr' : 'stdout'}
-                className="text-sm px-4 py-1"
-              />
+          <>
+            <VList
+              ref={listRef}
+              className="flex-1 rounded-lg"
+              data={logs}
+              bufferSize={600}
+              onScroll={(offset) => {
+                const h = listRef.current;
+                if (!h) return;
+                setAtBottom(offset + h.viewportSize >= h.scrollSize - 5);
+              }}
+            >
+              {(entry, i) => (
+                <RawLogText
+                  key={i}
+                  content={(entry as LogEntry).content}
+                  channel={(entry as LogEntry).type === 'STDERR' ? 'stderr' : 'stdout'}
+                  className="text-sm px-4 py-1"
+                />
+              )}
+            </VList>
+            {!atBottom && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="absolute bottom-4 right-4 rounded-full shadow-lg bg-background/90 backdrop-blur-sm hover:bg-background z-10"
+                onClick={() => {
+                  setAtBottom(true);
+                  listRef.current?.scrollToIndex(logs.length - 1, { align: 'end', smooth: false });
+                }}
+                aria-label="Scroll to bottom"
+              >
+                <ArrowDown className="h-4 w-4" />
+              </Button>
             )}
-          </VList>
+          </>
         )}
       </div>
     </div>
