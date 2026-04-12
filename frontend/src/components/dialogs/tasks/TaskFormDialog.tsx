@@ -814,7 +814,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             className="fixed inset-0 bg-black/50"
             onClick={() => setShowDiscardWarning(false)}
           />
-          <div className="relative z-[10000] grid w-full max-w-lg gap-4 bg-primary p-6 shadow-lg duration-200 sm:rounded-lg my-8">
+          <div className="relative z-[10000] grid w-full max-w-lg gap-4 bg-background p-6 shadow-lg duration-200 sm:rounded-lg my-8">
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <div className="flex items-center gap-3">

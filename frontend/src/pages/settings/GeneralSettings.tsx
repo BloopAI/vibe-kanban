@@ -259,6 +259,8 @@ export function GeneralSettings() {
     );
   }
 
+  if (!draft) return null;
+
   return (
     <div className="space-y-6">
       {error && (
@@ -364,7 +366,7 @@ export function GeneralSettings() {
                 // Preload the font when selected
                 loadFont(getUiFontUrl(value));
                 updateDraft({
-                  fonts: { ...draft!.fonts, ui_font: value },
+                  fonts: { ...draft.fonts, ui_font: value },
                 });
               }}
             >
@@ -408,7 +410,7 @@ export function GeneralSettings() {
                 // Preload the font when selected
                 loadFont(getCodeFontUrl(value));
                 updateDraft({
-                  fonts: { ...draft!.fonts, code_font: value },
+                  fonts: { ...draft.fonts, code_font: value },
                 });
               }}
             >
@@ -454,7 +456,7 @@ export function GeneralSettings() {
                 // Preload the font when selected
                 loadFont(getProseFontUrl(value));
                 updateDraft({
-                  fonts: { ...draft!.fonts, prose_font: value },
+                  fonts: { ...draft.fonts, prose_font: value },
                 });
               }}
             >
@@ -497,7 +499,7 @@ export function GeneralSettings() {
               onCheckedChange={(checked: boolean) =>
                 updateDraft({
                   fonts: {
-                    ...draft!.fonts,
+                    ...draft.fonts,
                     disable_ligatures: checked,
                   },
                 })
@@ -541,7 +543,7 @@ export function GeneralSettings() {
                 onChange={(e) =>
                   updateDraft({
                     dev_banner: {
-                      ...draft!.dev_banner,
+                      ...draft.dev_banner,
                       background_color: e.target.value || null,
                     },
                   })
@@ -566,7 +568,7 @@ export function GeneralSettings() {
                 onChange={(e) =>
                   updateDraft({
                     dev_banner: {
-                      ...draft!.dev_banner,
+                      ...draft.dev_banner,
                       foreground_color: e.target.value || null,
                     },
                   })
@@ -584,7 +586,7 @@ export function GeneralSettings() {
                 onCheckedChange={(checked: boolean) =>
                   updateDraft({
                     dev_banner: {
-                      ...draft!.dev_banner,
+                      ...draft.dev_banner,
                       show_hostname: checked,
                     },
                   })
@@ -610,7 +612,7 @@ export function GeneralSettings() {
                 onCheckedChange={(checked: boolean) =>
                   updateDraft({
                     dev_banner: {
-                      ...draft!.dev_banner,
+                      ...draft.dev_banner,
                       show_os_info: checked,
                     },
                   })
@@ -657,7 +659,7 @@ export function GeneralSettings() {
                   const newProfile: ExecutorProfileId = {
                     executor: value as BaseCodingAgent,
                     variant: keepCurrentVariant
-                      ? draft!.executor_profile!.variant
+                      ? draft.executor_profile!.variant
                       : null,
                   };
                   updateDraft({
@@ -776,7 +778,7 @@ export function GeneralSettings() {
               value={draft?.editor.editor_type}
               onValueChange={(value: EditorType) =>
                 updateDraft({
-                  editor: { ...draft!.editor, editor_type: value },
+                  editor: { ...draft.editor, editor_type: value },
                 })
               }
             >
@@ -818,7 +820,7 @@ export function GeneralSettings() {
                 onChange={(e) =>
                   updateDraft({
                     editor: {
-                      ...draft!.editor,
+                      ...draft.editor,
                       custom_command: e.target.value || null,
                     },
                   })
@@ -847,7 +849,7 @@ export function GeneralSettings() {
                   onChange={(e) =>
                     updateDraft({
                       editor: {
-                        ...draft!.editor,
+                        ...draft.editor,
                         remote_ssh_host: e.target.value || null,
                       },
                     })
@@ -872,7 +874,7 @@ export function GeneralSettings() {
                     onChange={(e) =>
                       updateDraft({
                         editor: {
-                          ...draft!.editor,
+                          ...draft.editor,
                           remote_ssh_user: e.target.value || null,
                         },
                       })
@@ -967,7 +969,7 @@ export function GeneralSettings() {
               onValueChange={(value: string) =>
                 updateDraft({
                   timestamps: {
-                    ...draft!.timestamps,
+                    ...draft.timestamps,
                     timezone: value,
                   },
                 })
@@ -1093,7 +1095,7 @@ export function GeneralSettings() {
               onCheckedChange={(checked: boolean) =>
                 updateDraft({
                   notifications: {
-                    ...draft!.notifications,
+                    ...draft.notifications,
                     sound_enabled: checked,
                   },
                 })
@@ -1161,7 +1163,7 @@ export function GeneralSettings() {
               onCheckedChange={(checked: boolean) =>
                 updateDraft({
                   notifications: {
-                    ...draft!.notifications,
+                    ...draft.notifications,
                     push_enabled: checked,
                   },
                 })
@@ -1196,7 +1198,7 @@ export function GeneralSettings() {
               onValueChange={(value: string) =>
                 updateDraft({
                   pagination: {
-                    ...draft!.pagination,
+                    ...draft.pagination,
                     initial_load: BigInt(value),
                   },
                 })

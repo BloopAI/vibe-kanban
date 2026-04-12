@@ -74,6 +74,11 @@ export default defineConfig({
     },
     open: process.env.VITE_OPEN === "true",
   },
+  optimizeDeps: {
+    // Force esbuild pre-bundling so CJS packages (e.g. react-use-websocket)
+    // are converted to ESM and default imports resolve correctly in all modes.
+    include: ['react-use-websocket'],
+  },
   build: {
     sourcemap: true,
     chunkSizeWarningLimit: 5000,
