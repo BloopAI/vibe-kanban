@@ -19,6 +19,9 @@ export function useSwarmHealthActions(options?: UseSwarmHealthActionsOptions) {
   const [isFixing, setIsFixing] = useState(false);
   const { unlinkFromSwarm } = useProjectMutations();
 
+  const { onFixAllSuccess, onFixAllError, onFixAllPartial } = options ?? {};
+  const { mutateAsync: unlinkAsync } = unlinkFromSwarm;
+
   const fixAllIssues = useCallback(async (): Promise<FixAllResult> => {
     setIsFixing(true);
     const result: FixAllResult = {
@@ -31,54 +34,65 @@ export function useSwarmHealthActions(options?: UseSwarmHealthActionsOptions) {
       // Fetch all projects using API client
       const projects = await projectsApi.getAll();
 
-      // Find projects with sync issues
-      for (const project of projects) {
-        try {
+      // Check all health statuses in parallel
+      const healthResults = await Promise.allSettled(
+        projects.map(async (project) => {
           const health = await projectsApi.getSyncHealth(project.id);
+          return { project, health };
+        })
+      );
 
-          if (health.has_sync_issues) {
-            try {
-              const unlinkRequest: UnlinkSwarmRequest = { notify_hive: false };
-              await unlinkFromSwarm.mutateAsync({
-                projectId: project.id,
-                data: unlinkRequest,
-              });
-              result.successCount++;
-            } catch (err) {
-              console.error(`Failed to unlink project ${project.name}:`, err);
-              result.errorCount++;
-              result.errors.push({
-                projectId: project.id,
-                projectName: project.name,
-                error: err,
-              });
-            }
-          }
-        } catch (err) {
-          // Failed to get sync health for this project - log and continue
-          console.error(
-            `Failed to get sync health for project ${project.name}:`,
-            err
-          );
+      // Log health-check failures, collect projects needing fix
+      const toFix: typeof projects = [];
+      for (const res of healthResults) {
+        if (res.status === 'rejected') {
+          console.error('Failed to get sync health:', res.reason);
+        } else if (res.value.health.has_sync_issues) {
+          toFix.push(res.value.project);
         }
       }
 
+      // Batch all unlinks in parallel
+      const unlinkResults = await Promise.allSettled(
+        toFix.map(async (project) => {
+          const unlinkRequest: UnlinkSwarmRequest = { notify_hive: false };
+          await unlinkAsync({ projectId: project.id, data: unlinkRequest });
+          return project;
+        })
+      );
+
+      // Tally results
+      toFix.forEach((project, i) => {
+        const res = unlinkResults[i];
+        if (res.status === 'fulfilled') {
+          result.successCount++;
+        } else {
+          console.error(`Failed to unlink project ${project.name}:`, res.reason);
+          result.errorCount++;
+          result.errors.push({
+            projectId: project.id,
+            projectName: project.name,
+            error: res.reason,
+          });
+        }
+      });
+
       // Call appropriate callback based on result
       if (result.errorCount === 0) {
-        options?.onFixAllSuccess?.(result);
+        onFixAllSuccess?.(result);
       } else {
-        options?.onFixAllPartial?.(result);
+        onFixAllPartial?.(result);
       }
 
       return result;
     } catch (error) {
       console.error('Failed to fix swarm issues:', error);
-      options?.onFixAllError?.(error);
+      onFixAllError?.(error);
       throw error;
     } finally {
       setIsFixing(false);
     }
-  }, [options, unlinkFromSwarm]);
+  }, [unlinkAsync, onFixAllSuccess, onFixAllError, onFixAllPartial]);
 
   return {
     fixAllIssues,

@@ -5,7 +5,7 @@ use std::{
 
 use axum::response::sse::Event;
 use futures::{StreamExt, TryStreamExt, future};
-use tokio::{sync::broadcast, task::JoinHandle};
+use tokio::{sync::{Notify, broadcast}, task::JoinHandle};
 use tokio_stream::wrappers::BroadcastStream;
 
 use crate::{log_msg::LogMsg, stream_lines::LinesStreamExt};
@@ -27,6 +27,7 @@ struct Inner {
 pub struct MsgStore {
     inner: RwLock<Inner>,
     sender: broadcast::Sender<LogMsg>,
+    notify: Arc<Notify>,
 }
 
 impl Default for MsgStore {
@@ -44,6 +45,7 @@ impl MsgStore {
                 total_bytes: 0,
             }),
             sender,
+            notify: Arc::new(Notify::new()),
         }
     }
 
@@ -61,6 +63,15 @@ impl MsgStore {
         }
         inner.history.push_back(StoredMsg { msg, bytes });
         inner.total_bytes = inner.total_bytes.saturating_add(bytes);
+        drop(inner); // release lock before notifying
+        self.notify.notify_one();
+    }
+
+    /// Returns a clone of the internal `Notify` handle.
+    ///
+    /// Callers can use this to be woken when new messages are pushed.
+    pub fn subscribe_notify(&self) -> Arc<Notify> {
+        Arc::clone(&self.notify)
     }
 
     // Convenience

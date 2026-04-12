@@ -134,6 +134,31 @@ ORDER BY COALESCE(t.activity_at, t.created_at) DESC"#,
         Ok(tasks)
     }
 
+    /// Fetch a single task with its attempt status.
+    ///
+    /// Equivalent to `find_by_project_id_with_attempt_status` filtered to one task.
+    /// Uses two cached queries rather than one new macro to preserve the .sqlx cache.
+    pub async fn find_by_id_with_attempt_status(
+        pool: &SqlitePool,
+        id: Uuid,
+    ) -> Result<Option<TaskWithAttemptStatus>, sqlx::Error> {
+        // Step 1: resolve project_id (needed for the attempt-status query)
+        let task = Self::find_by_id(pool, id).await?;
+        let Some(task) = task else {
+            return Ok(None);
+        };
+        // Step 2: fetch all tasks for the project with status, then pick ours
+        let tasks =
+            Self::find_by_project_id_with_attempt_status(pool, task.project_id, true).await?;
+        Ok(tasks.into_iter().find(|t| t.task.id == id))
+    }
+
+    // NOTE: A single-query version of find_by_id_with_attempt_status exists as a draft
+    // but requires running `cargo sqlx prepare` to cache it. Add it here once the
+    // .sqlx cache is regenerated (run: DATABASE_URL=sqlite:dev_assets/db.sqlite cargo sqlx prepare)
+    #[allow(dead_code)]
+    fn _single_query_reminder() {}
+
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,

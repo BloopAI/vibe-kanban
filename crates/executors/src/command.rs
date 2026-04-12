@@ -109,19 +109,21 @@ impl CommandBuilder {
     }
 
     fn build(&self, additional_args: &[String]) -> Result<CommandParts, CommandBuildError> {
-        let mut parts = split_command_line(&self.simple_join(additional_args))?;
-
-        let program = parts.remove(0);
-        Ok(CommandParts::new(program, parts))
-    }
-
-    fn simple_join(&self, additional_args: &[String]) -> String {
-        let mut parts = vec![self.base.clone()];
-        if let Some(ref params) = self.params {
-            parts.extend(params.clone());
+        // Parse the base command string once (it may contain flags like "npx -y @scope/pkg@latest")
+        let mut base_parts = split_command_line(&self.base)?;
+        if base_parts.is_empty() {
+            return Err(CommandBuildError::EmptyCommand);
         }
-        parts.extend(additional_args.iter().cloned());
-        parts.join(" ")
+        let program = base_parts.remove(0);
+
+        // Collect all args: remaining base parts + params + additional_args (no re-joining)
+        let mut args = base_parts;
+        if let Some(ref params) = self.params {
+            args.extend(params.iter().cloned());
+        }
+        args.extend(additional_args.iter().cloned());
+
+        Ok(CommandParts::new(program, args))
     }
 }
 

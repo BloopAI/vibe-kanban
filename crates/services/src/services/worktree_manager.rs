@@ -436,16 +436,33 @@ impl WorktreeManager {
         Ok(())
     }
 
-    /// Clean up multiple worktrees
+    /// Clean up multiple worktrees in parallel, logging and returning the first error if any.
     pub async fn batch_cleanup_worktrees(data: &[WorktreeCleanup]) -> Result<(), WorktreeError> {
-        for cleanup_data in data {
+        let futures = data.iter().map(|cleanup_data| async move {
             tracing::debug!("Cleaning up worktree: {:?}", cleanup_data.worktree_path);
+            Self::cleanup_worktree(cleanup_data).await
+        });
 
-            if let Err(e) = Self::cleanup_worktree(cleanup_data).await {
-                tracing::error!("Failed to cleanup worktree: {}", e);
+        let results = futures::future::join_all(futures).await;
+
+        let mut first_error = None;
+        for (i, result) in results.into_iter().enumerate() {
+            if let Err(e) = result {
+                tracing::error!(
+                    worktree = ?data[i].worktree_path,
+                    error = %e,
+                    "Failed to cleanup worktree"
+                );
+                if first_error.is_none() {
+                    first_error = Some(e);
+                }
             }
         }
-        Ok(())
+
+        match first_error {
+            Some(e) => Err(e),
+            None => Ok(()),
+        }
     }
 
     /// Clean up a worktree path and its git metadata (non-blocking)

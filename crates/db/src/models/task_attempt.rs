@@ -107,6 +107,7 @@ impl TaskAttempt {
     }
 
     /// Fetch all task attempts, optionally filtered by task_id. Newest first.
+    /// When task_id is None, limits results to the most recent 500 attempts.
     pub async fn fetch_all(
         pool: &SqlitePool,
         task_id: Option<Uuid>,
@@ -135,23 +136,14 @@ impl TaskAttempt {
             .fetch_all(pool)
             .await
             .map_err(TaskAttemptError::Database)?,
-            None => sqlx::query_as!(
-                TaskAttempt,
-                r#"SELECT id AS "id!: Uuid",
-                              task_id AS "task_id!: Uuid",
-                              container_ref,
-                              branch,
-                              target_branch,
-                              executor AS "executor!",
-                              worktree_deleted AS "worktree_deleted!: bool",
-                              setup_completed_at AS "setup_completed_at: DateTime<Utc>",
-                              created_at AS "created_at!: DateTime<Utc>",
-                              updated_at AS "updated_at!: DateTime<Utc>",
-                              hive_synced_at AS "hive_synced_at: DateTime<Utc>",
-                              hive_assignment_id AS "hive_assignment_id: Uuid",
-                              origin_node_id AS "origin_node_id: Uuid"
+            // Use runtime query (not macro) so adding LIMIT doesn't invalidate the .sqlx cache
+            None => sqlx::query_as::<_, TaskAttempt>(
+                r#"SELECT id, task_id, container_ref, branch, target_branch, executor,
+                              worktree_deleted, setup_completed_at, created_at, updated_at,
+                              hive_synced_at, hive_assignment_id, origin_node_id
                        FROM task_attempts
-                       ORDER BY created_at DESC"#
+                       ORDER BY created_at DESC
+                       LIMIT 500"#,
             )
             .fetch_all(pool)
             .await

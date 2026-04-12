@@ -5,9 +5,6 @@
 
 use std::sync::Arc;
 
-use db::models::{
-    execution_process::ExecutionProcess, project::Project, task::Task, task_attempt::TaskAttempt,
-};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use thiserror::Error;
@@ -210,13 +207,15 @@ impl<I: ProcessInspector> ProcessService<I> {
         // Step 1: Get running execution processes with PIDs from the database
         let associations = self.load_execution_associations(pool).await?;
 
-        // Step 2: For each executor PID, get the process tree
+        // Step 2: ONE OS scan for the entire request — avoids 3N full sysinfo refreshes.
+        let all_raw_procs = self.inspector.list_processes().await?;
+
         let mut all_processes: Vec<ProcessInfo> = Vec::new();
         let mut seen_pids = std::collections::HashSet::new();
 
         for assoc in &associations {
-            // Check if process still exists
-            if !self.inspector.process_exists(assoc.pid).await {
+            // Check if executor process still exists in the cached snapshot
+            if !Self::process_exists_in(&all_raw_procs, assoc.pid) {
                 continue;
             }
 
@@ -231,9 +230,8 @@ impl<I: ProcessInspector> ProcessService<I> {
                 is_executor: false,
             };
 
-            // Get the executor process itself
-            if let Ok(procs) = self.inspector.list_processes().await
-                && let Some(exec_proc) = procs.iter().find(|p| p.pid == assoc.pid)
+            // Get the executor process itself from the cached snapshot
+            if let Some(exec_proc) = all_raw_procs.iter().find(|p| p.pid == assoc.pid)
                 && !seen_pids.contains(&exec_proc.pid)
             {
                 seen_pids.insert(exec_proc.pid);
@@ -247,22 +245,18 @@ impl<I: ProcessInspector> ProcessService<I> {
                 all_processes.push(info);
             }
 
-            // Get all descendant processes
-            if let Ok(descendants) = self.inspector.get_process_tree(assoc.pid).await {
-                for raw in descendants {
-                    if !seen_pids.contains(&raw.pid) {
-                        seen_pids.insert(raw.pid);
-                        let info = ProcessInfo::from_raw(raw).with_association(child_assoc.clone());
-                        all_processes.push(info);
-                    }
+            // Get all descendant processes from the cached snapshot
+            for raw in Self::get_process_tree_from(&all_raw_procs, assoc.pid) {
+                if !seen_pids.contains(&raw.pid) {
+                    seen_pids.insert(raw.pid);
+                    let info = ProcessInfo::from_raw(raw).with_association(child_assoc.clone());
+                    all_processes.push(info);
                 }
             }
 
             // Also find processes by working directory (catches processes started in worktree)
-            if let Some(ref worktree) = assoc.worktree_path
-                && let Ok(cwd_procs) = self.inspector.find_processes_by_cwd_prefix(worktree).await
-            {
-                for raw in cwd_procs {
+            if let Some(ref worktree) = assoc.worktree_path {
+                for raw in Self::find_by_cwd_prefix_from(&all_raw_procs, worktree) {
                     if !seen_pids.contains(&raw.pid) {
                         seen_pids.insert(raw.pid);
                         let info = ProcessInfo::from_raw(raw).with_association(child_assoc.clone());
@@ -299,6 +293,44 @@ impl<I: ProcessInspector> ProcessService<I> {
             .collect();
 
         Ok(filtered)
+    }
+
+    /// Check whether a process with `pid` exists in the cached process snapshot.
+    fn process_exists_in(all: &[RawProcessInfo], pid: u32) -> bool {
+        all.iter().any(|p| p.pid == pid)
+    }
+
+    /// Return all descendants of `root_pid` from the cached process snapshot.
+    ///
+    /// Uses BFS over parent_pid relationships. The root process itself is not included.
+    fn get_process_tree_from(all: &[RawProcessInfo], root_pid: u32) -> Vec<RawProcessInfo> {
+        let mut descendants = std::collections::HashSet::new();
+        let mut to_visit = vec![root_pid];
+        while let Some(current) = to_visit.pop() {
+            for p in all {
+                if p.parent_pid == Some(current) && !descendants.contains(&p.pid) {
+                    descendants.insert(p.pid);
+                    to_visit.push(p.pid);
+                }
+            }
+        }
+        all.iter()
+            .filter(|p| descendants.contains(&p.pid))
+            .cloned()
+            .collect()
+    }
+
+    /// Return all processes whose working directory starts with `prefix` from the cached snapshot.
+    fn find_by_cwd_prefix_from(all: &[RawProcessInfo], prefix: &str) -> Vec<RawProcessInfo> {
+        all.iter()
+            .filter(|p| {
+                p.working_directory
+                    .as_deref()
+                    .map(|cwd| cwd.starts_with(prefix))
+                    .unwrap_or(false)
+            })
+            .cloned()
+            .collect()
     }
 
     /// Kill processes based on the specified scope.
@@ -398,45 +430,60 @@ impl<I: ProcessInspector> ProcessService<I> {
     }
 
     /// Load all running execution processes with their associations.
+    ///
+    /// Uses a single JOIN query instead of N sequential round-trips per executor.
     async fn load_execution_associations(
         &self,
         pool: &SqlitePool,
     ) -> Result<Vec<ExecutionAssociation>, ProcessServiceError> {
-        // Get all running execution processes with PIDs
-        let exec_processes = ExecutionProcess::find_running_with_pids(pool).await?;
+        use sqlx::Row;
 
-        let mut associations = Vec::new();
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                ep.id            AS execution_process_id,
+                ep.pid,
+                ta.id            AS task_attempt_id,
+                t.id             AS task_id,
+                p.id             AS project_id,
+                p.name           AS project_name,
+                t.title          AS task_title,
+                ta.container_ref AS worktree_path
+            FROM execution_processes ep
+            JOIN task_attempts ta ON ta.id = ep.task_attempt_id
+            JOIN tasks         t  ON t.id  = ta.task_id
+            JOIN projects      p  ON p.id  = t.project_id
+            WHERE ep.status = 'running'
+              AND ep.pid IS NOT NULL
+            "#,
+        )
+        .fetch_all(pool)
+        .await?;
 
-        for ep in exec_processes {
-            // Skip if no PID
-            let Some(pid) = ep.pid else { continue };
-
-            // Get the task attempt
-            let Some(attempt) = TaskAttempt::find_by_id(pool, ep.task_attempt_id).await? else {
-                continue;
-            };
-
-            // Get the task
-            let Some(task) = Task::find_by_id(pool, attempt.task_id).await? else {
-                continue;
-            };
-
-            // Get the project
-            let Some(project) = Project::find_by_id(pool, task.project_id).await? else {
-                continue;
-            };
-
-            associations.push(ExecutionAssociation {
-                execution_process_id: ep.id,
-                pid: pid as u32,
-                task_attempt_id: attempt.id,
-                task_id: task.id,
-                project_id: project.id,
-                project_name: project.name.clone(),
-                task_title: task.title.clone(),
-                worktree_path: attempt.container_ref.clone(),
-            });
-        }
+        let associations = rows
+            .into_iter()
+            .filter_map(|row| {
+                let pid: Option<i64> = row.try_get("pid").ok()?;
+                let pid = pid? as u32;
+                let ep_id_bytes: Vec<u8> = row.try_get("execution_process_id").ok()?;
+                let ta_id_bytes: Vec<u8> = row.try_get("task_attempt_id").ok()?;
+                let t_id_bytes: Vec<u8> = row.try_get("task_id").ok()?;
+                let p_id_bytes: Vec<u8> = row.try_get("project_id").ok()?;
+                let project_name: String = row.try_get("project_name").ok()?;
+                let task_title: String = row.try_get("task_title").ok()?;
+                let worktree_path: Option<String> = row.try_get("worktree_path").ok()?;
+                Some(ExecutionAssociation {
+                    execution_process_id: Uuid::from_slice(&ep_id_bytes).ok()?,
+                    pid,
+                    task_attempt_id: Uuid::from_slice(&ta_id_bytes).ok()?,
+                    task_id: Uuid::from_slice(&t_id_bytes).ok()?,
+                    project_id: Uuid::from_slice(&p_id_bytes).ok()?,
+                    project_name,
+                    task_title,
+                    worktree_path,
+                })
+            })
+            .collect();
 
         Ok(associations)
     }
