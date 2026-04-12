@@ -225,7 +225,7 @@ impl SessionActivityState {
         self.idle_while_tasks_active = !self.active_task_calls.is_empty();
     }
 
-    fn update_task_tool(&mut self, call_id: &str, state: &ToolStateUpdate) -> bool {
+    fn update_task_tool(&mut self, call_id: &str, state: &ToolStateUpdate) -> (bool, usize) {
         self.mark_activity();
         match state {
             ToolStateUpdate::Pending { .. } | ToolStateUpdate::Running { .. } => {
@@ -237,7 +237,10 @@ impl SessionActivityState {
             ToolStateUpdate::Unknown => {}
         }
 
-        self.idle_while_tasks_active && self.active_task_calls.is_empty()
+        (
+            self.idle_while_tasks_active && self.active_task_calls.is_empty(),
+            self.active_task_calls.len(),
+        )
     }
 
     fn active_task_count(&self) -> usize {
@@ -1425,7 +1428,7 @@ async fn process_event_stream(
             .await;
 
         if emit_synthetic_idle {
-            tracing::debug!(
+            tracing::info!(
                 session_id = ctx.session_id,
                 "OpenCode session had active task tool calls when parent went idle; synthesizing idle after the last task completed"
             );
@@ -1442,13 +1445,14 @@ async fn process_event_stream(
                     .and_then(Value::as_str)
                     && status.eq_ignore_ascii_case("idle")
                 {
-                    let should_delay = {
+                    let (should_delay, active_task_count) = {
                         let state = ctx.activity_state.lock().await;
-                        state.should_delay_completion()
+                        (state.should_delay_completion(), state.active_task_count())
                     };
                     if should_delay {
-                        tracing::debug!(
+                        tracing::info!(
                             session_id = ctx.session_id,
+                            active_task_count,
                             "OpenCode session reported idle while task tool calls are still active; delaying completion"
                         );
                         continue;
@@ -1458,13 +1462,14 @@ async fn process_event_stream(
                 }
             }
             "session.idle" => {
-                let should_delay = {
+                let (should_delay, active_task_count) = {
                     let state = ctx.activity_state.lock().await;
-                    state.should_delay_completion()
+                    (state.should_delay_completion(), state.active_task_count())
                 };
                 if should_delay {
-                    tracing::debug!(
+                    tracing::info!(
                         session_id = ctx.session_id,
+                        active_task_count,
                         "OpenCode session emitted session.idle while task tool calls are still active; delaying completion"
                     );
                     continue;
@@ -1785,7 +1790,15 @@ async fn update_session_activity_state(
                 && let Part::Tool(tool) = event.part
                 && tool.tool.eq_ignore_ascii_case("task")
             {
-                return state.update_task_tool(&tool.call_id, &tool.state);
+                let (emit_idle, active_task_count) = state.update_task_tool(&tool.call_id, &tool.state);
+                tracing::info!(
+                    session_id = ctx.session_id,
+                    call_id = %tool.call_id,
+                    tool_state = ?tool.state,
+                    active_task_count,
+                    "OpenCode task tool state update"
+                );
+                return emit_idle;
             }
             state.mark_activity();
         }
