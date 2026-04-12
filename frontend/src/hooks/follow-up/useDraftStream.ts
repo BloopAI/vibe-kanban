@@ -2,7 +2,13 @@ import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { applyPatch } from 'rfc6902';
 import type { Operation } from 'rfc6902';
-import useWebSocket from 'react-use-websocket';
+import _useWebSocket from 'react-use-websocket';
+// Vite CJS/ESM interop: in some build modes the module is wrapped so the
+// default export is a namespace object rather than the hook function itself.
+const useWebSocket = (typeof _useWebSocket === 'function'
+  ? _useWebSocket
+  : (_useWebSocket as unknown as { default: typeof _useWebSocket }).default
+) as typeof _useWebSocket;
 import type { Draft, DraftResponse } from 'shared/types';
 import { useProject } from '@/contexts/ProjectContext';
 
