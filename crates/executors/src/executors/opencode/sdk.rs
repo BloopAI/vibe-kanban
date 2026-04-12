@@ -22,7 +22,10 @@ use workspace_utils::approvals::{ApprovalStatus, QuestionAnswer, QuestionStatus}
 
 use super::{
     slash_commands,
-    types::{OpencodeExecutorEvent, ProviderInfo, ProviderListResponse},
+    types::{
+        MessagePartUpdatedEvent, OpencodeExecutorEvent, Part, ProviderInfo,
+        ProviderListResponse, ToolStateUpdate,
+    },
 };
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
@@ -197,6 +200,61 @@ pub(super) enum ControlEvent {
     Disconnected,
 }
 
+#[derive(Debug)]
+pub(super) struct SessionActivityState {
+    active_task_calls: HashSet<String>,
+    idle_while_tasks_active: bool,
+    last_activity_at: tokio::time::Instant,
+}
+
+impl SessionActivityState {
+    fn new() -> Self {
+        Self {
+            active_task_calls: HashSet::new(),
+            idle_while_tasks_active: false,
+            last_activity_at: tokio::time::Instant::now(),
+        }
+    }
+
+    fn mark_activity(&mut self) {
+        self.last_activity_at = tokio::time::Instant::now();
+    }
+
+    fn note_idle(&mut self) {
+        self.last_activity_at = tokio::time::Instant::now();
+        self.idle_while_tasks_active = !self.active_task_calls.is_empty();
+    }
+
+    fn update_task_tool(&mut self, call_id: &str, state: &ToolStateUpdate) -> bool {
+        self.mark_activity();
+        match state {
+            ToolStateUpdate::Pending { .. } | ToolStateUpdate::Running { .. } => {
+                self.active_task_calls.insert(call_id.to_string());
+            }
+            ToolStateUpdate::Completed { .. } | ToolStateUpdate::Error { .. } => {
+                self.active_task_calls.remove(call_id);
+            }
+            ToolStateUpdate::Unknown => {}
+        }
+
+        self.idle_while_tasks_active && self.active_task_calls.is_empty()
+    }
+
+    fn active_task_count(&self) -> usize {
+        self.active_task_calls.len()
+    }
+
+    fn should_delay_completion(&self) -> bool {
+        self.idle_while_tasks_active
+    }
+}
+
+pub(super) type SharedSessionActivityState = Arc<AsyncMutex<SessionActivityState>>;
+
+pub(super) fn new_session_activity_state() -> SharedSessionActivityState {
+    Arc::new(AsyncMutex::new(SessionActivityState::new()))
+}
+
 #[derive(Clone)]
 pub(crate) struct PendingApprovals {
     inner: Arc<AsyncMutex<Vec<oneshot::Receiver<()>>>>,
@@ -292,6 +350,7 @@ async fn run_session_inner(
 
     let (control_tx, mut control_rx) = mpsc::unbounded_channel::<ControlEvent>();
     let pending_approvals = PendingApprovals::new();
+    let activity_state = new_session_activity_state();
 
     let event_resp = tokio::select! {
         _ = cancel.cancelled() => return Ok(()),
@@ -308,6 +367,7 @@ async fn run_session_inner(
             auto_approve: config.auto_approve,
             control_tx,
             pending_approvals: pending_approvals.clone(),
+            activity_state: activity_state.clone(),
             models_cache_key: config.models_cache_key.clone(),
             cancel: cancel.clone(),
         },
@@ -328,6 +388,7 @@ async fn run_session_inner(
         prompt_fut,
         &mut control_rx,
         &pending_approvals,
+        activity_state.clone(),
         cancel.clone(),
     )
     .await;
@@ -374,6 +435,7 @@ async fn run_session_inner(
             reminder_fut,
             &mut control_rx,
             &pending_approvals,
+            activity_state.clone(),
             cancel.clone(),
         )
         .await;
@@ -434,6 +496,7 @@ fn build_opencode_client(
 }
 
 const OPENCODE_PROMPT_TIMEOUT: Duration = Duration::from_hours(24 * 7);
+const OPENCODE_TASK_IDLE_QUIET_WINDOW: Duration = Duration::from_secs(5);
 
 fn append_session_error(session_error: &mut Option<String>, message: String) {
     match session_error {
@@ -449,6 +512,7 @@ pub(super) async fn run_request_with_control<F>(
     mut request_fut: F,
     control_rx: &mut mpsc::UnboundedReceiver<ControlEvent>,
     pending_approvals: &PendingApprovals,
+    activity_state: SharedSessionActivityState,
     cancel: CancellationToken,
 ) -> Result<(), ExecutorError>
 where
@@ -503,6 +567,50 @@ where
                     Some(ControlEvent::Disconnected) => return Ok(()),
                 }
             }
+        }
+    }
+
+    loop {
+        let (should_delay_completion, active_task_count, last_activity_at) = {
+            let state = activity_state.lock().await;
+            (
+                state.should_delay_completion(),
+                state.active_task_count(),
+                state.last_activity_at,
+            )
+        };
+
+        if !should_delay_completion {
+            break;
+        }
+
+        let elapsed = last_activity_at.elapsed();
+        if active_task_count == 0 && elapsed >= OPENCODE_TASK_IDLE_QUIET_WINDOW {
+            break;
+        }
+
+        let sleep_for = if active_task_count == 0 {
+            OPENCODE_TASK_IDLE_QUIET_WINDOW
+                .saturating_sub(elapsed)
+                .min(Duration::from_millis(250))
+        } else {
+            Duration::from_millis(250)
+        };
+
+        tokio::select! {
+            _ = cancel.cancelled() => return Ok(()),
+            event = control_rx.recv() => match event {
+                Some(ControlEvent::AuthRequired { message }) => return Err(ExecutorError::AuthRequired(message)),
+                Some(ControlEvent::SessionError { message }) => append_session_error(&mut session_error, message),
+                Some(ControlEvent::Disconnected) if !cancel.is_cancelled() => {
+                    return Err(ExecutorError::Io(io::Error::other(
+                        "OpenCode event stream disconnected while waiting for active task tool calls to finish",
+                    )));
+                }
+                Some(ControlEvent::Disconnected) => return Ok(()),
+                Some(ControlEvent::Idle) | None => {}
+            },
+            _ = tokio::time::sleep(sleep_for) => {}
         }
     }
 
@@ -1117,6 +1225,7 @@ pub(super) struct EventListenerConfig {
     pub auto_approve: bool,
     pub control_tx: mpsc::UnboundedSender<ControlEvent>,
     pub pending_approvals: PendingApprovals,
+    pub activity_state: SharedSessionActivityState,
     pub models_cache_key: String,
     pub cancel: CancellationToken,
 }
@@ -1135,6 +1244,7 @@ pub(super) async fn spawn_event_listener(
         auto_approve,
         control_tx,
         pending_approvals,
+        activity_state,
         models_cache_key,
         cancel,
     } = config;
@@ -1189,6 +1299,7 @@ pub(super) async fn spawn_event_listener(
                 auto_approve,
                 control_tx: &control_tx,
                 pending_approvals: &pending_approvals,
+                activity_state: &activity_state,
                 base_retry_delay: &mut base_retry_delay,
                 last_event_id: &mut last_event_id,
                 models_cache_key: &models_cache_key,
@@ -1246,6 +1357,7 @@ pub(super) struct EventStreamContext<'a> {
     auto_approve: bool,
     control_tx: &'a mpsc::UnboundedSender<ControlEvent>,
     pending_approvals: &'a PendingApprovals,
+    activity_state: &'a SharedSessionActivityState,
     base_retry_delay: &'a mut Duration,
     last_event_id: &'a mut Option<String>,
     /// Cache key for model context windows, derived from config that affects available models.
@@ -1303,12 +1415,22 @@ async fn process_event_stream(
             continue;
         }
 
+        let emit_synthetic_idle = update_session_activity_state(&ctx, event_type, &data).await;
+
         let _ = ctx
             .log_writer
             .log_event(&OpencodeExecutorEvent::SdkEvent {
                 event: data.clone(),
             })
             .await;
+
+        if emit_synthetic_idle {
+            tracing::debug!(
+                session_id = ctx.session_id,
+                "OpenCode session had active task tool calls when parent went idle; synthesizing idle after the last task completed"
+            );
+            let _ = ctx.control_tx.send(ControlEvent::Idle);
+        }
 
         match event_type {
             "message.updated" => {
@@ -1320,11 +1442,33 @@ async fn process_event_stream(
                     .and_then(Value::as_str)
                     && status.eq_ignore_ascii_case("idle")
                 {
+                    let should_delay = {
+                        let state = ctx.activity_state.lock().await;
+                        state.should_delay_completion()
+                    };
+                    if should_delay {
+                        tracing::debug!(
+                            session_id = ctx.session_id,
+                            "OpenCode session reported idle while task tool calls are still active; delaying completion"
+                        );
+                        continue;
+                    }
                     let _ = ctx.control_tx.send(ControlEvent::Idle);
                     return Ok(EventStreamOutcome::Idle);
                 }
             }
             "session.idle" => {
+                let should_delay = {
+                    let state = ctx.activity_state.lock().await;
+                    state.should_delay_completion()
+                };
+                if should_delay {
+                    tracing::debug!(
+                        session_id = ctx.session_id,
+                        "OpenCode session emitted session.idle while task tool calls are still active; delaying completion"
+                    );
+                    continue;
+                }
                 let _ = ctx.control_tx.send(ControlEvent::Idle);
                 return Ok(EventStreamOutcome::Idle);
             }
@@ -1625,6 +1769,42 @@ async fn process_event_stream(
     }
 
     Ok(EventStreamOutcome::Disconnected)
+}
+
+async fn update_session_activity_state(
+    ctx: &EventStreamContext<'_>,
+    event_type: &str,
+    data: &Value,
+) -> bool {
+    let mut state = ctx.activity_state.lock().await;
+
+    match event_type {
+        "message.part.updated" => {
+            if let Some(properties) = data.get("properties").cloned()
+                && let Ok(event) = serde_json::from_value::<MessagePartUpdatedEvent>(properties)
+                && let Part::Tool(tool) = event.part
+                && tool.tool.eq_ignore_ascii_case("task")
+            {
+                return state.update_task_tool(&tool.call_id, &tool.state);
+            }
+            state.mark_activity();
+        }
+        "session.status" => {
+            if let Some(status) = data
+                .pointer("/properties/status/type")
+                .and_then(Value::as_str)
+                && status.eq_ignore_ascii_case("idle")
+            {
+                state.note_idle();
+            } else {
+                state.mark_activity();
+            }
+        }
+        "session.idle" => state.note_idle(),
+        _ => state.mark_activity(),
+    }
+
+    false
 }
 
 fn event_matches_session(event_type: &str, event: &Value, session_id: &str) -> bool {

@@ -450,6 +450,7 @@ pub(super) async fn execute(
 
     let (control_tx, mut control_rx) = mpsc::unbounded_channel::<ControlEvent>();
     let pending_approvals = sdk::PendingApprovals::new();
+    let activity_state = sdk::new_session_activity_state();
     let event_resp = tokio::select! {
         _ = cancel.cancelled() => return Ok(()),
         res = sdk::connect_event_stream(&client, &config.base_url, &config.directory, None) => res?,
@@ -465,6 +466,7 @@ pub(super) async fn execute(
             auto_approve: config.auto_approve,
             control_tx,
             pending_approvals: pending_approvals.clone(),
+            activity_state: activity_state.clone(),
             models_cache_key: config.models_cache_key.clone(),
             cancel: cancel.clone(),
         },
@@ -517,6 +519,7 @@ pub(super) async fn execute(
         request_fut,
         &mut control_rx,
         &pending_approvals,
+        activity_state.clone(),
         cancel.clone(),
     )
     .await;
