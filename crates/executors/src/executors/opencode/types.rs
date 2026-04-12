@@ -381,6 +381,35 @@ pub(super) enum ToolStateUpdate {
     Unknown,
 }
 
+
+impl ToolStateUpdate {
+    pub(super) fn input(&self) -> Option<&Value> {
+        match self {
+            Self::Pending { input }
+            | Self::Running { input, .. }
+            | Self::Completed { input, .. }
+            | Self::Error { input, .. } => input.as_ref(),
+            Self::Unknown => None,
+        }
+    }
+
+    pub(super) fn metadata(&self) -> Option<&Value> {
+        match self {
+            Self::Running { metadata, .. }
+            | Self::Completed { metadata, .. }
+            | Self::Error { metadata, .. } => metadata.as_ref(),
+            _ => None,
+        }
+    }
+
+    pub(super) fn output(&self) -> Option<&str> {
+        match self {
+            Self::Completed { output, .. } => output.as_deref(),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub(super) struct SessionErrorEvent {
     #[serde(default)]

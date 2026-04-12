@@ -202,7 +202,9 @@ pub(super) enum ControlEvent {
 
 #[derive(Debug)]
 pub(super) struct SessionActivityState {
-    active_task_calls: HashSet<String>,
+    active_task_calls: HashMap<String, String>,
+    background_sessions: HashSet<String>,
+    idle_sessions: HashSet<String>,
     idle_while_tasks_active: bool,
     last_activity_at: tokio::time::Instant,
 }
@@ -210,7 +212,9 @@ pub(super) struct SessionActivityState {
 impl SessionActivityState {
     fn new() -> Self {
         Self {
-            active_task_calls: HashSet::new(),
+            active_task_calls: HashMap::new(),
+            background_sessions: HashSet::new(),
+            idle_sessions: HashSet::new(),
             idle_while_tasks_active: false,
             last_activity_at: tokio::time::Instant::now(),
         }
@@ -220,16 +224,40 @@ impl SessionActivityState {
         self.last_activity_at = tokio::time::Instant::now();
     }
 
-    fn note_idle(&mut self) {
-        self.last_activity_at = tokio::time::Instant::now();
-        self.idle_while_tasks_active = !self.active_task_calls.is_empty();
+    fn register_background_session(&mut self, session_id: &str) {
+        if session_id.is_empty() {
+            return;
+        }
+        self.mark_activity();
+        self.background_sessions.insert(session_id.to_string());
+        self.idle_sessions.remove(session_id);
     }
 
-    fn update_task_tool(&mut self, call_id: &str, state: &ToolStateUpdate) -> (bool, usize) {
+    fn note_idle(&mut self, session_id: &str, root_session_id: &str) {
         self.mark_activity();
+        self.idle_sessions.insert(session_id.to_string());
+        if session_id == root_session_id
+            && (self.active_task_count() > 0 || self.unfinished_background_session_count() > 0)
+        {
+            self.idle_while_tasks_active = true;
+        }
+    }
+
+    fn update_task_tool(
+        &mut self,
+        owner_session_id: &str,
+        call_id: &str,
+        state: &ToolStateUpdate,
+    ) -> (usize, usize) {
+        self.mark_activity();
+        if let Some(background_session_id) = extract_background_session_id(state) {
+            self.register_background_session(&background_session_id);
+        }
+
         match state {
             ToolStateUpdate::Pending { .. } | ToolStateUpdate::Running { .. } => {
-                self.active_task_calls.insert(call_id.to_string());
+                self.active_task_calls
+                    .insert(call_id.to_string(), owner_session_id.to_string());
             }
             ToolStateUpdate::Completed { .. } | ToolStateUpdate::Error { .. } => {
                 self.active_task_calls.remove(call_id);
@@ -238,13 +266,30 @@ impl SessionActivityState {
         }
 
         (
-            self.idle_while_tasks_active && self.active_task_calls.is_empty(),
-            self.active_task_calls.len(),
+            self.active_task_count(),
+            self.unfinished_background_session_count(),
         )
     }
 
     fn active_task_count(&self) -> usize {
         self.active_task_calls.len()
+    }
+
+    fn unfinished_background_session_count(&self) -> usize {
+        self.background_sessions
+            .iter()
+            .filter(|session_id| !self.idle_sessions.contains(*session_id))
+            .count()
+    }
+
+    fn is_tracked_session(&self, session_id: &str, root_session_id: &str) -> bool {
+        session_id == root_session_id || self.background_sessions.contains(session_id)
+    }
+
+    fn can_complete(&self, root_session_id: &str) -> bool {
+        self.idle_sessions.contains(root_session_id)
+            && self.active_task_count() == 0
+            && self.unfinished_background_session_count() == 0
     }
 
     fn should_delay_completion(&self) -> bool {
@@ -1414,7 +1459,7 @@ async fn process_event_stream(
             continue;
         };
 
-        if !event_matches_session(event_type, &data, ctx.session_id) {
+        if !event_matches_session(&ctx, event_type, &data).await {
             continue;
         }
 
@@ -1445,16 +1490,28 @@ async fn process_event_stream(
                     .and_then(Value::as_str)
                     && status.eq_ignore_ascii_case("idle")
                 {
-                    let (should_delay, active_task_count) = {
-                        let state = ctx.activity_state.lock().await;
-                        (state.should_delay_completion(), state.active_task_count())
+                    let event_session_id =
+                        extract_event_session_id(event_type, &data).unwrap_or(ctx.session_id);
+                    let (should_delay, active_task_count, unfinished_background_sessions, can_complete) = {
+                        let mut state = ctx.activity_state.lock().await;
+                        state.note_idle(event_session_id, ctx.session_id);
+                        (
+                            state.should_delay_completion(),
+                            state.active_task_count(),
+                            state.unfinished_background_session_count(),
+                            state.can_complete(ctx.session_id),
+                        )
                     };
-                    if should_delay {
-                        tracing::info!(
-                            session_id = ctx.session_id,
-                            active_task_count,
-                            "OpenCode session reported idle while task tool calls are still active; delaying completion"
-                        );
+                    if !can_complete {
+                        if should_delay || event_session_id != ctx.session_id {
+                            tracing::info!(
+                                session_id = ctx.session_id,
+                                event_session_id,
+                                active_task_count,
+                                unfinished_background_sessions,
+                                "OpenCode session reported idle but tracked task/subtask work is still active; delaying completion"
+                            );
+                        }
                         continue;
                     }
                     let _ = ctx.control_tx.send(ControlEvent::Idle);
@@ -1462,16 +1519,28 @@ async fn process_event_stream(
                 }
             }
             "session.idle" => {
-                let (should_delay, active_task_count) = {
-                    let state = ctx.activity_state.lock().await;
-                    (state.should_delay_completion(), state.active_task_count())
+                let event_session_id =
+                    extract_event_session_id(event_type, &data).unwrap_or(ctx.session_id);
+                let (should_delay, active_task_count, unfinished_background_sessions, can_complete) = {
+                    let mut state = ctx.activity_state.lock().await;
+                    state.note_idle(event_session_id, ctx.session_id);
+                    (
+                        state.should_delay_completion(),
+                        state.active_task_count(),
+                        state.unfinished_background_session_count(),
+                        state.can_complete(ctx.session_id),
+                    )
                 };
-                if should_delay {
-                    tracing::info!(
-                        session_id = ctx.session_id,
-                        active_task_count,
-                        "OpenCode session emitted session.idle while task tool calls are still active; delaying completion"
-                    );
+                if !can_complete {
+                    if should_delay || event_session_id != ctx.session_id {
+                        tracing::info!(
+                            session_id = ctx.session_id,
+                            event_session_id,
+                            active_task_count,
+                            unfinished_background_sessions,
+                            "OpenCode session emitted idle but tracked task/subtask work is still active; delaying completion"
+                        );
+                    }
                     continue;
                 }
                 let _ = ctx.control_tx.send(ControlEvent::Idle);
@@ -1781,6 +1850,7 @@ async fn update_session_activity_state(
     event_type: &str,
     data: &Value,
 ) -> bool {
+    let event_session_id = extract_event_session_id(event_type, data).unwrap_or(ctx.session_id);
     let mut state = ctx.activity_state.lock().await;
 
     match event_type {
@@ -1790,38 +1860,34 @@ async fn update_session_activity_state(
                 && let Part::Tool(tool) = event.part
                 && tool.tool.eq_ignore_ascii_case("task")
             {
-                let (emit_idle, active_task_count) = state.update_task_tool(&tool.call_id, &tool.state);
+                let background_session_id = extract_background_session_id(&tool.state);
+                let (active_task_count, unfinished_background_sessions) =
+                    state.update_task_tool(event_session_id, &tool.call_id, &tool.state);
+                let emit_idle =
+                    state.should_delay_completion() && state.can_complete(ctx.session_id);
                 tracing::info!(
                     session_id = ctx.session_id,
+                    event_session_id,
                     call_id = %tool.call_id,
                     tool_state = ?tool.state,
+                    ?background_session_id,
                     active_task_count,
+                    unfinished_background_sessions,
                     "OpenCode task tool state update"
                 );
                 return emit_idle;
             }
             state.mark_activity();
         }
-        "session.status" => {
-            if let Some(status) = data
-                .pointer("/properties/status/type")
-                .and_then(Value::as_str)
-                && status.eq_ignore_ascii_case("idle")
-            {
-                state.note_idle();
-            } else {
-                state.mark_activity();
-            }
-        }
-        "session.idle" => state.note_idle(),
+        "session.status" | "session.idle" => {}
         _ => state.mark_activity(),
     }
 
     false
 }
 
-fn event_matches_session(event_type: &str, event: &Value, session_id: &str) -> bool {
-    let extracted = match event_type {
+fn extract_event_session_id<'a>(event_type: &str, event: &'a Value) -> Option<&'a str> {
+    match event_type {
         "message.updated" => event
             .pointer("/properties/info/sessionID")
             .and_then(Value::as_str),
@@ -1848,9 +1914,59 @@ fn event_matches_session(event_type: &str, event: &Value, session_id: &str) -> b
                     .pointer("/properties/part/sessionID")
                     .and_then(Value::as_str)
             }),
-    };
+    }
+}
 
-    extracted == Some(session_id)
+async fn event_matches_session(
+    ctx: &EventStreamContext<'_>,
+    event_type: &str,
+    event: &Value,
+) -> bool {
+    let Some(extracted) = extract_event_session_id(event_type, event) else {
+        return false;
+    };
+    if extracted == ctx.session_id {
+        return true;
+    }
+    let state = ctx.activity_state.lock().await;
+    state.is_tracked_session(extracted, ctx.session_id)
+}
+
+fn extract_background_session_id(state: &ToolStateUpdate) -> Option<String> {
+    let metadata = state.input();
+    let extra_metadata = state.metadata();
+    let run_in_background = metadata
+        .and_then(|v| v.get("run_in_background").and_then(Value::as_bool))
+        .or_else(|| {
+            extra_metadata.and_then(|v| v.get("run_in_background").and_then(Value::as_bool))
+        })
+        .unwrap_or(false);
+    if run_in_background {
+        if let Some(session_id) = extra_metadata
+            .and_then(|v| v.get("sessionId").and_then(Value::as_str))
+            .or_else(|| metadata.and_then(|v| v.get("sessionId").and_then(Value::as_str)))
+        {
+            return Some(session_id.to_string());
+        }
+    }
+    if let Some(background_output) = state.output() {
+        if background_output.contains("Background task launched") {
+            if let Some(session_id) = background_output.lines().find_map(|line| {
+                line.trim()
+                    .strip_prefix("session_id: ")
+                    .map(|value| value.trim().to_string())
+            }) {
+                return Some(session_id);
+            }
+            if let Some(session_id) = extra_metadata
+                .and_then(|v| v.get("sessionId").and_then(Value::as_str))
+                .or_else(|| metadata.and_then(|v| v.get("sessionId").and_then(Value::as_str)))
+            {
+                return Some(session_id.to_string());
+            }
+        }
+    }
+    None
 }
 
 async fn handle_approval_error(
