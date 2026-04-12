@@ -32,7 +32,7 @@ use axum::http::{HeaderName, HeaderValue, header::AUTHORIZATION};
 pub use config::ShareConfig;
 use db::{
     DBService,
-    models::{shared_task::SharedActivityCursor, task::Task},
+    models::{shared_activity_cursor::SharedActivityCursor, task::Task},
 };
 pub use label_publisher::LabelPublisher;
 use processor::ActivityProcessor;

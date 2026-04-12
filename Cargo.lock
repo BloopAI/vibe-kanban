@@ -1774,7 +1774,6 @@ dependencies = [
  "futures-io",
  "icu_provider",
  "json-patch",
- "lazy_static",
  "mcp-types",
  "os_pipe",
  "regex",

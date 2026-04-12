@@ -8,7 +8,6 @@ use async_trait::async_trait;
 use command_group::AsyncCommandGroup;
 use fork_stream::StreamExt as _;
 use futures::{StreamExt, future::ready, stream::BoxStream};
-use lazy_static::lazy_static;
 use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -522,10 +521,11 @@ pub struct TodoInfo {
 // Log interpretation UTILITIES
 // =============================================================================
 
-lazy_static! {
-    // Accurate regex for OpenCode log lines: LEVEL timestamp +ms ...
-    static ref OPENCODE_LOG_REGEX: Regex = Regex::new(r"^(INFO|DEBUG|WARN|ERROR)\s+\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\s+\+\d+\s*ms.*").unwrap();
-}
+// Accurate regex for OpenCode log lines: LEVEL timestamp +ms ...
+static OPENCODE_LOG_REGEX: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
+    Regex::new(r"^(INFO|DEBUG|WARN|ERROR)\s+\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\s+\+\d+\s*ms.*")
+        .unwrap()
+});
 
 /// Log utilities for OpenCode processing
 pub struct LogUtils;

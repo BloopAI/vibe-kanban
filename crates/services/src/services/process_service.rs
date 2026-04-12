@@ -20,8 +20,6 @@ pub enum ProcessServiceError {
     Database(#[from] sqlx::Error),
     #[error(transparent)]
     ProcessInspector(#[from] ProcessInspectorError),
-    #[error("No processes found matching criteria")]
-    NoProcessesFound,
 }
 
 /// Information about a process with vibe-kanban association context.

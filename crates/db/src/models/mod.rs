@@ -40,4 +40,4 @@ pub mod log_entry;
 // uses the shared_tasks WebSocket data or API routes. Table will be dropped in
 // a future migration once ElectricSQL sync is complete.
 pub mod cached_node;
-pub mod shared_task;
+pub mod shared_activity_cursor;

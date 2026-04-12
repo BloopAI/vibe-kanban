@@ -22,7 +22,6 @@ async-trait = { workspace = true }
 directories = "6.0.0"
 command-group = { version = "5.0", features = ["with-tokio"] }
 regex = "1.11.1"
-lazy_static = "1.4"
 json-patch = "2.0"
 thiserror = { workspace = true }
 enum_dispatch = "0.3.13"

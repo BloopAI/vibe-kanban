@@ -11,7 +11,6 @@ use std::{
 
 use agent_client_protocol::{self as acp, SessionNotification};
 use json_patch::Patch;
-use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Deserialize;
 use tracing::debug;
@@ -514,9 +513,8 @@ fn extract_tool_name_from_id(id: &str) -> Option<String> {
 
 fn extract_url_from_text(text: &str) -> Option<String> {
     // Simple URL extractor
-    lazy_static! {
-        static ref URL_RE: Regex = Regex::new(r#"https?://[^\s"')]+"#).expect("valid regex");
-    }
+    static URL_RE: std::sync::LazyLock<Regex> =
+        std::sync::LazyLock::new(|| Regex::new(r#"https?://[^\s"')]+"#).expect("valid regex"));
     URL_RE.find(text).map(|m| m.as_str().to_string())
 }
 

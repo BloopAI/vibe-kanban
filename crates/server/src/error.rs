@@ -230,9 +230,6 @@ impl IntoResponse for ApiError {
                 ProcessServiceError::ProcessInspector(_) => {
                     (StatusCode::INTERNAL_SERVER_ERROR, "ProcessServiceError")
                 }
-                ProcessServiceError::NoProcessesFound => {
-                    (StatusCode::NOT_FOUND, "ProcessServiceError")
-                }
             },
         };
 

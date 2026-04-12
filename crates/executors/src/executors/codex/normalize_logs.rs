@@ -27,7 +27,6 @@ use codex_protocol::{
     },
 };
 use json_patch::Patch;
-use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -1277,12 +1276,12 @@ fn build_command_output(stdout: Option<&str>, stderr: Option<&str>) -> Option<St
     }
 }
 
-lazy_static! {
-    static ref SESSION_ID: Regex = Regex::new(
-        r#"^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"#
+static SESSION_ID: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
+    Regex::new(
+        r#"^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"#,
     )
-    .expect("valid regex");
-}
+    .expect("valid regex")
+});
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Error {
