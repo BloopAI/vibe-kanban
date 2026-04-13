@@ -525,6 +525,11 @@ impl ClaudeLogProcessor {
             ClaudeJson::Result { session_id, .. } => session_id.clone(),
             ClaudeJson::ApprovalResponse { .. } => None,
             ClaudeJson::AskUserQuestion { session_id, .. } => session_id.clone(),
+            ClaudeJson::RateLimitEvent { session_id, .. } => session_id.clone(),
+            ClaudeJson::ToolProgress { session_id, .. } => session_id.clone(),
+            ClaudeJson::ToolUseSummary { session_id, .. } => session_id.clone(),
+            ClaudeJson::AuthStatus { session_id, .. } => session_id.clone(),
+            ClaudeJson::PromptSuggestion { session_id, .. } => session_id.clone(),
             ClaudeJson::Unknown { .. } => None,
         }
     }
@@ -824,6 +829,101 @@ impl ClaudeLogProcessor {
                         // Skip system init messages because it doesn't contain the actual model that will be used in assistant messages in case of claude-code-router.
                         // We'll send system initialized message with first assistant message that has a model field.
                     }
+                    // Silently ignore internal plumbing subtypes that have no log-viewer value
+                    Some(
+                        "status"
+                        | "hook_started"
+                        | "hook_progress"
+                        | "hook_response"
+                        | "files_persisted"
+                        | "task_progress",
+                    ) => {}
+                    Some("api_retry") => {
+                        if let ClaudeJson::System {
+                            attempt,
+                            max_retries,
+                            error,
+                            ..
+                        } = claude_json
+                        {
+                            let attempt_str = attempt
+                                .map(|a| format!(" (attempt {a}{})", max_retries.map(|m| format!("/{m}")).unwrap_or_default()))
+                                .unwrap_or_default();
+                            let error_str = error
+                                .as_deref()
+                                .map(|e| format!(": {e}"))
+                                .unwrap_or_default();
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::SystemMessage,
+                                content: format!("API retry{attempt_str}{error_str}"),
+                                metadata: None,
+                            };
+                            let idx = entry_index_provider.next();
+                            patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+                        }
+                    }
+                    Some("compact_boundary") => {
+                        if let ClaudeJson::System { compact_metadata, .. } = claude_json {
+                            let trigger = compact_metadata
+                                .as_ref()
+                                .and_then(|m| m.get("trigger"))
+                                .and_then(|t| t.as_str())
+                                .unwrap_or("auto");
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::SystemMessage,
+                                content: format!("Context compacted ({trigger})"),
+                                metadata: None,
+                            };
+                            let idx = entry_index_provider.next();
+                            patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+                        }
+                    }
+                    Some("task_started") => {
+                        if let ClaudeJson::System { description, .. } = claude_json {
+                            let desc = description.as_deref().unwrap_or("unknown task");
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::SystemMessage,
+                                content: format!("Background task started: {desc}"),
+                                metadata: None,
+                            };
+                            let idx = entry_index_provider.next();
+                            patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+                        }
+                    }
+                    Some("task_notification") => {
+                        if let ClaudeJson::System { status, summary, .. } = claude_json {
+                            let status_str = status.as_deref().unwrap_or("unknown");
+                            let summary_str = summary
+                                .as_deref()
+                                .map(|s| format!(": {s}"))
+                                .unwrap_or_default();
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::SystemMessage,
+                                content: format!("Task {status_str}{summary_str}"),
+                                metadata: None,
+                            };
+                            let idx = entry_index_provider.next();
+                            patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+                        }
+                    }
+                    Some("local_command_output") => {
+                        if let ClaudeJson::System { content, .. } = claude_json {
+                            if let Some(text) = content {
+                                let entry = NormalizedEntry {
+                                    timestamp: None,
+                                    entry_type: NormalizedEntryType::SystemMessage,
+                                    content: text.clone(),
+                                    metadata: None,
+                                };
+                                let idx = entry_index_provider.next();
+                                patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+                            }
+                        }
+                    }
                     Some(subtype) => {
                         let entry = NormalizedEntry {
                             timestamp: None,
@@ -936,7 +1036,43 @@ impl ClaudeLogProcessor {
                     }
                 }
             }
-            ClaudeJson::User { message, .. } => {
+            ClaudeJson::User {
+                message,
+                is_replay,
+                is_synthetic,
+                ..
+            } => {
+                // Replayed historical messages are internal context; skip rendering.
+                if *is_replay {
+                    return patches;
+                }
+                // Synthetic messages are context-continuation summaries injected by Claude Code
+                // after compaction. Render them as a clearly labelled system entry.
+                if *is_synthetic {
+                    let summary = message
+                        .content
+                        .iter()
+                        .filter_map(|c| {
+                            if let ClaudeContentItem::Text { text } = c {
+                                Some(text.as_str())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    let entry = NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::SystemMessage,
+                        content: format!(
+                            "[Context continuation — conversation resumed from checkpoint]\n{summary}"
+                        ),
+                        metadata: None,
+                    };
+                    let idx = entry_index_provider.next();
+                    patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+                    return patches;
+                }
                 if matches!(self.strategy, HistoryStrategy::AmpResume)
                     && message
                         .content
@@ -1292,6 +1428,54 @@ impl ClaudeLogProcessor {
                 let idx = entry_index_provider.next();
                 patches.push(ConversationPatch::add_normalized_entry(idx, entry));
             }
+            // Rate limit events are internal plumbing — no log entry needed.
+            ClaudeJson::RateLimitEvent { .. } => {}
+            // Tool progress heartbeats have no log-viewer value; skip them.
+            ClaudeJson::ToolProgress { .. } => {}
+            // Prompt suggestions are not meaningful in the log history; skip them.
+            ClaudeJson::PromptSuggestion { .. } => {}
+            ClaudeJson::ToolUseSummary { summary, .. } => {
+                let entry = NormalizedEntry {
+                    timestamp: None,
+                    entry_type: NormalizedEntryType::SystemMessage,
+                    content: format!("[Tool summary] {summary}"),
+                    metadata: None,
+                };
+                let idx = entry_index_provider.next();
+                patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+            }
+            ClaudeJson::AuthStatus {
+                is_authenticating,
+                error,
+                ..
+            } => {
+                let entry = if let Some(err) = error {
+                    NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::ErrorMessage {
+                            error_type: NormalizedEntryError::classify(err),
+                        },
+                        content: format!("Authentication error: {err}"),
+                        metadata: None,
+                    }
+                } else if *is_authenticating {
+                    NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::SystemMessage,
+                        content: "Authenticating…".to_string(),
+                        metadata: None,
+                    }
+                } else {
+                    NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::SystemMessage,
+                        content: "Authentication complete".to_string(),
+                        metadata: None,
+                    }
+                };
+                let idx = entry_index_provider.next();
+                patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+            }
             ClaudeJson::Unknown { data } => {
                 let entry = NormalizedEntry {
                     timestamp: None,
@@ -1578,6 +1762,26 @@ pub enum ClaudeJson {
         model: Option<String>,
         #[serde(default, rename = "apiKeySource")]
         api_key_source: Option<String>,
+        // api_retry subtype fields
+        #[serde(default)]
+        attempt: Option<u32>,
+        #[serde(default, rename = "maxRetries")]
+        max_retries: Option<u32>,
+        #[serde(default)]
+        error: Option<String>,
+        // compact_boundary subtype fields
+        #[serde(default, rename = "compactMetadata")]
+        compact_metadata: Option<serde_json::Value>,
+        // task_started / task_notification subtype fields
+        #[serde(default)]
+        description: Option<String>,
+        #[serde(default)]
+        status: Option<String>,
+        #[serde(default)]
+        summary: Option<String>,
+        // local_command_output subtype field
+        #[serde(default)]
+        content: Option<String>,
     },
     #[serde(rename = "assistant")]
     Assistant {
@@ -1588,6 +1792,12 @@ pub enum ClaudeJson {
     User {
         message: ClaudeMessage,
         session_id: Option<String>,
+        /// Injected by Claude Code when replaying historical context (--replay-user-messages)
+        #[serde(default, rename = "isReplay")]
+        is_replay: bool,
+        /// Injected by Claude Code as a context-continuation summary after compaction
+        #[serde(default, rename = "isSynthetic")]
+        is_synthetic: bool,
     },
     #[serde(rename = "tool_use")]
     ToolUse {
@@ -1647,12 +1857,74 @@ pub enum ClaudeJson {
         #[serde(skip_serializing_if = "Option::is_none")]
         session_id: Option<String>,
     },
+    /// Rate limiting event — emitted when a request is rate-limited or allowed after a limit check
+    #[serde(rename = "rate_limit_event")]
+    RateLimitEvent {
+        session_id: Option<String>,
+        #[serde(flatten)]
+        _data: HashMap<String, serde_json::Value>,
+    },
+    /// Heartbeat for long-running tools (emitted periodically while a tool is executing)
+    #[serde(rename = "tool_progress")]
+    ToolProgress {
+        tool_use_id: String,
+        tool_name: String,
+        session_id: Option<String>,
+        #[serde(default)]
+        elapsed_time_seconds: Option<f64>,
+        #[serde(default)]
+        parent_tool_use_id: Option<String>,
+    },
+    /// Natural-language summary of a batch of tool calls
+    #[serde(rename = "tool_use_summary")]
+    ToolUseSummary {
+        summary: String,
+        session_id: Option<String>,
+        #[serde(default)]
+        preceding_tool_use_ids: Vec<String>,
+    },
+    /// Authentication state change (e.g. browser auth flow)
+    #[serde(rename = "auth_status")]
+    AuthStatus {
+        #[serde(rename = "isAuthenticating")]
+        is_authenticating: bool,
+        #[serde(default)]
+        output: Option<Vec<String>>,
+        #[serde(default)]
+        error: Option<String>,
+        session_id: Option<String>,
+    },
+    /// Suggested follow-up prompt from Claude Code
+    #[serde(rename = "prompt_suggestion")]
+    PromptSuggestion {
+        suggestion: String,
+        session_id: Option<String>,
+    },
     // Catch-all for unknown message types
     #[serde(untagged)]
     Unknown {
         #[serde(flatten)]
         data: HashMap<String, serde_json::Value>,
     },
+}
+
+/// Deserialize `content` that may be either a JSON array of content blocks
+/// or a plain string (as injected by Claude Code for synthetic/replay user messages).
+/// A plain string is normalized to a single `Text` block so all downstream code
+/// can always work with `Vec<ClaudeContentItem>`.
+fn deserialize_flexible_content<'de, D>(d: D) -> Result<Vec<ClaudeContentItem>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error as _;
+    match serde_json::Value::deserialize(d)? {
+        serde_json::Value::Array(arr) => {
+            Vec::<ClaudeContentItem>::deserialize(serde_json::Value::Array(arr))
+                .map_err(D::Error::custom)
+        }
+        serde_json::Value::String(s) => Ok(vec![ClaudeContentItem::Text { text: s }]),
+        _ => Ok(vec![]),
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -1662,6 +1934,7 @@ pub struct ClaudeMessage {
     pub message_type: Option<String>,
     pub role: String,
     pub model: Option<String>,
+    #[serde(deserialize_with = "deserialize_flexible_content")]
     pub content: Vec<ClaudeContentItem>,
     pub stop_reason: Option<String>,
 }
