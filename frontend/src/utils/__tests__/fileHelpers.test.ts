@@ -78,6 +78,20 @@ describe('getFilePreviewRouting', () => {
     expect(result?.relativePath).toBeUndefined();
   });
 
+  it('uses relativePath for absolute ~/.claude/ paths even when attemptId is present', () => {
+    // Absolute paths to ~/.claude/ are home-dir files, not worktree files.
+    // attemptId must NOT override routing for absolute paths.
+    const result = getFilePreviewRouting({
+      path: '/home/user/.claude/plans/starry-stirring-riddle.md',
+      attemptId: 'test-attempt-123',
+    });
+    expect(result).toEqual({
+      path: '/home/user/.claude/plans/starry-stirring-riddle.md',
+      relativePath: 'plans/starry-stirring-riddle.md',
+    });
+    expect(result?.attemptId).toBeUndefined();
+  });
+
   it('uses relativePath for .claude/ files when attemptId is not present', () => {
     const result = getFilePreviewRouting({
       path: '.claude/tasks/001.md',

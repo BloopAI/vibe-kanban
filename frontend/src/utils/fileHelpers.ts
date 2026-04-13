@@ -63,8 +63,11 @@ export function getFilePreviewRouting(
   const claudeRelativePath = getClaudeRelativePath(path);
   const isViewable = claudeRelativePath !== null || isMarkdownFile(path);
 
-  // Priority 1: attemptId takes precedence for worktree files
-  if (attemptId) {
+  // Priority 1: attemptId takes precedence for worktree files.
+  // Exception: absolute paths to ~/.claude/ are home-dir files, not worktree files —
+  // an absolute path can never be inside a worktree, so route via relativePath instead.
+  const isAbsoluteClaudePath = path.startsWith('/') && claudeRelativePath !== null;
+  if (attemptId && !isAbsoluteClaudePath) {
     return { path, attemptId };
   }
 
