@@ -141,6 +141,7 @@ impl Opencode {
             "ERROR",
             "--format",
             "json",
+            "--dangerously-skip-permissions",
         ]);
 
         if let Some(model) = &self.model {
@@ -495,8 +496,25 @@ impl Opencode {
                         }
                     }
                 }
-                "step_start" | "step_finish" => {
-                    // Track step boundaries (optional - currently no action needed)
+                "step_start" => {}
+                "step_finish" => {
+                    if let Some(tokens) = &event.part.tokens {
+                        let entry = NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::TokenUsage {
+                                input_tokens: tokens.input as i64,
+                                cached_input_tokens: 0,
+                                output_tokens: tokens.output as i64,
+                                reasoning_tokens: 0,
+                                last_total_tokens: (tokens.input + tokens.output) as i64,
+                                context_window: None,
+                            },
+                            content: String::new(),
+                            metadata: None,
+                        };
+                        let idx = entry_index_counter.next();
+                        msg_store.push_patch(ConversationPatch::add_normalized_entry(idx, entry));
+                    }
                 }
                 _ => {}
             }

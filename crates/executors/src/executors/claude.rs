@@ -294,6 +294,13 @@ impl ClaudeCode {
         command.env_remove("npm_config_verify_deps_before_run");
         command.env_remove("npm_config_globalconfig");
 
+        // Prevent auto-updater from restarting the process mid-session (causes EofWithoutResult)
+        command
+            .env("DISABLE_AUTOUPDATER", "1")
+            .env("DISABLE_TELEMETRY", "1")
+            .env("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "1")
+            .env("DISABLE_COST_WARNINGS", "1");
+
         // Set VK context environment variables for MCP tools
         command
             .env("VK_ATTEMPT_ID", context.task_attempt_id.to_string())
@@ -1310,7 +1317,31 @@ impl ClaudeLogProcessor {
                     }
                 }
                 ClaudeStreamEvent::ContentBlockStop { .. } => {}
-                ClaudeStreamEvent::MessageDelta { .. } => {}
+                ClaudeStreamEvent::MessageDelta { usage, .. } => {
+                    if let Some(u) = usage {
+                        let cache_creation = u.cache_creation_input_tokens.unwrap_or(0);
+                        let cache_read = u.cache_read_input_tokens.unwrap_or(0);
+                        let input = u.input_tokens.unwrap_or(0);
+                        let output = u.output_tokens.unwrap_or(0);
+                        let entry = NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::TokenUsage {
+                                // cache_creation billed at higher rate; fold into input_tokens
+                                input_tokens: (input + cache_creation) as i64,
+                                cached_input_tokens: cache_read as i64,
+                                output_tokens: output as i64,
+                                reasoning_tokens: 0,
+                                last_total_tokens: (input + cache_creation + cache_read + output)
+                                    as i64,
+                                context_window: None,
+                            },
+                            content: String::new(),
+                            metadata: None,
+                        };
+                        let idx = entry_index_provider.next();
+                        patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+                    }
+                }
                 ClaudeStreamEvent::MessageStop => {
                     if let Some(message_id) = self.streaming_message_id.take() {
                         let _ = self.streaming_messages.remove(&message_id);
@@ -1326,6 +1357,8 @@ impl ClaudeLogProcessor {
                 total_cost_usd,
                 result,
                 error,
+                usage,
+                permission_denials,
                 ..
             } => {
                 // Extract content from result or error field
@@ -1357,6 +1390,62 @@ impl ClaudeLogProcessor {
                 };
                 let idx = entry_index_provider.next();
                 patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+
+                // Emit cumulative token usage from result
+                if let Some(u) = usage {
+                    let cache_creation = u.cache_creation_input_tokens.unwrap_or(0);
+                    let cache_read = u.cache_read_input_tokens.unwrap_or(0);
+                    let input = u.input_tokens.unwrap_or(0);
+                    let output = u.output_tokens.unwrap_or(0);
+                    let usage_entry = NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::TokenUsage {
+                            input_tokens: (input + cache_creation) as i64,
+                            cached_input_tokens: cache_read as i64,
+                            output_tokens: output as i64,
+                            reasoning_tokens: 0,
+                            last_total_tokens: (input + cache_creation + cache_read + output)
+                                as i64,
+                            context_window: None,
+                        },
+                        content: String::new(),
+                        metadata: None,
+                    };
+                    let idx = entry_index_provider.next();
+                    patches.push(ConversationPatch::add_normalized_entry(idx, usage_entry));
+                }
+
+                // Surface permission denials as a system message
+                if let Some(denials) = permission_denials {
+                    if !denials.is_empty() {
+                        let tool_names: Vec<String> = denials
+                            .iter()
+                            .filter_map(|d| {
+                                d.get("toolName")
+                                    .or_else(|| d.get("tool_name"))
+                                    .and_then(|v| v.as_str())
+                                    .map(|s| s.to_string())
+                            })
+                            .collect();
+                        let msg = if tool_names.is_empty() {
+                            format!("Tools blocked by permissions ({} denial(s))", denials.len())
+                        } else {
+                            format!(
+                                "Tools blocked by permissions: {} ({} denial(s))",
+                                tool_names.join(", "),
+                                denials.len()
+                            )
+                        };
+                        let denial_entry = NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::SystemMessage,
+                            content: msg,
+                            metadata: None,
+                        };
+                        let idx = entry_index_provider.next();
+                        patches.push(ConversationPatch::add_normalized_entry(idx, denial_entry));
+                    }
+                }
             }
             ClaudeJson::ApprovalResponse {
                 call_id: _,
@@ -1841,6 +1930,10 @@ pub enum ClaudeJson {
         num_turns: Option<u32>,
         #[serde(default, alias = "totalCostUsd")]
         total_cost_usd: Option<f64>,
+        #[serde(default)]
+        usage: Option<ClaudeUsage>,
+        #[serde(default, alias = "permissionDenials")]
+        permission_denials: Option<Vec<serde_json::Value>>,
     },
     #[serde(rename = "approval_response")]
     ApprovalResponse {

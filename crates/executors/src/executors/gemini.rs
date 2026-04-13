@@ -35,18 +35,23 @@ pub struct Gemini {
 
 impl Gemini {
     fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y @google/gemini-cli@0.23.0");
+        let mut builder = CommandBuilder::new("npx -y @google/gemini-cli@latest");
 
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model.as_str()]);
         }
 
         if self.yolo.unwrap_or(false) {
-            builder = builder.extend_params(["--yolo"]);
-            builder = builder.extend_params(["--allowed-tools", "run_shell_command"]);
+            // --yolo deprecated in v0.30.0; --allowed-tools removed (broken in non-interactive
+            // mode: policy denial regardless of flag value, issue #16012)
+            builder = builder.extend_params(["--approval-mode=yolo"]);
         }
 
-        builder = builder.extend_params(["--experimental-acp"]);
+        // --experimental-acp renamed to --acp in v0.30.0 (old name still aliased)
+        builder = builder.extend_params(["--acp"]);
+        // Prevent non-TTY sandbox hang: v0.33.2+ regression when spawned as subprocess
+        // (github.com/google-gemini/gemini-cli/issues/22782)
+        builder = builder.extend_params(["--sandbox=false"]);
 
         apply_overrides(builder, &self.cmd)
     }
