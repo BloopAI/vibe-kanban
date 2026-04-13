@@ -400,12 +400,14 @@ export const FileSearchTextarea = forwardRef<
         case 'Enter':
           if (selectedIndex >= 0) {
             e.preventDefault();
+            e.stopPropagation(); // prevent Cmd+Enter from also triggering parent form submit
             selectResult(searchResults[selectedIndex]);
             return;
           }
           break;
         case 'Escape':
           e.preventDefault();
+          e.stopPropagation(); // prevent Escape from also closing the parent modal
           setShowDropdown(false);
           setSearchQuery('');
           setAtSymbolPosition(-1);

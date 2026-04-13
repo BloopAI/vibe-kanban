@@ -495,7 +495,7 @@ const TaskFormSheetImpl = NiceModal.create<TaskFormSheetProps>((props) => {
     if (!modal.visible) return;
 
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !e.defaultPrevented) {
         handleClose();
       }
     };
