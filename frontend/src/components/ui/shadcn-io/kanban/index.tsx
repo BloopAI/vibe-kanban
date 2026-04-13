@@ -223,7 +223,7 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
 
         <p className="m-0 text-sm font-semibold">{props.name}</p>
 
-        {'count' in props && props.count !== undefined && (
+        {'count' in props && props.count !== undefined && props.count > 0 && (
           <span
             className="ml-0.5 px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground font-normal tabular-nums"
             aria-label={t('column.taskCount', { count: props.count, defaultValue_one: '1 task', defaultValue_other: '{{count}} tasks' })}

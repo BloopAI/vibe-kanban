@@ -416,7 +416,6 @@ export const FileSearchTextarea = forwardRef<
     } else {
       switch (e.key) {
         case 'Escape':
-          e.preventDefault();
           textareaRef.current?.blur();
           break;
       }
