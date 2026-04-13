@@ -692,7 +692,7 @@ const TaskFormSheetImpl = NiceModal.create<TaskFormSheetProps>((props) => {
                     'taskFormDialog.titlePlaceholder',
                     'Task title'
                   )}
-                  className="text-xl"
+                  className="text-xl h-12"
                   disabled={isSubmitting}
                   autoFocus
                 />
@@ -727,7 +727,7 @@ const TaskFormSheetImpl = NiceModal.create<TaskFormSheetProps>((props) => {
                   projectId={projectId}
                   onPasteFiles={handlePasteFiles}
                   onSelectionChange={handleSelectionChange}
-                  disableScroll={true}
+                  disableScroll={false}
                 />
               )}
             </form.Field>

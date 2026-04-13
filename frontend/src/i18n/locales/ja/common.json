@@ -130,5 +130,8 @@
     "errorTitle": "認証失敗",
     "errorDescription": "アカウントの認証中に問題が発生しました",
     "tryAgain": "再試行"
+  },
+  "execution": {
+    "finalResponse": "Final Response"
   }
 }

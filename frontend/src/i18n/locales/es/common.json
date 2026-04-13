@@ -130,5 +130,8 @@
     "errorTitle": "Falló la autenticación",
     "errorDescription": "Hubo un problema al autenticar tu cuenta",
     "tryAgain": "Intentar de nuevo"
+  },
+  "execution": {
+    "finalResponse": "Respuesta Final"
   }
 }

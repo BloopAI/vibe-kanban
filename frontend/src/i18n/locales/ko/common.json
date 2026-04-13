@@ -130,5 +130,8 @@
     "errorTitle": "인증 실패",
     "errorDescription": "계정 인증 중 문제가 발생했습니다",
     "tryAgain": "다시 시도"
+  },
+  "execution": {
+    "finalResponse": "Final Response"
   }
 }
