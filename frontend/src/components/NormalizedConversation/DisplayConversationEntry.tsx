@@ -1092,6 +1092,9 @@ function DisplayConversationEntry({
   if (entry.entry_type.type === 'result_message') {
     return (
       <div className="px-4 py-2 text-sm">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
+          {t('execution.finalResponse', 'Final Response')}
+        </p>
         <ResultMessageCard
           content={entry.content}
           isError={entry.entry_type.is_error}

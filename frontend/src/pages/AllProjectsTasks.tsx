@@ -167,6 +167,7 @@ export function AllProjectsTasks() {
               <KanbanHeader
                 name={statusLabels[status]}
                 color={statusBoardColors[status]}
+                count={items.length}
                 sortDirection={sortDirections[status]}
                 onSortToggle={() => toggleDirection(status)}
               />

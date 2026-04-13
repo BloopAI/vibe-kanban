@@ -621,7 +621,16 @@ const TaskFormSheetImpl = NiceModal.create<TaskFormSheetProps>((props) => {
 
   // Render the form content
   const formContent = (
-    <div {...getRootProps()} className="flex flex-col h-full min-h-0 relative">
+    <div
+      {...getRootProps()}
+      className="flex flex-col h-full min-h-0 relative"
+      onKeyDown={(e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !isSubmitting) {
+          e.preventDefault();
+          form.handleSubmit();
+        }
+      }}
+    >
       <input {...getInputProps()} />
 
       {/* Drag overlay */}
@@ -683,7 +692,7 @@ const TaskFormSheetImpl = NiceModal.create<TaskFormSheetProps>((props) => {
                     'taskFormDialog.titlePlaceholder',
                     'Task title'
                   )}
-                  className="text-base"
+                  className="text-xl"
                   disabled={isSubmitting}
                   autoFocus
                 />
@@ -1131,9 +1140,12 @@ const TaskFormSheetImpl = NiceModal.create<TaskFormSheetProps>((props) => {
               <Button
                 onClick={(e) => form.handleSubmit(e)}
                 disabled={!canSubmit}
-                className={cn('w-full h-11 text-base', isMobile && 'h-12')}
+                className={cn('w-full h-11 text-base gap-2', isMobile && 'h-12')}
               >
                 {buttonText}
+                {!isSubmitting && (
+                  <kbd className="text-xs opacity-50 font-mono hidden sm:inline">⌘↵</kbd>
+                )}
               </Button>
             );
           }}

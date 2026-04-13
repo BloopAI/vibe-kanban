@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
 import { CheckCircle, Link, Loader2, XCircle } from 'lucide-react';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
@@ -134,9 +134,13 @@ export function TaskCard({
 
   const isArchived = task.archived_at !== null;
   const [isArchiving, setIsArchiving] = useState(false);
+  // Synchronous ref guard prevents TOCTOU: two fast clicks both pass the
+  // useState check before React re-renders to disable the button.
+  const isArchivingRef = useRef(false);
 
   const handleArchive = useCallback(async () => {
-    if (isArchiving) return;
+    if (isArchivingRef.current) return;
+    isArchivingRef.current = true;
     setIsArchiving(true);
     try {
       // Apply optimistic update immediately for instant UI feedback
@@ -151,12 +155,14 @@ export function TaskCard({
         updateTaskArchivedOptimistically(task.id, null);
       }
     } finally {
+      isArchivingRef.current = false;
       setIsArchiving(false);
     }
-  }, [task.id, isArchiving, updateTaskArchivedOptimistically]);
+  }, [task.id, updateTaskArchivedOptimistically]);
 
   const handleUnarchive = useCallback(async () => {
-    if (isArchiving) return;
+    if (isArchivingRef.current) return;
+    isArchivingRef.current = true;
     setIsArchiving(true);
     const previousArchivedAt = task.archived_at;
     try {
@@ -177,21 +183,17 @@ export function TaskCard({
         );
       }
     } finally {
+      isArchivingRef.current = false;
       setIsArchiving(false);
     }
-  }, [
-    task.id,
-    task.archived_at,
-    isArchiving,
-    updateTaskArchivedOptimistically,
-  ]);
+  }, [task.id, task.archived_at, updateTaskArchivedOptimistically]);
 
   // Get status strip color based on task status
   const statusStripClass =
     statusStripColors[task.status as TaskStatus] || statusStripColors['todo'];
 
   // Truncated description for compact view
-  const truncatedDesc = truncateDescription(task.description);
+  const truncatedDesc = useMemo(() => truncateDescription(task.description), [task.description]);
 
   return (
     <KanbanCard
