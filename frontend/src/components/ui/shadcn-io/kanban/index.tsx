@@ -154,6 +154,8 @@ export type KanbanHeaderProps =
       color: Status['color'];
       className?: string;
       onAddTask?: () => void;
+      /** Number of tasks in this column — shown as a subtle badge */
+      count?: number;
       /** Current sort direction for this column */
       sortDirection?: SortDirection;
       /** Callback when user toggles the sort direction */
@@ -215,11 +217,20 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
         }
       >
         <div
-          className="h-2 w-2 rounded-full shrink-0"
+          className="h-2.5 w-2.5 rounded-full shrink-0"
           style={{ backgroundColor: `hsl(var(${props.color}))` }}
         />
 
-        <p className="m-0 text-sm">{props.name}</p>
+        <p className="m-0 text-sm font-semibold">{props.name}</p>
+
+        {'count' in props && props.count !== undefined && (
+          <span
+            className="ml-0.5 px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground font-normal tabular-nums"
+            aria-label={t('column.taskCount', { count: props.count, defaultValue_one: '1 task', defaultValue_other: '{{count}} tasks' })}
+          >
+            {props.count}
+          </span>
+        )}
 
         {props.onSortToggle && (
           <SortIcon className="h-3 w-3 text-foreground/50 shrink-0" />

@@ -61,6 +61,9 @@ export default defineConfig({
     // Ensure a single instance of every @codemirror package is used.
     // Without this, @uiw/react-codemirror and direct @codemirror/* imports
     // each get their own copy of @codemirror/state, breaking instanceof checks.
+    // IMPORTANT: keep this list in sync with optimizeDeps.exclude below —
+    // dedupe covers Rollup (prod), exclude covers esbuild pre-bundling (dev).
+    // When adding a new @codemirror/* dep, update BOTH lists.
     dedupe: [
       '@codemirror/state',
       '@codemirror/view',
@@ -88,6 +91,20 @@ export default defineConfig({
     // Force esbuild pre-bundling so CJS packages (e.g. react-use-websocket)
     // are converted to ESM and default imports resolve correctly in all modes.
     include: ['react-use-websocket'],
+    // Exclude all @codemirror/* packages and @uiw/react-codemirror from
+    // pre-bundling. When esbuild bundles these, it inlines each package's
+    // @codemirror/state dependency into the chunk, creating multiple
+    // module instances that break instanceof checks. By excluding them,
+    // Vite serves them as raw ESM via @fs/, and resolve.dedupe ensures every
+    // import of @codemirror/state resolves to the single same file.
+    exclude: [
+      '@uiw/react-codemirror',
+      '@codemirror/state',
+      '@codemirror/view',
+      '@codemirror/language',
+      '@codemirror/lint',
+      '@codemirror/lang-json',
+    ],
   },
   build: {
     sourcemap: true,

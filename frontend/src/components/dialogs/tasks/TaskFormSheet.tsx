@@ -704,8 +704,8 @@ const TaskFormSheetImpl = NiceModal.create<TaskFormSheetProps>((props) => {
                 <FileSearchTextarea
                   value={field.state.value}
                   onChange={(desc) => field.handleChange(desc)}
-                  rows={isMobile ? 6 : 10}
-                  maxRows={isMobile ? 12 : 20}
+                  rows={isMobile ? 4 : 5}
+                  maxRows={isMobile ? 20 : 40}
                   placeholder={t(
                     'taskFormDialog.descriptionPlaceholder',
                     'Add details...'

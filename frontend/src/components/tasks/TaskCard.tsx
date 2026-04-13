@@ -43,14 +43,24 @@ function getShortNodeName(nodeName: string | null | undefined): string | null {
 
 /**
  * Truncate description to a maximum length, adding ellipsis if needed.
+ * Strips leading markdown headers (# ## ###) and blank lines so the preview
+ * shows actual prose rather than the document structure.
  */
 function truncateDescription(
   description: string | null | undefined,
-  maxLength: number = 40
+  maxLength: number = 80
 ): string | null {
   if (!description) return null;
-  if (description.length <= maxLength) return description;
-  return `${description.substring(0, maxLength)}...`;
+  // Strip leading markdown headers and empty lines to show meaningful content
+  const cleaned = description
+    .replace(/^\s+/, '')             // trim leading whitespace first (handles \n before headers)
+    .replace(/^(#{1,6} [^\n]*\n?)+/, '') // remove leading markdown headers (require space after # to avoid eating #hashtags)
+    .replace(/^\s+/, '')             // trim any whitespace exposed after header removal
+    .replace(/\s+/g, ' ')           // collapse internal newlines to spaces
+    .trim();
+  if (!cleaned) return null;
+  if (cleaned.length <= maxLength) return cleaned;
+  return `${cleaned.substring(0, maxLength)}...`;
 }
 
 type Task = TaskWithAttemptStatus;
@@ -181,7 +191,7 @@ export function TaskCard({
     statusStripColors[task.status as TaskStatus] || statusStripColors['todo'];
 
   // Truncated description for compact view
-  const truncatedDesc = truncateDescription(task.description, 40);
+  const truncatedDesc = truncateDescription(task.description);
 
   return (
     <KanbanCard
@@ -196,7 +206,8 @@ export function TaskCard({
       className={cn(
         // Status strip indicator (left border)
         'relative overflow-hidden pl-5',
-        'before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:content-[""]',
+        'before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[4px] before:content-[""]',
+        'transition-shadow duration-150 hover:shadow-md',
         statusStripClass,
         isArchived && 'opacity-60'
       )}

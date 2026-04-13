@@ -53,7 +53,8 @@
   "packageManager": "pnpm@10.25.0",
   "pnpm": {
     "overrides": {
-      "@tanstack/db": "^0.6.4"
+      "@tanstack/db": "^0.6.4",
+      "@codemirror/state": "^6.6.0"
     }
   }
 }

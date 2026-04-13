@@ -50,6 +50,7 @@ function TaskKanbanBoard({
             <KanbanHeader
               name={statusLabels[statusKey]}
               color={statusBoardColors[statusKey]}
+              count={items.length}
               onAddTask={onCreateTask}
               sortDirection={sortDirections?.[statusKey]}
               onSortToggle={
