@@ -58,6 +58,16 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
       shared: path.resolve(__dirname, "../shared"),
     },
+    // Ensure a single instance of every @codemirror package is used.
+    // Without this, @uiw/react-codemirror and direct @codemirror/* imports
+    // each get their own copy of @codemirror/state, breaking instanceof checks.
+    dedupe: [
+      '@codemirror/state',
+      '@codemirror/view',
+      '@codemirror/language',
+      '@codemirror/lint',
+      '@codemirror/lang-json',
+    ],
   },
   server: {
     host: process.env.HOST || "127.0.0.1",
