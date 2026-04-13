@@ -513,7 +513,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
       <Dialog
         open={modal.visible}
         onOpenChange={handleDialogClose}
-        className="w-full max-w-[min(90vw,40rem)] max-h-[min(95vh,50rem)] flex flex-col overflow-hidden p-0"
+        className="w-full max-w-[min(90vw,52rem)] max-h-[min(95vh,60rem)] flex flex-col overflow-hidden p-0"
         uncloseable={showDiscardWarning}
       >
         <div

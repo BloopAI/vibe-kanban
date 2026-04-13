@@ -90,11 +90,17 @@ export function ProcessLogsViewerContent({
 }: ProcessLogsViewerContentProps) {
   const listRef = useRef<VListHandle>(null);
   const prevLenRef = useRef(0);
+  // followRef controls whether auto-scroll is active (mutable, no re-renders).
+  // atBottom state is only used for showing/hiding the scroll-to-bottom button.
+  // Keeping them separate prevents virtua's unmeasured-item stale scrollSize
+  // from causing a false setAtBottom(false) that permanently breaks the follow loop.
+  const followRef = useRef(true);
   const [atBottom, setAtBottom] = useState(true);
 
   // Reset scroll state when the log source changes (new process)
   useEffect(() => {
     prevLenRef.current = 0;
+    followRef.current = true;
     setAtBottom(true);
   }, [sourceKey]);
 
@@ -102,18 +108,20 @@ export function ProcessLogsViewerContent({
   // Uses smooth:false so onScroll fires once at the final position —
   // smooth scrolling fires at intermediate positions which can transiently
   // flip atBottom to false and break the follow loop.
+  // Depends only on logs.length — not atBottom state — so virtua's stale
+  // scrollSize during item measurement cannot break the follow loop.
   useEffect(() => {
     const prev = prevLenRef.current;
     const grewBy = logs.length - prev;
     prevLenRef.current = logs.length;
 
     if (logs.length === 0 || grewBy <= 0) return;
-    if (!atBottom) return;
+    if (!followRef.current) return;
 
     requestAnimationFrame(() => {
       listRef.current?.scrollToIndex(logs.length - 1, { align: 'end', smooth: false });
     });
-  }, [logs.length, atBottom]);
+  }, [logs.length]);
 
   return (
     <div className="h-full flex flex-col">
@@ -142,7 +150,9 @@ export function ProcessLogsViewerContent({
               onScroll={(offset) => {
                 const h = listRef.current;
                 if (!h) return;
-                setAtBottom(offset + h.viewportSize >= h.scrollSize - 5);
+                const bottom = offset + h.viewportSize >= h.scrollSize - 5;
+                followRef.current = bottom;
+                setAtBottom(bottom);
               }}
             >
               {(entry, i) => (
@@ -160,6 +170,7 @@ export function ProcessLogsViewerContent({
                 size="icon"
                 className="absolute bottom-4 right-4 rounded-full shadow-lg bg-background/90 backdrop-blur-sm hover:bg-background z-10"
                 onClick={() => {
+                  followRef.current = true;
                   setAtBottom(true);
                   listRef.current?.scrollToIndex(logs.length - 1, { align: 'end', smooth: false });
                 }}
