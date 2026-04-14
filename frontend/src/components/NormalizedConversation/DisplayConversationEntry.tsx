@@ -706,9 +706,12 @@ const formatTimestamp = (isoString: string, timezone: string): string => {
   }
 };
 
+export const DEFAULT_TOKEN_TIMESTAMP_FORMAT = '[HH:mm:ss.SSS dd/MM/yyyy]';
+
 /**
  * Format a token-usage timestamp according to a user-supplied format string.
- * Supports tokens: HH, mm, ss, SSS, dd, MM, yyyy.
+ * Supports literal characters (including [ ]) plus tokens: HH, mm, ss, SSS, dd, MM, yyyy.
+ * Token matching is case-sensitive: mm=minute, MM=month, ss=second, SSS=milliseconds.
  * Timezone is applied via Intl.DateTimeFormat.formatToParts().
  */
 const formatTokenTimestamp = (
@@ -739,16 +742,14 @@ const formatTokenTimestamp = (
     // Milliseconds are not timezone-dependent
     const ms = date.getMilliseconds().toString().padStart(3, '0');
 
-    return '[' +
-      fmt
-        .replace('HH', get('hour'))
-        .replace('mm', get('minute'))
-        .replace('ss', get('second'))
-        .replace('SSS', ms)
-        .replace('dd', get('day'))
-        .replace('MM', get('month'))
-        .replace('yyyy', get('year')) +
-      ']';
+    return fmt
+      .replace('HH', get('hour'))
+      .replace('mm', get('minute'))
+      .replace('ss', get('second'))
+      .replace('SSS', ms)
+      .replace('dd', get('day'))
+      .replace('MM', get('month'))
+      .replace('yyyy', get('year'));
   } catch {
     return isoString;
   }

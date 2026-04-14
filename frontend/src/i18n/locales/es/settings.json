@@ -350,6 +350,13 @@
           "placeholder": "Seleccionar zona horaria",
           "helper": "Elige qué zona horaria usar al mostrar las horas de inicio y fin de ejecución.",
           "local": "Local (Navegador)"
+        },
+        "tokenTimestamp": {
+          "label": "Mostrar marca de tiempo en líneas de uso de tokens",
+          "format": {
+            "label": "Formato de marca de tiempo",
+            "helper": "Los tokens distinguen mayúsculas y minúsculas. HH=hora, mm=minuto, ss=segundo, SSS=milisegundos, dd=día, MM=mes, yyyy=año. Otros caracteres (p. ej. [ ] : /) se tratan como literales."
+          }
         }
       },
       "safety": {

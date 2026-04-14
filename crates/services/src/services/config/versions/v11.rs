@@ -18,7 +18,7 @@ fn default_timezone() -> String {
 }
 
 fn default_token_timestamp_format() -> String {
-    "HH:mm:ss.SSS dd/MM/yyyy".to_string()
+    "[HH:mm:ss.SSS dd/MM/yyyy]".to_string()
 }
 
 /// Timestamp display configuration

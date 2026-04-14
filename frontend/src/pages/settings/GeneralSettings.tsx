@@ -1030,6 +1030,7 @@ export function GeneralSettings() {
           <div className="flex items-start gap-3">
             <Switch
               id="token-timestamp-enabled"
+              aria-labelledby="token-timestamp-label"
               checked={draft?.timestamps?.token_timestamp_enabled ?? false}
               onCheckedChange={(checked) =>
                 updateDraft({
@@ -1041,7 +1042,7 @@ export function GeneralSettings() {
               }
             />
             <div className="space-y-1">
-              <Label htmlFor="token-timestamp-enabled">
+              <Label id="token-timestamp-label" htmlFor="token-timestamp-enabled">
                 {t('settings.general.timestamps.tokenTimestamp.label')}
               </Label>
             </div>
@@ -1054,7 +1055,7 @@ export function GeneralSettings() {
               </Label>
               <Input
                 id="token-timestamp-format"
-                value={draft?.timestamps?.token_timestamp_format ?? 'HH:mm:ss.SSS dd/MM/yyyy'}
+                value={draft?.timestamps?.token_timestamp_format ?? '[HH:mm:ss.SSS dd/MM/yyyy]'}
                 onChange={(e) =>
                   updateDraft({
                     timestamps: {

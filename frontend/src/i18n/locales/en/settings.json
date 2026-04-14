@@ -425,7 +425,7 @@
           "label": "Show timestamp on token usage lines",
           "format": {
             "label": "Timestamp format",
-            "helper": "Tokens: HH=hour, mm=minute, ss=second, SSS=milliseconds, dd=day, MM=month, yyyy=year"
+            "helper": "Tokens are case-sensitive. HH=hour, mm=minute (not MM), ss=second, SSS=milliseconds, dd=day, MM=month (not mm), yyyy=year. All other characters (e.g. [ ] : /) are treated as literals."
           }
         }
       },
