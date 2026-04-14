@@ -69,6 +69,11 @@ pub struct ClaudeCode {
     pub dangerously_skip_permissions: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disable_api_key: Option<bool>,
+    /// Experimental: disable active process-group kill when a Result message is detected.
+    /// When true, behaves like the reference implementation — waits for natural process exit
+    /// instead of sending an exit signal on Result. Use this if executions terminate too early.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub no_exit_on_result: Option<bool>,
     /// Enable interactive question UI for AskUserQuestion control requests.
     /// When enabled, questions are displayed as clickable options in the UI.
     /// When disabled, questions fall back to text-based prompts.
@@ -404,6 +409,7 @@ impl ClaudeCode {
             child_stdout,
             client,
             exit_signal_sender,
+            self.no_exit_on_result.unwrap_or(false),
         ));
 
         // Clone peer for the initialization task
@@ -436,7 +442,11 @@ impl ClaudeCode {
 
         Ok(SpawnedChild {
             child,
-            exit_signal: Some(exit_signal_rx),
+            exit_signal: if self.no_exit_on_result.unwrap_or(false) {
+                None
+            } else {
+                Some(exit_signal_rx)
+            },
             protocol_peer: Some(protocol_peer),
         })
     }
@@ -2614,6 +2624,7 @@ mod tests {
             },
             approvals_service: None,
             disable_api_key: None,
+            no_exit_on_result: None,
         };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");

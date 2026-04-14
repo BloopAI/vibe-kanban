@@ -53,6 +53,13 @@
         "null"
       ]
     },
+    "no_exit_on_result": {
+      "description": "Experimental: disable active process-group kill when a Result message is detected.\nWhen true, behaves like the reference implementation — waits for natural process exit\ninstead of sending an exit signal on Result. Use this if executions terminate too early.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "interactive_questions": {
       "description": "Enable interactive question UI for AskUserQuestion control requests.\nWhen enabled, questions are displayed as clickable options in the UI.\nWhen disabled, questions fall back to text-based prompts.\nDefaults to true.",
       "type": "boolean",

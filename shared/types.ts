@@ -729,6 +729,12 @@ export enum BaseAgentCapability { SESSION_FORK = "SESSION_FORK", SETUP_HELPER = 
 
 export type ClaudeCode = { append_prompt: AppendPrompt, no_context?: boolean | null, claude_code_router?: boolean | null, plan?: boolean | null, approvals?: boolean | null, model?: string | null, dangerously_skip_permissions?: boolean | null, disable_api_key?: boolean | null, 
 /**
+ * Experimental: disable active process-group kill when a Result message is detected.
+ * When true, behaves like the reference implementation — waits for natural process exit
+ * instead of sending an exit signal on Result. Use this if executions terminate too early.
+ */
+no_exit_on_result?: boolean | null, 
+/**
  * Enable interactive question UI for AskUserQuestion control requests.
  * When enabled, questions are displayed as clickable options in the UI.
  * When disabled, questions fall back to text-based prompts.

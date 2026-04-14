@@ -61,6 +61,7 @@ impl ExitSignalSender {
 #[derive(Clone, Debug)]
 pub struct ProtocolPeer {
     stdin: Arc<Mutex<ChildStdin>>,
+    wait_for_natural_exit: bool,
 }
 
 impl ProtocolPeer {
@@ -69,22 +70,25 @@ impl ProtocolPeer {
         stdout: ChildStdout,
         client: Arc<ClaudeAgentClient>,
         exit_signal: ExitSignalSender,
+        wait_for_natural_exit: bool,
     ) -> Self {
         let peer = Self {
             stdin: Arc::new(Mutex::new(stdin)),
+            wait_for_natural_exit,
         };
 
         let reader_peer = peer.clone();
         tokio::spawn(async move {
-            let completion_reason = match reader_peer.read_loop(stdout, client).await {
-                Ok(reason) => reason,
-                Err(e) => {
-                    tracing::error!("Protocol reader loop error: {}", e);
-                    SessionCompletionReason::Error {
-                        message: e.to_string(),
+            let completion_reason =
+                match reader_peer.read_loop(stdout, client, reader_peer.wait_for_natural_exit).await {
+                    Ok(reason) => reason,
+                    Err(e) => {
+                        tracing::error!("Protocol reader loop error: {}", e);
+                        SessionCompletionReason::Error {
+                            message: e.to_string(),
+                        }
                     }
-                }
-            };
+                };
             // Send exit signal with the detected completion reason
             // This triggers the exit monitor to kill the process group
             let exit_result = ExecutorExitResult::success(completion_reason);
@@ -98,6 +102,7 @@ impl ProtocolPeer {
         &self,
         stdout: ChildStdout,
         client: Arc<ClaudeAgentClient>,
+        wait_for_natural_exit: bool,
     ) -> Result<SessionCompletionReason, ExecutorError> {
         let mut reader = BufReader::new(stdout);
         let mut buffer = String::new();
@@ -132,10 +137,14 @@ impl ProtocolPeer {
                             duration_ms: msg.duration_ms,
                             num_turns: msg.num_turns,
                         });
-                        // Break immediately to trigger exit signal.
-                        // The Result message indicates session completion - Claude Code
-                        // will wait for user input indefinitely after this point.
-                        break;
+                        if !wait_for_natural_exit {
+                            // Default: break immediately to trigger exit signal.
+                            // The Result message indicates session completion - Claude Code
+                            // will wait for user input indefinitely after this point.
+                            break;
+                        }
+                        // wait_for_natural_exit=true: keep draining stdout until the
+                        // process exits naturally (EOF), matching reference behavior.
                     }
 
                     // Parse message using typed enum for control protocol
