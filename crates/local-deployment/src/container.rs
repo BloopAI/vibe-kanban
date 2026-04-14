@@ -578,6 +578,35 @@ impl LocalContainerService {
                 }
             }
 
+            // Fire webhooks for executor_finish (fire-and-forget, non-blocking)
+            {
+                use services::services::webhook::WebhookService;
+                let pool_clone = db.pool.clone();
+                let status_str = format!("{status:?}").to_lowercase();
+                let reason_owned = reason_str.map(|s| s.to_string());
+                let exit_code_clone = exit_code;
+                let exec_id_clone = exec_id;
+                tokio::spawn(async move {
+                    if let Some(ctx) = WebhookService::build_finish_context(
+                        &pool_clone,
+                        exec_id_clone,
+                        status_str,
+                        reason_owned,
+                        exit_code_clone,
+                    )
+                    .await
+                    {
+                        let project_id = ctx.project_id;
+                        WebhookService::fire(&pool_clone, project_id, ctx).await;
+                    } else {
+                        tracing::debug!(
+                            exec_id = %exec_id_clone,
+                            "webhook: could not build finish context, event not delivered"
+                        );
+                    }
+                });
+            }
+
             // Check for session invalid error and mark session as invalid to avoid retry
             // This handles "No conversation found with session ID" errors from Claude Code
             if status == ExecutionProcessStatus::Failed

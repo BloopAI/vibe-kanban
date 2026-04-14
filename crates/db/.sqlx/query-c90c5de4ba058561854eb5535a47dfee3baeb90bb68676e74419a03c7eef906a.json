@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE webhooks\n            SET name=$2, url=$3, events=$4, headers=$5, secret=$6, payload_template=$7, override_global=$8, active=$9, updated_at=datetime('now','subsec')\n            WHERE id=$1\n            RETURNING\n                id as \"id!: Uuid\",\n                project_id as \"project_id: Uuid\",\n                name, url, events, headers, secret, payload_template,\n                override_global as \"override_global!: bool\",\n                active as \"active!: bool\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "url",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "events",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "headers",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "secret",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "payload_template",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "override_global!: bool",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "active!: bool",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c90c5de4ba058561854eb5535a47dfee3baeb90bb68676e74419a03c7eef906a"
+}

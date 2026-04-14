@@ -44,11 +44,41 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
             self.execution_process_id,
         );
 
-        let (_, waiter) = self
+        let (request_ref, waiter) = self
             .approvals
             .create_with_waiter(request)
             .await
             .map_err(ExecutorApprovalError::request_failed)?;
+
+        // Fire webhook for approval_request (non-blocking)
+        {
+            use crate::services::webhook::{WebhookEventPayload, WebhookService};
+            let pool = self.db.pool.clone();
+            let exec_id = self.execution_process_id;
+            let approval_id = request_ref.id.clone();
+            let tool_name = request_ref.tool_name.clone();
+            let tool_input = request_ref.tool_input.clone();
+            let timeout_at = Some(request_ref.timeout_at);
+            tokio::spawn(async move {
+                let event = WebhookEventPayload::ApprovalRequest {
+                    approval_id,
+                    tool_name,
+                    tool_input,
+                    timeout_at,
+                };
+                if let Some(ctx) =
+                    WebhookService::build_approval_context(&pool, exec_id, event).await
+                {
+                    let project_id = ctx.project_id;
+                    WebhookService::fire(&pool, project_id, ctx).await;
+                } else {
+                    tracing::debug!(
+                        exec_id = %exec_id,
+                        "webhook: could not build approval context, event not delivered"
+                    );
+                }
+            });
+        }
 
         let response_data = waiter.clone().await;
 
@@ -75,11 +105,39 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
             self.execution_process_id,
         );
 
-        let (_, waiter) = self
+        let (request_ref, waiter) = self
             .approvals
             .create_with_waiter(request)
             .await
             .map_err(ExecutorApprovalError::request_failed)?;
+
+        // Fire webhook for pending_question (non-blocking)
+        {
+            use crate::services::webhook::{WebhookEventPayload, WebhookService};
+            let pool = self.db.pool.clone();
+            let exec_id = self.execution_process_id;
+            let question_id = request_ref.id.clone();
+            let questions_clone = request_ref.questions.clone().unwrap_or_default();
+            let timeout_at = Some(request_ref.timeout_at);
+            tokio::spawn(async move {
+                let event = WebhookEventPayload::PendingQuestion {
+                    question_id,
+                    questions: questions_clone,
+                    timeout_at,
+                };
+                if let Some(ctx) =
+                    WebhookService::build_approval_context(&pool, exec_id, event).await
+                {
+                    let project_id = ctx.project_id;
+                    WebhookService::fire(&pool, project_id, ctx).await;
+                } else {
+                    tracing::debug!(
+                        exec_id = %exec_id,
+                        "webhook: could not build question context, event not delivered"
+                    );
+                }
+            });
+        }
 
         let response_data = waiter.clone().await;
 

@@ -307,6 +307,32 @@ export type LabelQueryParams = {
  */
 project_id: string | null, };
 
+export type Webhook = { id: string, project_id: string | null, name: string, url: string, 
+/**
+ * JSON-serialized Vec<WebhookEventType>
+ */
+events: string, 
+/**
+ * JSON-serialized HashMap<String, String>
+ */
+headers: string, secret: string | null, payload_template: string | null, override_global: boolean, active: boolean, created_at: string, updated_at: string, };
+
+export type WebhookResponse = { id: string, project_id: string | null, name: string, url: string, events: Array<WebhookEventType>, headers: { [key in string]?: string }, secret_set: boolean, payload_template: string | null, override_global: boolean, active: boolean, created_at: string, updated_at: string, };
+
+export type WebhookEventType = "approval_request" | "pending_question" | "executor_finish";
+
+export type CreateWebhook = { name: string, url: string, events: Array<WebhookEventType>, headers: { [key in string]?: string }, secret: string | null, payload_template: string | null, override_global: boolean, active: boolean, };
+
+export type UpdateWebhook = { name: string | null, url: string | null, events: Array<WebhookEventType> | null, headers: { [key in string]?: string } | null, secret: string | null, 
+/**
+ * If true, clears the signing secret (sets it to NULL).
+ */
+clear_secret: boolean, payload_template: string | null, 
+/**
+ * If true, clears the payload template (reverts to default JSON payload).
+ */
+clear_payload_template: boolean, override_global: boolean | null, active: boolean | null, };
+
 export type TaskVariable = { id: string, task_id: string, name: string, value: string, created_at: string, updated_at: string, };
 
 export type CreateTaskVariable = { name: string, value: string, };

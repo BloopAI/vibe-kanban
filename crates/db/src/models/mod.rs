@@ -30,6 +30,7 @@ pub mod task;
 pub mod task_attempt;
 pub mod task_variable;
 pub mod template;
+pub mod webhook;
 
 // === Electric SQL Integration (New) ===
 pub mod log_entry;

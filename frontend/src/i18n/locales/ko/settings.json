@@ -14,7 +14,9 @@
         "organizations": "Organization Settings",
         "organizationsDesc": "Manage organization members and permissions",
         "system": "시스템",
-        "systemDesc": "데이터베이스 유지보수 및 저장소"
+        "systemDesc": "데이터베이스 유지보수 및 저장소",
+        "webhooks": "웹훅",
+        "webhooksDesc": "이벤트 기반 외부 알림"
       }
     },
     "system": {
@@ -505,6 +507,12 @@
         "unsavedChanges": "• 저장되지 않은 변경사항이 있습니다",
         "discard": "취소",
         "confirmSwitch": "저장되지 않은 변경사항이 있습니다. 정말 프로젝트를 전환하시겠습니까? 변경사항이 손실됩니다."
+      }
+    },
+    "webhooks": {
+      "global": {
+        "title": "전역 웹훅",
+        "description": "모든 프로젝트에 대해 실행됩니다. 프로젝트 웹훅은 이벤트 유형별로 이를 재정의할 수 있습니다."
       }
     }
   },

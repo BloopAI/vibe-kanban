@@ -18,7 +18,9 @@
         "backups": "Backups",
         "backupsDesc": "Database backup management",
         "system": "System",
-        "systemDesc": "Database maintenance and storage"
+        "systemDesc": "Database maintenance and storage",
+        "webhooks": "Webhooks",
+        "webhooksDesc": "Event-driven external notifications"
       },
       "searchPlaceholder": "Search settings...",
       "noResults": "No settings match your search",
@@ -780,6 +782,12 @@
         "unsavedChanges": "• You have unsaved changes",
         "discard": "Discard",
         "confirmSwitch": "You have unsaved changes. Are you sure you want to switch projects? Your changes will be lost."
+      }
+    },
+    "webhooks": {
+      "global": {
+        "title": "Global Webhooks",
+        "description": "Fire for all projects. Project webhooks can override these per event type."
       }
     }
   },

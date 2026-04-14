@@ -27,6 +27,7 @@ import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { useFeedback } from '@/hooks/useFeedback';
 import { CopyFilesField } from '@/components/projects/CopyFilesField';
+import { WebhooksSection } from '@/pages/settings/WebhooksSettings';
 import { ConfigSuggestions } from '@/components/projects/ConfigSuggestions';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
@@ -527,6 +528,15 @@ export function ProjectSettings() {
             </div>
           </div>
         </>
+      )}
+
+      {selectedProject && (
+        <WebhooksSection
+          projectId={selectedProject.id}
+          title="Project Webhooks"
+          description="Webhooks specific to this project. These fire in addition to global webhooks unless override is enabled."
+          showOverrideNote
+        />
       )}
     </div>
   );

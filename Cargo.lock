@@ -5236,6 +5236,8 @@ dependencies = [
  "futures",
  "futures-util",
  "git2",
+ "hex",
+ "hmac",
  "hostname",
  "ignore",
  "json-patch",

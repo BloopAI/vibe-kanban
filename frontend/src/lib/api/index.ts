@@ -116,3 +116,7 @@ export { messageQueueApi } from './messageQueue';
 
 // Database API
 export { databaseApi } from './database';
+
+// Webhooks API
+export { webhooksApi } from './webhooks';
+export type { WebhookTestResult } from './webhooks';

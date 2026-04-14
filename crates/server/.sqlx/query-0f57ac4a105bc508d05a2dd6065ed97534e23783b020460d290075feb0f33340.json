@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!: Uuid\",\n                              task_id AS \"task_id!: Uuid\",\n                              container_ref,\n                              branch,\n                              target_branch,\n                              executor AS \"executor!\",\n                              worktree_deleted AS \"worktree_deleted!: bool\",\n                              setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                              created_at AS \"created_at!: DateTime<Utc>\",\n                              updated_at AS \"updated_at!: DateTime<Utc>\",\n                              hive_synced_at AS \"hive_synced_at: DateTime<Utc>\",\n                              hive_assignment_id AS \"hive_assignment_id: Uuid\",\n                              origin_node_id AS \"origin_node_id: Uuid\"\n                       FROM task_attempts\n                       ORDER BY created_at DESC",
+  "query": "SELECT id AS \"id!: Uuid\",\n                              task_id AS \"task_id!: Uuid\",\n                              container_ref,\n                              branch,\n                              target_branch,\n                              executor AS \"executor!\",\n                              worktree_deleted AS \"worktree_deleted!: bool\",\n                              setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                              created_at AS \"created_at!: DateTime<Utc>\",\n                              updated_at AS \"updated_at!: DateTime<Utc>\",\n                              hive_synced_at AS \"hive_synced_at: DateTime<Utc>\",\n                              hive_assignment_id AS \"hive_assignment_id: Uuid\",\n                              origin_node_id AS \"origin_node_id: Uuid\"\n                       FROM task_attempts\n                       ORDER BY created_at DESC\n                       LIMIT 500",
   "describe": {
     "columns": [
       {
@@ -88,5 +88,5 @@
       true
     ]
   },
-  "hash": "5215172a9ced7747f58bb285638e440eba6b5d74fdb5b4a77c99ae14039bce5f"
+  "hash": "0f57ac4a105bc508d05a2dd6065ed97534e23783b020460d290075feb0f33340"
 }

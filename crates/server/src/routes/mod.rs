@@ -37,6 +37,7 @@ pub mod task_variables;
 pub mod tasks;
 pub mod templates;
 pub mod terminal;
+pub mod webhooks;
 
 pub async fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     // Create terminal router with its own state
@@ -73,6 +74,7 @@ pub async fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(diagnostics::router(&deployment))
         .merge(logs::router(&deployment))
         .merge(message_queue::router(&deployment))
+        .merge(webhooks::router(&deployment))
         .merge(terminal_router)
         .nest("/images", images::routes())
         .with_state(deployment);

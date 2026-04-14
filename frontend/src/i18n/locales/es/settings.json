@@ -14,7 +14,9 @@
         "organizations": "Organization Settings",
         "organizationsDesc": "Manage organization members and permissions",
         "system": "Sistema",
-        "systemDesc": "Mantenimiento de base de datos y almacenamiento"
+        "systemDesc": "Mantenimiento de base de datos y almacenamiento",
+        "webhooks": "Webhooks",
+        "webhooksDesc": "Notificaciones externas basadas en eventos"
       }
     },
     "system": {
@@ -505,6 +507,12 @@
         "unsavedChanges": "• Tienes cambios sin guardar",
         "discard": "Descartar",
         "confirmSwitch": "Tienes cambios sin guardar. ¿Estás seguro de que quieres cambiar de proyecto? Tus cambios se perderán."
+      }
+    },
+    "webhooks": {
+      "global": {
+        "title": "Webhooks Globales",
+        "description": "Se activan para todos los proyectos. Los webhooks de proyecto pueden anular estos por tipo de evento."
       }
     }
   },

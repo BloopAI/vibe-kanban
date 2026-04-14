@@ -46,6 +46,11 @@ const McpSettings = lazy(() =>
     default: m.McpSettings,
   }))
 );
+const WebhooksSettings = lazy(() =>
+  import('@/pages/settings/WebhooksSettings').then((m) => ({
+    default: m.WebhooksSettings,
+  }))
+);
 const SystemSettings = lazy(() =>
   import('@/pages/settings/SystemSettings').then((m) => ({
     default: m.SystemSettings,
@@ -205,6 +210,14 @@ function AppContent() {
                         element={
                           <Suspense fallback={<SettingsLoadingFallback />}>
                             <McpSettings />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="webhooks"
+                        element={
+                          <Suspense fallback={<SettingsLoadingFallback />}>
+                            <WebhooksSettings />
                           </Suspense>
                         }
                       />

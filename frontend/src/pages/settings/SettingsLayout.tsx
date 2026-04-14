@@ -9,6 +9,7 @@ import {
   Building2,
   Network,
   Database,
+  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,10 @@ const settingsNavigation = [
   {
     path: 'mcp',
     icon: Server,
+  },
+  {
+    path: 'webhooks',
+    icon: Zap,
   },
   {
     path: 'system',

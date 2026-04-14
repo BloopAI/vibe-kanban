@@ -14,7 +14,9 @@
         "organizations": "Organization Settings",
         "organizationsDesc": "Manage organization members and permissions",
         "system": "システム",
-        "systemDesc": "データベースメンテナンスとストレージ"
+        "systemDesc": "データベースメンテナンスとストレージ",
+        "webhooks": "Webhooks",
+        "webhooksDesc": "イベント駆動型の外部通知"
       }
     },
     "system": {
@@ -505,6 +507,12 @@
         "unsavedChanges": "• 未保存の変更があります",
         "discard": "破棄",
         "confirmSwitch": "未保存の変更があります。本当にプロジェクトを切り替えますか？変更は失われます。"
+      }
+    },
+    "webhooks": {
+      "global": {
+        "title": "グローバル Webhooks",
+        "description": "すべてのプロジェクトに対して発火します。プロジェクト Webhook はイベントタイプごとにこれらを上書きできます。"
       }
     }
   },

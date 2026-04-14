@@ -50,6 +50,7 @@ pub mod remote_client;
 pub mod terminal_session;
 pub mod unified_logs;
 pub mod variable_expander;
+pub mod webhook;
 pub mod worktree_manager;
 
 // === Electric SQL Integration (New) ===

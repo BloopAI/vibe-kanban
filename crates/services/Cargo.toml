@@ -53,6 +53,8 @@ dunce = "1.0"
 dashmap = "6.1"
 once_cell = "1.20"
 sha2 = "0.10"
+hmac = "0.12"
+hex = "0.4"
 fst = "0.4"
 secrecy = "0.10.3"
 moka = { version = "0.12", features = ["future"] }

@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Search,
   X,
+  Zap,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -24,6 +25,7 @@ import { SwarmSettings } from './SwarmSettings';
 import { AgentSettings } from './AgentSettings';
 import { McpSettings } from './McpSettings';
 import { SystemSettings } from './SystemSettings';
+import { WebhooksSettings } from './WebhooksSettings';
 
 interface SettingsSection {
   id: string;
@@ -68,6 +70,12 @@ const settingsSections: SettingsSection[] = [
     path: 'mcp',
     icon: Server,
     component: McpSettings,
+  },
+  {
+    id: 'webhooks',
+    path: 'webhooks',
+    icon: Zap,
+    component: WebhooksSettings,
   },
   {
     id: 'system',

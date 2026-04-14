@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO webhooks (id, project_id, name, url, events, headers, secret, payload_template, override_global, active)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n            RETURNING\n                id as \"id!: Uuid\",\n                project_id as \"project_id: Uuid\",\n                name, url, events, headers, secret, payload_template,\n                override_global as \"override_global!: bool\",\n                active as \"active!: bool\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "url",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "events",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "headers",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "secret",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "payload_template",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "override_global!: bool",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "active!: bool",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4701184bd2f80278c5ee16f563bd20ba33f8f810110b093ea3bd909a65494ad0"
+}
