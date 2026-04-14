@@ -554,7 +554,6 @@ impl LocalContainerService {
             }
 
             if let Ok(ctx) = ExecutionProcess::load_context(&db.pool, exec_id).await {
-
                 let success = matches!(
                     ctx.execution_process.status,
                     ExecutionProcessStatus::Completed

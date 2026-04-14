@@ -320,6 +320,7 @@ pub struct WaitForExecutionsResponse {
     pub session_id: Uuid,
     pub status: String,
     pub completed_at: Option<DateTime<Utc>>,
+    pub output: Option<String>,
 }
 
 /// Long-poll endpoint: holds the connection open until any of the requested executions
@@ -352,12 +353,17 @@ async fn wait_for_executions(
                         ExecutionProcessStatus::Running => unreachable!(),
                     };
 
+                    let output = CodingAgentTurn::find_by_execution_process_id(pool, ep.id)
+                        .await?
+                        .and_then(|turn| turn.summary);
+
                     return Ok(ResponseJson(ApiResponse::success(
                         WaitForExecutionsResponse {
                             completed_execution_id: ep.id,
                             session_id: ep.session_id,
                             status: status.to_string(),
                             completed_at: ep.completed_at,
+                            output,
                         },
                     )));
                 }
@@ -377,6 +383,7 @@ async fn wait_for_executions(
                     session_id,
                     status: "timeout".to_string(),
                     completed_at: None,
+                    output: None,
                 },
             )));
         }

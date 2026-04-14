@@ -124,6 +124,10 @@ struct McpWaitExecutionResponse {
     status: String,
     #[schemars(description = "Timestamp when the execution completed (if available)")]
     completed_at: Option<String>,
+    #[schemars(
+        description = "Final assistant message/summary from the completed execution (if available)"
+    )]
+    output: Option<String>,
 }
 
 #[tool_router(router = workspaces_tools_router, vis = "pub")]
