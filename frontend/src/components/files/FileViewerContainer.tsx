@@ -50,10 +50,14 @@ export function FileViewerContainer() {
       activeFile?.path,
       activeFile?.relativePath,
       activeFile?.attemptId,
+      activeFile?.isAbsolutePath,
     ],
     queryFn: async () => {
       if (!activeFile) throw new Error('No file selected');
 
+      if (activeFile.isAbsolutePath) {
+        return fileBrowserApi.readAbsoluteFile(activeFile.path);
+      }
       if (activeFile.relativePath) {
         return fileBrowserApi.readClaudeFile(activeFile.relativePath);
       }

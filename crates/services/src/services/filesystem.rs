@@ -553,6 +553,53 @@ impl FilesystemService {
         self.read_file_within(&claude_dir, relative_path, max_bytes)
             .await
     }
+
+    /// Read a file at any absolute path (no directory restriction).
+    /// Used when AI agents reference files outside the worktree or ~/.claude/.
+    pub async fn read_file_absolute(
+        &self,
+        absolute_path: &Path,
+        max_bytes: Option<u64>,
+    ) -> Result<FileContentResponse, FilesystemError> {
+        let max_bytes = max_bytes.unwrap_or(MAX_FILE_SIZE);
+        // canonicalize() returns io::ErrorKind::NotFound for missing files, not
+        // FilesystemError::FileDoesNotExist. Map it explicitly so callers get a clean error.
+        let canonical = match absolute_path.canonicalize() {
+            Ok(p) => p,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                return Err(FilesystemError::FileDoesNotExist);
+            }
+            Err(e) => return Err(FilesystemError::Io(e)),
+        };
+        if !canonical.is_file() {
+            return Err(FilesystemError::PathIsNotFile);
+        }
+        let metadata = fs::metadata(&canonical)?;
+        let size_bytes = metadata.len();
+        if size_bytes > max_bytes {
+            return Err(FilesystemError::FileTooLarge {
+                max_bytes,
+                actual_bytes: size_bytes,
+            });
+        }
+        let content = fs::read(&canonical)?;
+        let check_len = std::cmp::min(8192, content.len());
+        if content[..check_len].contains(&0) {
+            return Err(FilesystemError::FileIsBinary);
+        }
+        let content_str = String::from_utf8_lossy(&content).to_string();
+        let language = canonical
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(Self::extension_to_language);
+        Ok(FileContentResponse {
+            path: absolute_path.to_string_lossy().to_string(),
+            content: content_str,
+            size_bytes,
+            truncated: false,
+            language,
+        })
+    }
 }
 
 #[cfg(test)]

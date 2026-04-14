@@ -107,4 +107,15 @@ export const fileBrowserApi = {
     );
     return handleApiResponse<FileContentResponse>(response);
   },
+
+  /**
+   * Read a file at any absolute path on the filesystem.
+   * Used for files referenced by AI agents that are outside the worktree and ~/.claude/.
+   */
+  readAbsoluteFile: async (path: string): Promise<FileContentResponse> => {
+    const response = await makeRequest(
+      `/api/filesystem/file?path=${encodeURIComponent(path)}`
+    );
+    return handleApiResponse<FileContentResponse>(response);
+  },
 };

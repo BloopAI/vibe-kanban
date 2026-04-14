@@ -26,11 +26,14 @@ export function getClaudeRelativePath(path: string): string | null {
 
 /**
  * Result of file preview routing decision.
- * Either contains an attemptId (worktree file) or a relativePath (Claude home file).
+ * - attemptId: worktree file (relative path within a task attempt's worktree)
+ * - relativePath: Claude home directory file (~/.claude/...)
+ * - isAbsolutePath: absolute path outside the worktree and ~/.claude/ (e.g. project docs)
  */
 export type FilePreviewRouting =
-  | { path: string; attemptId: string; relativePath?: undefined }
-  | { path: string; relativePath: string; attemptId?: undefined };
+  | { path: string; attemptId: string; relativePath?: undefined; isAbsolutePath?: undefined }
+  | { path: string; relativePath: string; attemptId?: undefined; isAbsolutePath?: undefined }
+  | { path: string; isAbsolutePath: true; attemptId?: undefined; relativePath?: undefined };
 
 /**
  * Options for determining file preview routing.
@@ -63,7 +66,16 @@ export function getFilePreviewRouting(
   const claudeRelativePath = getClaudeRelativePath(path);
   const isViewable = claudeRelativePath !== null || isMarkdownFile(path);
 
-  // Priority 1: attemptId takes precedence for worktree files.
+  // Priority 1: Absolute paths outside ~/.claude/ go directly to the absolute-file API.
+  // This handles AI agents referencing plan/doc files outside the worktree.
+  // Must come before the attemptId check so these never hit the worktree route
+  // (Path::join with an absolute path discards the base on Unix, causing traversal errors).
+  const isAbsoluteNonClaudePath = path.startsWith('/') && claudeRelativePath === null;
+  if (isAbsoluteNonClaudePath) {
+    return { path, isAbsolutePath: true as const };
+  }
+
+  // Priority 2: attemptId takes precedence for worktree files (relative paths).
   // Exception: absolute paths to ~/.claude/ are home-dir files, not worktree files —
   // an absolute path can never be inside a worktree, so route via relativePath instead.
   const isAbsoluteClaudePath = path.startsWith('/') && claudeRelativePath !== null;
@@ -71,7 +83,7 @@ export function getFilePreviewRouting(
     return { path, attemptId };
   }
 
-  // Priority 2: Claude home directory files (no attemptId)
+  // Priority 3: Claude home directory files (absolute ~/.claude/ or no attemptId)
   if (claudeRelativePath) {
     return { path, relativePath: claudeRelativePath };
   }

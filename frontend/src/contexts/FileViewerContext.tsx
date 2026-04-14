@@ -24,6 +24,8 @@ interface FileInfo {
   relativePath?: string;
   /** Attempt ID for fetching worktree files */
   attemptId?: string;
+  /** True for absolute paths outside the worktree and ~/.claude/ (e.g. project doc files) */
+  isAbsolutePath?: boolean;
 }
 
 /**

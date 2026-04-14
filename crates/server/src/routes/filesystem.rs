@@ -81,6 +81,49 @@ pub async fn list_git_repos(
     }
 }
 
+/// Query parameters for reading a file at any absolute path
+#[derive(Debug, Deserialize)]
+pub struct ReadFileQuery {
+    path: String,
+}
+
+/// Read a file at any absolute path on the filesystem.
+///
+/// Consistent with the existing `/api/filesystem/directory` endpoint which also
+/// accepts arbitrary paths — this is a local tool reading the user's own files.
+pub async fn read_file(
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<ReadFileQuery>,
+) -> Result<ResponseJson<ApiResponse<FileContentResponse>>, ApiError> {
+    let path = std::path::Path::new(&query.path);
+    if !path.is_absolute() {
+        return Err(ApiError::BadRequest("Path must be absolute".into()));
+    }
+    match deployment.filesystem().read_file_absolute(path, None).await {
+        Ok(r) => Ok(ResponseJson(ApiResponse::success(r))),
+        Err(FilesystemError::FileDoesNotExist) => {
+            Ok(ResponseJson(ApiResponse::error("File does not exist")))
+        }
+        Err(FilesystemError::PathIsNotFile) => {
+            Ok(ResponseJson(ApiResponse::error("Path is not a file")))
+        }
+        Err(FilesystemError::FileIsBinary) => {
+            Ok(ResponseJson(ApiResponse::error("Cannot display binary file")))
+        }
+        Err(FilesystemError::FileTooLarge {
+            max_bytes,
+            actual_bytes,
+        }) => Ok(ResponseJson(ApiResponse::error(&format!(
+            "File too large ({} bytes, max {} bytes)",
+            actual_bytes, max_bytes
+        )))),
+        Err(e) => {
+            tracing::error!("Failed to read file: {}", e);
+            Ok(ResponseJson(ApiResponse::error(&e.to_string())))
+        }
+    }
+}
+
 /// Query parameters for reading a file from ~/.claude/ directory
 #[derive(Debug, Deserialize)]
 pub struct ReadClaudeFileQuery {
@@ -120,4 +163,5 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/filesystem/directory", get(list_directory))
         .route("/filesystem/git-repos", get(list_git_repos))
         .route("/filesystem/claude-file", get(read_claude_file))
+        .route("/filesystem/file", get(read_file))
 }
