@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   forwardRef,
@@ -8,8 +9,9 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
-import { projectsApi, templatesApi } from '@/lib/api';
-import { Tag as TagIcon, FileText } from 'lucide-react';
+import { projectsApi, templatesApi, configApi } from '@/lib/api';
+import type { SlashCommandItem } from '@/lib/api/config';
+import { Tag as TagIcon, FileText, TerminalSquare } from 'lucide-react';
 import { getCaretClientRect } from '@/lib/caretPosition';
 
 import type { SearchResult, Template } from 'shared/types';
@@ -81,6 +83,14 @@ export const FileSearchTextarea = forwardRef<
   const [atSymbolPosition, setAtSymbolPosition] = useState(-1);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Slash command state
+  const [slashPosition, setSlashPosition] = useState(-1);
+  const [slashQuery, setSlashQuery] = useState('');
+  const [allSlashCommands, setAllSlashCommands] = useState<SlashCommandItem[]>([]);
+  const [slashCommandsLoaded, setSlashCommandsLoaded] = useState(false);
+  const [slashLoading, setSlashLoading] = useState(false);
+  const [slashSelectedIndex, setSlashSelectedIndex] = useState(-1);
+
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef =
     (ref as React.RefObject<HTMLTextAreaElement>) || internalRef;
@@ -150,6 +160,44 @@ export const FileSearchTextarea = forwardRef<
     return () => clearTimeout(debounceTimer);
   }, [searchQuery, projectId, atSymbolPosition]);
 
+  // Fetch slash commands once when slash mode first activates
+  useEffect(() => {
+    if (slashPosition === -1 || slashCommandsLoaded || slashLoading) return;
+    setSlashLoading(true);
+    configApi
+      .getSlashCommands(projectId)
+      .then((result) => {
+        const items: SlashCommandItem[] = [
+          ...result.commands,
+          ...result.agents.map((a) => ({
+            name: a.id,
+            description: a.label !== a.id ? a.label : a.description ?? null,
+          })),
+        ];
+        setAllSlashCommands(items);
+        setSlashCommandsLoaded(true);
+      })
+      .catch((err) => {
+        console.error('Failed to fetch slash commands:', err);
+      })
+      .finally(() => {
+        setSlashLoading(false);
+      });
+  }, [slashPosition, slashCommandsLoaded, slashLoading, projectId]);
+
+  const slashResults = useMemo(() => {
+    if (slashPosition === -1) return [];
+    if (!slashQuery) return allSlashCommands.slice(0, 20);
+    const q = slashQuery.toLowerCase();
+    return allSlashCommands
+      .filter(
+        (cmd) =>
+          cmd.name.toLowerCase().startsWith(q) ||
+          cmd.name.toLowerCase().includes(q)
+      )
+      .slice(0, 20);
+  }, [slashPosition, slashQuery, allSlashCommands]);
+
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     if (!onPasteFiles) return;
 
@@ -180,19 +228,48 @@ export const FileSearchTextarea = forwardRef<
     }
   };
 
-  // Handle text changes and detect @ symbol
+  // Handle text changes and detect @ and / symbols
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     const newCursorPosition = e.target.selectionStart || 0;
 
     onChange(newValue);
 
-    // Check if @ was just typed
     const textBeforeCursor = newValue.slice(0, newCursorPosition);
-    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
 
+    // Check for / trigger: only at position 0 or immediately after whitespace
+    const lastSlashIndex = textBeforeCursor.lastIndexOf('/');
+    if (lastSlashIndex !== -1) {
+      const charBefore =
+        lastSlashIndex > 0 ? textBeforeCursor[lastSlashIndex - 1] : '';
+      const isValidTrigger =
+        lastSlashIndex === 0 || charBefore === ' ' || charBefore === '\n';
+      const textAfterSlash = textBeforeCursor.slice(lastSlashIndex + 1);
+      const hasSpace =
+        textAfterSlash.includes(' ') || textAfterSlash.includes('\n');
+
+      if (isValidTrigger && !hasSpace) {
+        setSlashPosition(lastSlashIndex);
+        setSlashQuery(textAfterSlash);
+        setSlashSelectedIndex(-1);
+        // Clear @ mode
+        setShowDropdown(false);
+        setAtSymbolPosition(-1);
+        setSearchQuery('');
+        return;
+      }
+    }
+
+    // Clear slash mode if no longer valid
+    if (slashPosition !== -1) {
+      setSlashPosition(-1);
+      setSlashQuery('');
+      setSlashSelectedIndex(-1);
+    }
+
+    // Check if @ was just typed
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
     if (lastAtIndex !== -1) {
-      // Check if there's no space after the @ (still typing the search query)
       const textAfterAt = textBeforeCursor.slice(lastAtIndex + 1);
       const hasSpace = textAfterAt.includes(' ') || textAfterAt.includes('\n');
 
@@ -236,6 +313,25 @@ export const FileSearchTextarea = forwardRef<
     setAtSymbolPosition(-1);
 
     // Focus back to textarea
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 0);
+  };
+
+  const selectSlashCommand = (cmd: SlashCommandItem) => {
+    if (slashPosition === -1) return;
+    const beforeSlash = value.slice(0, slashPosition);
+    const afterQuery = value.slice(slashPosition + 1 + slashQuery.length);
+    const insertText = `/${cmd.name} `;
+    const newValue = beforeSlash + insertText + afterQuery;
+    const newCursorPos = slashPosition + insertText.length;
+    onChange(newValue);
+    setSlashPosition(-1);
+    setSlashQuery('');
+    setSlashSelectedIndex(-1);
     setTimeout(() => {
       if (textareaRef.current) {
         textareaRef.current.focus();
@@ -346,8 +442,9 @@ export const FileSearchTextarea = forwardRef<
   );
 
   // Keep dropdown positioned near the caret and within viewport bounds
+  const showSlashDropdown = slashPosition !== -1 && slashResults.length > 0;
   useLayoutEffect(() => {
-    if (!showDropdown) return;
+    if (!showDropdown && !showSlashDropdown) return;
 
     const updatePosition = () => {
       const newPosition = getDropdownPosition();
@@ -379,10 +476,46 @@ export const FileSearchTextarea = forwardRef<
       window.removeEventListener('resize', scheduleUpdate);
       window.removeEventListener('scroll', scheduleUpdate, true);
     };
-  }, [showDropdown, searchResults.length, getDropdownPosition]);
+  }, [showDropdown, showSlashDropdown, searchResults.length, slashResults.length, getDropdownPosition]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Handle dropdown navigation first
+    // Handle slash command dropdown navigation
+    if (showSlashDropdown) {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSlashSelectedIndex((prev) =>
+            prev < slashResults.length - 1 ? prev + 1 : 0
+          );
+          return;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSlashSelectedIndex((prev) =>
+            prev > 0 ? prev - 1 : slashResults.length - 1
+          );
+          return;
+        case 'Enter':
+        case 'Tab': {
+          const idx = slashSelectedIndex >= 0 ? slashSelectedIndex : 0;
+          if (slashResults[idx]) {
+            e.preventDefault();
+            e.stopPropagation();
+            selectSlashCommand(slashResults[idx]);
+            return;
+          }
+          break;
+        }
+        case 'Escape':
+          e.preventDefault();
+          e.stopPropagation();
+          setSlashPosition(-1);
+          setSlashQuery('');
+          setSlashSelectedIndex(-1);
+          return;
+      }
+    }
+
+    // Handle @ dropdown navigation
     if (showDropdown && searchResults.length > 0) {
       switch (e.key) {
         case 'ArrowDown':
@@ -413,7 +546,7 @@ export const FileSearchTextarea = forwardRef<
           setAtSymbolPosition(-1);
           return;
       }
-    } else {
+    } else if (!showSlashDropdown) {
       switch (e.key) {
         case 'Escape':
           textareaRef.current?.blur();
@@ -554,6 +687,61 @@ export const FileSearchTextarea = forwardRef<
                     })}
                   </>
                 )}
+              </div>
+            )}
+          </div>,
+          document.body
+        )}
+
+      {/* Slash command dropdown */}
+      {showSlashDropdown &&
+        createPortal(
+          <div
+            className="fixed bg-background border border-border rounded-md shadow-lg overflow-y-auto"
+            style={{
+              top: dropdownPosition.top,
+              left: dropdownPosition.left,
+              maxHeight: dropdownPosition.maxHeight,
+              minWidth: `min(${DROPDOWN_MIN_WIDTH}px, calc(100vw - ${DROPDOWN_VIEWPORT_PADDING_TOTAL}px))`,
+              maxWidth: `calc(100vw - ${DROPDOWN_VIEWPORT_PADDING_TOTAL}px)`,
+              zIndex: 10000,
+            }}
+          >
+            {slashLoading && !slashCommandsLoaded ? (
+              <div className="p-2 text-sm text-muted-foreground">
+                Discovering commands...
+              </div>
+            ) : (
+              <div className="py-1">
+                <div className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase">
+                  Slash Commands
+                </div>
+                {slashResults.map((cmd, index) => (
+                  <div
+                    key={cmd.name}
+                    className={`px-3 py-2 cursor-pointer text-sm ${
+                      index === slashSelectedIndex
+                        ? 'bg-muted text-foreground'
+                        : 'hover:bg-muted'
+                    }`}
+                    onMouseDown={(e) => {
+                      e.preventDefault(); // keep textarea focused
+                      selectSlashCommand(cmd);
+                    }}
+                    aria-selected={index === slashSelectedIndex}
+                    role="option"
+                  >
+                    <div className="flex items-center gap-2 font-medium">
+                      <TerminalSquare className="h-3.5 w-3.5 text-violet-500 flex-shrink-0" />
+                      <span>/{cmd.name}</span>
+                    </div>
+                    {cmd.description && (
+                      <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                        {cmd.description}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>,

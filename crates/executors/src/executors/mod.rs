@@ -377,13 +377,19 @@ impl From<AsyncGroupChild> for SpawnedChild {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
+pub struct SlashCommandDescription {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, Default)]
 #[serde(transparent)]
 #[schemars(
     title = "Append Prompt",
     description = "Extra text appended to the prompt",
     extend("format" = "textarea")
 )]
-#[derive(Default)]
 pub struct AppendPrompt(pub Option<String>);
 
 impl AppendPrompt {

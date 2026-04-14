@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use axum::{
     Json, Router,
@@ -8,10 +8,13 @@ use axum::{
     response::{Json as ResponseJson, Response},
     routing::{get, put},
 };
+use db::models::project::Project;
 use deployment::{Deployment, DeploymentError};
 use executors::{
     executors::{
-        AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, StandardCodingAgentExecutor,
+        AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, CodingAgent,
+        SlashCommandDescription, StandardCodingAgentExecutor,
+        claude::slash_commands::AgentInfo,
     },
     mcp_config::{McpConfig, read_agent_config, write_agent_config},
     profile::{ExecutorConfigs, ExecutorProfileId},
@@ -25,6 +28,7 @@ use services::services::config::{
 };
 use tokio::fs;
 use ts_rs::TS;
+use uuid::Uuid;
 use utils::{api::oauth::LoginStatus, assets::config_path, response::ApiResponse};
 
 use crate::{DeploymentImpl, error::ApiError};
@@ -43,6 +47,7 @@ pub fn router() -> Router<DeploymentImpl> {
             get(check_editor_availability),
         )
         .route("/agents/check-availability", get(check_agent_availability))
+        .route("/slash-commands", get(get_slash_commands))
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -457,4 +462,61 @@ async fn check_agent_availability(
     };
 
     ResponseJson(ApiResponse::success(info))
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SlashCommandsQuery {
+    project_id: Option<Uuid>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SlashCommandsResponse {
+    commands: Vec<SlashCommandDescription>,
+    agents: Vec<AgentInfo>,
+}
+
+#[axum::debug_handler]
+async fn get_slash_commands(
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<SlashCommandsQuery>,
+) -> Result<ResponseJson<ApiResponse<SlashCommandsResponse>>, ApiError> {
+    // Resolve the working directory: project root if given, else home dir / temp fallback
+    let current_dir: PathBuf = if let Some(project_id) = query.project_id {
+        let project = Project::find_by_id(&deployment.db().pool, project_id)
+            .await?
+            .ok_or_else(|| ApiError::BadRequest("Project not found".into()))?;
+        PathBuf::from(&project.git_repo_path)
+    } else {
+        std::env::var("HOME")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| std::env::temp_dir())
+    };
+
+    // Get ClaudeCode executor config from profiles
+    let profiles = ExecutorConfigs::get_cached();
+    let agent = profiles.get_coding_agent(&ExecutorProfileId::new(BaseCodingAgent::ClaudeCode));
+
+    let claude_code = match agent {
+        Some(CodingAgent::ClaudeCode(cc)) => cc,
+        _ => {
+            return Ok(ResponseJson(ApiResponse::error(
+                "ClaudeCode executor not configured",
+            )));
+        }
+    };
+
+    match claude_code
+        .discover_agents_and_slash_commands_initial(&current_dir)
+        .await
+    {
+        Ok((agents, commands, _plugins)) => {
+            Ok(ResponseJson(ApiResponse::success(SlashCommandsResponse {
+                commands,
+                agents,
+            })))
+        }
+        Err(e) => Ok(ResponseJson(ApiResponse::error(&format!(
+            "Failed to discover slash commands: {e}"
+        )))),
+    }
 }

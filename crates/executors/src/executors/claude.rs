@@ -1,6 +1,7 @@
 // SDK submodules
 pub mod client;
 pub mod protocol;
+pub mod slash_commands;
 pub mod types;
 
 use std::{collections::HashMap, path::Path, process::Stdio, sync::Arc};
@@ -162,6 +163,67 @@ impl ClaudeCode {
             None
         }
     }
+
+    /// Returns hooks merged with global ~/.claude/settings.json hooks.
+    /// Global hooks fire first; executor-specific hooks (hookCallbackIds) are appended last
+    /// so they take highest priority.
+    pub async fn get_hooks_merged(&self) -> Option<serde_json::Value> {
+        let executor_hooks = self.get_hooks();
+        let global_hooks = Self::read_global_claude_hooks().await;
+        match (executor_hooks, global_hooks) {
+            (None, None) => None,
+            (Some(h), None) | (None, Some(h)) => Some(h),
+            (Some(executor), Some(global)) => Some(Self::merge_hook_arrays(global, executor)),
+        }
+    }
+
+    async fn read_global_claude_hooks() -> Option<serde_json::Value> {
+        let path = dirs::home_dir()?.join(".claude").join("settings.json");
+        let content = tokio::fs::read_to_string(path).await.ok()?;
+        serde_json::from_str::<serde_json::Value>(&content)
+            .ok()?
+            .get("hooks")
+            .cloned()
+    }
+
+    /// Merge hook event arrays from two hooks objects.
+    /// For each event key (PreToolUse, PostToolUse, etc.) the arrays are concatenated:
+    /// base entries first, then override entries (override has higher priority).
+    fn merge_hook_arrays(
+        base: serde_json::Value,
+        override_val: serde_json::Value,
+    ) -> serde_json::Value {
+        use std::collections::HashSet;
+        let mut result = serde_json::Map::new();
+
+        let base_obj = base.as_object().cloned().unwrap_or_default();
+        let override_obj = override_val.as_object().cloned().unwrap_or_default();
+
+        let all_keys: HashSet<String> = base_obj
+            .keys()
+            .chain(override_obj.keys())
+            .cloned()
+            .collect();
+
+        for key in all_keys {
+            let base_arr = base_obj
+                .get(&key)
+                .and_then(|v| v.as_array())
+                .cloned()
+                .unwrap_or_default();
+            let override_arr = override_obj
+                .get(&key)
+                .and_then(|v| v.as_array())
+                .cloned()
+                .unwrap_or_default();
+
+            let mut merged = base_arr;
+            merged.extend(override_arr);
+            result.insert(key, serde_json::Value::Array(merged));
+        }
+
+        serde_json::Value::Object(result)
+    }
 }
 
 #[async_trait]
@@ -321,7 +383,7 @@ impl ClaudeCode {
 
         let new_stdout = create_stdout_pipe_writer(&mut child)?;
         let permission_mode = self.permission_mode();
-        let hooks = self.get_hooks();
+        let hooks = self.get_hooks_merged().await;
 
         // Create exit signal channel for signaling when the session completes
         // This allows the exit monitor to kill the process group when the protocol
@@ -1849,6 +1911,13 @@ impl StreamingContentState {
     }
 }
 
+/// A Claude Code plugin discovered from the init System message.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ClaudePlugin {
+    pub name: String,
+    pub path: std::path::PathBuf,
+}
+
 // Data structures for parsing Claude's JSON output format
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(tag = "type")]
@@ -1882,6 +1951,13 @@ pub enum ClaudeJson {
         // local_command_output subtype field
         #[serde(default)]
         content: Option<String>,
+        // init subtype fields — slash command / plugin / agent discovery
+        #[serde(default, rename = "slashCommands")]
+        slash_commands: Vec<String>,
+        #[serde(default)]
+        plugins: Vec<ClaudePlugin>,
+        #[serde(default)]
+        agents: Vec<String>,
     },
     #[serde(rename = "assistant")]
     Assistant {

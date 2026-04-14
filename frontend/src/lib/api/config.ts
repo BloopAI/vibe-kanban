@@ -12,6 +12,23 @@ import type {
 } from 'shared/types';
 import { makeRequest, handleApiResponse } from './utils';
 
+export interface SlashCommandItem {
+  name: string;
+  description?: string | null;
+}
+
+export interface AgentCommandItem {
+  id: string;
+  label: string;
+  description?: string | null;
+  is_default: boolean;
+}
+
+export interface SlashCommandsResponse {
+  commands: SlashCommandItem[];
+  agents: AgentCommandItem[];
+}
+
 /**
  * Configuration API namespace for system info and settings.
  */
@@ -57,5 +74,18 @@ export const configApi = {
       `/api/agents/check-availability?executor=${encodeURIComponent(agent)}`
     );
     return handleApiResponse<AvailabilityInfo>(response);
+  },
+
+  /**
+   * Discover available Claude Code slash commands and agents for a project.
+   */
+  getSlashCommands: async (
+    projectId?: string
+  ): Promise<SlashCommandsResponse> => {
+    const url = projectId
+      ? `/api/slash-commands?project_id=${encodeURIComponent(projectId)}`
+      : '/api/slash-commands';
+    const response = await makeRequest(url);
+    return handleApiResponse<SlashCommandsResponse>(response);
   },
 };
