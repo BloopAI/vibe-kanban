@@ -537,6 +537,7 @@ impl ClaudeLogProcessor {
             ClaudeJson::ToolUseSummary { session_id, .. } => session_id.clone(),
             ClaudeJson::AuthStatus { session_id, .. } => session_id.clone(),
             ClaudeJson::PromptSuggestion { session_id, .. } => session_id.clone(),
+            ClaudeJson::ControlRequest { .. } => None,
             ClaudeJson::Unknown { .. } => None,
         }
     }
@@ -1565,6 +1566,16 @@ impl ClaudeLogProcessor {
                 let idx = entry_index_provider.next();
                 patches.push(ConversationPatch::add_normalized_entry(idx, entry));
             }
+            ClaudeJson::ControlRequest { request_id, .. } => {
+                // Well-formed control_request messages are handled by protocol.rs before they
+                // reach the normalizer. If one arrives here it means the protocol layer failed
+                // to parse it (e.g. unknown subtype) — warn so that novel subtypes are
+                // diagnosable rather than silently dropped.
+                tracing::warn!(
+                    request_id = ?request_id,
+                    "control_request reached log normalizer — unknown subtype or protocol deserialization failure"
+                );
+            }
             ClaudeJson::Unknown { data } => {
                 let entry = NormalizedEntry {
                     timestamp: None,
@@ -1992,6 +2003,14 @@ pub enum ClaudeJson {
     PromptSuggestion {
         suggestion: String,
         session_id: Option<String>,
+    },
+    /// Control protocol messages (can_use_tool, hook_callback, ask_user_question).
+    /// Handled at the protocol layer; the normalizer should skip them silently.
+    #[serde(rename = "control_request")]
+    ControlRequest {
+        request_id: Option<String>,
+        #[serde(flatten)]
+        _rest: HashMap<String, serde_json::Value>,
     },
     // Catch-all for unknown message types
     #[serde(untagged)]
