@@ -1324,7 +1324,7 @@ impl ClaudeLogProcessor {
                         let input = u.input_tokens.unwrap_or(0);
                         let output = u.output_tokens.unwrap_or(0);
                         let entry = NormalizedEntry {
-                            timestamp: None,
+                            timestamp: Some(chrono::Utc::now().to_rfc3339()),
                             entry_type: NormalizedEntryType::TokenUsage {
                                 // cache_creation billed at higher rate; fold into input_tokens
                                 input_tokens: (input + cache_creation) as i64,
@@ -1398,7 +1398,7 @@ impl ClaudeLogProcessor {
                     let input = u.input_tokens.unwrap_or(0);
                     let output = u.output_tokens.unwrap_or(0);
                     let usage_entry = NormalizedEntry {
-                        timestamp: None,
+                        timestamp: Some(chrono::Utc::now().to_rfc3339()),
                         entry_type: NormalizedEntryType::TokenUsage {
                             input_tokens: (input + cache_creation) as i64,
                             cached_input_tokens: cache_read as i64,

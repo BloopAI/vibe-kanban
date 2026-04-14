@@ -833,7 +833,7 @@ impl CodexNormalizer {
                     return vec![];
                 };
                 let entry = NormalizedEntry {
-                    timestamp: None,
+                    timestamp: Some(chrono::Utc::now().to_rfc3339()),
                     entry_type: NormalizedEntryType::TokenUsage {
                         input_tokens: info.total_token_usage.input_tokens,
                         cached_input_tokens: info.total_token_usage.cached_input_tokens,

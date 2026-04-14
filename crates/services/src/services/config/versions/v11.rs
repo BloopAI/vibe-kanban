@@ -17,6 +17,10 @@ fn default_timezone() -> String {
     "LOCAL".to_string()
 }
 
+fn default_token_timestamp_format() -> String {
+    "HH:mm:ss.SSS dd/MM/yyyy".to_string()
+}
+
 /// Timestamp display configuration
 #[derive(Clone, Debug, Serialize, Deserialize, TS, PartialEq)]
 #[ts(export)]
@@ -25,12 +29,23 @@ pub struct TimestampConfig {
     /// "LOCAL" means use browser's local timezone
     #[serde(default = "default_timezone")]
     pub timezone: String,
+
+    /// Show timestamps on token usage lines
+    #[serde(default)]
+    pub token_timestamp_enabled: bool,
+
+    /// Format string for token usage timestamps (uses date-fns tokens:
+    /// HH=hour, mm=minute, ss=second, SSS=ms, dd=day, MM=month, yyyy=year)
+    #[serde(default = "default_token_timestamp_format")]
+    pub token_timestamp_format: String,
 }
 
 impl Default for TimestampConfig {
     fn default() -> Self {
         Self {
             timezone: default_timezone(),
+            token_timestamp_enabled: false,
+            token_timestamp_format: default_token_timestamp_format(),
         }
     }
 }

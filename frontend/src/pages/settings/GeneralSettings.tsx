@@ -26,6 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { ChevronDown, Loader2, Volume2 } from 'lucide-react';
 import {
   BaseCodingAgent,
@@ -1025,6 +1026,49 @@ export function GeneralSettings() {
               {t('settings.general.timestamps.timezone.helper')}
             </p>
           </div>
+
+          <div className="flex items-start gap-3">
+            <Switch
+              id="token-timestamp-enabled"
+              checked={draft?.timestamps?.token_timestamp_enabled ?? false}
+              onCheckedChange={(checked) =>
+                updateDraft({
+                  timestamps: {
+                    ...draft.timestamps,
+                    token_timestamp_enabled: checked,
+                  },
+                })
+              }
+            />
+            <div className="space-y-1">
+              <Label htmlFor="token-timestamp-enabled">
+                {t('settings.general.timestamps.tokenTimestamp.label')}
+              </Label>
+            </div>
+          </div>
+
+          {(draft?.timestamps?.token_timestamp_enabled ?? false) && (
+            <div className="space-y-2">
+              <Label htmlFor="token-timestamp-format">
+                {t('settings.general.timestamps.tokenTimestamp.format.label')}
+              </Label>
+              <Input
+                id="token-timestamp-format"
+                value={draft?.timestamps?.token_timestamp_format ?? 'HH:mm:ss.SSS dd/MM/yyyy'}
+                onChange={(e) =>
+                  updateDraft({
+                    timestamps: {
+                      ...draft.timestamps,
+                      token_timestamp_format: e.target.value,
+                    },
+                  })
+                }
+              />
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.timestamps.tokenTimestamp.format.helper')}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

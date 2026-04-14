@@ -500,7 +500,7 @@ impl Opencode {
                 "step_finish" => {
                     if let Some(tokens) = &event.part.tokens {
                         let entry = NormalizedEntry {
-                            timestamp: None,
+                            timestamp: Some(chrono::Utc::now().to_rfc3339()),
                             entry_type: NormalizedEntryType::TokenUsage {
                                 input_tokens: tokens.input as i64,
                                 cached_input_tokens: 0,

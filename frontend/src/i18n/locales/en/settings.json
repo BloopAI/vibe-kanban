@@ -420,6 +420,13 @@
           "placeholder": "Select timezone",
           "helper": "Choose which timezone to use when displaying execution start and end times.",
           "local": "Local (Browser)"
+        },
+        "tokenTimestamp": {
+          "label": "Show timestamp on token usage lines",
+          "format": {
+            "label": "Timestamp format",
+            "helper": "Tokens: HH=hour, mm=minute, ss=second, SSS=milliseconds, dd=day, MM=month, yyyy=year"
+          }
         }
       },
       "performance": {

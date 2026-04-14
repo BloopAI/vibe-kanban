@@ -685,7 +685,16 @@ export type TimestampConfig = {
  * IANA timezone name (e.g., "America/New_York", "Europe/London")
  * "LOCAL" means use browser's local timezone
  */
-timezone: string, };
+timezone: string, 
+/**
+ * Show timestamps on token usage lines
+ */
+token_timestamp_enabled: boolean, 
+/**
+ * Format string for token usage timestamps (uses date-fns tokens:
+ * HH=hour, mm=minute, ss=second, SSS=ms, dd=day, MM=month, yyyy=year)
+ */
+token_timestamp_format: string, };
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
 
