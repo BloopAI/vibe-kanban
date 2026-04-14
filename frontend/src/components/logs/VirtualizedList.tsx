@@ -114,8 +114,10 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
   const scrollToBottom = useCallback(() => {
     listRef.current?.scrollToIndex(items.length - 1, {
       align: 'end',
-      smooth: true,
+      smooth: false,
     });
+    // Force-mark as at-bottom after snap so the indicator clears
+    requestAnimationFrame(() => setAtBottom(true));
   }, [items.length]);
 
   const scrollToTop = useCallback(() => {
@@ -132,8 +134,11 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
 
     if (!didInitScroll.current) {
       didInitScroll.current = true;
+      // Double rAF: first frame lets virtua render, second lets it measure item heights
       requestAnimationFrame(() => {
-        listRef.current?.scrollToIndex(items.length - 1, { align: 'end' });
+        requestAnimationFrame(() => {
+          listRef.current?.scrollToIndex(items.length - 1, { align: 'end' });
+        });
       });
       return;
     }
@@ -162,7 +167,7 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
             const h = listRef.current;
             if (!h) return;
             setAtTop(offset <= 0);
-            setAtBottom(offset + h.viewportSize >= h.scrollSize - 2);
+            setAtBottom(offset + h.viewportSize >= h.scrollSize - 20);
           }}
         >
           {(item) => (

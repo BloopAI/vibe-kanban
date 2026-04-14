@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useState, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -361,8 +362,8 @@ export function TemplatePicker({
   );
 
   if (isMobile) {
-    // Bottom sheet on mobile
-    return (
+    // Bottom sheet on mobile — portal to body so fixed positioning is viewport-relative
+    return createPortal(
       <AnimatePresence>
         {open && (
           <>
@@ -396,12 +397,15 @@ export function TemplatePicker({
             </motion.div>
           </>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
     );
   }
 
-  // Modal on desktop
-  return (
+  // Modal on desktop — portal to body breaks out of any transformed ancestor
+  // (Framer Motion motion.div sets will-change:transform which makes fixed children
+  // position relative to the animated ancestor box instead of the viewport)
+  return createPortal(
     <AnimatePresence>
       {open && (
         <>
@@ -414,14 +418,15 @@ export function TemplatePicker({
             onClick={handleClose}
           />
 
-          {/* Modal */}
+          {/* Modal — x/y via FM style so translate is composed with scale, not overridden */}
           <motion.div
             className={cn(
               'fixed z-[10001] bg-background rounded-lg shadow-xl',
-              'left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-              'w-[min(90vw,400px)] max-h-[min(80vh,500px)]',
+              'left-1/2 top-1/2',
+              'w-[min(90vw,480px)] max-h-[min(80vh,600px)]',
               'flex flex-col overflow-hidden'
             )}
+            style={{ x: '-50%', y: '-50%' }}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -431,7 +436,8 @@ export function TemplatePicker({
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

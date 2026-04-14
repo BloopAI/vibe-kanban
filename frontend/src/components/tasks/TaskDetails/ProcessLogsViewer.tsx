@@ -150,7 +150,7 @@ export function ProcessLogsViewerContent({
               onScroll={(offset) => {
                 const h = listRef.current;
                 if (!h) return;
-                const bottom = offset + h.viewportSize >= h.scrollSize - 5;
+                const bottom = offset + h.viewportSize >= h.scrollSize - 20;
                 followRef.current = bottom;
                 setAtBottom(bottom);
               }}
