@@ -16,7 +16,10 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useBranchStatus, useAttemptExecution, useIsOrgAdmin } from '@/hooks';
 import { projectsApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
-import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
+import {
+  ExecutionProcessesProvider,
+  useExecutionProcessesContext,
+} from '@/contexts/ExecutionProcessesContext';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
 import {
@@ -96,9 +99,84 @@ function GitErrorBanner() {
 
   if (!gitError) return null;
 
+  const lower = gitError.toLowerCase();
+  const isDiverged =
+    lower.includes('diverged') || lower.includes('cannot merge');
+
   return (
     <div className="mx-4 mt-4 p-3 border border-destructive rounded">
-      <div className="text-destructive text-sm">{gitError}</div>
+      <div className="text-destructive text-sm">
+        {isDiverged ? (
+          <>
+            The base branch has moved forward since this task was created.
+            Rebase the task branch onto the base branch before merging.
+            <div className="mt-1 opacity-70 text-xs break-words">{gitError}</div>
+          </>
+        ) : (
+          gitError
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProcessStatusBanner() {
+  const { executionProcessesVisible, isAttemptRunningVisible, isLoading } =
+    useExecutionProcessesContext();
+
+  const lastAgentProcess = useMemo(() => {
+    const agentProcesses = executionProcessesVisible.filter(
+      (p) => p.run_reason === 'codingagent'
+    );
+    if (!agentProcesses.length) return null;
+    return agentProcesses.sort((a, b) => {
+      const diff =
+        new Date(b.started_at).getTime() - new Date(a.started_at).getTime();
+      if (diff !== 0) return diff;
+      return b.id.localeCompare(a.id);
+    })[0];
+  }, [executionProcessesVisible]);
+
+  const shouldShow = useMemo(() => {
+    if (isLoading) return false;
+    if (isAttemptRunningVisible) return false;
+    if (!lastAgentProcess) return false;
+    const { status, completion_reason } = lastAgentProcess;
+    if (status === 'failed') return true;
+    if (
+      status === 'completed' &&
+      (completion_reason === 'eof' ||
+        completion_reason === 'error' ||
+        completion_reason === 'result_error')
+    )
+      return true;
+    return false;
+  }, [isLoading, isAttemptRunningVisible, lastAgentProcess]);
+
+  if (!shouldShow || !lastAgentProcess) return null;
+
+  const reason =
+    lastAgentProcess.completion_reason ?? lastAgentProcess.status;
+  const message =
+    reason === 'eof'
+      ? 'Agent disconnected unexpectedly.'
+      : reason === 'result_error'
+        ? 'Agent completed but reported an error — review the conversation for details.'
+        : 'Agent process stopped with an error.';
+
+  return (
+    <div
+      role="alert"
+      className="mx-4 mt-4 p-3 border border-amber-500 rounded bg-amber-50 dark:bg-amber-950/30"
+    >
+      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm">
+        <AlertTriangle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+        <span>
+          {message}{' '}
+          {reason !== 'result_error' &&
+            'The agent is not running — check the Processes tab or start a new run.'}
+        </span>
+      </div>
     </div>
   );
 }
@@ -859,6 +937,7 @@ export function ProjectTasks() {
           {({ logs, followUp, relationships, variables }) => (
             <>
               <GitErrorBanner />
+              <ProcessStatusBanner />
               <MobileConversationLayout
                 task={selectedTask}
                 logs={logs}
