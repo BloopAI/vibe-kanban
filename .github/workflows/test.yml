@@ -3,18 +3,20 @@ name: Test
 on:
   pull_request:
     branches:
+      - staging
       - main
     paths-ignore:
       - .github/workflows/**
       - '!.github/workflows/test.yml'
   push:
     branches:
+      - staging
       - main
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/staging' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -24,6 +26,36 @@ env:
   RUNNER_LABEL: &runner_label ubuntu-24.04
 
 jobs:
+  branch-policy:
+    if: github.event_name == 'pull_request'
+    runs-on: *runner_label
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Enforce PR branch policy
+        run: node scripts/check-branch-policy.mjs "${{ github.base_ref }}" "${{ github.head_ref }}"
+
+  branch-freshness:
+    if: github.event_name == 'pull_request'
+    runs-on: *runner_label
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Fetch base branch
+        run: git fetch origin "${{ github.base_ref }}"
+
+      - name: Enforce branch freshness
+        run: node scripts/check-branch-freshness.mjs "${{ github.base_ref }}"
+
   changes:
     runs-on: *runner_label
     if: github.event_name == 'pull_request'
@@ -203,8 +235,8 @@ jobs:
         run: pnpm run ops:check
 
   frontend-checks:
-    needs: changes
-    if: always() && (needs.changes.outputs.frontend == 'true' || needs.changes.result == 'skipped')
+    needs: [branch-policy, branch-freshness, changes]
+    if: always() && needs.branch-policy.result == 'success' && needs.branch-freshness.result == 'success' && (needs.changes.outputs.frontend == 'true' || needs.changes.result == 'skipped')
     runs-on: *runner_label
     steps:
       - uses: actions/checkout@v6
@@ -238,8 +270,8 @@ jobs:
             "./scripts/check-legacy-frontend-paths.sh"
 
   backend-schema-checks:
-    needs: changes
-    if: always() && (needs.changes.outputs.backend == 'true' || needs.changes.result == 'skipped')
+    needs: [branch-policy, branch-freshness, changes]
+    if: always() && needs.branch-policy.result == 'success' && needs.branch-freshness.result == 'success' && (needs.changes.outputs.backend == 'true' || needs.changes.result == 'skipped')
     runs-on: *runner_label
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -262,9 +294,11 @@ jobs:
         run: npm run prepare-db:check
 
   backend-remote-checks:
-    needs: changes
+    needs: [branch-policy, branch-freshness, changes]
     if: >-
       always()
+      && needs.branch-policy.result == 'success'
+      && needs.branch-freshness.result == 'success'
       && (needs.changes.outputs['backend-remote'] == 'true' || needs.changes.result == 'skipped')
       && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: *runner_label
@@ -310,8 +344,8 @@ jobs:
         run: npm run remote:prepare-db:check
 
   backend-clippy:
-    needs: changes
-    if: always() && (needs.changes.outputs.backend == 'true' || needs.changes.result == 'skipped')
+    needs: [branch-policy, branch-freshness, changes]
+    if: always() && needs.branch-policy.result == 'success' && needs.branch-freshness.result == 'success' && (needs.changes.outputs.backend == 'true' || needs.changes.result == 'skipped')
     runs-on: *runner_label
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -334,8 +368,8 @@ jobs:
           wait $pid_fmt
 
   backend-test:
-    needs: changes
-    if: always() && (needs.changes.outputs.backend == 'true' || needs.changes.result == 'skipped')
+    needs: [branch-policy, branch-freshness, changes]
+    if: always() && needs.branch-policy.result == 'success' && needs.branch-freshness.result == 'success' && (needs.changes.outputs.backend == 'true' || needs.changes.result == 'skipped')
     runs-on: *runner_label
     env:
       SCCACHE_GHA_ENABLED: "true"
@@ -360,8 +394,8 @@ jobs:
         run: cargo nextest run --workspace --exclude vibe-kanban-tauri
 
   tauri-checks:
-    needs: changes
-    if: always() && (needs.changes.outputs.tauri == 'true' || needs.changes.result == 'skipped')
+    needs: [branch-policy, branch-freshness, changes]
+    if: always() && needs.branch-policy.result == 'success' && needs.branch-freshness.result == 'success' && (needs.changes.outputs.tauri == 'true' || needs.changes.result == 'skipped')
     runs-on: *runner_label
     env:
       SCCACHE_GHA_ENABLED: "true"

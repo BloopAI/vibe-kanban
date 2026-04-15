@@ -67,6 +67,13 @@ For this fork's local-development and promotion workflow, use the repo docs alon
 - [`DELTA.md`](DELTA.md) for compact continuity history
 - [`docs/operations/release-safety.md`](docs/operations/release-safety.md) for the local-validation and upstream-PR gate
 
+Normal change flow for this fork is now:
+
+1. branch from `origin/staging`
+2. validate locally in the Vibe Kanban instance
+3. open a PR into `staging`
+4. promote `staging` into `main`
+
 ## Self-Hosting
 
 Want to host your own Vibe Kanban Cloud instance? See our [self-hosting guide](https://vibekanban.com/docs/self-hosting/deploy-docker).

@@ -2,28 +2,26 @@
 
 ## Current Objective
 
-- Keep this Vibe Kanban fork aligned with the Ops Playbook so features are validated locally before they are proposed upstream.
+- Keep this Vibe Kanban fork aligned with the Ops Playbook using a real `staging` integration branch and a `main` production promotion branch.
 
 ## Confirmed Current State
 
-- `main` is the only canonical long-lived branch currently documented in this repo.
-- CI already validates PRs to `main` with frontend, backend, schema, remote, and Tauri checks.
+- CI validates repo changes and now includes branch-policy and branch-freshness enforcement for the `staging` to `main` model.
 - Release automation already exists via `.github/workflows/pre-release.yml` and `.github/workflows/publish.yml`.
-- This adoption pass adds continuity docs and a repo-governance check, but does not change application behavior.
+- `origin` currently has `main` but does not yet have a `staging` branch.
 
 ## In Progress
 
-- Bringing the repo up to the Ops Playbook baseline without interrupting current feature delivery.
+- Finishing the repo-side implementation of the `staging` to `main` model and handing off the remaining GitHub setup step.
 
 ## Proposed / Not Adopted
 
-- A dedicated `staging` branch for integration and release promotion.
 - Automated stale-branch or stale-worktree cleanup.
 
 ## Known Gaps / Blockers / Deferred
 
-- There is not yet an enforced staging branch or promotion PR path.
-- Human local QA remains a documented process, not an automated workflow.
+- GitHub still needs the real `staging` branch created and protected.
+- Human local QA remains part of the promotion gate rather than an automated workflow.
 
 ## Relevant Files / Modules
 
@@ -40,17 +38,19 @@
 
 ## Decisions Currently In Force
 
-- Normal feature work starts from the latest `origin/main`.
-- Local-instance validation is required before upstream PR promotion.
+- Normal feature work should start from the latest `origin/staging`.
+- Local-instance validation is required before PRs into `staging`.
+- Production promotion should happen by PR from `staging` into `main`.
 - Repo-governance docs are required and checked in CI.
 
 ## Risks / Regression Traps
 
-- Without a `staging` branch, operators can confuse "passes CI" with "safe to use locally".
+- Until the real `staging` branch is created on GitHub, the documented branch model and remote branch reality are out of sync.
 - Continuity docs can become noise if they are not kept current per stream.
 
 ## Next Safe Steps
 
 - Use `STREAM.md` and `HANDOFF.md` on active branches.
 - Keep `ops:check` passing as root docs evolve.
-- Introduce branch freshness or staging promotion automation when the repo is ready for stricter gates.
+- Create and protect `staging` on GitHub.
+- Keep branch freshness and promotion policy checks passing on PRs.

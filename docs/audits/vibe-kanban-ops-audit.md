@@ -8,7 +8,7 @@
 
 ## Summary
 
-Vibe Kanban already had strong technical validation and release automation. The main gaps were operational, not build-related: no repo continuity docs, no repo-specific statement of the local-validation gate, and no lightweight automation enforcing the new operational baseline.
+Vibe Kanban already had strong technical validation and release automation. The main gaps were operational, not build-related: no repo continuity docs, no enforced staged branch model, and no lightweight automation enforcing branch policy or branch freshness.
 
 ## What Already Matched The Playbook
 
@@ -25,22 +25,18 @@ Vibe Kanban already had strong technical validation and release automation. The 
 
 ### Important
 
-- No `STATE.md`, `STREAM.md`, `HANDOFF.md`, or `DELTA.md` for durable continuity.
-- No repo-specific operating doc explaining how this fork should validate features locally before upstream PR promotion.
-- No governance automation ensuring the required root ops docs remain present.
-- No documented distinction between repo-wide truth and branch-local truth.
+- `origin` still lacks the real `staging` branch required by the adopted model.
+- GitHub branch protection still needs to be aligned with the new `staging` to `main` flow.
 
 ### Nice To Have
 
-- Enforced branch freshness on PRs.
-- A dedicated `staging` branch and promotion PR path.
 - Cleanup automation for merged or stale worktrees.
 
 ## Repo-Specific Adaptation Decisions
 
-- The Ops Playbook default model is `main` plus `staging`. This repo currently operates on `main` only.
-- Until `staging` exists, local-instance validation is treated as the integration gate before upstream PR creation.
-- Existing release workflows remain authoritative; this adoption pass documents them rather than replacing them.
+- The repo now adopts the Ops Playbook default model of `main` plus `staging`.
+- Local-instance validation happens before PRs into `staging`, and `staging` to `main` is the production promotion path.
+- Existing release workflows remain authoritative; this adoption pass layers branch policy and freshness enforcement on top.
 
 ## Adoption Sequence Implemented
 
@@ -48,9 +44,10 @@ Vibe Kanban already had strong technical validation and release automation. The 
 2. Updated `AGENTS.md` with required read order, authority order, branch and validation rules, and a standardized final summary format.
 3. Added repo identity and release-safety docs tailored to this fork.
 4. Added a lightweight governance check and wired it into CI.
+5. Added branch-policy and branch-freshness enforcement in CI.
 
 ## Remaining Recommended Work
 
-1. Add a branch freshness check for PRs into `main`.
-2. Decide whether this fork should introduce `staging` as a real integration branch.
-3. Add a repeatable local QA checklist once the operator has a stable manual validation routine.
+1. Create and protect the real `staging` branch on GitHub.
+2. Add a repeatable local QA checklist once the operator has a stable manual validation routine.
+3. Add cleanup automation for stale branches and stale worktrees.

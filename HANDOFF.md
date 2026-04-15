@@ -4,24 +4,25 @@
 
 - Added Ops Playbook continuity docs and repo-specific release-safety guidance.
 - Wired a lightweight governance check into CI.
+- Upgraded the repo docs and CI to a real `staging` to `main` branch model with branch-policy and branch-freshness checks.
 
 ## What Is True Right Now
 
-- The repo still uses `main` as its only documented long-lived branch.
-- Local validation before upstream PR is now documented as a required gate.
+- The repo-side implementation now assumes a real `staging` plus `main` model in docs and CI.
 - Existing test and release workflows remain the source of truth for application validation and releases.
+- `origin` still does not have a `staging` branch, so the human setup step is still outstanding.
 
 ## What The Next Agent Should Do
 
 - Keep `STREAM.md` current if branch scope changes.
 - Run `pnpm run ops:check` when touching root ops docs.
-- Expand automation only where the repo can actually enforce the rule.
+- Expand automation where the repo can actually enforce the rule, especially branch policy and freshness.
 
 ## What The Next Agent Must Not Do
 
-- Do not describe a `staging` branch as active unless it has actually been introduced.
+- Do not describe remote `staging` protection as active unless the branch exists on GitHub.
 - Do not move branch-local intent into `STATE.md`.
-- Do not weaken the local-validation gate in docs without replacing it with a stronger enforced path.
+- Do not weaken the local-validation gate or branch-policy checks in docs without replacing them with a stronger enforced path.
 
 ## Verification Required Before Further Changes
 
@@ -34,6 +35,8 @@
 - `pnpm run ops:check` passed.
 - `git diff --check` passed.
 - `pnpm run format` failed in this checkout because `prettier` was not available in the workspace environment.
+- Targeted branch-policy validation passed.
+- Branch-freshness validation against `origin/main` failed because this branch is behind the latest upstream `main`.
 
 ## Session Metadata
 

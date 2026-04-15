@@ -9,3 +9,13 @@
 - Not complete / known gaps: no dedicated `staging` branch, no enforced branch freshness workflow yet, and local QA remains a documented manual gate.
 - Risks / warnings: future branches must keep continuity docs current or the baseline will decay into stale paperwork.
 - Next safest step: run `pnpm run ops:check`, format, and confirm the CI workflow syntax remains valid.
+
+## 2026-04-15T22:10:00Z | vk/660f-vk-ops | staging-branch model enforcement
+
+- Intent: replace the temporary `main`-only fallback with the actual ops-playbook `staging` to `main` branch model.
+- Completed: updated repo docs toward `staging` as the integration branch, added branch-policy and branch-freshness automation, and updated CI triggers to cover `staging` and `main`.
+- Files changed: `AGENTS.md`, `REPO_IDENTITY.md`, `STATE.md`, `STREAM.md`, `HANDOFF.md`, `DELTA.md`, `README.md`, `docs/audits/vibe-kanban-ops-audit.md`, `docs/operations/release-safety.md`, `.github/workflows/test.yml`, `package.json`, `scripts/check-branch-policy.mjs`, `scripts/check-branch-freshness.mjs`.
+- Verified: `pnpm run ops:check` passed, `git diff --check` passed, targeted branch-policy validation passed, and branch-freshness validation correctly failed against `origin/main` because this branch is behind upstream.
+- Not complete / known gaps: `origin` still needs a real `staging` branch and GitHub protection settings.
+- Risks / warnings: branch-policy automation will fail for `staging`-based workflows until the branch exists remotely.
+- Next safest step: validate the new scripts locally, then create and protect `staging` on GitHub before relying on the new PR policy.

@@ -45,12 +45,16 @@
 ## Branch / PR Rules
 
 - Treat `main` as the protected production and upstream PR target branch.
-- Start normal work from the latest `origin/main` until this repo adopts a dedicated `staging` branch.
+- Treat `staging` as the protected integration branch for normal work.
+- Start normal work from the latest `origin/staging`.
 - Use one branch per stream and one PR per concern.
-- Validate a feature in this fork's local Vibe Kanban instance before promoting it to an upstream PR.
+- Open normal feature, fix, docs, and chore PRs into `staging`.
+- Only open PRs into `main` from `staging`, except for explicit `hotfix/*` branches.
+- Validate a feature in this fork's local Vibe Kanban instance before promoting it to `staging`, and treat the `staging` to `main` PR as the production promotion step.
 - Do not mix unrelated cleanup, refactors, and feature work in the same branch.
 - Keep a canonical local checkout of `main` current with `origin/main`; do not leave the operator's reference checkout stale after merges.
-- If a direct production hotfix is ever needed, branch from the latest `origin/main`, keep scope minimal, and backfill the normal local-validation path afterward.
+- Keep a canonical local checkout of `staging` current with `origin/staging` once the branch is created.
+- If a direct production hotfix is ever needed, branch from the latest `origin/main`, keep scope minimal, and backfill the fix to `staging` afterward.
 
 ## Documentation Roles
 
@@ -89,7 +93,8 @@ For remote and cloud types, regenerate with `pnpm run remote:generate-types`. Do
 
 - Before finishing any task, run `pnpm run format`.
 - Before using a branch in a local Vibe Kanban instance, run the narrowest relevant checks and document what was not exercised.
-- Before opening or updating an upstream PR, the default validation baseline is `pnpm run ops:check`, `pnpm run check`, `pnpm run lint`, and `cargo test --workspace`, plus any repo-specific generation checks affected by the change.
+- Before opening or updating a PR into `staging`, the default validation baseline is `pnpm run ops:check`, `pnpm run check`, `pnpm run lint`, and `cargo test --workspace`, plus any repo-specific generation checks affected by the change.
+- Before promoting `staging` into `main`, require a fresh `staging` branch, passing CI, and explicit human QA for meaningful user-facing changes.
 - If work touches remote deployment paths, include `pnpm run remote:generate-types:check` and `pnpm run remote:prepare-db:check`.
 - Do not claim completion without stating what was actually validated.
 
@@ -130,4 +135,3 @@ For remote and cloud types, regenerate with `pnpm run remote:generate-types`. Do
 - Do not release unvalidated changes into the local instance just because CI would probably pass.
 - Do not leave continuity state only in chat.
 - Do not edit generated shared type files manually.
-

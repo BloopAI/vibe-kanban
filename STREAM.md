@@ -8,24 +8,23 @@
 
 ## Objective
 
-- Adopt the Ops Playbook baseline into this Vibe Kanban fork with repo-specific rules for local validation before upstream PR promotion.
+- Move this Vibe Kanban fork from a lightweight ops-playbook baseline to an enforced `staging` plus `main` branch model.
 
 ## In Scope
 
-- Root continuity docs
-- Repo-specific ops audit and release-safety documentation
-- Lightweight CI enforcement for required ops docs
+- Updating root continuity docs to the real branch model
+- Repo-specific release-safety updates for `staging` promotion
+- CI enforcement for branch policy and branch freshness
 
 ## Out of Scope
 
-- Adding a dedicated `staging` branch
 - Changing application runtime behavior
-- Reworking the existing release pipelines beyond documenting their role
+- Reworking release packaging and publishing mechanics
 
 ## Stream-Specific Decisions
 
-- Adapt the playbook to a `main`-only branch model by using a documented local validation gate in place of `staging`.
-- Keep the initial automation lightweight: required-doc presence and references, not broad policy rewrites.
+- Adopt the actual playbook branch model in repo docs and CI now.
+- Treat remote `staging` branch creation and GitHub protection settings as the remaining human setup step.
 
 ## Relevant Files / Modules
 
@@ -41,6 +40,8 @@
 - `.github/workflows/test.yml`
 - `package.json`
 - `scripts/check-ops-playbook.mjs`
+- `scripts/check-branch-policy.mjs`
+- `scripts/check-branch-freshness.mjs`
 
 ## Current Status
 
@@ -49,16 +50,21 @@
   - Existing Vibe Kanban CI and release workflows audited.
   - `pnpm run ops:check` passed.
   - `git diff --check` passed.
+  - Branch-policy script passed targeted validation for `staging` and `main` PR paths.
 - Pending:
+  - Branch-model docs and CI from `main`-only to `staging` plus `main`.
   - Re-run `pnpm run format` in an environment where frontend formatting dependencies are installed.
+  - Create the real `staging` branch on GitHub and validate freshness against it.
 
 ## Risks / Regression Traps
 
 - Overstating enforcement would be misleading because branch protection and staging promotion are not implemented here yet.
+- GitHub does not yet have a real `staging` branch.
+- The new freshness check currently fails against `origin/main` because this branch is behind the latest upstream tip.
 - Root continuity docs can cause churn if future branches do not keep them targeted and concise.
 
 ## Next Safe Steps
 
-1. Validate the new docs and `ops:check`.
-2. Run formatting in a fully bootstrapped workspace.
-3. Keep future stream updates branch-specific instead of rewriting repo-wide truth.
+1. Run targeted validation plus `ops:check`.
+2. Create and protect `staging` on GitHub, then validate freshness against it.
+3. Run formatting in a fully bootstrapped workspace.
