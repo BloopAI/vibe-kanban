@@ -244,6 +244,13 @@ export function useConversationVirtualizer({
         ? isNearBottom(el.scrollTop, el.clientHeight, el.scrollHeight)
         : true;
 
+    // If the reader is back at the bottom, re-arm bottom lock so newly
+    // appended agent output keeps the viewport pinned unless they
+    // intentionally scroll away again.
+    if (nextValue) {
+      bottomLockedRef.current = true;
+    }
+
     if (nextValue !== lastAtBottomRef.current) {
       lastAtBottomRef.current = nextValue;
       setIsAtBottomState(nextValue);
