@@ -1,6 +1,37 @@
 # Repository Guidelines
 
+## Purpose
+
+- This repo uses the Ops Playbook continuity model adapted for Vibe Kanban.
+- The goal is to keep feature work isolated, tested locally in this fork before use in a local Vibe Kanban instance, and only then promoted into an upstream PR.
+- Keep this file stable. Current branch intent belongs in `STREAM.md`, not here.
+
+## Required Read Order
+
+1. `AGENTS.md`
+2. `STATE.md`
+3. `STREAM.md`
+4. `HANDOFF.md`
+5. Relevant package or crate guide for the area being changed
+6. Code and validation paths for the task
+7. `DELTA.md` only for compact continuity history
+
+### Crate-specific guides
+
+- [`crates/remote/AGENTS.md`](crates/remote/AGENTS.md) — Remote server architecture, ElectricSQL integration, mutation patterns, environment variables.
+- [`docs/AGENTS.md`](docs/AGENTS.md) — Mintlify documentation writing guidelines and component reference.
+- [`packages/local-web/AGENTS.md`](packages/local-web/AGENTS.md) — Web app design system styling guidelines.
+
+## Authority Order
+
+1. Code, workflows, and validated behavior
+2. `STATE.md`
+3. `STREAM.md`
+4. `HANDOFF.md`
+5. `DELTA.md`
+
 ## Project Structure & Module Organization
+
 - `crates/`: Rust workspace crates — `server` (API + bins), `db` (SQLx models/migrations), `executors`, `services`, `utils`, `git` (Git operations), `api-types` (shared API types for local + remote), `review` (PR review tool), `deployment`, `local-deployment`, `remote`.
 - `packages/local-web/`: Local React + TypeScript app entrypoint (Vite, Tailwind). Shell source in `packages/local-web/src`.
 - `packages/remote-web/`: Remote deployment frontend entrypoint.
@@ -8,51 +39,95 @@
 - `shared/`: Generated TypeScript types (`shared/types.ts`, `shared/remote-types.ts`) and agent tool schemas (`shared/schemas/`). Do not edit generated files directly.
 - `assets/`, `dev_assets_seed/`, `dev_assets/`: Packaged and local dev assets.
 - `npx-cli/`: Files published to the npm CLI package.
-- `scripts/`: Dev helpers (ports, DB preparation).
-- `docs/`: Documentation files.
+- `scripts/`: Dev helpers, validation helpers, and DB preparation.
+- `docs/`: Documentation files, including ops audit and release-safety guidance.
 
-### Crate-specific guides
-- [`crates/remote/AGENTS.md`](crates/remote/AGENTS.md) — Remote server architecture, ElectricSQL integration, mutation patterns, environment variables.
-- [`docs/AGENTS.md`](docs/AGENTS.md) — Mintlify documentation writing guidelines and component reference.
-- [`packages/local-web/AGENTS.md`](packages/local-web/AGENTS.md) — Web app design system styling guidelines.
+## Branch / PR Rules
+
+- Treat `main` as the protected production and upstream PR target branch.
+- Start normal work from the latest `origin/main` until this repo adopts a dedicated `staging` branch.
+- Use one branch per stream and one PR per concern.
+- Validate a feature in this fork's local Vibe Kanban instance before promoting it to an upstream PR.
+- Do not mix unrelated cleanup, refactors, and feature work in the same branch.
+- Keep a canonical local checkout of `main` current with `origin/main`; do not leave the operator's reference checkout stale after merges.
+- If a direct production hotfix is ever needed, branch from the latest `origin/main`, keep scope minimal, and backfill the normal local-validation path afterward.
+
+## Documentation Roles
+
+- `README.md`: repo overview, setup, and links to operational docs.
+- `REPO_IDENTITY.md`: stable explanation of this fork's role and release path.
+- `AGENTS.md`: stable operating rules.
+- `STATE.md`: repo-wide truth.
+- `STREAM.md`: current branch scope and boundaries.
+- `HANDOFF.md`: short pickup note for the next agent.
+- `DELTA.md`: append-only continuity ledger.
 
 ## Managing Shared Types Between Rust and TypeScript
 
-ts-rs allows you to derive TypeScript types from Rust structs/enums. By annotating your Rust types with #[derive(TS)] and related macros, ts-rs will generate .ts declaration files for those types.
-When making changes to the types, you can regenerate them using `pnpm run generate-types`
-Do not manually edit shared/types.ts, instead edit crates/server/src/bin/generate_types.rs
+`ts-rs` allows you to derive TypeScript types from Rust structs and enums. When making changes to the types, regenerate them with `pnpm run generate-types`. Do not edit `shared/types.ts` directly; edit `crates/server/src/bin/generate_types.rs` instead.
 
-For remote/cloud types, regenerate using `pnpm run remote:generate-types`
-Do not manually edit shared/remote-types.ts, instead edit crates/remote/src/bin/remote-generate-types.rs (see crates/remote/AGENTS.md for details).
+For remote and cloud types, regenerate with `pnpm run remote:generate-types`. Do not edit `shared/remote-types.ts` directly; edit `crates/remote/src/bin/remote-generate-types.rs` instead.
 
 ## Build, Test, and Development Commands
+
 - Install: `pnpm i`
 - Run dev (web app + backend with ports auto-assigned): `pnpm run dev`
+- Run QA dev mode: `pnpm run dev:qa`
 - Backend (watch): `pnpm run backend:dev:watch`
 - Web app (dev): `pnpm run local-web:dev`
-- Type checks: `pnpm run check` (frontend + all backend Rust workspaces) and `pnpm run backend:check` (all backend Rust workspaces, including `crates/remote`)
+- Type checks: `pnpm run check`
+- Lint: `pnpm run lint`
 - Rust tests: `cargo test --workspace`
-- Generate TS types from Rust: `pnpm run generate-types` (or `generate-types:check` in CI)
+- Generate TS types from Rust: `pnpm run generate-types`
 - Prepare SQLx (offline): `pnpm run prepare-db`
 - Prepare SQLx (remote package, postgres): `pnpm run remote:prepare-db`
 - Local NPX build: `pnpm run build:npx` then `pnpm pack` in `npx-cli/`
-- Format code: `pnpm run format` (runs `cargo fmt` for all backend Rust workspaces + web-core/web Prettier)
-- Lint: `pnpm run lint` (runs web/ui ESLint + `cargo clippy` for all backend Rust workspaces)
+- Ops governance check: `pnpm run ops:check`
+- Format code: `pnpm run format`
 
-## Before Completing a Task
-- Run `pnpm run format` to format all Rust workspaces and web code.
+## Validation Rules
+
+- Before finishing any task, run `pnpm run format`.
+- Before using a branch in a local Vibe Kanban instance, run the narrowest relevant checks and document what was not exercised.
+- Before opening or updating an upstream PR, the default validation baseline is `pnpm run ops:check`, `pnpm run check`, `pnpm run lint`, and `cargo test --workspace`, plus any repo-specific generation checks affected by the change.
+- If work touches remote deployment paths, include `pnpm run remote:generate-types:check` and `pnpm run remote:prepare-db:check`.
+- Do not claim completion without stating what was actually validated.
 
 ## Coding Style & Naming Conventions
-- Rust: `rustfmt` enforced (`rustfmt.toml`); group imports by crate; snake_case modules, PascalCase types.
-- TypeScript/React: ESLint + Prettier (2 spaces, single quotes, 80 cols). PascalCase components, camelCase vars/functions, kebab-case file names where practical.
-- Keep functions small, add `Debug`/`Serialize`/`Deserialize` where useful.
 
-## Testing Guidelines
-- Rust: prefer unit tests alongside code (`#[cfg(test)]`), run `cargo test --workspace`. Add tests for new logic and edge cases.
-- Web app: ensure `pnpm run check` and `pnpm run lint` pass. If adding runtime logic, include lightweight tests (e.g., Vitest) in the same directory.
+- Rust: `rustfmt` enforced (`rustfmt.toml`); group imports by crate; snake_case modules, PascalCase types.
+- TypeScript and React: ESLint + Prettier (2 spaces, single quotes, 80 cols). PascalCase components, camelCase vars/functions, kebab-case file names where practical.
+- Keep functions small, add `Debug` / `Serialize` / `Deserialize` where useful, and add tests for new behavior or edge cases.
+
+## Agent Summary Standard
+
+- Use this structure only for the final user-facing completion message of a task:
+  - `Validation`
+  - `What changed`
+  - `Why it matters`
+  - `What's next`
+  - `PR`
+  - `Docs`
+  - `Churn`
+  - `Human Needed`
+  - `Commit/Push`
+  - `Preview URL`
+  - `Branch`
+  - `Worktree`
+- Keep the first four sections as short complete-sentence narrative.
+- Keep metadata lines compact with `::` separators.
+- Keep intermediate progress updates brief instead of reusing the full summary block.
 
 ## Security & Config Tips
-- Use `.env` for local overrides; never commit secrets. Key envs: `FRONTEND_PORT`, `BACKEND_PORT`, `HOST` 
+
+- Use `.env` for local overrides; never commit secrets.
+- Key envs: `FRONTEND_PORT`, `BACKEND_PORT`, `HOST`, `VK_ALLOWED_ORIGINS`.
 - Dev ports and assets are managed by `scripts/setup-dev-environment.js`.
 
+## Forbidden Behaviors
+
+- Do not treat branch-local notes as repo-wide truth.
+- Do not release unvalidated changes into the local instance just because CI would probably pass.
+- Do not leave continuity state only in chat.
+- Do not edit generated shared type files manually.
 

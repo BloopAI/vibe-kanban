@@ -57,6 +57,14 @@ jobs:
               - '.npmrc'
               - '.github/workflows/test.yml'
               - '.github/actions/**'
+              - 'AGENTS.md'
+              - 'REPO_IDENTITY.md'
+              - 'STATE.md'
+              - 'STREAM.md'
+              - 'HANDOFF.md'
+              - 'DELTA.md'
+              - 'docs/audits/**'
+              - 'docs/operations/**'
             backend:
               - 'crates/api-types/**'
               - 'crates/client-info/**'
@@ -98,6 +106,14 @@ jobs:
               - '.cargo/**'
               - '.github/workflows/test.yml'
               - '.github/actions/**'
+              - 'AGENTS.md'
+              - 'REPO_IDENTITY.md'
+              - 'STATE.md'
+              - 'STREAM.md'
+              - 'HANDOFF.md'
+              - 'DELTA.md'
+              - 'docs/audits/**'
+              - 'docs/operations/**'
             backend-remote:
               - 'crates/remote/**'
               - 'crates/relay-tunnel/**'
@@ -116,6 +132,14 @@ jobs:
               - 'package.json'
               - '.github/workflows/test.yml'
               - '.github/actions/**'
+              - 'AGENTS.md'
+              - 'REPO_IDENTITY.md'
+              - 'STATE.md'
+              - 'STREAM.md'
+              - 'HANDOFF.md'
+              - 'DELTA.md'
+              - 'docs/audits/**'
+              - 'docs/operations/**'
             tauri:
               - 'crates/tauri-app/**'
               - 'crates/api-types/**'
@@ -158,6 +182,25 @@ jobs:
               - '.npmrc'
               - '.github/workflows/test.yml'
               - '.github/actions/**'
+              - 'AGENTS.md'
+              - 'REPO_IDENTITY.md'
+              - 'STATE.md'
+              - 'STREAM.md'
+              - 'HANDOFF.md'
+              - 'DELTA.md'
+              - 'docs/audits/**'
+              - 'docs/operations/**'
+
+  ops-governance:
+    runs-on: *runner_label
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Run ops governance checks
+        run: pnpm run ops:check
 
   frontend-checks:
     needs: changes
