@@ -41,7 +41,12 @@ const ReleaseNotesDialogImpl = create<NoProps>(() => {
   return (
     <Dialog
       open={modal.visible}
-      onOpenChange={(open) => !open && modal.resolve()}
+      onOpenChange={(open) => {
+        if (!open) {
+          modal.resolve();
+          modal.hide();
+        }
+      }}
       className="h-[calc(100%-4rem)]"
     >
       <DialogContent className="flex flex-col w-full h-full max-w-2xl max-h-[calc(100dvh-4rem)] p-0">
