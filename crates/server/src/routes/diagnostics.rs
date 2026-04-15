@@ -328,7 +328,7 @@ async fn get_disk_usage(
         // We need to match against the worktree name (last path component)
         let ref_map: std::collections::HashMap<String, uuid::Uuid> = refs
             .into_iter()
-            .filter_map(|(id, path)| {
+            .filter_map(|(id, path, _updated_at)| {
                 std::path::Path::new(&path)
                     .file_name()
                     .and_then(|name| name.to_str())

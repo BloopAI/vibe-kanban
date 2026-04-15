@@ -243,7 +243,18 @@ impl LocalContainerService {
             "Checking {} active worktrees for external deletion...",
             active_attempts.len()
         );
-        for (attempt_id, worktree_path) in active_attempts {
+        for (attempt_id, worktree_path, updated_at) in active_attempts {
+            // Skip attempts whose container_ref was set very recently — with the DB-first
+            // ordering in `create()`, there is a brief window where the path is in the DB
+            // but the directory hasn't been created on disk yet (RC-3).
+            let age = Utc::now() - updated_at;
+            if age < chrono::Duration::seconds(60) {
+                tracing::debug!(
+                    attempt_id = %attempt_id,
+                    "Skipping recently-updated attempt in external deletion check (grace period)"
+                );
+                continue;
+            }
             // Check if worktree directory exists
             if !std::path::Path::new(&worktree_path).exists() {
                 // Worktree was deleted externally, mark as deleted in database
@@ -367,6 +378,18 @@ impl LocalContainerService {
                     // No dirty files, safe to proceed with cleanup
                 }
             }
+        }
+
+        // Re-validate: abort if a process became active since we queried the expiry list (RC-4).
+        // The exclusion in `find_expired_for_cleanup` is not atomic with this deletion.
+        let running =
+            ExecutionProcess::find_by_task_attempt_id(&db.pool, attempt_id, false).await?;
+        if running.iter().any(|p| p.completed_at.is_none()) {
+            tracing::info!(
+                attempt_id = %attempt_id,
+                "Skipping expired worktree cleanup: found running execution process"
+            );
+            return Ok(());
         }
 
         WorktreeManager::cleanup_worktree(&WorktreeCleanup::new(
@@ -1411,14 +1434,42 @@ impl ContainerService for LocalContainerService {
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
-        WorktreeManager::create_worktree(
+        // Register container_ref BEFORE creating the directory on disk so that
+        // `cleanup_orphaned_worktrees` never sees the directory without a matching DB row (RC-1).
+        TaskAttempt::update_container_ref(
+            &self.db.pool,
+            task_attempt.id,
+            &worktree_path.to_string_lossy(),
+        )
+        .await?;
+
+        // Create the worktree on disk. On failure, clear the DB reservation so the row
+        // doesn't look like a live path to cleanup code.
+        if let Err(e) = WorktreeManager::create_worktree(
             &project.git_repo_path,
             &task_attempt.branch,
             &worktree_path,
             &task_attempt.target_branch,
             true, // create new branch
         )
-        .await?;
+        .await
+        {
+            if let Err(clear_err) =
+                TaskAttempt::clear_container_ref(&self.db.pool, task_attempt.id).await
+            {
+                tracing::warn!(
+                    attempt_id = %task_attempt.id,
+                    error = %clear_err,
+                    "Failed to clear container_ref after worktree creation failure"
+                );
+            }
+            return Err(ContainerError::Other(anyhow!("{e}")));
+        }
+
+        // The following setup steps are best-effort: failures are logged as warnings but do
+        // NOT trigger rollback. The worktree directory exists and the DB row is registered,
+        // so the attempt is considered created. Rollback (clear_container_ref + disk cleanup)
+        // only applies to the create_worktree step above.
 
         // Create .env file with auto-assigned ports for this worktree
         if let Err(e) = self.create_worktree_env(&worktree_path).await {
@@ -1444,14 +1495,6 @@ impl ContainerService for LocalContainerService {
         {
             tracing::warn!("Failed to copy task images to worktree: {}", e);
         }
-
-        // Update both container_ref and branch in the database
-        TaskAttempt::update_container_ref(
-            &self.db.pool,
-            task_attempt.id,
-            &worktree_path.to_string_lossy(),
-        )
-        .await?;
 
         Ok(worktree_path.to_string_lossy().to_string())
     }
@@ -1511,6 +1554,16 @@ impl ContainerService for LocalContainerService {
             &worktree_path,
         )
         .await?;
+
+        // Unconditionally reset worktree_deleted: the flag may have been set incorrectly
+        // during the creation-window race (RC-3). Always resetting is idempotent and safe.
+        if let Err(e) = TaskAttempt::reset_worktree_deleted(&self.db.pool, task_attempt.id).await {
+            tracing::warn!(
+                attempt_id = %task_attempt.id,
+                error = %e,
+                "Failed to reset worktree_deleted flag after successful ensure"
+            );
+        }
 
         Ok(container_ref.to_string())
     }

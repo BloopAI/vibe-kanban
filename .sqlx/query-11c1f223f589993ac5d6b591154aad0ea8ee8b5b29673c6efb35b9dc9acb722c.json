@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT es.session_id\n               FROM execution_processes ep\n               JOIN executor_sessions es ON ep.id = es.execution_process_id\n               WHERE ep.task_attempt_id = $1\n                 AND ep.run_reason = 'codingagent'\n                 AND es.session_id IS NOT NULL\n               ORDER BY ep.dropped ASC, ep.created_at DESC\n               LIMIT $2",
+  "describe": {
+    "columns": [
+      {
+        "name": "session_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "11c1f223f589993ac5d6b591154aad0ea8ee8b5b29673c6efb35b9dc9acb722c"
+}

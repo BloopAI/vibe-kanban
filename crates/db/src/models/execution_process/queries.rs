@@ -210,15 +210,17 @@ impl ExecutionProcess {
             "Finding latest session id for task attempt {}",
             task_attempt_id
         );
+        // Prefer non-dropped processes (ep.dropped ASC puts FALSE first), but fall back to
+        // dropped ones if all processes were dropped — this allows follow-ups to resume
+        // context even when the previous execution was killed or retried.
         let row = sqlx::query!(
             r#"SELECT es.session_id
                FROM execution_processes ep
                JOIN executor_sessions es ON ep.id = es.execution_process_id
                WHERE ep.task_attempt_id = $1
                  AND ep.run_reason = 'codingagent'
-                 AND ep.dropped = FALSE
                  AND es.session_id IS NOT NULL
-               ORDER BY ep.created_at DESC
+               ORDER BY ep.dropped ASC, ep.created_at DESC
                LIMIT 1"#,
             task_attempt_id
         )
@@ -243,9 +245,8 @@ impl ExecutionProcess {
                JOIN executor_sessions es ON ep.id = es.execution_process_id
                WHERE ep.task_attempt_id = $1
                  AND ep.run_reason = 'codingagent'
-                 AND ep.dropped = FALSE
                  AND es.session_id IS NOT NULL
-               ORDER BY ep.created_at DESC
+               ORDER BY ep.dropped ASC, ep.created_at DESC
                LIMIT $2"#,
             task_attempt_id,
             limit

@@ -310,14 +310,14 @@ impl TaskAttempt {
 
     pub async fn find_by_worktree_deleted(
         pool: &SqlitePool,
-    ) -> Result<Vec<(Uuid, String)>, sqlx::Error> {
+    ) -> Result<Vec<(Uuid, String, DateTime<Utc>)>, sqlx::Error> {
         let records = sqlx::query!(
-        r#"SELECT id as "id!: Uuid", container_ref FROM task_attempts WHERE worktree_deleted = FALSE"#,
+        r#"SELECT id as "id!: Uuid", container_ref, updated_at as "updated_at!: DateTime<Utc>" FROM task_attempts WHERE worktree_deleted = FALSE"#,
         )
         .fetch_all(pool).await?;
         Ok(records
             .into_iter()
-            .filter_map(|r| r.container_ref.map(|path| (r.id, path)))
+            .filter_map(|r| r.container_ref.map(|path| (r.id, path, r.updated_at)))
             .collect())
     }
 
@@ -326,13 +326,50 @@ impl TaskAttempt {
         container_ref: &str,
     ) -> Result<bool, sqlx::Error> {
         let result = sqlx::query!(
-            r#"SELECT EXISTS(SELECT 1 FROM task_attempts WHERE container_ref = ?) as "exists!: bool""#,
+            r#"SELECT EXISTS(SELECT 1 FROM task_attempts WHERE container_ref = ? AND worktree_deleted = FALSE) as "exists!: bool""#,
             container_ref
         )
         .fetch_one(pool)
         .await?;
 
         Ok(result.exists)
+    }
+
+    /// Clear the container_ref for an attempt — used to roll back a DB reservation if disk
+    /// creation subsequently fails (pairs with `update_container_ref`).
+    pub async fn clear_container_ref(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE task_attempts SET container_ref = NULL, updated_at = datetime('now') WHERE id = ?",
+            attempt_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Reset the worktree_deleted flag to FALSE — mirrors `mark_worktree_deleted`.
+    /// Used after a successful `ensure_worktree_exists` to clear any flag that was set
+    /// incorrectly during the creation-window race.
+    ///
+    /// The WHERE clause includes `AND worktree_deleted = TRUE` so the UPDATE is a no-op
+    /// (and does NOT bump `updated_at`) when the flag is already FALSE. This is important
+    /// because `updated_at` feeds the 72-hour expiry query in `find_expired_for_cleanup`;
+    /// bumping it on every `ensure_container_exists` call would silently reset the cleanup
+    /// clock and cause worktrees to accumulate indefinitely.
+    pub async fn reset_worktree_deleted(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE task_attempts SET worktree_deleted = FALSE, updated_at = datetime('now') WHERE id = ? AND worktree_deleted = TRUE",
+            attempt_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 
     /// Find task attempts that are expired (72+ hours since last activity) and eligible for worktree cleanup
