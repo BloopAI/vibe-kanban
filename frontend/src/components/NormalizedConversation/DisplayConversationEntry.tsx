@@ -706,6 +706,55 @@ const formatTimestamp = (isoString: string, timezone: string): string => {
   }
 };
 
+export const DEFAULT_TOKEN_TIMESTAMP_FORMAT = '[HH:mm:ss.SSS dd/MM/yyyy]';
+
+/**
+ * Format a token-usage timestamp according to a user-supplied format string.
+ * Supports literal characters (including [ ]) plus tokens: HH, mm, ss, SSS, dd, MM, yyyy.
+ * Token matching is case-sensitive: mm=minute, MM=month, ss=second, SSS=milliseconds.
+ * Timezone is applied via Intl.DateTimeFormat.formatToParts().
+ */
+const formatTokenTimestamp = (
+  isoString: string,
+  timezone: string,
+  fmt: string
+): string => {
+  try {
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return isoString;
+
+    const options: Intl.DateTimeFormatOptions = {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour12: false,
+    };
+    if (timezone !== 'LOCAL') {
+      options.timeZone = timezone;
+    }
+
+    const parts = new Intl.DateTimeFormat('en-GB', options).formatToParts(date);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
+
+    // Milliseconds are not timezone-dependent
+    const ms = date.getMilliseconds().toString().padStart(3, '0');
+
+    return fmt
+      .replace('HH', get('hour'))
+      .replace('mm', get('minute'))
+      .replace('ss', get('second'))
+      .replace('SSS', ms)
+      .replace('dd', get('day'))
+      .replace('MM', get('month'))
+      .replace('yyyy', get('year'));
+  } catch {
+    return isoString;
+  }
+};
+
 /**
  * IRC-style execution boundary marker component
  */
@@ -783,6 +832,7 @@ function DisplayConversationEntry({
   task,
 }: Props) {
   const { t } = useTranslation('common');
+  const { config } = useUserSystem();
   const { executionProcessesByIdAll } = useExecutionProcessesContext();
   const isNormalizedEntry = (
     entry: NormalizedEntry | ProcessStartPayload
@@ -1048,6 +1098,9 @@ function DisplayConversationEntry({
 
   if (entry.entry_type.type === 'token_usage') {
     const tu = entry.entry_type;
+    const tsEnabled = config?.timestamps?.token_timestamp_enabled ?? false;
+    const tsFormat = config?.timestamps?.token_timestamp_format ?? 'HH:mm:ss.SSS dd/MM/yyyy';
+    const timezone = config?.timestamps?.timezone ?? 'LOCAL';
     const fmtNum = (n: bigint) =>
       Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
     const pct =
@@ -1061,6 +1114,11 @@ function DisplayConversationEntry({
     return (
       <div className="px-4 py-1.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground font-mono">
+          {tsEnabled && entry.timestamp && (
+            <span className="opacity-50">
+              {formatTokenTimestamp(entry.timestamp, timezone, tsFormat)}
+            </span>
+          )}
           <span title={t('conversation.tokenUsage.inputTitle')}>↓ {fmtNum(tu.input_tokens)}</span>
           {tu.cached_input_tokens > 0n && (
             <span title={t('conversation.tokenUsage.cachedTitle')} className="opacity-60">
