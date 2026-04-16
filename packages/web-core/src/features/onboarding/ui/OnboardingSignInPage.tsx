@@ -117,7 +117,10 @@ export function OnboardingSignInPage() {
       ? '/vibe-kanban-logo-dark.svg'
       : '/vibe-kanban-logo.svg';
 
-  const isLoggedIn = loginStatus?.status === 'loggedin';
+  const isLocalAuthBypassed =
+    loginStatus?.status === 'loggedin' && !loginStatus.profile;
+  const isLoggedIn =
+    loginStatus?.status === 'loggedin' && !!loginStatus.profile;
 
   useEffect(() => {
     if (loading || !config || hasTrackedStageViewRef.current) return;
@@ -138,8 +141,12 @@ export function OnboardingSignInPage() {
     }
 
     hasRedirectedToRootRef.current = true;
+    if (isLocalAuthBypassed) {
+      appNavigation.goToWorkspacesCreate({ replace: true });
+      return;
+    }
     appNavigation.goToRoot({ replace: true });
-  }, [appNavigation, config?.remote_onboarding_acknowledged]);
+  }, [appNavigation, config?.remote_onboarding_acknowledged, isLocalAuthBypassed]);
 
   const getOnboardingDestination = async (): Promise<OnboardingDestination> => {
     const firstProjectDestination =
@@ -261,7 +268,11 @@ export function OnboardingSignInPage() {
     config.remote_onboarding_acknowledged &&
     !isCompletingOnboardingRef.current
   ) {
-    return null;
+    return (
+      <div className="h-screen bg-primary flex items-center justify-center">
+        <p className="text-low">Loading...</p>
+      </div>
+    );
   }
 
   return (

@@ -9,6 +9,8 @@ export function RootRedirectPage() {
   const { config, loading, loginStatus } = useUserSystem();
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
   const appNavigation = useAppNavigation();
+  const isLocalAuthBypassed =
+    loginStatus?.status === 'loggedin' && !loginStatus.profile;
 
   useEffect(() => {
     if (loading || !config) {
@@ -22,7 +24,7 @@ export function RootRedirectPage() {
         return;
       }
 
-      if (loginStatus?.status !== 'loggedin') {
+      if (isLocalAuthBypassed || loginStatus?.status !== 'loggedin') {
         appNavigation.goToWorkspacesCreate({ replace: true });
         return;
       }
@@ -52,7 +54,14 @@ export function RootRedirectPage() {
     return () => {
       isActive = false;
     };
-  }, [appNavigation, config, loading, loginStatus?.status, setSelectedOrgId]);
+  }, [
+    appNavigation,
+    config,
+    isLocalAuthBypassed,
+    loading,
+    loginStatus?.status,
+    setSelectedOrgId,
+  ]);
 
   return (
     <div className="h-screen bg-primary flex items-center justify-center">
