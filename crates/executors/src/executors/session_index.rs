@@ -77,6 +77,10 @@ pub struct SessionLogEntry {
     /// Role of the message sender (user, assistant, etc.)
     pub role: Option<String>,
 
+    /// Whether this entry belongs to a sidechain (forked) session
+    #[serde(rename = "isSidechain")]
+    pub is_sidechain: Option<bool>,
+
     /// Catch-all for other fields we don't need
     #[serde(flatten)]
     pub other: serde_json::Value,
@@ -233,7 +237,7 @@ fn extract_session_metadata(
         modified,
         git_branch: log_entry.git_branch,
         project_path: project_path.to_string_lossy().to_string(),
-        is_sidechain: false, // TODO: Determine sidechain status from session data
+        is_sidechain: log_entry.is_sidechain.unwrap_or(false),
     })
 }
 
@@ -657,6 +661,46 @@ mod tests {
         assert_eq!(metadata.first_prompt, "First user message");
         assert_eq!(metadata.message_count, 2);
         assert_eq!(metadata.git_branch, None);
+    }
+
+    #[test]
+    fn test_extract_session_metadata_detects_sidechain() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = Path::new("/test/project");
+
+        // Create a session file whose first entry marks it as a sidechain
+        let session_file = temp_dir.path().join("sidechain-session.jsonl");
+        let session_content = r#"{"sessionId":"side-1","created":"2026-01-18T10:00:00.000Z","content":"Forked from parent","isSidechain":true}
+{"type":"message","role":"assistant","content":"Continuing on sidechain"}"#;
+
+        fs::write(&session_file, session_content).unwrap();
+
+        let metadata = extract_session_metadata(&session_file, project_path).unwrap();
+
+        assert_eq!(metadata.session_id, "side-1");
+        assert!(metadata.is_sidechain);
+    }
+
+    #[test]
+    fn test_extract_session_metadata_missing_sidechain_defaults_false() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let project_path = Path::new("/test/project");
+
+        // Session file without an isSidechain field should default to false
+        let session_file = temp_dir.path().join("no-sidechain.jsonl");
+        let session_content = r#"{"sessionId":"plain-1","created":"2026-01-18T10:00:00.000Z","content":"No sidechain key"}"#;
+
+        fs::write(&session_file, session_content).unwrap();
+
+        let metadata = extract_session_metadata(&session_file, project_path).unwrap();
+
+        assert!(!metadata.is_sidechain);
     }
 
     #[test]
