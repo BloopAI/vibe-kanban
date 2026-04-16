@@ -431,13 +431,20 @@ impl LogState {
         let is_new = entry.is_none();
         let (content, index) = if entry.is_none() {
             let index = index_provider.next();
+            let content = truncate_to_tail(&content, STREAMING_TEXT_BYTES);
             *entry = Some(StreamingText { index, content });
             (&entry.as_ref().unwrap().content, index)
         } else {
             let streaming_state = entry.as_mut().unwrap();
             match mode {
-                UpdateMode::Append => streaming_state.content.push_str(&content),
-                UpdateMode::Set => streaming_state.content = content,
+                UpdateMode::Append => append_truncated_tail(
+                    &mut streaming_state.content,
+                    &content,
+                    STREAMING_TEXT_BYTES,
+                ),
+                UpdateMode::Set => {
+                    streaming_state.content = truncate_to_tail(&content, STREAMING_TEXT_BYTES)
+                }
             }
             (&streaming_state.content, streaming_state.index)
         };
@@ -2536,6 +2543,7 @@ static SESSION_ID: LazyLock<Regex> = LazyLock::new(|| {
 
 const STREAMING_COMMAND_OUTPUT_BYTES: usize = 32 * 1024;
 const FINAL_COMMAND_OUTPUT_BYTES: usize = 64 * 1024;
+const STREAMING_TEXT_BYTES: usize = 128 * 1024;
 
 fn truncate_to_tail(input: &str, max_bytes: usize) -> String {
     if input.len() <= max_bytes {
