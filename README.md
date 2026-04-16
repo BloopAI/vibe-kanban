@@ -55,6 +55,25 @@ npx vibe-kanban
 
 Head to the [website](https://vibekanban.com/docs) for the latest documentation and user guides.
 
+## Operational Docs
+
+For this fork's local-development and promotion workflow, use the repo docs alongside the public product docs:
+
+- [`AGENTS.md`](AGENTS.md) for stable agent and validation rules
+- [`REPO_IDENTITY.md`](REPO_IDENTITY.md) for this fork's role and release path
+- [`STATE.md`](STATE.md) for repo-wide current truth
+- [`STREAM.md`](STREAM.md) for the active branch scope
+- [`HANDOFF.md`](HANDOFF.md) for next-agent pickup context
+- [`DELTA.md`](DELTA.md) for compact continuity history
+- [`docs/operations/release-safety.md`](docs/operations/release-safety.md) for the local-validation and upstream-PR gate
+
+Normal change flow for this fork is now:
+
+1. branch from `origin/staging`
+2. validate locally in the Vibe Kanban instance
+3. open a PR into `staging`
+4. promote `staging` into `main`
+
 ## Self-Hosting
 
 Want to host your own Vibe Kanban Cloud instance? See our [self-hosting guide](https://vibekanban.com/docs/self-hosting/deploy-docker).

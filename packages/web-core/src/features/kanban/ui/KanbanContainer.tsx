@@ -32,7 +32,7 @@ import {
   bulkUpdateIssues,
   type BulkUpdateIssueItem,
 } from '@/shared/lib/remoteApi';
-import { PlusIcon, DotsThreeIcon } from '@phosphor-icons/react';
+import { CaretLeftIcon, DotsThreeIcon, PlusIcon } from '@phosphor-icons/react';
 import { Actions } from '@/shared/actions';
 import {
   buildKanbanIssueComposerKey,
@@ -115,6 +115,48 @@ function LoadingState() {
     <div className="flex items-center justify-center h-full">
       <p className="text-low">{t('states.loading')}</p>
     </div>
+  );
+}
+
+type CollapsedKanbanColumnProps = {
+  statusName: string;
+  statusColor: string;
+  onExpand: () => void;
+};
+
+function CollapsedKanbanColumn({
+  statusName,
+  statusColor,
+  onExpand,
+}: CollapsedKanbanColumnProps) {
+  const { t } = useTranslation('common');
+
+  return (
+    <button
+      type="button"
+      onClick={onExpand}
+      className="group relative flex min-h-40 flex-1 overflow-hidden bg-secondary transition-colors hover:bg-secondary/80 focus:outline-none focus:ring-1 focus:ring-brand"
+      aria-label={t('kanban.expandColumn', {
+        defaultValue: 'Expand {{statusName}} column',
+        statusName,
+      })}
+      title={statusName}
+    >
+      <div className="sticky top-0 z-20 flex h-40 w-full shrink-0 items-start justify-center border-b bg-secondary/95 px-2 pt-4 backdrop-blur-sm">
+        <div className="[writing-mode:vertical-rl] flex items-center gap-2 whitespace-nowrap pt-2 text-center">
+          <span className="text-sm font-medium leading-none text-normal">
+            &gt;
+          </span>
+          <div
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{ backgroundColor: `hsl(${statusColor})` }}
+          />
+          <span className="text-sm font-medium leading-none text-normal">
+            {statusName}
+          </span>
+        </div>
+      </div>
+    </button>
   );
 }
 
@@ -227,6 +269,9 @@ export function KanbanContainer() {
   const setKanbanProjectViewHideBlocked = useUiPreferencesStore(
     (s) => s.setKanbanProjectViewHideBlocked
   );
+  const setKanbanProjectViewCollapsedStatusIds = useUiPreferencesStore(
+    (s) => s.setKanbanProjectViewCollapsedStatusIds
+  );
   const clearKanbanProjectViewPreferences = useUiPreferencesStore(
     (s) => s.clearKanbanProjectViewPreferences
   );
@@ -240,6 +285,7 @@ export function KanbanContainer() {
     showSubIssues: defaultShowSubIssues,
     showWorkspaces: defaultShowWorkspaces,
     hideBlocked: defaultHideBlocked,
+    collapsedStatusIds: defaultCollapsedStatusIds,
   } = resolvedProjectState;
   const projectViewPreferences = projectViewPreferencesById?.[activeViewId];
   const kanbanFilters = projectViewPreferences?.filters ?? defaultKanbanFilters;
@@ -248,6 +294,12 @@ export function KanbanContainer() {
   const showWorkspaces =
     projectViewPreferences?.showWorkspaces ?? defaultShowWorkspaces;
   const hideBlocked = projectViewPreferences?.hideBlocked ?? defaultHideBlocked;
+  const collapsedStatusIds =
+    projectViewPreferences?.collapsedStatusIds ?? defaultCollapsedStatusIds;
+  const collapsedStatusIdSet = useMemo(
+    () => new Set(collapsedStatusIds),
+    [collapsedStatusIds]
+  );
 
   const hasActiveFilters = useMemo(
     () =>
@@ -374,6 +426,27 @@ export function KanbanContainer() {
     clearKanbanProjectViewPreferences(projectId, activeViewId);
   }, [activeViewId, clearKanbanProjectViewPreferences, projectId]);
 
+  const toggleCollapsedStatus = useCallback(
+    (statusId: string) => {
+      const nextCollapsedStatusIds = collapsedStatusIdSet.has(statusId)
+        ? collapsedStatusIds.filter((id) => id !== statusId)
+        : [...collapsedStatusIds, statusId];
+
+      setKanbanProjectViewCollapsedStatusIds(
+        projectId,
+        activeViewId,
+        nextCollapsedStatusIds
+      );
+    },
+    [
+      activeViewId,
+      collapsedStatusIdSet,
+      collapsedStatusIds,
+      projectId,
+      setKanbanProjectViewCollapsedStatusIds,
+    ]
+  );
+
   const handleKanbanProjectViewChange = useCallback(
     (viewId: string) => {
       setKanbanProjectView(projectId, viewId);
@@ -416,6 +489,15 @@ export function KanbanContainer() {
   const visibleStatuses = useMemo(
     () => sortedStatuses.filter((s) => !s.hidden),
     [sortedStatuses]
+  );
+  const kanbanGridTemplateColumns = useMemo(
+    () =>
+      visibleStatuses
+        .map((status) =>
+          collapsedStatusIdSet.has(status.id) ? '4rem' : 'minmax(200px, 1fr)'
+        )
+        .join(' '),
+    [collapsedStatusIdSet, visibleStatuses]
   );
 
   // Map status ID to 1-based column index for sort_order calculation
@@ -980,145 +1062,206 @@ export function KanbanContainer() {
             <p className="text-low">{t('kanban.noVisibleStatuses')}</p>
           </div>
         ) : (
-          <div className="flex-1 overflow-x-auto px-double">
-            <KanbanProvider onDragEnd={handleDragEnd}>
+          <div
+            className={cn(
+              'flex-1 overflow-x-auto px-double',
+              isMobile && 'overflow-x-hidden px-base'
+            )}
+          >
+            <KanbanProvider
+              onDragEnd={handleDragEnd}
+              className={cn(isMobile && '!grid-cols-1 !min-w-0 !w-full')}
+              style={
+                isMobile
+                  ? undefined
+                  : { gridTemplateColumns: kanbanGridTemplateColumns }
+              }
+            >
               {visibleStatuses.map((status) => {
                 const issueIds = items[status.id] ?? [];
+                const isCollapsed = collapsedStatusIdSet.has(status.id);
 
                 return (
-                  <KanbanBoard key={status.id}>
-                    <KanbanHeader>
-                      <div className="border-t sticky border-b top-0 z-20 flex shrink-0 items-center justify-between gap-2 p-base bg-secondary">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="h-2 w-2 rounded-full shrink-0"
-                            style={{ backgroundColor: `hsl(${status.color})` }}
-                          />
-                          <p className="m-0 text-sm">{status.name}</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleAddTask(status.id)}
-                          className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors"
-                          aria-label="Add task"
-                        >
-                          <PlusIcon className="size-icon-xs" weight="bold" />
-                        </button>
-                      </div>
-                    </KanbanHeader>
-                    <KanbanCards id={status.id}>
-                      {issueIds.map((issueId, index) => {
-                        const issue = issueMap[issueId];
-                        if (!issue) return null;
-                        const issueWorkspaces =
-                          workspacesByIssueId.get(issue.id) ?? [];
-                        const workspaceIdsShownOnCard = new Set(
-                          issueWorkspaces.map((workspace) => workspace.id)
-                        );
-                        const issueCardPullRequests = getPullRequestsForIssue(
-                          issue.id
-                        ).filter((pr) => {
-                          if (!pr.workspace_id) {
-                            return true;
-                          }
+                  <KanbanBoard
+                    key={status.id}
+                    className={cn(
+                      isCollapsed && !isMobile && '!min-w-16 !max-w-16'
+                    )}
+                  >
+                    {isCollapsed ? (
+                      <KanbanCards id={status.id} className="bg-secondary">
+                        <CollapsedKanbanColumn
+                          statusName={status.name}
+                          statusColor={status.color}
+                          onExpand={() => toggleCollapsedStatus(status.id)}
+                        />
+                      </KanbanCards>
+                    ) : (
+                      <>
+                        <KanbanHeader>
+                          <div className="border-t sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 border-b bg-secondary p-base">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <div
+                                className="h-2 w-2 shrink-0 rounded-full"
+                                style={{
+                                  backgroundColor: `hsl(${status.color})`,
+                                }}
+                              />
+                              <p className="m-0 truncate text-sm">
+                                {status.name}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-half">
+                              <button
+                                type="button"
+                                onClick={() => toggleCollapsedStatus(status.id)}
+                                className="rounded-sm p-half text-low transition-colors hover:bg-secondary hover:text-normal"
+                                aria-label={t('kanban.collapseColumn', {
+                                  defaultValue:
+                                    'Collapse {{statusName}} column',
+                                  statusName: status.name,
+                                })}
+                                title={t('kanban.collapseColumn', {
+                                  defaultValue:
+                                    'Collapse {{statusName}} column',
+                                  statusName: status.name,
+                                })}
+                              >
+                                <CaretLeftIcon
+                                  className="size-icon-xs"
+                                  weight="bold"
+                                />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleAddTask(status.id)}
+                                className="rounded-sm p-half text-low transition-colors hover:bg-secondary hover:text-normal"
+                                aria-label={t('kanban.addTask', 'Add task')}
+                              >
+                                <PlusIcon
+                                  className="size-icon-xs"
+                                  weight="bold"
+                                />
+                              </button>
+                            </div>
+                          </div>
+                        </KanbanHeader>
+                        <KanbanCards id={status.id}>
+                          {issueIds.map((issueId, index) => {
+                            const issue = issueMap[issueId];
+                            if (!issue) return null;
+                            const issueWorkspaces =
+                              workspacesByIssueId.get(issue.id) ?? [];
+                            const workspaceIdsShownOnCard = new Set(
+                              issueWorkspaces.map((workspace) => workspace.id)
+                            );
+                            const issueCardPullRequests =
+                              getPullRequestsForIssue(issue.id).filter((pr) => {
+                                if (!pr.workspace_id) {
+                                  return true;
+                                }
 
-                          // If this PR is already visible under a workspace card,
-                          // do not render it again at the issue level.
-                          return !workspaceIdsShownOnCard.has(pr.workspace_id);
-                        });
+                                // If this PR is already visible under a workspace card,
+                                // do not render it again at the issue level.
+                                return !workspaceIdsShownOnCard.has(
+                                  pr.workspace_id
+                                );
+                              });
 
-                        return (
-                          <KanbanCard
-                            key={issue.id}
-                            id={issue.id}
-                            name={issue.title}
-                            index={index}
-                            className="group"
-                            onClick={(e) => handleCardClick(issue.id, e)}
-                            isOpen={selectedKanbanIssueId === issue.id}
-                            isMobile={isMobile}
-                            isSelected={selectedIssueIds.has(issue.id)}
-                            dragDisabled={isMultiSelectActive}
-                          >
-                            <KanbanCardContent
-                              displayId={issue.simple_id}
-                              title={issue.title}
-                              description={issue.description}
-                              priority={issue.priority}
-                              tags={getTagObjectsForIssue(issue.id)}
-                              assignees={issueAssigneesMap[issue.id] ?? []}
-                              pullRequests={issueCardPullRequests}
-                              relationships={resolveRelationshipsForIssue(
-                                issue.id,
-                                getRelationshipsForIssue(issue.id),
-                                issuesById
-                              )}
-                              isSubIssue={!!issue.parent_issue_id}
-                              isMobile={isMobile}
-                              onPriorityClick={(e) => {
-                                e.stopPropagation();
-                                handleCardPriorityClick(issue.id);
-                              }}
-                              onAssigneeClick={(e) => {
-                                e.stopPropagation();
-                                handleCardAssigneeClick(issue.id);
-                              }}
-                              onMoreActionsClick={() =>
-                                handleCardMoreActionsClick(issue.id)
-                              }
-                              tagEditProps={{
-                                allTags: tags,
-                                selectedTagIds: getTagsForIssue(issue.id).map(
-                                  (it) => it.tag_id
-                                ),
-                                onTagToggle: (tagId) =>
-                                  handleCardTagToggle(issue.id, tagId),
-                                onCreateTag: handleCreateTag,
-                                renderTagEditor: ({
-                                  allTags,
-                                  selectedTagIds,
-                                  onTagToggle,
-                                  onCreateTag,
-                                  trigger,
-                                }) => (
-                                  <SearchableTagDropdownContainer
-                                    tags={allTags}
-                                    selectedTagIds={selectedTagIds}
-                                    onTagToggle={onTagToggle}
-                                    onCreateTag={onCreateTag}
-                                    disabled={false}
-                                    contentClassName=""
-                                    trigger={trigger}
-                                  />
-                                ),
-                              }}
-                            />
-                            {issueWorkspaces.length > 0 && (
-                              <div className="mt-base flex flex-col gap-half">
-                                {issueWorkspaces.map((workspace) => (
-                                  <IssueWorkspaceCard
-                                    key={workspace.id}
-                                    workspace={workspace}
-                                    onClick={
-                                      workspace.localWorkspaceId
-                                        ? () =>
-                                            openIssueWorkspace(
-                                              issue.id,
-                                              workspace.localWorkspaceId!
-                                            )
-                                        : undefined
-                                    }
-                                    showOwner={false}
-                                    showStatusBadge={false}
-                                    showNoPrText={false}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </KanbanCard>
-                        );
-                      })}
-                    </KanbanCards>
+                            return (
+                              <KanbanCard
+                                key={issue.id}
+                                id={issue.id}
+                                name={issue.title}
+                                index={index}
+                                className="group"
+                                onClick={(e) => handleCardClick(issue.id, e)}
+                                isOpen={selectedKanbanIssueId === issue.id}
+                                isMobile={isMobile}
+                                isSelected={selectedIssueIds.has(issue.id)}
+                                dragDisabled={isMultiSelectActive}
+                              >
+                                <KanbanCardContent
+                                  displayId={issue.simple_id}
+                                  title={issue.title}
+                                  description={issue.description}
+                                  priority={issue.priority}
+                                  tags={getTagObjectsForIssue(issue.id)}
+                                  assignees={issueAssigneesMap[issue.id] ?? []}
+                                  pullRequests={issueCardPullRequests}
+                                  relationships={resolveRelationshipsForIssue(
+                                    issue.id,
+                                    getRelationshipsForIssue(issue.id),
+                                    issuesById
+                                  )}
+                                  isSubIssue={!!issue.parent_issue_id}
+                                  isMobile={isMobile}
+                                  onPriorityClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCardPriorityClick(issue.id);
+                                  }}
+                                  onAssigneeClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCardAssigneeClick(issue.id);
+                                  }}
+                                  onMoreActionsClick={() =>
+                                    handleCardMoreActionsClick(issue.id)
+                                  }
+                                  tagEditProps={{
+                                    allTags: tags,
+                                    selectedTagIds: getTagsForIssue(
+                                      issue.id
+                                    ).map((it) => it.tag_id),
+                                    onTagToggle: (tagId) =>
+                                      handleCardTagToggle(issue.id, tagId),
+                                    onCreateTag: handleCreateTag,
+                                    renderTagEditor: ({
+                                      allTags,
+                                      selectedTagIds,
+                                      onTagToggle,
+                                      onCreateTag,
+                                      trigger,
+                                    }) => (
+                                      <SearchableTagDropdownContainer
+                                        tags={allTags}
+                                        selectedTagIds={selectedTagIds}
+                                        onTagToggle={onTagToggle}
+                                        onCreateTag={onCreateTag}
+                                        disabled={false}
+                                        contentClassName=""
+                                        trigger={trigger}
+                                      />
+                                    ),
+                                  }}
+                                />
+                                {issueWorkspaces.length > 0 && (
+                                  <div className="mt-base flex flex-col gap-half">
+                                    {issueWorkspaces.map((workspace) => (
+                                      <IssueWorkspaceCard
+                                        key={workspace.id}
+                                        workspace={workspace}
+                                        onClick={
+                                          workspace.localWorkspaceId
+                                            ? () =>
+                                                openIssueWorkspace(
+                                                  issue.id,
+                                                  workspace.localWorkspaceId!
+                                                )
+                                            : undefined
+                                        }
+                                        showOwner={false}
+                                        showStatusBadge={false}
+                                        showNoPrText={false}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </KanbanCard>
+                            );
+                          })}
+                        </KanbanCards>
+                      </>
+                    )}
                   </KanbanBoard>
                 );
               })}
