@@ -11,17 +11,16 @@ interface LocalAuthProviderProps {
 
 export function LocalAuthProvider({ children }: LocalAuthProviderProps) {
   const { loginStatus } = useUserSystem();
+  const isRemoteSignedIn =
+    loginStatus?.status === 'loggedin' && !!loginStatus.profile;
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      isSignedIn: loginStatus?.status === 'loggedin',
+      isSignedIn: isRemoteSignedIn,
       isLoaded: loginStatus !== null,
-      userId:
-        loginStatus?.status === 'loggedin'
-          ? (loginStatus.profile?.user_id ?? null)
-          : null,
+      userId: isRemoteSignedIn ? (loginStatus?.profile?.user_id ?? null) : null,
     }),
-    [loginStatus]
+    [isRemoteSignedIn, loginStatus]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
