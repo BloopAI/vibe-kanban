@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 use axum::{
@@ -25,6 +26,8 @@ use uuid::Uuid;
 
 use super::streams::{DiffStreamQuery, stream_workspace_diff_ws};
 use crate::{DeploymentImpl, error::ApiError, middleware::signed_ws::SignedWsUpgrade};
+
+const GIT_STATUS_TIMEOUT: Duration = Duration::from_secs(3);
 
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct RebaseWorkspaceRequest {
@@ -163,6 +166,25 @@ async fn resolve_vibe_kanban_identifier(
         return issue_id.to_string();
     }
     local_workspace_id.to_string()
+}
+
+fn fallback_branch_status(target_branch_name: String, merges: Vec<Merge>) -> BranchStatus {
+    BranchStatus {
+        commits_ahead: None,
+        commits_behind: None,
+        has_uncommitted_changes: None,
+        head_oid: None,
+        uncommitted_count: None,
+        untracked_count: None,
+        target_branch_name,
+        remote_commits_ahead: None,
+        remote_commits_behind: None,
+        merges,
+        is_rebase_in_progress: false,
+        conflict_op: None,
+        conflicted_files: Vec::new(),
+        is_target_remote: false,
+    }
 }
 
 #[axum::debug_handler]
@@ -401,100 +423,129 @@ pub async fn get_workspace_branch_status(
 
         let repo_merges = merges_by_repo.get(&repo.id).cloned().unwrap_or_default();
         let worktree_path = workspace_dir.join(&repo.name);
+        let git = deployment.git().clone();
+        let repo_path = repo.path.clone();
+        let repo_name = repo.name.clone();
+        let workspace_branch = workspace.branch.clone();
+        let target_branch_for_status = target_branch.clone();
+        let repo_merges_for_status = repo_merges.clone();
+        let worktree_path_for_status = worktree_path.clone();
 
-        let head_oid = deployment
-            .git()
-            .get_head_info(&worktree_path)
-            .ok()
-            .map(|h| h.oid);
+        let status = match tokio::time::timeout(
+            GIT_STATUS_TIMEOUT,
+            tokio::task::spawn_blocking(move || -> Result<BranchStatus, GitServiceError> {
+                let head_oid = git.get_head_info(&worktree_path_for_status).ok().map(|h| h.oid);
 
-        let (is_rebase_in_progress, conflicted_files, conflict_op) = {
-            let in_rebase = deployment
-                .git()
-                .is_rebase_in_progress(&worktree_path)
-                .unwrap_or(false);
-            let conflicts = deployment
-                .git()
-                .get_conflicted_files(&worktree_path)
-                .unwrap_or_default();
-            let op = if conflicts.is_empty() {
-                None
-            } else {
-                deployment
-                    .git()
-                    .detect_conflict_op(&worktree_path)
-                    .unwrap_or(None)
-            };
-            (in_rebase, conflicts, op)
-        };
+                let (is_rebase_in_progress, conflicted_files, conflict_op) = {
+                    let in_rebase = git
+                        .is_rebase_in_progress(&worktree_path_for_status)
+                        .unwrap_or(false);
+                    let conflicts = git
+                        .get_conflicted_files(&worktree_path_for_status)
+                        .unwrap_or_default();
+                    let op = if conflicts.is_empty() {
+                        None
+                    } else {
+                        git.detect_conflict_op(&worktree_path_for_status)
+                            .unwrap_or(None)
+                    };
+                    (in_rebase, conflicts, op)
+                };
 
-        let (uncommitted_count, untracked_count) =
-            match deployment.git().get_worktree_change_counts(&worktree_path) {
-                Ok((a, b)) => (Some(a), Some(b)),
-                Err(_) => (None, None),
-            };
+                let (uncommitted_count, untracked_count) =
+                    match git.get_worktree_change_counts(&worktree_path_for_status) {
+                        Ok((a, b)) => (Some(a), Some(b)),
+                        Err(_) => (None, None),
+                    };
 
-        let has_uncommitted_changes = uncommitted_count.map(|c| c > 0);
+                let has_uncommitted_changes = uncommitted_count.map(|c| c > 0);
 
-        let is_target_remote = deployment
-            .git()
-            .is_remote_branch(&repo.path, &target_branch)?;
+                let is_target_remote = git.is_remote_branch(&repo_path, &target_branch_for_status)?;
 
-        let (commits_ahead, commits_behind) = if is_target_remote {
-            let (ahead, behind) = deployment.git().get_remote_branch_status(
-                &repo.path,
-                &workspace.branch,
-                Some(&target_branch),
-            )?;
-            (Some(ahead), Some(behind))
-        } else {
-            let (a, b) = deployment.git().get_branch_status(
-                &repo.path,
-                &workspace.branch,
-                &target_branch,
-            )?;
-            (Some(a), Some(b))
-        };
+                let (commits_ahead, commits_behind) = if is_target_remote {
+                    let (ahead, behind) = git.get_remote_branch_status(
+                        &repo_path,
+                        &workspace_branch,
+                        Some(&target_branch_for_status),
+                    )?;
+                    (Some(ahead), Some(behind))
+                } else {
+                    let (a, b) =
+                        git.get_branch_status(&repo_path, &workspace_branch, &target_branch_for_status)?;
+                    (Some(a), Some(b))
+                };
 
-        let (remote_ahead, remote_behind) = if let Some(Merge::Pr(PrMerge {
-            pr_info:
-                PullRequestInfo {
-                    status: MergeStatus::Open,
+                let (remote_ahead, remote_behind) = if let Some(Merge::Pr(PrMerge {
+                    pr_info:
+                        PullRequestInfo {
+                            status: MergeStatus::Open,
+                            ..
+                        },
                     ..
-                },
-            ..
-        })) = repo_merges.first()
+                })) = repo_merges_for_status.first()
+                {
+                    match git.get_remote_branch_status(&repo_path, &workspace_branch, None) {
+                        Ok((ahead, behind)) => (Some(ahead), Some(behind)),
+                        Err(_) => (None, None),
+                    }
+                } else {
+                    (None, None)
+                };
+
+                Ok(BranchStatus {
+                    commits_ahead,
+                    commits_behind,
+                    has_uncommitted_changes,
+                    head_oid,
+                    uncommitted_count,
+                    untracked_count,
+                    remote_commits_ahead: remote_ahead,
+                    remote_commits_behind: remote_behind,
+                    merges: repo_merges_for_status,
+                    target_branch_name: target_branch_for_status,
+                    is_rebase_in_progress,
+                    conflict_op,
+                    conflicted_files,
+                    is_target_remote,
+                })
+            }),
+        )
+        .await
         {
-            match deployment
-                .git()
-                .get_remote_branch_status(&repo.path, &workspace.branch, None)
-            {
-                Ok((ahead, behind)) => (Some(ahead), Some(behind)),
-                Err(_) => (None, None),
+            Ok(Ok(Ok(status))) => status,
+            Ok(Ok(Err(err))) => {
+                tracing::warn!(
+                    workspace_id = %workspace.id,
+                    repo_name = %repo_name,
+                    error = %err,
+                    "Returning fallback branch status after git inspection error"
+                );
+                fallback_branch_status(target_branch.clone(), repo_merges.clone())
             }
-        } else {
-            (None, None)
+            Ok(Err(err)) => {
+                tracing::warn!(
+                    workspace_id = %workspace.id,
+                    repo_name = %repo_name,
+                    error = %err,
+                    "Returning fallback branch status after worker join failure"
+                );
+                fallback_branch_status(target_branch.clone(), repo_merges.clone())
+            }
+            Err(_) => {
+                tracing::warn!(
+                    workspace_id = %workspace.id,
+                    repo_name = %repo_name,
+                    timeout_secs = GIT_STATUS_TIMEOUT.as_secs(),
+                    "Returning fallback branch status after git inspection timeout"
+                );
+                fallback_branch_status(target_branch.clone(), repo_merges.clone())
+            }
         };
 
         results.push(RepoBranchStatus {
             repo_id: repo.id,
             repo_name: repo.name,
-            status: BranchStatus {
-                commits_ahead,
-                commits_behind,
-                has_uncommitted_changes,
-                head_oid,
-                uncommitted_count,
-                untracked_count,
-                remote_commits_ahead: remote_ahead,
-                remote_commits_behind: remote_behind,
-                merges: repo_merges,
-                target_branch_name: target_branch,
-                is_rebase_in_progress,
-                conflict_op,
-                conflicted_files,
-                is_target_remote,
-            },
+            status,
         });
     }
 

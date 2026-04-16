@@ -854,9 +854,10 @@ impl JsonRpcCallbacks for AppServerClient {
         raw: &str,
         notification: JSONRPCNotification,
     ) -> Result<bool, ExecutorError> {
-        self.log_writer.log_raw(raw).await?;
-
         let method = notification.method.as_str();
+        if should_log_notification(method) {
+            self.log_writer.log_raw(raw).await?;
+        }
 
         // Detect completed plan items in the notification stream
         if self.plan_mode
@@ -976,6 +977,10 @@ fn request_id(request: &ClientRequest) -> RequestId {
         | ClientRequest::GetAccountRateLimits { request_id, .. } => request_id.clone(),
         _ => unreachable!("request_id called for unsupported request variant"),
     }
+}
+
+fn should_log_notification(method: &str) -> bool {
+    !matches!(method, "account/rateLimits/updated")
 }
 
 #[derive(Clone)]

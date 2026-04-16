@@ -18,15 +18,26 @@ pub async fn load_workspace_middleware(
     mut request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    let request_path = request.uri().path().to_string();
+
     // Load the Workspace from the database
     let workspace = match Workspace::find_by_id(&deployment.db().pool, workspace_id).await {
         Ok(Some(w)) => w,
         Ok(None) => {
-            tracing::warn!("Workspace {} not found", workspace_id);
+            tracing::warn!(
+                "Workspace {} not found for request path {}",
+                workspace_id,
+                request_path
+            );
             return Err(StatusCode::NOT_FOUND);
         }
         Err(e) => {
-            tracing::error!("Failed to fetch Workspace {}: {}", workspace_id, e);
+            tracing::error!(
+                "Failed to fetch Workspace {} for request path {}: {}",
+                workspace_id,
+                request_path,
+                e
+            );
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };

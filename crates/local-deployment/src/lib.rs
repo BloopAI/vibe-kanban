@@ -48,6 +48,9 @@ pub mod container;
 mod copy;
 pub mod pty;
 
+const EVENT_HISTORY_BYTES: usize = 1 * 1024 * 1024;
+const EVENT_CHANNEL_CAPACITY: usize = 1024;
+
 #[derive(Clone)]
 pub struct LocalDeployment {
     config: Arc<RwLock<Config>>,
@@ -133,7 +136,10 @@ impl Deployment for LocalDeployment {
         let filesystem = FilesystemService::new();
 
         // Create shared components for EventService
-        let events_msg_store = Arc::new(MsgStore::new());
+        let events_msg_store = Arc::new(MsgStore::with_limits(
+            EVENT_HISTORY_BYTES,
+            EVENT_CHANNEL_CAPACITY,
+        ));
         let events_entry_count = Arc::new(RwLock::new(0));
 
         // Create DB with event hooks
@@ -252,7 +258,12 @@ impl Deployment for LocalDeployment {
             None => None,
         };
         let pr_sync_notify = Arc::new(Notify::new());
-        {
+        let disable_pr_monitor = std::env::var("VK_DISABLE_PR_MONITOR")
+            .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
+            .unwrap_or(false);
+        if disable_pr_monitor {
+            tracing::warn!("PR monitoring disabled via VK_DISABLE_PR_MONITOR");
+        } else {
             let db = db.clone();
             let analytics = analytics.as_ref().map(|s| AnalyticsContext {
                 user_id: user_id.clone(),

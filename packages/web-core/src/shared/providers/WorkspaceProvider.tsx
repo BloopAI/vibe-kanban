@@ -161,7 +161,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     };
   }, []);
 
-  const isLoading = isLoadingList || isLoadingWorkspace;
+  // Do not block the main workspace view on sidebar stream initialization.
+  // The workspace page only needs the workspace record itself to render;
+  // the sidebar already gets its own loading state via isWorkspacesListLoading.
+  const isLoading = isLoadingWorkspace;
 
   useEffect(() => {
     if (!workspaceId || isCreateMode) return;

@@ -31,11 +31,12 @@ fn main() {
         );
     }
 
-    // Create packages/local-web/dist directory if it doesn't exist
-    let dist_path = Path::new("../../packages/local-web/dist");
+    // Build-script cwd is not reliable under cargo, so resolve dist from the
+    // workspace root anchored at this crate's manifest directory.
+    let dist_path = workspace_root.join("packages/local-web/dist");
     if !dist_path.exists() {
         println!("cargo:warning=Creating dummy packages/local-web/dist directory for compilation");
-        fs::create_dir_all(dist_path).unwrap();
+        fs::create_dir_all(&dist_path).unwrap();
 
         // Create a dummy index.html
         let dummy_html = r#"<!DOCTYPE html>
