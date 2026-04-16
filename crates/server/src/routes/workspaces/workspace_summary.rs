@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use axum::{Json, extract::State, response::Json as ResponseJson};
 use db::models::{
     coding_agent_turn::CodingAgentTurn,
@@ -112,29 +110,12 @@ pub async fn get_workspace_summaries(
     // 6. Get PR status for each workspace
     let pr_statuses = PullRequest::get_latest_for_workspaces(pool, archived).await?;
 
-    // 7. Compute diff stats for each workspace (in parallel)
-    let diff_futures: Vec<_> = workspaces
-        .iter()
-        .map(|ws| {
-            let workspace = ws.clone();
-            let deployment = deployment.clone();
-            async move {
-                if workspace.container_ref.is_some() {
-                    compute_workspace_diff_stats(&deployment, &workspace)
-                        .await
-                        .map(|stats| (workspace.id, stats))
-                } else {
-                    None
-                }
-            }
-        })
-        .collect();
-
-    let diff_results: Vec<Option<(Uuid, DiffStats)>> =
-        futures_util::future::join_all(diff_futures).await;
-    let diff_stats: HashMap<Uuid, DiffStats> = diff_results.into_iter().flatten().collect();
-
-    // 8. Assemble response
+    // 7. Assemble response.
+    //
+    // Intentionally skip live diff-stat computation here. The workspace sidebar polls
+    // this endpoint for both active and archived workspaces, and recomputing git diffs
+    // for every workspace on each refresh causes a repo-scan storm that can exhaust the
+    // local VK server under moderate agent activity.
     let summaries: Vec<WorkspaceSummary> = workspaces
         .iter()
         .map(|ws| {
@@ -143,15 +124,14 @@ pub async fn get_workspace_summaries(
             let has_pending = latest
                 .map(|p| pending_approval_eps.contains(&p.execution_process_id))
                 .unwrap_or(false);
-            let stats = diff_stats.get(&id);
 
             WorkspaceSummary {
                 workspace_id: id,
                 latest_session_id: latest.map(|p| p.session_id),
                 has_pending_approval: has_pending,
-                files_changed: stats.map(|s| s.files_changed),
-                lines_added: stats.map(|s| s.lines_added),
-                lines_removed: stats.map(|s| s.lines_removed),
+                files_changed: None,
+                lines_added: None,
+                lines_removed: None,
                 latest_process_completed_at: latest.and_then(|p| p.completed_at),
                 latest_process_status: latest.map(|p| p.status.clone()),
                 has_running_dev_server: dev_server_workspaces.contains(&id),
@@ -166,23 +146,4 @@ pub async fn get_workspace_summaries(
     Ok(ResponseJson(ApiResponse::success(
         WorkspaceSummaryResponse { summaries },
     )))
-}
-
-/// Compute diff stats for a workspace.
-pub async fn compute_workspace_diff_stats(
-    deployment: &DeploymentImpl,
-    workspace: &Workspace,
-) -> Option<DiffStats> {
-    let stats = services::services::diff_stream::compute_diff_stats(
-        &deployment.db().pool,
-        deployment.git(),
-        workspace,
-    )
-    .await?;
-
-    Some(DiffStats {
-        files_changed: stats.files_changed,
-        lines_added: stats.lines_added,
-        lines_removed: stats.lines_removed,
-    })
 }

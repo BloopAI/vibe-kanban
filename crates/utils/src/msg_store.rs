@@ -9,8 +9,10 @@ use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 
 use crate::{log_msg::LogMsg, stream_lines::LinesStreamExt};
 
-// 100 MB Limit
-const HISTORY_BYTES: usize = 100000 * 1024;
+// Large default for stores that need full replay from memory. Live execution/event
+// stores should generally use `with_limits` to avoid buffering excessive output.
+const DEFAULT_HISTORY_BYTES: usize = 100000 * 1024;
+const DEFAULT_CHANNEL_CAPACITY: usize = 100000;
 
 #[derive(Clone)]
 struct StoredMsg {
@@ -21,6 +23,7 @@ struct StoredMsg {
 struct Inner {
     history: VecDeque<StoredMsg>,
     total_bytes: usize,
+    history_bytes_limit: usize,
 }
 
 pub struct MsgStore {
@@ -36,11 +39,16 @@ impl Default for MsgStore {
 
 impl MsgStore {
     pub fn new() -> Self {
-        let (sender, _) = broadcast::channel(100000);
+        Self::with_limits(DEFAULT_HISTORY_BYTES, DEFAULT_CHANNEL_CAPACITY)
+    }
+
+    pub fn with_limits(history_bytes_limit: usize, channel_capacity: usize) -> Self {
+        let (sender, _) = broadcast::channel(channel_capacity.max(1));
         Self {
             inner: RwLock::new(Inner {
                 history: VecDeque::with_capacity(32),
                 total_bytes: 0,
+                history_bytes_limit,
             }),
             sender,
         }
@@ -51,7 +59,7 @@ impl MsgStore {
         let bytes = msg.approx_bytes();
 
         let mut inner = self.inner.write().unwrap();
-        while inner.total_bytes.saturating_add(bytes) > HISTORY_BYTES {
+        while inner.total_bytes.saturating_add(bytes) > inner.history_bytes_limit {
             if let Some(front) = inner.history.pop_front() {
                 inner.total_bytes = inner.total_bytes.saturating_sub(front.bytes);
             } else {

@@ -60,6 +60,8 @@ use worktree_manager::WorktreeError;
 use crate::services::{execution_process, notification::NotificationService};
 pub type ContainerRef = String;
 
+const MAX_HISTORIC_RAW_LOG_MESSAGES: usize = 2000;
+
 #[derive(Debug, Error)]
 pub enum ContainerError {
     #[error(transparent)]
@@ -812,7 +814,12 @@ pub trait ContainerService {
                     .boxed(),
             );
         } else {
-            let messages = execution_process::load_raw_log_messages(&self.db().pool, *id).await?;
+            let mut messages =
+                execution_process::load_raw_log_messages(&self.db().pool, *id).await?;
+            if messages.len() > MAX_HISTORIC_RAW_LOG_MESSAGES {
+                let keep_from = messages.len() - MAX_HISTORIC_RAW_LOG_MESSAGES;
+                messages.drain(..keep_from);
+            }
 
             let stream = futures::stream::iter(
                 messages
@@ -843,8 +850,12 @@ pub trait ContainerService {
                     .boxed(),
             )
         } else {
-            let raw_messages =
+            let mut raw_messages =
                 execution_process::load_raw_log_messages(&self.db().pool, *id).await?;
+            if raw_messages.len() > MAX_HISTORIC_RAW_LOG_MESSAGES {
+                let keep_from = raw_messages.len() - MAX_HISTORIC_RAW_LOG_MESSAGES;
+                raw_messages.drain(..keep_from);
+            }
 
             // Create temporary store and populate
             // Include JsonPatch messages (already normalized) and Stdout/Stderr (need normalization)

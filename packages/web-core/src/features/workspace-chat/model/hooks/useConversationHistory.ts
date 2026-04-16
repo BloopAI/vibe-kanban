@@ -23,7 +23,6 @@ export interface UseConversationHistoryResult {
 }
 import {
   MIN_INITIAL_ENTRIES,
-  REMAINING_BATCH_SIZE,
 } from '@/shared/hooks/useConversationHistory/constants';
 
 export const useConversationHistory = ({
@@ -293,47 +292,6 @@ export const useConversationHistory = ({
     [executionProcesses]
   );
 
-  const loadRemainingEntriesInBatches = useCallback(
-    async (batchSize: number): Promise<boolean> => {
-      if (!executionProcesses?.current) return false;
-
-      let anyUpdated = false;
-      for (const executionProcess of [
-        ...executionProcesses.current,
-      ].reverse()) {
-        const current = displayedExecutionProcesses.current;
-        if (
-          current[executionProcess.id] ||
-          executionProcess.status === ExecutionProcessStatus.running
-        )
-          continue;
-
-        const entries =
-          await loadEntriesForHistoricExecutionProcess(executionProcess);
-        const entriesWithKey = entries.map((e, idx) =>
-          patchWithKey(e, executionProcess.id, idx)
-        );
-
-        mergeIntoDisplayed((state) => {
-          state[executionProcess.id] = {
-            executionProcess,
-            entries: entriesWithKey,
-          };
-        });
-
-        if (
-          flattenEntries(displayedExecutionProcesses.current).length > batchSize
-        ) {
-          anyUpdated = true;
-          break;
-        }
-        anyUpdated = true;
-      }
-      return anyUpdated;
-    },
-    [executionProcesses]
-  );
-
   const ensureProcessVisible = useCallback((p: ExecutionProcess) => {
     mergeIntoDisplayed((state) => {
       if (!state[p.id]) {
@@ -412,15 +370,13 @@ export const useConversationHistory = ({
       });
       emitEntries(displayedExecutionProcesses.current, 'initial', false);
 
-      setIsLoadingHistory(true);
-      while (
-        !cancelled &&
-        (await loadRemainingEntriesInBatches(REMAINING_BATCH_SIZE))
-      ) {
-        if (cancelled) return;
-        emitEntries(displayedExecutionProcesses.current, 'historic', false);
+      // Do not auto-load the full historic backlog on workspace open.
+      // Large older sessions can trigger multi-GB normalization spikes on the
+      // local server. Initial history is enough to render the workspace; older
+      // history can be loaded by a future explicit action.
+      if (!cancelled) {
+        setIsLoadingHistory(false);
       }
-      if (!cancelled) setIsLoadingHistory(false);
     })();
     return () => {
       cancelled = true;
@@ -430,7 +386,6 @@ export const useConversationHistory = ({
     idListKey,
     isLoading,
     loadHistoricEntries,
-    loadRemainingEntriesInBatches,
     emitEntries,
   ]); // include idListKey so new processes trigger reload
 

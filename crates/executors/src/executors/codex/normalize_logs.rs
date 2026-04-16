@@ -1068,7 +1068,8 @@ fn handle_direct_item_completed(
             ..
         } => {
             if let Some(mut command_state) = state.commands.remove(&id) {
-                command_state.formatted_output = aggregated_output;
+                command_state.formatted_output =
+                    truncate_optional_output(aggregated_output, FINAL_COMMAND_OUTPUT_BYTES);
                 command_state.exit_code = exit_code;
                 command_state.awaiting_approval = false;
                 command_state.status = app_command_status_to_tool_status(&status);
@@ -1794,8 +1795,16 @@ pub fn normalize_logs(
                             continue;
                         }
                         match stream {
-                            ExecOutputStream::Stdout => command_state.stdout.push_str(&chunk),
-                            ExecOutputStream::Stderr => command_state.stderr.push_str(&chunk),
+                            ExecOutputStream::Stdout => append_truncated_tail(
+                                &mut command_state.stdout,
+                                &chunk,
+                                STREAMING_COMMAND_OUTPUT_BYTES,
+                            ),
+                            ExecOutputStream::Stderr => append_truncated_tail(
+                                &mut command_state.stderr,
+                                &chunk,
+                                STREAMING_COMMAND_OUTPUT_BYTES,
+                            ),
                         }
                         let Some(index) = command_state.index else {
                             tracing::error!("missing entry index for existing command state");
@@ -1826,7 +1835,10 @@ pub fn normalize_logs(
                     ..
                 }) => {
                     if let Some(mut command_state) = state.commands.remove(&call_id) {
-                        command_state.formatted_output = Some(formatted_output);
+                        command_state.formatted_output = Some(truncate_to_tail(
+                            &formatted_output,
+                            FINAL_COMMAND_OUTPUT_BYTES,
+                        ));
                         command_state.exit_code = Some(exit_code);
                         command_state.awaiting_approval = false;
                         command_state.status = if exit_code == 0 {
@@ -2522,6 +2534,42 @@ static SESSION_ID: LazyLock<Regex> = LazyLock::new(|| {
         .expect("valid regex")
 });
 
+const STREAMING_COMMAND_OUTPUT_BYTES: usize = 32 * 1024;
+const FINAL_COMMAND_OUTPUT_BYTES: usize = 64 * 1024;
+
+fn truncate_to_tail(input: &str, max_bytes: usize) -> String {
+    if input.len() <= max_bytes {
+        return input.to_string();
+    }
+
+    let notice = format!("[output truncated to last {} bytes]\n", max_bytes);
+    let tail_budget = max_bytes.saturating_sub(notice.len());
+    if tail_budget == 0 {
+        return notice;
+    }
+
+    let mut start = input.len().saturating_sub(tail_budget);
+    while start < input.len() && !input.is_char_boundary(start) {
+        start += 1;
+    }
+
+    format!("{notice}{}", &input[start..])
+}
+
+fn append_truncated_tail(target: &mut String, chunk: &str, max_bytes: usize) {
+    if chunk.is_empty() {
+        return;
+    }
+
+    target.push_str(chunk);
+    if target.len() > max_bytes {
+        *target = truncate_to_tail(target, max_bytes);
+    }
+}
+
+fn truncate_optional_output(output: Option<String>, max_bytes: usize) -> Option<String> {
+    output.map(|value| truncate_to_tail(&value, max_bytes))
+}
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Error {
     LaunchError { error: String },

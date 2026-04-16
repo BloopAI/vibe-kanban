@@ -64,6 +64,8 @@ use workspace_manager::{RepoWorkspaceInput, WorkspaceError, WorkspaceManager};
 use crate::{command, copy};
 
 const WORKSPACE_TOUCH_DEBOUNCE: Duration = Duration::from_mins(2);
+const LIVE_EXECUTION_HISTORY_BYTES: usize = 8 * 1024 * 1024;
+const LIVE_EXECUTION_CHANNEL_CAPACITY: usize = 4096;
 
 #[derive(Clone)]
 pub struct LocalContainerService {
@@ -855,7 +857,10 @@ impl LocalContainerService {
     }
 
     async fn track_child_msgs_in_store(&self, id: Uuid, child: &mut AsyncGroupChild) {
-        let store = Arc::new(MsgStore::new());
+        let store = Arc::new(MsgStore::with_limits(
+            LIVE_EXECUTION_HISTORY_BYTES,
+            LIVE_EXECUTION_CHANNEL_CAPACITY,
+        ));
 
         let out = child.inner().stdout.take().expect("no stdout");
         let err = child.inner().stderr.take().expect("no stderr");
