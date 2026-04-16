@@ -51,6 +51,13 @@ pub mod pty;
 const EVENT_HISTORY_BYTES: usize = 1 * 1024 * 1024;
 const EVENT_CHANNEL_CAPACITY: usize = 1024;
 
+fn local_auth_disabled() -> bool {
+    matches!(
+        std::env::var("VK_DISABLE_AUTH").ok().as_deref(),
+        Some("1") | Some("true") | Some("TRUE") | Some("yes") | Some("YES")
+    )
+}
+
 #[derive(Clone)]
 pub struct LocalDeployment {
     config: Arc<RwLock<Config>>,
@@ -414,6 +421,11 @@ impl LocalDeployment {
     }
 
     pub async fn get_login_status(&self) -> LoginStatus {
+        if local_auth_disabled() {
+            self.auth_context.clear_remote_auth_degraded_slug().await;
+            return LoginStatus::LoggedIn { profile: None };
+        }
+
         if self.auth_context.get_credentials().await.is_none() {
             self.auth_context.clear_profile().await;
             self.auth_context.clear_remote_auth_degraded_slug().await;
