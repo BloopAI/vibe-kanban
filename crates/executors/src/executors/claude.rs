@@ -580,7 +580,12 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         ExecutorConfig {
             executor: BaseCodingAgent::ClaudeCode,
             variant: None,
-            model_id: self.model.clone(),
+            model_id: self.model.clone().or_else(|| {
+                default_discovered_options()
+                    .model_selector
+                    .default_model
+                    .clone()
+            }),
             agent_id: None,
             reasoning_id: self.effort.as_ref().map(|e| e.as_ref().to_owned()),
             permission_policy: Some(permission_policy),
