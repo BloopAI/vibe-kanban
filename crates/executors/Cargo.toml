@@ -41,10 +41,6 @@ codex-app-server-protocol = { git = "https://github.com/openai/codex.git", packa
 sha2 = "0.10"
 derivative = "2.2.0"
 reqwest = { workspace = true }
-# Forces openssl-sys (pulled in transitively by codex-protocol → reqwest →
-# hyper-tls → native-tls) to build from vendored C source. Required for
-# musl + windows-msvc cross-compile, which have no system OpenSSL.
-openssl = { version = "0.10", features = ["vendored"] }
 eventsource-stream = "0.2"
 walkdir = "2"
 rand = "0.8"
@@ -55,6 +51,13 @@ async-stream = "0.3"
 
 [target.'cfg(windows)'.dependencies]
 winsplit = "0.1.0"
+
+# On Linux, codex-protocol → reqwest → hyper-tls → native-tls pulls in
+# openssl-sys. Vendor it so musl cross-compile (no system OpenSSL) builds.
+# macOS uses Security.framework and Windows uses schannel via native-tls,
+# so neither pulls in openssl-sys — keep this Linux-only.
+[target.'cfg(target_os = "linux")'.dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
 
 [features]
 default = []
