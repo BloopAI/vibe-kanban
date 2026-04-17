@@ -13,11 +13,19 @@ pub async fn kill_process_group(child: &mut AsyncGroupChild) -> std::io::Result<
         for sig in [Signal::SIGINT, Signal::SIGTERM, Signal::SIGKILL] {
             tracing::info!("Sending {:?} to process group", sig);
             if let Err(e) = child.signal(sig) {
-                // break if the group does not exist anymore
-                if e.raw_os_error() == Some(nix::libc::ESRCH) {
-                    break;
+                match e.raw_os_error() {
+                    // ESRCH: group no longer exists — process already gone.
+                    Some(nix::libc::ESRCH) => break,
+                    // EPERM: pgid was recycled to an unrelated process after the
+                    // group leader exited. We must not signal a group we don't own.
+                    // SIGINT already fired; child.kill()+wait() below reaps the handle.
+                    Some(nix::libc::EPERM) => break,
+                    _ => tracing::warn!(
+                        "Failed to send signal {:?} to process group: {}",
+                        sig,
+                        e
+                    ),
                 }
-                tracing::warn!("Failed to send signal {:?} to process group: {}", sig, e);
             }
             if sig != Signal::SIGKILL {
                 tokio::time::sleep(Duration::from_secs(2)).await;
