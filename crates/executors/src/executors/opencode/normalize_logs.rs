@@ -280,7 +280,7 @@ impl LogState {
             SdkEvent::SessionStatus(event) => {
                 self.handle_session_status(event.status);
             }
-            SdkEvent::SessionIdle => {}
+            SdkEvent::SessionIdle | SdkEvent::SessionUpdated => {}
             SdkEvent::SessionCompacted => {
                 self.add_normalized_entry(system_message("Session compacted".to_string()));
             }
@@ -1564,4 +1564,88 @@ fn parse_question_items(items: &[Value]) -> Vec<AskUserQuestionItem> {
         .filter_map(|v| serde_json::from_value(v.clone()).ok())
         .collect();
     parse_question_items_from_info(&infos)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{collections::BTreeMap, path::Path, sync::Arc};
+
+    use serde_json::json;
+    use workspace_utils::{log_msg::LogMsg, msg_store::MsgStore};
+
+    use super::*;
+    use crate::logs::utils::patch::extract_normalized_entry_from_patch;
+
+    fn latest_normalized_entries(msg_store: &MsgStore) -> Vec<NormalizedEntry> {
+        let mut entries = BTreeMap::new();
+        for msg in msg_store.get_history() {
+            if let LogMsg::JsonPatch(patch) = msg
+                && let Some((index, entry)) = extract_normalized_entry_from_patch(&patch)
+            {
+                entries.insert(index, entry);
+            }
+        }
+        entries.into_values().collect()
+    }
+
+    async fn normalize_lines(lines: &[String]) -> Vec<NormalizedEntry> {
+        let msg_store = Arc::new(MsgStore::new());
+        for line in lines {
+            msg_store.push_stdout(format!("{line}\n"));
+        }
+        msg_store.push_finished();
+
+        for handle in normalize_logs(msg_store.clone(), Path::new("/tmp/test-worktree")) {
+            handle.await.unwrap();
+        }
+
+        latest_normalized_entries(&msg_store)
+    }
+
+    #[tokio::test]
+    async fn session_updated_does_not_emit_unknown_event_message() {
+        let entries = normalize_lines(&[json!({
+            "type": "sdk_event",
+            "event": {
+                "type": "session.updated",
+                "properties": {
+                    "sessionID": "ses_123",
+                    "info": {
+                        "id": "ses_123",
+                        "version": "1.4.7"
+                    }
+                }
+            }
+        })
+        .to_string()])
+        .await;
+
+        assert!(
+            entries.iter().all(|entry| {
+                entry.content != "Unrecognized OpenCode SDK event type `session.updated`: {\"info\":{\"id\":\"ses_123\",\"version\":\"1.4.7\"},\"sessionID\":\"ses_123\"}"
+            }),
+            "session.updated should not produce an unknown-event log entry"
+        );
+        assert!(entries.is_empty());
+    }
+
+    #[tokio::test]
+    async fn unknown_sdk_event_still_emits_system_message() {
+        let entries = normalize_lines(&[json!({
+            "type": "sdk_event",
+            "event": {
+                "type": "session.future",
+                "properties": {
+                    "foo": "bar"
+                }
+            }
+        })
+        .to_string()])
+        .await;
+
+        assert!(entries.iter().any(|entry| {
+            entry.content
+                == "Unrecognized OpenCode SDK event type `session.future`: {\"foo\":\"bar\"}"
+        }));
+    }
 }

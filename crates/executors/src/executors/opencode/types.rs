@@ -67,6 +67,7 @@ pub(super) enum SdkEvent {
     PermissionAsked(PermissionAskedEvent),
     PermissionReplied,
     SessionIdle,
+    SessionUpdated,
     SessionStatus(SessionStatusEvent),
     SessionDiff,
     SessionCompacted,
@@ -101,6 +102,10 @@ impl SdkEvent {
             }
             "permission.replied" => SdkEvent::PermissionReplied,
             "session.idle" => SdkEvent::SessionIdle,
+            "session.updated" => {
+                parse_session_updated_event(&envelope.properties)?;
+                SdkEvent::SessionUpdated
+            }
             "session.status" => {
                 SdkEvent::SessionStatus(serde_json::from_value(envelope.properties).ok()?)
             }
@@ -299,6 +304,11 @@ pub(super) struct TodoUpdatedEvent {
     pub(super) todos: Vec<SdkTodo>,
 }
 
+fn parse_session_updated_event(properties: &Value) -> Option<()> {
+    properties.get("sessionID")?.as_str()?;
+    Some(())
+}
+
 #[derive(Debug, Deserialize)]
 pub(super) struct SdkTodo {
     #[serde(default)]
@@ -417,6 +427,54 @@ impl<'de> Deserialize<'de> for SdkError {
     {
         let raw = Value::deserialize(deserializer)?;
         Ok(Self { raw })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::SdkEvent;
+
+    #[test]
+    fn parses_session_updated_event() {
+        let event = json!({
+            "type": "session.updated",
+            "properties": {
+                "sessionID": "ses_123",
+                "info": {
+                    "id": "ses_123",
+                    "version": "1.4.7"
+                }
+            }
+        });
+
+        let parsed = SdkEvent::parse(&event).expect("session.updated should parse");
+
+        match parsed {
+            SdkEvent::SessionUpdated => {}
+            other => panic!("expected SessionUpdated, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn preserves_unknown_events() {
+        let event = json!({
+            "type": "session.future",
+            "properties": {
+                "foo": "bar"
+            }
+        });
+
+        let parsed = SdkEvent::parse(&event).expect("unknown event should still parse");
+
+        match parsed {
+            SdkEvent::Unknown { type_, properties } => {
+                assert_eq!(type_, "session.future");
+                assert_eq!(properties["foo"], "bar");
+            }
+            other => panic!("expected Unknown, got {other:?}"),
+        }
     }
 }
 
