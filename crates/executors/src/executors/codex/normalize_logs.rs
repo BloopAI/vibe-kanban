@@ -1180,7 +1180,7 @@ fn handle_direct_item_completed(
             }
         }
         AppThreadItem::ImageView { path, .. } => {
-            let relative_path = make_path_relative(&path, worktree_path);
+            let relative_path = make_path_relative(&path.to_string_lossy(), worktree_path);
             add_normalized_entry(
                 msg_store,
                 entry_index,
@@ -2393,7 +2393,6 @@ pub fn normalize_logs(
                 | EventMsg::AgentMessageContentDelta(..)
                 | EventMsg::ReasoningContentDelta(..)
                 | EventMsg::ReasoningRawContentDelta(..)
-                | EventMsg::ListCustomPromptsResponse(..)
                 | EventMsg::ListSkillsResponse(..)
                 | EventMsg::SkillsUpdateAvailable
                 | EventMsg::TurnAborted(..)
@@ -2413,8 +2412,10 @@ pub fn normalize_logs(
                 | EventMsg::CollabResumeEnd(..)
                 | EventMsg::ThreadNameUpdated(..)
                 | EventMsg::RealtimeConversationStarted(..)
+                | EventMsg::RealtimeConversationSdp(..)
                 | EventMsg::RealtimeConversationRealtime(..)
                 | EventMsg::RealtimeConversationClosed(..)
+                | EventMsg::RealtimeConversationListVoicesResponse(..)
                 | EventMsg::ImageGenerationBegin(..)
                 | EventMsg::ImageGenerationEnd(..)
                 | EventMsg::RequestPermissions(..)

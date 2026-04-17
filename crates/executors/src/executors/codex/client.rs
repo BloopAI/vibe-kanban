@@ -16,12 +16,12 @@ use codex_app_server_protocol::{
     GetAccountParams, GetAccountRateLimitsResponse, GetAccountResponse, InitializeCapabilities,
     InitializeParams, InitializeResponse, ItemCompletedNotification, JSONRPCError,
     JSONRPCNotification, JSONRPCRequest, JSONRPCResponse, ListMcpServerStatusParams,
-    ListMcpServerStatusResponse, RequestId, ReviewStartParams, ReviewStartResponse, ReviewTarget,
-    ServerRequest, ThreadCompactStartParams, ThreadCompactStartResponse, ThreadForkParams,
-    ThreadForkResponse, ThreadItem, ThreadReadParams, ThreadReadResponse, ThreadStartParams,
-    ThreadStartResponse, ToolRequestUserInputAnswer, ToolRequestUserInputQuestion,
-    ToolRequestUserInputResponse, TurnCompletedNotification, TurnStartParams, TurnStartResponse,
-    TurnStatus, UserInput,
+    ListMcpServerStatusResponse, McpServerStatusDetail, RequestId, ReviewStartParams,
+    ReviewStartResponse, ReviewTarget, ServerRequest, ThreadCompactStartParams,
+    ThreadCompactStartResponse, ThreadForkParams, ThreadForkResponse, ThreadItem, ThreadReadParams,
+    ThreadReadResponse, ThreadStartParams, ThreadStartResponse, ToolRequestUserInputAnswer,
+    ToolRequestUserInputQuestion, ToolRequestUserInputResponse, TurnCompletedNotification,
+    TurnStartParams, TurnStartResponse, TurnStatus, UserInput,
 };
 use codex_protocol::config_types::{CollaborationMode, ModeKind, Settings};
 use futures::TryFutureExt;
@@ -229,6 +229,7 @@ impl AppServerClient {
             params: ListMcpServerStatusParams {
                 cursor,
                 limit: None,
+                detail: Some(McpServerStatusDetail::ToolsAndAuthOnly),
             },
         };
         self.send_request(request, "mcpServerStatus/list").await
