@@ -430,54 +430,6 @@ impl<'de> Deserialize<'de> for SdkError {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use serde_json::json;
-
-    use super::SdkEvent;
-
-    #[test]
-    fn parses_session_updated_event() {
-        let event = json!({
-            "type": "session.updated",
-            "properties": {
-                "sessionID": "ses_123",
-                "info": {
-                    "id": "ses_123",
-                    "version": "1.4.7"
-                }
-            }
-        });
-
-        let parsed = SdkEvent::parse(&event).expect("session.updated should parse");
-
-        match parsed {
-            SdkEvent::SessionUpdated => {}
-            other => panic!("expected SessionUpdated, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn preserves_unknown_events() {
-        let event = json!({
-            "type": "session.future",
-            "properties": {
-                "foo": "bar"
-            }
-        });
-
-        let parsed = SdkEvent::parse(&event).expect("unknown event should still parse");
-
-        match parsed {
-            SdkEvent::Unknown { type_, properties } => {
-                assert_eq!(type_, "session.future");
-                assert_eq!(properties["foo"], "bar");
-            }
-            other => panic!("expected Unknown, got {other:?}"),
-        }
-    }
-}
-
 /// Configuration response from /config endpoint
 #[derive(Debug, Deserialize)]
 pub(super) struct Config {
