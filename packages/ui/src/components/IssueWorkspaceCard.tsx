@@ -278,7 +278,7 @@ export function IssueWorkspaceCard({
           )}
         </div>
 
-        <div className="hidden sm:flex items-center gap-half shrink-0">
+        <div className="flex items-center justify-end gap-half shrink-0 flex-wrap max-w-full">
           {workspace.prs.length > 0 ? (
             workspace.prs.map((pr) => (
               <a
