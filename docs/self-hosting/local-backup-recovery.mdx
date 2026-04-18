@@ -50,6 +50,174 @@ A real local backup must capture all of these at the same time:
 
 If any of these are missing, the backup is incomplete.
 
+## Current recommended backup system
+
+The current recommended backup path for a local-only Vibe Kanban install is a **lean restore backup**:
+
+- small enough to run regularly
+- complete enough to restore the local VK state
+- assumes GitHub remains the source of truth for repo history already safely pushed there
+- captures the **local-only** state that GitHub does not protect
+
+This is the system currently implemented in the repo.
+
+### Scripts
+
+- Backup generator: `scripts/vk_lean_backup.py`
+- One-click backup wrapper: `scripts/run_vk_lean_backup.sh`
+- Restore script: `scripts/vk_restore_lean_backup.py`
+- One-click restore wrapper: `scripts/run_vk_restore_latest.sh`
+
+### What the lean backup includes
+
+1. **VK local state**
+   - `~/.local/share/vibe-kanban/db.v2.sqlite`
+   - `config.json`
+   - `server_ed25519_signing_key`
+   - `sessions/`
+2. **Runtime launch state**
+   - `~/.config/systemd/user/vibe-kanban.service`
+   - `~/.config/systemd/user/vibe-kanban.service.d/`
+   - `~/.local/bin/vibe-kanban-serve`
+   - `~/.local/bin/vibe-kanban-server-cleanfix`
+3. **Exported cloud recovery data**
+   - latest local cloud export zip if present
+4. **Deterministic restore metadata**
+   - project/workspace inventory from the DB
+   - exact worktree mapping
+   - exact repo HEAD/branch metadata
+5. **Local-only git state not guaranteed to be on GitHub**
+   - local-only git bundles
+   - working tree diffs
+   - staged diffs
+   - untracked files
+   - stash patches
+
+### What the lean backup intentionally excludes
+
+- full repo copies
+- `node_modules`
+- `target/`
+- `.gradle/`
+- `.next/`
+- other large build caches or generated output that can be rebuilt from GitHub state
+
+That exclusion is intentional. The purpose of the lean backup is to preserve what is **not** safely recoverable from GitHub while staying small enough to run frequently.
+
+## Backup outputs
+
+Each run creates:
+
+- a timestamped directory:
+  - `/home/<user>/backups/vk-lean-restore-<timestamp>/`
+- a timestamped archive:
+  - `/home/<user>/backups/vk-lean-restore-<timestamp>.tar.gz`
+- stable local pointers:
+  - `/home/<user>/backups/vk-lean-restore-latest`
+  - `/home/<user>/backups/vk-lean-restore-latest.tar.gz`
+
+The backup also mirrors the archive to the Desktop machine:
+
+- `Desktop/vk-backups/vk-lean-restore-<timestamp>.tar.gz`
+- `Desktop/vk-backups/vk-lean-restore-latest.tar.gz`
+
+The `latest` path is the one agents should prefer for fast restore.
+
+## Scheduled backups
+
+The current scheduler is a user crontab entry:
+
+```cron
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+HOME=/home/mcp
+17 * * * * /home/mcp/_vibe_kanban_repo/scripts/run_vk_lean_backup.sh >> /home/mcp/backups/vk-lean-backup.cron.log 2>&1
+```
+
+That means:
+
+- the lean backup runs **once per hour**
+- it runs at minute `17`
+- it writes logs to:
+  - `/home/mcp/backups/vk-lean-backup.cron.log`
+
+### Retention
+
+The backup script keeps:
+
+- timestamped snapshots
+- timestamped archives
+- stable `latest` pointers
+
+The script also prunes older timestamped runs according to its `--retain` setting.
+
+## One-click backup
+
+Run:
+
+```bash
+cd /home/mcp/_vibe_kanban_repo
+./scripts/run_vk_lean_backup.sh
+```
+
+This will:
+
+1. create a fresh lean restore backup under `/home/<user>/backups`
+2. update the local `latest` pointers
+3. mirror the archive to the Desktop backup folder
+
+## One-click restore
+
+To restore from the latest backup:
+
+```bash
+cd /home/mcp/_vibe_kanban_repo
+./scripts/run_vk_restore_latest.sh
+```
+
+This restores from:
+
+```bash
+/home/<user>/backups/vk-lean-restore-latest.tar.gz
+```
+
+You can also restore a specific archive directly:
+
+```bash
+cd /home/mcp/_vibe_kanban_repo
+python3 scripts/vk_restore_lean_backup.py /home/<user>/backups/vk-lean-restore-<timestamp>.tar.gz
+```
+
+## What restore actually does
+
+The restore script is designed to avoid guessing.
+
+It will:
+
+1. stop `vibe-kanban.service`
+2. restore the VK DB, config, sessions, signing key, service unit, and launcher binaries
+3. use GitHub remotes to rehydrate the underlying repos if needed
+4. fetch local-only git bundles from the backup
+5. recreate worktrees using the saved worktree manifest
+6. reapply:
+   - staged diffs
+   - working diffs
+   - untracked files
+   - stash-derived patches
+7. reload and restart `vibe-kanban.service`
+
+The goal is that an agent can restore the backup plus GitHub state and get back to what should appear to be the captured VK snapshot, without inventing missing steps.
+
+## Required assumptions for successful restore
+
+The lean restore path assumes:
+
+- GitHub is still reachable
+- the repos already pushed to GitHub remain the source of truth for committed history
+- the backup archive and checksum manifest are intact
+
+If those assumptions are false, use a heavier full backup instead.
+
 ## The most important preflight check
 
 Before calling anything a full backup, check whether the local install is still partially remote-backed:
