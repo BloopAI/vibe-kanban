@@ -11,13 +11,14 @@ use std::{
 
 use codex_app_server_protocol::{
     AgentMessageDeltaNotification, CommandExecutionRequestApprovalParams,
-    CommandExecutionStatus as V2CommandExecutionStatus, FileUpdateChange as V2FileUpdateChange,
-    ItemCompletedNotification, ItemStartedNotification, JSONRPCNotification, JSONRPCRequest,
-    JSONRPCResponse, McpToolCallProgressNotification, McpToolCallResult as V2McpToolCallResult,
-    McpToolCallStatus as V2McpToolCallStatus, PatchApplyStatus as V2PatchApplyStatus,
-    ReasoningSummaryTextDeltaNotification, ReasoningTextDeltaNotification, ServerNotification,
-    ThreadForkResponse, ThreadItem, ThreadStartResponse, ThreadTokenUsageUpdatedNotification,
-    TurnPlanStep, TurnPlanUpdatedNotification,
+    CommandExecutionStatus as V2CommandExecutionStatus, DynamicToolCallParams,
+    FileUpdateChange as V2FileUpdateChange, ItemCompletedNotification, ItemStartedNotification,
+    JSONRPCNotification, JSONRPCRequest, JSONRPCResponse, McpToolCallProgressNotification,
+    McpToolCallResult as V2McpToolCallResult, McpToolCallStatus as V2McpToolCallStatus,
+    PatchApplyStatus as V2PatchApplyStatus, ReasoningSummaryTextDeltaNotification,
+    ReasoningTextDeltaNotification, ServerNotification, ThreadForkResponse, ThreadItem,
+    ThreadStartResponse, ThreadTokenUsageUpdatedNotification, ToolRequestUserInputParams,
+    ToolRequestUserInputQuestion, TurnPlanStep, TurnPlanUpdatedNotification,
 };
 use codex_mcp_types::ContentBlock;
 use codex_protocol::{
@@ -37,7 +38,7 @@ use json_patch::Patch;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use workspace_utils::{
-    approvals::ApprovalStatus,
+    approvals::{ApprovalStatus, Question, QuestionOption},
     diff::{concatenate_diff_hunks, extract_unified_diff_hunks},
     msg_store::MsgStore,
     path::make_path_relative,
@@ -90,6 +91,10 @@ pub enum CodexEvent {
         item_id: String,
         command: String,
     },
+    UserInputRequest {
+        item_id: String,
+        questions: Vec<Question>,
+    },
     CommandItem {
         item_id: String,
         command: String,
@@ -112,6 +117,11 @@ pub enum CodexEvent {
     McpToolProgress {
         item_id: String,
         message: String,
+    },
+    DynamicToolCall {
+        item_id: String,
+        tool: String,
+        arguments: Value,
     },
     PlanUpdate {
         plan: Vec<TodoItem>,
@@ -248,6 +258,31 @@ impl LogNormalizer for CodexNormalizer {
             });
         }
 
+        if let Ok(request) = serde_json::from_str::<JSONRPCRequest>(line)
+            && request.method == "item/tool/requestUserInput"
+            && let Ok(params) = serde_json::from_value::<ToolRequestUserInputParams>(
+                request.params.unwrap_or(Value::Null),
+            )
+        {
+            return Some(CodexEvent::UserInputRequest {
+                item_id: params.item_id,
+                questions: map_user_input_questions(params.questions),
+            });
+        }
+
+        if let Ok(request) = serde_json::from_str::<JSONRPCRequest>(line)
+            && request.method == "item/tool/call"
+            && let Ok(params) = serde_json::from_value::<DynamicToolCallParams>(
+                request.params.unwrap_or(Value::Null),
+            )
+        {
+            return Some(CodexEvent::DynamicToolCall {
+                item_id: params.call_id,
+                tool: params.tool,
+                arguments: params.arguments,
+            });
+        }
+
         // Try to parse as JSONRPCNotification
         let notification: JSONRPCNotification = serde_json::from_str(line).ok()?;
 
@@ -270,10 +305,12 @@ impl LogNormalizer for CodexNormalizer {
                 ..
             } => Some(id.clone()),
             CodexEvent::CommandApprovalRequest { item_id, .. }
+            | CodexEvent::UserInputRequest { item_id, .. }
             | CodexEvent::CommandItem { item_id, .. }
             | CodexEvent::PatchItem { item_id, .. }
             | CodexEvent::McpToolItem { item_id, .. }
-            | CodexEvent::McpToolProgress { item_id, .. } => Some(item_id.clone()),
+            | CodexEvent::McpToolProgress { item_id, .. }
+            | CodexEvent::DynamicToolCall { item_id, .. } => Some(item_id.clone()),
             CodexEvent::Event(EventMsg::SessionConfigured(payload)) => {
                 Some(payload.session_id.to_string())
             }
@@ -324,6 +361,9 @@ impl LogNormalizer for CodexNormalizer {
             CodexEvent::CommandApprovalRequest { item_id, command } => {
                 self.process_v2_command_approval(item_id, command, entry_index)
             }
+            CodexEvent::UserInputRequest { item_id, questions } => {
+                self.process_v2_user_input_request(item_id, questions, entry_index)
+            }
             CodexEvent::CommandItem {
                 item_id,
                 command,
@@ -355,6 +395,11 @@ impl LogNormalizer for CodexNormalizer {
             CodexEvent::McpToolProgress { item_id, message } => {
                 self.process_v2_mcp_tool_progress(item_id, message, entry_index)
             }
+            CodexEvent::DynamicToolCall {
+                item_id,
+                tool,
+                arguments,
+            } => self.process_v2_dynamic_tool_call(item_id, tool, arguments, entry_index),
             CodexEvent::PlanUpdate { plan, explanation } => {
                 self.process_v2_plan_update(plan, explanation, entry_index)
             }
@@ -1123,6 +1168,40 @@ impl CodexNormalizer {
         }
     }
 
+    fn process_v2_user_input_request(
+        &mut self,
+        item_id: String,
+        questions: Vec<Question>,
+        entry_index: &EntryIndexProvider,
+    ) -> Vec<Patch> {
+        self.state.assistant = None;
+        self.state.thinking = None;
+
+        let content = match questions.as_slice() {
+            [question] => question.question.clone(),
+            questions => format!("{} questions", questions.len()),
+        };
+        let index = entry_index.next();
+        let entry = NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::ToolUse {
+                tool_name: "AskUserQuestion".to_string(),
+                action_type: ActionType::Tool {
+                    tool_name: "AskUserQuestion".to_string(),
+                    arguments: Some(serde_json::json!({ "questions": questions })),
+                    result: None,
+                },
+                status: ToolStatus::Created,
+            },
+            content,
+            metadata: serde_json::to_value(ToolCallMetadata {
+                tool_call_id: item_id,
+            })
+            .ok(),
+        };
+        vec![ConversationPatch::add_normalized_entry(index, entry)]
+    }
+
     fn process_v2_command_item(
         &mut self,
         item_id: String,
@@ -1273,6 +1352,39 @@ impl CodexNormalizer {
             index,
             mcp_tool_state.to_normalized_entry(),
         )]
+    }
+
+    fn process_v2_dynamic_tool_call(
+        &mut self,
+        item_id: String,
+        tool: String,
+        arguments: Value,
+        entry_index: &EntryIndexProvider,
+    ) -> Vec<Patch> {
+        self.state.assistant = None;
+        self.state.thinking = None;
+
+        let index = entry_index.next();
+        let entry = NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::ToolUse {
+                tool_name: tool.clone(),
+                action_type: ActionType::Tool {
+                    tool_name: tool.clone(),
+                    arguments: Some(arguments),
+                    result: Some(ToolResult::markdown(
+                        "Dynamic tool calls are not yet supported by Vibe Kanban.",
+                    )),
+                },
+                status: ToolStatus::Failed,
+            },
+            content: tool,
+            metadata: serde_json::to_value(ToolCallMetadata {
+                tool_call_id: item_id,
+            })
+            .ok(),
+        };
+        vec![ConversationPatch::add_normalized_entry(index, entry)]
     }
 
     fn process_v2_plan_update(
@@ -1546,6 +1658,26 @@ fn create_model_params_entry(
         content: params.join("  ").to_string(),
         metadata: None,
     }
+}
+
+fn map_user_input_questions(questions: Vec<ToolRequestUserInputQuestion>) -> Vec<Question> {
+    questions
+        .into_iter()
+        .map(|question| Question {
+            question: question.question,
+            header: question.header,
+            multi_select: false,
+            options: question
+                .options
+                .unwrap_or_default()
+                .into_iter()
+                .map(|option| QuestionOption {
+                    label: option.label,
+                    description: option.description,
+                })
+                .collect(),
+        })
+        .collect()
 }
 
 #[derive(Default)]
@@ -1989,6 +2121,79 @@ mod tests {
     }
 
     #[test]
+    fn parses_v2_user_input_request() {
+        let event = normalizer()
+            .parse_line(
+                &json!({
+                    "id": 3,
+                    "method": "item/tool/requestUserInput",
+                    "params": {
+                        "threadId": "11111111-1111-1111-1111-111111111111",
+                        "turnId": "turn-1",
+                        "itemId": "item-question-1",
+                        "questions": [{
+                            "id": "confirm_path",
+                            "header": "Path",
+                            "question": "Which path should I use?",
+                            "options": [{
+                                "label": "src",
+                                "description": "Use the source directory"
+                            }]
+                        }]
+                    }
+                })
+                .to_string(),
+            )
+            .expect("user input request should parse");
+
+        match event {
+            CodexEvent::UserInputRequest { item_id, questions } => {
+                assert_eq!(item_id, "item-question-1");
+                assert_eq!(questions.len(), 1);
+                assert_eq!(questions[0].header, "Path");
+                assert_eq!(questions[0].question, "Which path should I use?");
+                assert_eq!(questions[0].options[0].label, "src");
+            }
+            other => panic!("unexpected event: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parses_v2_dynamic_tool_call_request() {
+        let event = normalizer()
+            .parse_line(
+                &json!({
+                    "id": 4,
+                    "method": "item/tool/call",
+                    "params": {
+                        "threadId": "11111111-1111-1111-1111-111111111111",
+                        "turnId": "turn-1",
+                        "callId": "call-dynamic-1",
+                        "tool": "request_user_input",
+                        "arguments": {
+                            "prompt": "Continue?"
+                        }
+                    }
+                })
+                .to_string(),
+            )
+            .expect("dynamic tool request should parse");
+
+        match event {
+            CodexEvent::DynamicToolCall {
+                item_id,
+                tool,
+                arguments,
+            } => {
+                assert_eq!(item_id, "call-dynamic-1");
+                assert_eq!(tool, "request_user_input");
+                assert_eq!(arguments["prompt"], "Continue?");
+            }
+            other => panic!("unexpected event: {other:?}"),
+        }
+    }
+
+    #[test]
     fn parses_v2_command_item_completion() {
         let event = normalizer()
             .parse_line(
@@ -2107,6 +2312,7 @@ impl Approval {
         match tool_name.as_str() {
             "codex.exec_command" => "Exec Command".to_string(),
             "codex.apply_patch" => "Edit".to_string(),
+            "AskUserQuestion" => "Ask User Question".to_string(),
             other => other.to_string(),
         }
     }

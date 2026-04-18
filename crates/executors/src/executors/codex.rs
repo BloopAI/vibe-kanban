@@ -13,7 +13,14 @@ use async_trait::async_trait;
 use codex_app_server_protocol::{
     AskForApproval as CodexAskForApproval, SandboxMode as CodexSandboxMode, ThreadStartParams,
 };
-use codex_protocol::ThreadId;
+use codex_protocol::{
+    ThreadId,
+    config_types::{
+        CollaborationMode as ProtocolCollaborationMode, ModeKind,
+        Settings as ProtocolCollaborationSettings,
+    },
+    openai_models::ReasoningEffort as ProtocolReasoningEffort,
+};
 use command_group::AsyncCommandGroup;
 use derivative::Derivative;
 use schemars::JsonSchema;
@@ -103,6 +110,18 @@ pub enum ReasoningSummaryFormat {
     Experimental,
 }
 
+/// Native Codex collaboration mode presets.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum CodexCollaborationMode {
+    Plan,
+    Code,
+    PairProgramming,
+    Execute,
+    Custom,
+}
+
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
 pub struct Codex {
@@ -136,6 +155,8 @@ pub struct Codex {
     pub compact_prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub developer_instructions: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub collaboration_mode: Option<CodexCollaborationMode>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 
@@ -308,6 +329,24 @@ impl Codex {
             );
         }
 
+        if let Some(profile) = &self.profile {
+            overrides.insert("profile".to_string(), Value::String(profile.clone()));
+        }
+
+        if let Some(compact_prompt) = &self.compact_prompt {
+            overrides.insert(
+                "compact_prompt".to_string(),
+                Value::String(compact_prompt.clone()),
+            );
+        }
+
+        if let Some(include_apply_patch_tool) = self.include_apply_patch_tool {
+            overrides.insert(
+                "include_apply_patch_tool".to_string(),
+                Value::Bool(include_apply_patch_tool),
+            );
+        }
+
         if overrides.is_empty() {
             None
         } else {
@@ -366,6 +405,10 @@ impl Codex {
 
         let params = self.build_thread_start_params(current_dir);
         let resume_session = resume_session.map(|s| s.to_string());
+        let collaboration_mode = self.collaboration_mode.clone();
+        let model = self.model.clone();
+        let model_reasoning_effort = self.model_reasoning_effort.clone();
+        let developer_instructions = self.developer_instructions.clone();
         let auto_approve = matches!(
             (&self.sandbox, &self.ask_for_approval),
             (Some(SandboxMode::DangerFullAccess), None)
@@ -384,6 +427,10 @@ impl Codex {
                 exit_signal_tx.clone(),
                 approvals,
                 auto_approve,
+                collaboration_mode,
+                model,
+                model_reasoning_effort,
+                developer_instructions,
             )
             .await
             {
@@ -446,6 +493,10 @@ impl Codex {
         exit_signal_tx: ExitSignalSender,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
         auto_approve: bool,
+        collaboration_mode: Option<CodexCollaborationMode>,
+        model: Option<String>,
+        model_reasoning_effort: Option<ReasoningEffort>,
+        developer_instructions: Option<String>,
     ) -> Result<(), ExecutorError> {
         let client = AppServerClient::new(log_writer, approvals, auto_approve);
         let rpc_peer =
@@ -468,7 +519,19 @@ impl Codex {
                         )))
                     })?;
                 client.register_session(&conversation_id).await?;
-                client.start_turn(conversation_id, combined_prompt).await?;
+                client
+                    .start_turn(
+                        conversation_id,
+                        combined_prompt,
+                        build_turn_collaboration_mode(
+                            collaboration_mode.as_ref(),
+                            model.clone().unwrap_or(response.model.clone()),
+                            model_reasoning_effort
+                                .or_else(|| response.reasoning_effort.map(local_reasoning_effort)),
+                            developer_instructions.clone(),
+                        ),
+                    )
+                    .await?;
             }
             Some(session_id) => {
                 let response = client
@@ -493,9 +556,135 @@ impl Codex {
                         )))
                     })?;
                 client.register_session(&conversation_id).await?;
-                client.start_turn(conversation_id, combined_prompt).await?;
+                client
+                    .start_turn(
+                        conversation_id,
+                        combined_prompt,
+                        build_turn_collaboration_mode(
+                            collaboration_mode.as_ref(),
+                            model.clone().unwrap_or(response.model.clone()),
+                            model_reasoning_effort
+                                .or_else(|| response.reasoning_effort.map(local_reasoning_effort)),
+                            developer_instructions.clone(),
+                        ),
+                    )
+                    .await?;
             }
         }
         Ok(())
+    }
+}
+
+fn build_turn_collaboration_mode(
+    mode: Option<&CodexCollaborationMode>,
+    model: String,
+    reasoning_effort: Option<ReasoningEffort>,
+    developer_instructions: Option<String>,
+) -> Option<ProtocolCollaborationMode> {
+    let mode = match mode {
+        Some(mode) => mode,
+        None => return None,
+    };
+
+    Some(ProtocolCollaborationMode {
+        mode: match mode {
+            CodexCollaborationMode::Plan => ModeKind::Plan,
+            CodexCollaborationMode::Code => ModeKind::Code,
+            CodexCollaborationMode::PairProgramming => ModeKind::PairProgramming,
+            CodexCollaborationMode::Execute => ModeKind::Execute,
+            CodexCollaborationMode::Custom => ModeKind::Custom,
+        },
+        settings: ProtocolCollaborationSettings {
+            model,
+            reasoning_effort: reasoning_effort.map(protocol_reasoning_effort),
+            developer_instructions,
+        },
+    })
+}
+
+fn protocol_reasoning_effort(effort: ReasoningEffort) -> ProtocolReasoningEffort {
+    match effort {
+        ReasoningEffort::Low => ProtocolReasoningEffort::Low,
+        ReasoningEffort::Medium => ProtocolReasoningEffort::Medium,
+        ReasoningEffort::High => ProtocolReasoningEffort::High,
+        ReasoningEffort::Xhigh => ProtocolReasoningEffort::XHigh,
+    }
+}
+
+fn local_reasoning_effort(effort: ProtocolReasoningEffort) -> ReasoningEffort {
+    match effort {
+        ProtocolReasoningEffort::None => ReasoningEffort::Low,
+        ProtocolReasoningEffort::Minimal => ReasoningEffort::Low,
+        ProtocolReasoningEffort::Low => ReasoningEffort::Low,
+        ProtocolReasoningEffort::Medium => ReasoningEffort::Medium,
+        ProtocolReasoningEffort::High => ReasoningEffort::High,
+        ProtocolReasoningEffort::XHigh => ReasoningEffort::Xhigh,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn build_turn_collaboration_mode_uses_selected_mode() {
+        let mode = build_turn_collaboration_mode(
+            Some(&CodexCollaborationMode::Plan),
+            "gpt-5.4".to_string(),
+            Some(ReasoningEffort::High),
+            Some("stay in planning mode".to_string()),
+        )
+        .expect("collaboration mode should be built");
+
+        assert_eq!(mode.mode, ModeKind::Plan);
+        assert_eq!(mode.settings.model, "gpt-5.4");
+        assert_eq!(
+            mode.settings.reasoning_effort,
+            Some(ProtocolReasoningEffort::High)
+        );
+        assert_eq!(
+            mode.settings.developer_instructions.as_deref(),
+            Some("stay in planning mode")
+        );
+    }
+
+    #[test]
+    fn build_thread_start_params_preserves_v2_config_overrides() {
+        let codex = Codex {
+            append_prompt: AppendPrompt(None),
+            no_context: None,
+            sandbox: None,
+            ask_for_approval: None,
+            oss: None,
+            model: Some("gpt-5.4".to_string()),
+            model_reasoning_effort: Some(ReasoningEffort::High),
+            model_reasoning_summary: None,
+            model_reasoning_summary_format: None,
+            profile: Some("work".to_string()),
+            base_instructions: None,
+            include_apply_patch_tool: Some(true),
+            model_provider: None,
+            compact_prompt: Some("compact".to_string()),
+            developer_instructions: None,
+            collaboration_mode: Some(CodexCollaborationMode::Code),
+            cmd: CmdOverrides::default(),
+            approvals: None,
+        };
+
+        let params = codex.build_thread_start_params(Path::new("/tmp/worktree"));
+        let overrides = params.config.expect("config overrides should exist");
+
+        assert_eq!(
+            overrides.get("profile"),
+            Some(&Value::String("work".to_string()))
+        );
+        assert_eq!(
+            overrides.get("compact_prompt"),
+            Some(&Value::String("compact".to_string()))
+        );
+        assert_eq!(
+            overrides.get("include_apply_patch_tool"),
+            Some(&Value::Bool(true))
+        );
     }
 }

@@ -133,6 +133,21 @@
         "null"
       ]
     },
+    "collaboration_mode": {
+      "description": "Native Codex collaboration mode presets.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "plan",
+        "code",
+        "pair-programming",
+        "execute",
+        "custom",
+        null
+      ]
+    },
     "base_command_override": {
       "title": "Base Command Override",
       "description": "Override the base command with a custom command",

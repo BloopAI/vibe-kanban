@@ -73,13 +73,24 @@
         "CODEX": {
           "model": "gpt-5.4",
           "sandbox": "danger-full-access",
+          "collaboration_mode": "code",
           "append_prompt": "\n\n=== TASK COMPLETION REQUIREMENTS ===\n1. Work on ONE feature at a time\n2. For web apps: TEST IN BROWSER, not just API\n3. Create/update .vk_progress.md with status and remaining work\n4. Commit working code before ending session\n5. Do NOT mark complete until E2E verified\n6. Document incomplete work in progress file"
+        }
+      },
+      "PLAN": {
+        "CODEX": {
+          "model": "gpt-5.4",
+          "sandbox": "read-only",
+          "collaboration_mode": "plan",
+          "model_reasoning_effort": "high",
+          "developer_instructions": "Do not implement changes or modify files. Investigate the task, gather the relevant code context, identify risks and open questions, and produce a concrete implementation plan with affected areas and test coverage."
         }
       },
       "HIGH": {
         "CODEX": {
           "model": "gpt-5.4",
           "sandbox": "danger-full-access",
+          "collaboration_mode": "code",
           "model_reasoning_effort": "high"
         }
       },
@@ -87,20 +98,24 @@
         "CODEX": {
           "model": "gpt-5.4",
           "sandbox": "workspace-write",
+          "collaboration_mode": "code",
           "ask_for_approval": "unless-trusted"
         }
       },
       "MAX": {
         "CODEX": {
-          "model": "gpt-5.4-mini",
-          "sandbox": "danger-full-access"
+          "model": "gpt-5.4",
+          "sandbox": "danger-full-access",
+          "collaboration_mode": "code",
+          "model_reasoning_effort": "xhigh"
         }
       },
       "NO_CONTEXT": {
         "CODEX": {
           "no_context": true,
           "model": "gpt-5.4",
-          "sandbox": "danger-full-access"
+          "sandbox": "danger-full-access",
+          "collaboration_mode": "code"
         }
       }
     },

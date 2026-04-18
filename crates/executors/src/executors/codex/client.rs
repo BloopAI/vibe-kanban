@@ -12,17 +12,18 @@ use codex_app_server_protocol::{
     FileChangeRequestApprovalResponse, GetAuthStatusParams, GetAuthStatusResponse,
     InitializeParams, InitializeResponse, JSONRPCError, JSONRPCNotification, JSONRPCRequest,
     JSONRPCResponse, RequestId, ServerNotification, ServerRequest, ThreadForkParams,
-    ThreadForkResponse, ThreadStartParams, ThreadStartResponse, TurnStartParams, TurnStartResponse,
+    ThreadForkResponse, ThreadStartParams, ThreadStartResponse, ToolRequestUserInputAnswer,
+    ToolRequestUserInputQuestion, ToolRequestUserInputResponse, TurnStartParams, TurnStartResponse,
     UserInput,
 };
-use codex_protocol::{ThreadId, protocol::ReviewDecision};
+use codex_protocol::{ThreadId, config_types::CollaborationMode, protocol::ReviewDecision};
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{self, Value};
 use tokio::{
     io::{AsyncWrite, AsyncWriteExt, BufWriter},
     sync::Mutex,
 };
-use workspace_utils::approvals::ApprovalStatus;
+use workspace_utils::approvals::{ApprovalStatus, Question, QuestionOption};
 
 use super::jsonrpc::{JsonRpcCallbacks, JsonRpcPeer};
 use crate::{
@@ -119,6 +120,7 @@ impl AppServerClient {
         &self,
         thread_id: ThreadId,
         message: String,
+        collaboration_mode: Option<CollaborationMode>,
     ) -> Result<TurnStartResponse, ExecutorError> {
         let request = ClientRequest::TurnStart {
             request_id: self.next_request_id(),
@@ -136,7 +138,7 @@ impl AppServerClient {
                 summary: None,
                 personality: None,
                 output_schema: None,
-                collaboration_mode: None,
+                collaboration_mode,
             },
         };
         self.send_request(request, "turn/start").await
@@ -231,9 +233,60 @@ impl AppServerClient {
                 }
                 Ok(())
             }
-            ServerRequest::ToolRequestUserInput { .. }
-            | ServerRequest::DynamicToolCall { .. }
-            | ServerRequest::ChatgptAuthTokensRefresh { .. }
+            ServerRequest::ToolRequestUserInput { request_id, params } => {
+                let questions = questions_from_user_input_request(&params.questions);
+                let status = match self
+                    .request_question_approval(&questions, &params.item_id)
+                    .await
+                {
+                    Ok(status) => status,
+                    Err(err) => {
+                        tracing::error!("failed to request user input: {err}");
+                        (ApprovalStatus::TimedOut, None)
+                    }
+                };
+                self.log_writer
+                    .log_raw(
+                        &Approval::approval_response(
+                            params.item_id.clone(),
+                            "AskUserQuestion".to_string(),
+                            status.0.clone(),
+                        )
+                        .raw(),
+                    )
+                    .await?;
+
+                let (_decision, feedback) = self.review_decision(&status.0).await?;
+                let response = ToolRequestUserInputResponse {
+                    answers: user_input_answers_from_response(&params.questions, status.1),
+                };
+                send_server_response(peer, request_id, response).await?;
+                if let Some(message) = feedback {
+                    tracing::debug!("queueing user-input denial feedback: {message}");
+                    self.enqueue_feedback(message).await;
+                }
+                Ok(())
+            }
+            ServerRequest::DynamicToolCall { request_id, params } => {
+                tracing::warn!(
+                    tool = %params.tool,
+                    call_id = %params.call_id,
+                    "dynamic tool call requested but not implemented"
+                );
+                send_server_response(
+                    peer,
+                    request_id,
+                    codex_app_server_protocol::DynamicToolCallResponse {
+                        output: format!(
+                            "Dynamic tool `{}` is not yet supported by Vibe Kanban.",
+                            params.tool
+                        ),
+                        success: false,
+                    },
+                )
+                .await
+            }
+            ServerRequest::ChatgptAuthTokensRefresh { .. }
             | ServerRequest::ApplyPatchApproval { .. }
             | ServerRequest::ExecCommandApproval { .. } => {
                 tracing::error!("received unsupported server request: {:?}", request);
@@ -260,6 +313,28 @@ impl AppServerClient {
             .as_ref()
             .ok_or(ExecutorApprovalError::ServiceUnavailable)?
             .request_tool_approval(tool_name, tool_input, tool_call_id)
+            .await?)
+    }
+
+    async fn request_question_approval(
+        &self,
+        questions: &[Question],
+        tool_call_id: &str,
+    ) -> Result<
+        (
+            ApprovalStatus,
+            Option<std::collections::HashMap<String, String>>,
+        ),
+        ExecutorError,
+    > {
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        let Some(approvals) = self.approvals.as_ref() else {
+            tracing::warn!("Codex requested user input but no approval service is available");
+            return Ok((ApprovalStatus::TimedOut, None));
+        };
+
+        Ok(approvals
+            .request_question_approval(questions, tool_call_id)
             .await?)
     }
 
@@ -525,6 +600,56 @@ fn map_command_decision(decision: ReviewDecision) -> CommandExecutionApprovalDec
         ReviewDecision::Denied => CommandExecutionApprovalDecision::Decline,
         ReviewDecision::Abort => CommandExecutionApprovalDecision::Cancel,
     }
+}
+
+fn questions_from_user_input_request(questions: &[ToolRequestUserInputQuestion]) -> Vec<Question> {
+    questions
+        .iter()
+        .map(|question| Question {
+            question: question.question.clone(),
+            header: question.header.clone(),
+            multi_select: false,
+            options: question
+                .options
+                .clone()
+                .unwrap_or_default()
+                .into_iter()
+                .map(|option| QuestionOption {
+                    label: option.label,
+                    description: option.description,
+                })
+                .collect(),
+        })
+        .collect()
+}
+
+fn user_input_answers_from_response(
+    questions: &[ToolRequestUserInputQuestion],
+    answers: Option<std::collections::HashMap<String, String>>,
+) -> std::collections::HashMap<String, ToolRequestUserInputAnswer> {
+    let mut mapped = std::collections::HashMap::new();
+    let Some(answers) = answers else {
+        return mapped;
+    };
+
+    for question in questions {
+        let answer = answers
+            .get(&question.question)
+            .or_else(|| answers.get(&question.header))
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty());
+
+        if let Some(answer) = answer {
+            mapped.insert(
+                question.id.clone(),
+                ToolRequestUserInputAnswer {
+                    answers: vec![answer.to_string()],
+                },
+            );
+        }
+    }
+
+    mapped
 }
 
 fn map_file_change_decision(decision: ReviewDecision) -> FileChangeApprovalDecision {
