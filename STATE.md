@@ -2,55 +2,58 @@
 
 ## Current Objective
 
-- Keep this Vibe Kanban fork aligned with the Ops Playbook using a real `staging` integration branch and a `main` production promotion branch.
+- Keep the local Vibe Kanban install stable, local-only, and recoverable while normal project work continues again inside VK.
 
 ## Confirmed Current State
 
-- CI validates repo changes and now includes branch-policy and branch-freshness enforcement for the `staging` to `main` model.
-- Release automation already exists via `.github/workflows/pre-release.yml` and `.github/workflows/publish.yml`.
-- `origin` currently has `main` but does not yet have a `staging` branch.
+- Local runtime is active and serving from the rebuilt local binary.
+- `/api/info` reports `shared_api_base: null`.
+- The imported cloud project/issue data has been brought into the local DB.
+- The `vibe-kanban` project can currently create issues and create/link workspaces successfully.
+- `staging` is the correct repo base for new VK development.
 
 ## In Progress
 
-- Finishing the repo-side implementation of the `staging` to `main` model and handing off the remaining GitHub setup step.
+- Normal project work can resume. No recovery-only blocker remains for issue/workspace creation in the `vibe-kanban` project.
 
 ## Proposed / Not Adopted
 
-- Automated stale-branch or stale-worktree cleanup.
+- Reintroducing remote/shared cloud-backed board behavior.
+- Treating GitHub-only state as a substitute for VK local-state backups.
 
 ## Known Gaps / Blockers / Deferred
 
-- GitHub still needs the real `staging` branch created and protected.
-- Human local QA remains part of the promotion gate rather than an automated workflow.
+- Some historic board metadata can only be recovered if it existed in the cloud export or local DB snapshots; completely empty lost custom columns cannot be inferred safely.
+- The local fallback pull-request endpoint still returns project-wide PR data and should be narrowed by `issue_id` in a future cleanup pass.
 
 ## Relevant Files / Modules
 
-- `AGENTS.md`
-- `REPO_IDENTITY.md`
+- `HANDOFF.md`
 - `STATE.md`
 - `STREAM.md`
-- `HANDOFF.md`
 - `DELTA.md`
-- `docs/audits/vibe-kanban-ops-audit.md`
-- `docs/operations/release-safety.md`
-- `.github/workflows/test.yml`
-- `scripts/check-ops-playbook.mjs`
+- `docs/self-hosting/local-backup-recovery.mdx`
+- `scripts/vk_lean_backup.py`
+- `scripts/run_vk_lean_backup.sh`
+- `scripts/vk_restore_lean_backup.py`
+- `scripts/run_vk_restore_latest.sh`
+- `packages/ui/src/components/IssueWorkspaceCard.tsx`
 
 ## Decisions Currently In Force
 
-- Normal feature work should start from the latest `origin/staging`.
-- Local-instance validation is required before PRs into `staging`.
-- Production promotion should happen by PR from `staging` into `main`.
-- Repo-governance docs are required and checked in CI.
+- Operate VK in local-only mode.
+- Use the lean backup + Desktop mirror as the standard recovery path.
+- Start new repo work from `staging`.
+- Treat the local DB plus GitHub state as the combined restore source, not the old cloud.
 
 ## Risks / Regression Traps
 
-- Until the real `staging` branch is created on GitHub, the documented branch model and remote branch reality are out of sync.
-- Continuity docs can become noise if they are not kept current per stream.
+- Reintroducing shared API env vars will put the install back into a mixed local/remote state.
+- Deleting or replacing the local DB without a fresh backup will break the current restore guarantee.
+- UI changes that hide PR badges or issue/workspace links can look like data loss even when the DB is correct.
 
 ## Next Safe Steps
 
-- Use `STREAM.md` and `HANDOFF.md` on active branches.
-- Keep `ops:check` passing as root docs evolve.
-- Create and protect `staging` on GitHub.
-- Keep branch freshness and promotion policy checks passing on PRs.
+1. Continue feature work from `staging`.
+2. Let the hourly lean backup cron keep running, or trigger a manual backup before risky work.
+3. If a future agent touches project/workspace linking, verify through the live API and the UI before merging.
