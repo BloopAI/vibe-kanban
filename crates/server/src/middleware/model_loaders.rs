@@ -389,15 +389,17 @@ pub async fn load_task_middleware(
         );
 
         // Try to get client for Hive access
-        let client = deployment.node_auth_client().cloned().or_else(|| {
-            match deployment.remote_client() {
-                Ok(client) => Some(client),
-                Err(e) => {
-                    tracing::warn!(error = %e, "Failed to build Hive client for task fallback");
-                    None
-                }
-            }
-        });
+        let client =
+            deployment
+                .node_auth_client()
+                .cloned()
+                .or_else(|| match deployment.remote_client() {
+                    Ok(client) => Some(client),
+                    Err(e) => {
+                        tracing::warn!(error = %e, "Failed to build Hive client for task fallback");
+                        None
+                    }
+                });
 
         if let Some(client) = client {
             match client.get_shared_task(task_id).await {
@@ -413,7 +415,12 @@ pub async fn load_task_middleware(
 
                     // Try to find a local project that maps to this Hive project
                     let project_id = if let Some(hive_project_id) = swarm_project_id {
-                        match Project::find_by_remote_project_id(&deployment.db().pool, hive_project_id).await {
+                        match Project::find_by_remote_project_id(
+                            &deployment.db().pool,
+                            hive_project_id,
+                        )
+                        .await
+                        {
                             Ok(Some(local_project)) => local_project.id,
                             Ok(None) => hive_project_id,
                             Err(e) => {
@@ -457,7 +464,9 @@ pub async fn load_task_middleware(
                         remote_assignee_name: shared_task.assignee_name,
                         remote_assignee_username: shared_task.assignee_username,
                         remote_last_synced_at: shared_task.shared_at,
-                        remote_stream_node_id: shared_task.executing_node_id.or(shared_task.owner_node_id),
+                        remote_stream_node_id: shared_task
+                            .executing_node_id
+                            .or(shared_task.owner_node_id),
                         remote_stream_url: None,
                         activity_at: shared_task.activity_at,
                     };
@@ -594,7 +603,10 @@ async fn load_task_attempt_impl(
                             // Use node_info from Hive response for proxy routing
                             let remote_ctx = RemoteTaskAttemptContext {
                                 node_id: response.attempt.node_id,
-                                node_url: response.node_info.as_ref().and_then(|n| n.public_url.clone()),
+                                node_url: response
+                                    .node_info
+                                    .as_ref()
+                                    .and_then(|n| n.public_url.clone()),
                                 node_status: response.node_info.as_ref().map(|n| n.status.clone()),
                                 task_id: response.attempt.shared_task_id,
                             };

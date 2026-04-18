@@ -182,7 +182,10 @@ impl std::fmt::Debug for RemoteLogService {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RemoteLogService")
             .field("proxy_client", &self.proxy_client)
-            .field("remote_client", &self.remote_client.as_ref().map(|_| "<RemoteClient>"))
+            .field(
+                "remote_client",
+                &self.remote_client.as_ref().map(|_| "<RemoteClient>"),
+            )
             .finish()
     }
 }
@@ -190,7 +193,10 @@ impl std::fmt::Debug for RemoteLogService {
 impl RemoteLogService {
     /// Create a new RemoteLogService.
     pub fn new(proxy_client: NodeProxyClient, remote_client: Option<RemoteClient>) -> Self {
-        Self { proxy_client, remote_client }
+        Self {
+            proxy_client,
+            remote_client,
+        }
     }
 
     /// Check if remote log fetching is enabled.
@@ -209,7 +215,9 @@ impl RemoteLogService {
         limit: i64,
         direction: Direction,
     ) -> Result<PaginatedLogs, LogServiceError> {
-        let client = self.remote_client.as_ref()
+        let client = self
+            .remote_client
+            .as_ref()
             .ok_or(LogServiceError::RemoteLogsNotAvailable)?;
 
         let direction_str = match direction {

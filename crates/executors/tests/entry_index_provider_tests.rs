@@ -1,6 +1,6 @@
-use executors::logs::utils::{EntryIndexProvider, ConversationPatch};
-use workspace_utils::msg_store::MsgStore;
+use executors::logs::utils::{ConversationPatch, EntryIndexProvider};
 use std::sync::Arc;
+use workspace_utils::msg_store::MsgStore;
 
 #[test]
 fn test_start_from_empty_msg_store() {

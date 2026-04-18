@@ -107,9 +107,9 @@ pub async fn read_file(
         Err(FilesystemError::PathIsNotFile) => {
             Ok(ResponseJson(ApiResponse::error("Path is not a file")))
         }
-        Err(FilesystemError::FileIsBinary) => {
-            Ok(ResponseJson(ApiResponse::error("Cannot display binary file")))
-        }
+        Err(FilesystemError::FileIsBinary) => Ok(ResponseJson(ApiResponse::error(
+            "Cannot display binary file",
+        ))),
         Err(FilesystemError::FileTooLarge {
             max_bytes,
             actual_bytes,

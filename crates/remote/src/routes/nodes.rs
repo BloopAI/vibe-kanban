@@ -598,7 +598,10 @@ pub async fn get_node_statuses_sync(
 
     let repo = NodeRepository::new(state.pool());
     // Scope query to caller's organization to prevent cross-org access
-    match repo.get_statuses_by_ids(node_ctx.organization_id, &node_ids).await {
+    match repo
+        .get_statuses_by_ids(node_ctx.organization_id, &node_ids)
+        .await
+    {
         Ok(statuses) => {
             let nodes: Vec<NodeStatusInfo> = statuses
                 .into_iter()
@@ -1767,7 +1770,10 @@ pub async fn list_swarm_project_tasks_sync(
         match fetch_users_by_ids(pool, &assignee_ids).await {
             Ok(users) => users.into_iter().map(|u| (u.id, u)).collect(),
             Err(e) => {
-                tracing::warn!(?e, "Failed to fetch assignee user data, returning tasks without metadata");
+                tracing::warn!(
+                    ?e,
+                    "Failed to fetch assignee user data, returning tasks without metadata"
+                );
                 HashMap::new()
             }
         }
@@ -1782,13 +1788,16 @@ pub async fn list_swarm_project_tasks_sync(
             let user = task.assignee_user_id.and_then(|id| users_map.get(&id));
             // Use updated_at as activity_at since we don't have a dedicated column yet
             let activity_at = task.updated_at;
-            task.with_assignee_info(user).with_activity_at(Some(activity_at))
+            task.with_assignee_info(user)
+                .with_activity_at(Some(activity_at))
         })
         .collect();
 
     (
         StatusCode::OK,
-        Json(ListSwarmProjectTasksResponse { tasks: enriched_tasks }),
+        Json(ListSwarmProjectTasksResponse {
+            tasks: enriched_tasks,
+        }),
     )
         .into_response()
 }

@@ -208,9 +208,9 @@ pub enum FileChange {
 
 ### Codex (OpenAI)
 
-- **Format**: JSON-RPC with custom events
+- **Format**: JSON-RPC over stdio using Codex app-server thread/turn/item events
 - **Parser**: `crates/executors/src/executors/codex/`
-- **Features**: Tool calls, approvals, sessions, token usage
+- **Features**: Thread and turn lifecycle, tool calls, approvals, sessions, token usage
 
 ### ACP (Gemini, Qwen)
 

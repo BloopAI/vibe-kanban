@@ -123,8 +123,7 @@ impl Approvals {
             let mut matching_tool = find_matching_tool_use(store.clone(), &request.tool_call_id);
 
             if matching_tool.is_none() {
-                let deadline =
-                    tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+                let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
 
                 loop {
                     tokio::select! {

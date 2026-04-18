@@ -330,9 +330,7 @@ impl Project {
     /// Get all unique source_node_ids from remote projects.
     ///
     /// Used to determine which node statuses need to be synced from the Hive.
-    pub async fn get_remote_source_node_ids(
-        pool: &SqlitePool,
-    ) -> Result<Vec<Uuid>, sqlx::Error> {
+    pub async fn get_remote_source_node_ids(pool: &SqlitePool) -> Result<Vec<Uuid>, sqlx::Error> {
         let rows: Vec<(Uuid,)> = sqlx::query_as(
             r#"SELECT DISTINCT source_node_id
                FROM projects

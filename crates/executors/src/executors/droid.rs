@@ -11,7 +11,9 @@ use workspace_utils::msg_store::MsgStore;
 
 use crate::{
     command::CommandParts,
-    executors::{AppendPrompt, ExecutorError, SpawnContext, SpawnedChild, StandardCodingAgentExecutor},
+    executors::{
+        AppendPrompt, ExecutorError, SpawnContext, SpawnedChild, StandardCodingAgentExecutor,
+    },
     logs::utils::EntryIndexProvider,
 };
 
@@ -128,7 +130,10 @@ async fn spawn(
     command
         .env("VK_ATTEMPT_ID", context.task_attempt_id.to_string())
         .env("VK_TASK_ID", context.task_id.to_string())
-        .env("VK_EXECUTION_PROCESS_ID", context.execution_process_id.to_string());
+        .env(
+            "VK_EXECUTION_PROCESS_ID",
+            context.execution_process_id.to_string(),
+        );
 
     let mut child = command.group_spawn()?;
 
@@ -142,7 +147,12 @@ async fn spawn(
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Droid {
-    async fn spawn(&self, current_dir: &Path, prompt: &str, context: SpawnContext) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        context: SpawnContext,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let droid_command = self.build_command_builder().build_initial()?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 

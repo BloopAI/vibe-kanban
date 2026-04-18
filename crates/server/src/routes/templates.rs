@@ -9,8 +9,8 @@ use db::models::template::{CreateTemplate, Template, UnifiedTemplate, UpdateTemp
 use deployment::Deployment;
 use serde::Deserialize;
 use ts_rs::TS;
-use uuid::Uuid;
 use utils::response::ApiResponse;
+use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_template_middleware};
 

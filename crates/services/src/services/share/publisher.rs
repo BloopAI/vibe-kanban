@@ -87,7 +87,11 @@ impl SharePublisher {
                 .filter_map(|l| l.shared_label_id)
                 .collect();
 
-            if shared_ids.is_empty() { None } else { Some(shared_ids) }
+            if shared_ids.is_empty() {
+                None
+            } else {
+                Some(shared_ids)
+            }
         };
 
         let payload = CreateSharedTaskRequest {

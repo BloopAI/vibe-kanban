@@ -135,7 +135,8 @@ pub async fn follow_up(
 
     // Check if model changed (would cause context loss)
     let model_changed = {
-        let previous_agent = executor_configs.get_coding_agent_or_default(&initial_executor_profile_id);
+        let previous_agent =
+            executor_configs.get_coding_agent_or_default(&initial_executor_profile_id);
         let current_agent = coding_agent;
         let previous_model = previous_agent.model();
         let current_model = current_agent.model();

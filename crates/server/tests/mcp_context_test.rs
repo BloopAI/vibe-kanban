@@ -81,19 +81,15 @@ async fn test_env_var_setup_and_reading() {
     }
 
     // Verify we can read the env vars
-    let read_attempt_id = std::env::var("VK_ATTEMPT_ID")
-        .expect("Failed to read VK_ATTEMPT_ID");
-    let read_task_id = std::env::var("VK_TASK_ID")
-        .expect("Failed to read VK_TASK_ID");
+    let read_attempt_id = std::env::var("VK_ATTEMPT_ID").expect("Failed to read VK_ATTEMPT_ID");
+    let read_task_id = std::env::var("VK_TASK_ID").expect("Failed to read VK_TASK_ID");
 
     assert_eq!(read_attempt_id, attempt.id.to_string());
     assert_eq!(read_task_id, task.id.to_string());
 
     // Verify we can parse them back to UUIDs
-    let parsed_attempt_id = Uuid::parse_str(&read_attempt_id)
-        .expect("Failed to parse attempt ID");
-    let parsed_task_id = Uuid::parse_str(&read_task_id)
-        .expect("Failed to parse task ID");
+    let parsed_attempt_id = Uuid::parse_str(&read_attempt_id).expect("Failed to parse attempt ID");
+    let parsed_task_id = Uuid::parse_str(&read_task_id).expect("Failed to parse task ID");
 
     assert_eq!(parsed_attempt_id, attempt.id);
     assert_eq!(parsed_task_id, task.id);

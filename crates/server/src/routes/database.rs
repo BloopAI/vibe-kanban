@@ -20,18 +20,15 @@ use axum::{
 };
 use db::{
     DatabaseStats, VacuumResult, analyze_database, get_database_stats,
-    models::execution_process::ExecutionProcess,
-    models::log_entry::DbLogEntry,
-    models::project::Project,
-    models::task::Task,
-    models::task_attempt::TaskAttempt,
+    models::execution_process::ExecutionProcess, models::log_entry::DbLogEntry,
+    models::project::Project, models::task::Task, models::task_attempt::TaskAttempt,
     vacuum_database,
 };
-use uuid::Uuid;
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils::{assets::database_path, response::ApiResponse};
+use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
@@ -396,7 +393,10 @@ async fn force_resync(
 async fn get_hive_attempt(
     State(deployment): State<DeploymentImpl>,
     Path(assignment_id): Path<Uuid>,
-) -> Result<ResponseJson<ApiResponse<services::services::remote_client::NodeTaskAttemptResponse>>, ApiError> {
+) -> Result<
+    ResponseJson<ApiResponse<services::services::remote_client::NodeTaskAttemptResponse>>,
+    ApiError,
+> {
     // Prefer node_auth_client (API key auth) - works even without user login
     // Fall back to remote_client (OAuth) for non-node deployments
     let remote_client = match deployment.node_auth_client().cloned() {
@@ -446,5 +446,8 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/database/purge-logs", post(purge_logs))
         .route("/database/sync-status", get(sync_status))
         .route("/database/force-resync/{project_id}", post(force_resync))
-        .route("/database/hive/attempts/{assignment_id}", get(get_hive_attempt))
+        .route(
+            "/database/hive/attempts/{assignment_id}",
+            get(get_hive_attempt),
+        )
 }

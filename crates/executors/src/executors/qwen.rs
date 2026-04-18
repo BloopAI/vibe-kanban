@@ -9,8 +9,8 @@ use workspace_utils::msg_store::MsgStore;
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnContext, SpawnedChild, StandardCodingAgentExecutor,
-        gemini::AcpAgentHarness,
+        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnContext, SpawnedChild,
+        StandardCodingAgentExecutor, gemini::AcpAgentHarness,
     },
     logs::utils::EntryIndexProvider,
 };
@@ -41,7 +41,12 @@ impl QwenCode {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for QwenCode {
-    async fn spawn(&self, current_dir: &Path, prompt: &str, context: SpawnContext) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        context: SpawnContext,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let qwen_command = self.build_command_builder().build_initial()?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let harness = AcpAgentHarness::with_session_namespace("qwen_sessions");

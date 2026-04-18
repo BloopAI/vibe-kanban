@@ -79,16 +79,18 @@ impl ProtocolPeer {
 
         let reader_peer = peer.clone();
         tokio::spawn(async move {
-            let completion_reason =
-                match reader_peer.read_loop(stdout, client, reader_peer.wait_for_natural_exit).await {
-                    Ok(reason) => reason,
-                    Err(e) => {
-                        tracing::error!("Protocol reader loop error: {}", e);
-                        SessionCompletionReason::Error {
-                            message: e.to_string(),
-                        }
+            let completion_reason = match reader_peer
+                .read_loop(stdout, client, reader_peer.wait_for_natural_exit)
+                .await
+            {
+                Ok(reason) => reason,
+                Err(e) => {
+                    tracing::error!("Protocol reader loop error: {}", e);
+                    SessionCompletionReason::Error {
+                        message: e.to_string(),
                     }
-                };
+                }
+            };
             // Send exit signal with the detected completion reason
             // This triggers the exit monitor to kill the process group
             let exit_result = ExecutorExitResult::success(completion_reason);
@@ -232,7 +234,9 @@ impl ProtocolPeer {
                                         .send_hook_response(request_id, permission_response)
                                         .await
                                     {
-                                        tracing::warn!("Failed to send question answer (process likely exited): {e}");
+                                        tracing::warn!(
+                                            "Failed to send question answer (process likely exited): {e}"
+                                        );
                                     }
                                 }
                                 Err(e) => {

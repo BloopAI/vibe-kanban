@@ -6,6 +6,7 @@ use std::{
     time::Duration,
 };
 
+use command_group::AsyncCommandGroup;
 use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -14,7 +15,6 @@ use tokio::{
     process::Command,
 };
 use ts_rs::TS;
-use command_group::AsyncCommandGroup;
 
 use super::{ClaudeCode, ClaudeJson, ClaudePlugin, base_command};
 use crate::{
@@ -141,11 +141,7 @@ impl ClaudeCode {
             descriptions
                 .extend(Self::scan_base_path(&plugin.path, Some(plugin.name.clone())).await);
             descriptions.extend(
-                Self::scan_base_path(
-                    &plugin.path.join(".claude"),
-                    Some(plugin.name.clone()),
-                )
-                .await,
+                Self::scan_base_path(&plugin.path.join(".claude"), Some(plugin.name.clone())).await,
             );
         }
 
@@ -231,9 +227,7 @@ impl ClaudeCode {
         &self,
         current_dir: &Path,
     ) -> Result<(Vec<String>, Vec<ClaudePlugin>, Vec<String>), ExecutorError> {
-        let builder = self
-            .build_slash_commands_discovery_command_builder()
-            .await;
+        let builder = self.build_slash_commands_discovery_command_builder().await;
         let command_parts = builder.build_initial()?;
         let (program_path, args) = command_parts.into_resolved().await?;
 
@@ -304,8 +298,14 @@ impl ClaudeCode {
     pub async fn discover_agents_and_slash_commands_initial(
         &self,
         current_dir: &Path,
-    ) -> Result<(Vec<AgentInfo>, Vec<SlashCommandDescription>, Vec<ClaudePlugin>), ExecutorError>
-    {
+    ) -> Result<
+        (
+            Vec<AgentInfo>,
+            Vec<SlashCommandDescription>,
+            Vec<ClaudePlugin>,
+        ),
+        ExecutorError,
+    > {
         let (names, plugins, agents) = self
             .discover_available_command_and_plugins(current_dir)
             .await?;
@@ -320,9 +320,7 @@ impl ClaudeCode {
         let mut seen = HashSet::new();
         let slash_commands: Vec<SlashCommandDescription> = names
             .into_iter()
-            .filter(|name| {
-                !name.is_empty() && !builtin.contains(name) && seen.insert(name.clone())
-            })
+            .filter(|name| !name.is_empty() && !builtin.contains(name) && seen.insert(name.clone()))
             .map(|name| SlashCommandDescription {
                 name,
                 description: None,
@@ -337,8 +335,7 @@ impl ClaudeCode {
         plugins: &[ClaudePlugin],
         slash_commands: &[SlashCommandDescription],
     ) -> Vec<SlashCommandDescription> {
-        let descriptions =
-            Self::discover_custom_command_descriptions(current_dir, plugins).await;
+        let descriptions = Self::discover_custom_command_descriptions(current_dir, plugins).await;
 
         slash_commands
             .iter()

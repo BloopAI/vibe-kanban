@@ -49,9 +49,7 @@ impl EventService {
         task_id: Uuid,
     ) -> Result<(), SqlxError> {
         // Include archived tasks so archive/unarchive actions emit updates
-        if let Some(task_with_status) =
-            Task::find_by_id_with_attempt_status(pool, task_id).await?
-        {
+        if let Some(task_with_status) = Task::find_by_id_with_attempt_status(pool, task_id).await? {
             msg_store.push_patch(task_patch::replace(&task_with_status));
         }
 

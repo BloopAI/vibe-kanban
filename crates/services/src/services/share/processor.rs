@@ -6,7 +6,9 @@
 
 use db::{
     DBService,
-    models::{label::Label, project::Project, shared_activity_cursor::SharedActivityCursor, task::Task},
+    models::{
+        label::Label, project::Project, shared_activity_cursor::SharedActivityCursor, task::Task,
+    },
 };
 use remote::{
     activity::ActivityEvent,

@@ -220,7 +220,8 @@ impl HiveSyncService {
             Task::find_missing_shared_task_id(&self.pool, self.config.max_tasks_per_batch).await?;
 
         // Also find tasks that have shared_task_id but need resync (force resync scenario)
-        let resync_tasks = Task::find_needing_resync(&self.pool, self.config.max_tasks_per_batch).await?;
+        let resync_tasks =
+            Task::find_needing_resync(&self.pool, self.config.max_tasks_per_batch).await?;
         tasks.extend(resync_tasks);
 
         if tasks.is_empty() {
@@ -281,7 +282,7 @@ impl HiveSyncService {
             let message = TaskSyncMessage {
                 local_task_id: task.id,
                 shared_task_id: task.shared_task_id,
-                local_project_id: task.project_id,  // Send LOCAL project ID, not remote
+                local_project_id: task.project_id, // Send LOCAL project ID, not remote
                 title: task.title.clone(),
                 description: task.description.clone(),
                 status,

@@ -5,7 +5,10 @@ use std::{
 
 use axum::response::sse::Event;
 use futures::{StreamExt, TryStreamExt, future};
-use tokio::{sync::{Notify, broadcast}, task::JoinHandle};
+use tokio::{
+    sync::{Notify, broadcast},
+    task::JoinHandle,
+};
 use tokio_stream::wrappers::BroadcastStream;
 
 use crate::{log_msg::LogMsg, stream_lines::LinesStreamExt};

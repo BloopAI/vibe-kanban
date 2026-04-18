@@ -127,7 +127,10 @@ impl StandardCodingAgentExecutor for Copilot {
             .env("NODE_NO_WARNINGS", "1")
             .env("VK_ATTEMPT_ID", context.task_attempt_id.to_string())
             .env("VK_TASK_ID", context.task_id.to_string())
-            .env("VK_EXECUTION_PROCESS_ID", context.execution_process_id.to_string());
+            .env(
+                "VK_EXECUTION_PROCESS_ID",
+                context.execution_process_id.to_string(),
+            );
 
         // Remove pnpm-specific env vars that cause npm warnings when using npx
         command.env_remove("npm_config__jsr_registry");

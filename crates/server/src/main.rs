@@ -44,7 +44,11 @@ fn ensure_configured_dirs() -> Result<(), VibeKanbanError> {
             std::fs::create_dir_all(parent).map_err(|e| {
                 std::io::Error::new(
                     e.kind(),
-                    format!("Failed to create database directory '{}': {}", parent.display(), e),
+                    format!(
+                        "Failed to create database directory '{}': {}",
+                        parent.display(),
+                        e
+                    ),
                 )
             })?;
         }
@@ -56,13 +60,18 @@ fn ensure_configured_dirs() -> Result<(), VibeKanbanError> {
     std::fs::create_dir_all(&bd).map_err(|e| {
         std::io::Error::new(
             e.kind(),
-            format!("Failed to create backup directory '{}': {}", bd.display(), e),
+            format!(
+                "Failed to create backup directory '{}': {}",
+                bd.display(),
+                e
+            ),
         )
     })?;
 
     // VK_WORKTREE_DIR is created inside WorktreeManager::get_worktree_base_dir()
     // when the env var is set.  Trigger it here so any failure surfaces at startup.
-    let worktree_dir = services::services::worktree_manager::WorktreeManager::get_worktree_base_dir();
+    let worktree_dir =
+        services::services::worktree_manager::WorktreeManager::get_worktree_base_dir();
     std::fs::create_dir_all(&worktree_dir).map_err(|e| {
         std::io::Error::new(
             e.kind(),
@@ -82,7 +91,11 @@ fn ensure_configured_dirs() -> Result<(), VibeKanbanError> {
     std::fs::create_dir_all(&log_dir).map_err(|e| {
         std::io::Error::new(
             e.kind(),
-            format!("Failed to create log directory '{}': {}", log_dir.display(), e),
+            format!(
+                "Failed to create log directory '{}': {}",
+                log_dir.display(),
+                e
+            ),
         )
     })?;
 

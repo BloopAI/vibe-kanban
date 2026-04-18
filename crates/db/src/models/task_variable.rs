@@ -62,7 +62,10 @@ pub async fn get_system_variables(
         },
         ResolvedVariable {
             name: "PARENT_TASK_ID".to_string(),
-            value: task.parent_task_id.map(|id| id.to_string()).unwrap_or_default(),
+            value: task
+                .parent_task_id
+                .map(|id| id.to_string())
+                .unwrap_or_default(),
             source_task_id: task_id,
             inherited: false,
         },
@@ -98,7 +101,12 @@ pub async fn get_system_variables(
         },
         ResolvedVariable {
             name: "IS_SUBTASK".to_string(),
-            value: if task.parent_task_id.is_some() { "true" } else { "false" }.to_string(),
+            value: if task.parent_task_id.is_some() {
+                "true"
+            } else {
+                "false"
+            }
+            .to_string(),
             source_task_id: task_id,
             inherited: false,
         },
@@ -483,8 +491,14 @@ mod tests {
         let project = create_test_project(&pool, "Test Project").await;
 
         // Create a parent task
-        let parent_task =
-            create_test_task(&pool, project.id, "Parent Task", Some("Parent description".to_string()), None).await;
+        let parent_task = create_test_task(
+            &pool,
+            project.id,
+            "Parent Task",
+            Some("Parent description".to_string()),
+            None,
+        )
+        .await;
 
         // Create a child task
         let child_task = create_test_task(
@@ -511,8 +525,10 @@ mod tests {
         assert_eq!(system_vars.len(), SYSTEM_VARIABLE_NAMES.len());
 
         // Build a map for easier verification
-        let var_map: std::collections::HashMap<String, ResolvedVariable> =
-            system_vars.into_iter().map(|v| (v.name.clone(), v)).collect();
+        let var_map: std::collections::HashMap<String, ResolvedVariable> = system_vars
+            .into_iter()
+            .map(|v| (v.name.clone(), v))
+            .collect();
 
         // Verify TASK_ID
         assert_eq!(var_map["TASK_ID"].value, child_task.id.to_string());
@@ -554,8 +570,10 @@ mod tests {
             .await
             .expect("Failed to get system variables");
 
-        let var_map: std::collections::HashMap<String, ResolvedVariable> =
-            system_vars.into_iter().map(|v| (v.name.clone(), v)).collect();
+        let var_map: std::collections::HashMap<String, ResolvedVariable> = system_vars
+            .into_iter()
+            .map(|v| (v.name.clone(), v))
+            .collect();
 
         // Verify PARENT_TASK_ID is empty
         assert_eq!(var_map["PARENT_TASK_ID"].value, "");
@@ -685,7 +703,14 @@ mod tests {
 
         // Create a project and task
         let project = create_test_project(&pool, "Test Project").await;
-        let task = create_test_task(&pool, project.id, "Test Task", Some("Test description".to_string()), None).await;
+        let task = create_test_task(
+            &pool,
+            project.id,
+            "Test Task",
+            Some("Test description".to_string()),
+            None,
+        )
+        .await;
 
         // Create a user variable
         let create_data = CreateTaskVariable {

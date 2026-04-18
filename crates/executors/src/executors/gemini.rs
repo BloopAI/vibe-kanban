@@ -85,7 +85,10 @@ impl Gemini {
         command
             .env("VK_ATTEMPT_ID", context.task_attempt_id.to_string())
             .env("VK_TASK_ID", context.task_id.to_string())
-            .env("VK_EXECUTION_PROCESS_ID", context.execution_process_id.to_string());
+            .env(
+                "VK_EXECUTION_PROCESS_ID",
+                context.execution_process_id.to_string(),
+            );
 
         let mut child = command.group_spawn()?;
 

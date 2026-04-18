@@ -144,9 +144,8 @@ pub async fn get_tasks(
                     existing.task.archived_at = shared_task.archived_at;
 
                     // Update stream node info for remote log access
-                    existing.task.remote_stream_node_id = shared_task
-                        .executing_node_id
-                        .or(shared_task.owner_node_id);
+                    existing.task.remote_stream_node_id =
+                        shared_task.executing_node_id.or(shared_task.owner_node_id);
 
                     // Update activity_at if Hive has it (for time-in-column tracking)
                     if shared_task.activity_at.is_some() {
@@ -184,7 +183,11 @@ pub async fn get_tasks(
                                 .executing_node_id
                                 .or(shared_task.owner_node_id),
                             remote_stream_url: shared_task.owner_public_url.as_ref().map(|url| {
-                                format!("{}/api/tasks/{}/attempts/logs", url.trim_end_matches('/'), shared_task.id)
+                                format!(
+                                    "{}/api/tasks/{}/attempts/logs",
+                                    url.trim_end_matches('/'),
+                                    shared_task.id
+                                )
                             }),
                             activity_at: shared_task.activity_at,
                         },
@@ -291,7 +294,11 @@ pub async fn get_tasks(
                         .executing_node_id
                         .or(shared_task.owner_node_id),
                     remote_stream_url: shared_task.owner_public_url.as_ref().map(|url| {
-                        format!("{}/api/tasks/{}/attempts/logs", url.trim_end_matches('/'), shared_task.id)
+                        format!(
+                            "{}/api/tasks/{}/attempts/logs",
+                            url.trim_end_matches('/'),
+                            shared_task.id
+                        )
                     }),
                     activity_at: shared_task.activity_at,
                 },
@@ -401,7 +408,11 @@ pub async fn get_task(
                         .executing_node_id
                         .or(shared_task.owner_node_id),
                     remote_stream_url: shared_task.owner_public_url.as_ref().map(|url| {
-                        format!("{}/api/tasks/{}/attempts/logs", url.trim_end_matches('/'), shared_task.id)
+                        format!(
+                            "{}/api/tasks/{}/attempts/logs",
+                            url.trim_end_matches('/'),
+                            shared_task.id
+                        )
                     }),
                     activity_at: shared_task.activity_at,
                 };

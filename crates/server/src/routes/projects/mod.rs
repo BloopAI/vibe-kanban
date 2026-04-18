@@ -29,6 +29,8 @@ use handlers::{
     create_project,
     delete_orphaned_projects,
     delete_project,
+    // Swarm handlers
+    force_resync_tasks,
     // GitHub handlers
     get_github_counts,
     // Merged handlers
@@ -50,8 +52,6 @@ use handlers::{
     search_project_files,
     set_github_enabled,
     sync_github_counts,
-    // Swarm handlers
-    force_resync_tasks,
     unlink_from_swarm,
     update_project,
 };

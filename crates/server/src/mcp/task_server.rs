@@ -571,7 +571,8 @@ impl TaskServer {
             return None;
         }
 
-        let project_api_response: ApiResponseEnvelope<Project> = project_response.json().await.ok()?;
+        let project_api_response: ApiResponseEnvelope<Project> =
+            project_response.json().await.ok()?;
 
         if !project_api_response.success {
             return None;

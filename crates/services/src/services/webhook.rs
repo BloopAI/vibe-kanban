@@ -1,14 +1,12 @@
 use std::{collections::HashMap, net::IpAddr, sync::Arc, time::Duration};
 
 use chrono::{DateTime, Utc};
-use db::{
-    models::{
-        execution_process::ExecutionProcess,
-        label::Label,
-        merge::Merge,
-        project::Project,
-        webhook::{Webhook, WebhookEventType},
-    },
+use db::models::{
+    execution_process::ExecutionProcess,
+    label::Label,
+    merge::Merge,
+    project::Project,
+    webhook::{Webhook, WebhookEventType},
 };
 use sqlx::SqlitePool;
 use tokio::sync::Semaphore;
@@ -160,7 +158,7 @@ impl WebhookService {
         let client = match reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
             .redirect(reqwest::redirect::Policy::none()) // C1: prevent SSRF via redirect
-            .resolve_to_addrs(&host, &[resolved_addr])   // C1: pin to verified address
+            .resolve_to_addrs(&host, &[resolved_addr]) // C1: pin to verified address
             .build()
         {
             Ok(c) => c,
@@ -192,7 +190,9 @@ impl WebhookService {
                 axum::http::HeaderValue::from_str(&v),
             ) {
                 (Ok(name), Ok(value)) => builder = builder.header(name, value),
-                _ => warn!(webhook_id = %webhook.id, header = %k, "Skipping malformed stored header"),
+                _ => {
+                    warn!(webhook_id = %webhook.id, header = %k, "Skipping malformed stored header")
+                }
             }
         }
 
@@ -235,8 +235,8 @@ impl WebhookService {
     pub fn make_signature(secret: &str, input: &str) -> String {
         use hmac::{Hmac, Mac};
         use sha2::Sha256;
-        let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes())
-            .expect("HMAC accepts any key length");
+        let mut mac =
+            Hmac::<Sha256>::new_from_slice(secret.as_bytes()).expect("HMAC accepts any key length");
         mac.update(input.as_bytes());
         hex::encode(mac.finalize().into_bytes())
     }
@@ -296,7 +296,8 @@ impl WebhookService {
                 arr.iter_mut().for_each(|v| Self::substitute_vars(v, vars));
             }
             serde_json::Value::Object(map) => {
-                map.values_mut().for_each(|v| Self::substitute_vars(v, vars));
+                map.values_mut()
+                    .for_each(|v| Self::substitute_vars(v, vars));
             }
             _ => {}
         }
@@ -326,7 +327,10 @@ impl WebhookService {
         );
         map.insert("task.id".into(), ctx.task_id.to_string().into());
         map.insert("task.title".into(), ctx.task_title.clone().into());
-        map.insert("task.description".into(), opt_str(ctx.task_description.clone()));
+        map.insert(
+            "task.description".into(),
+            opt_str(ctx.task_description.clone()),
+        );
         map.insert("task.status".into(), ctx.task_status.clone().into());
         map.insert(
             "task.labels".into(),
@@ -551,7 +555,9 @@ impl WebhookService {
             _ => return Err("Webhook URL must use http or https scheme.".into()),
         }
 
-        let host = parsed.host_str().ok_or("Webhook URL is not reachable or targets a restricted address.")?;
+        let host = parsed
+            .host_str()
+            .ok_or("Webhook URL is not reachable or targets a restricted address.")?;
         let port = parsed.port_or_known_default().unwrap_or(443);
 
         let addrs: Vec<_> = tokio::net::lookup_host(format!("{host}:{port}"))
@@ -566,7 +572,10 @@ impl WebhookService {
             let ip = addr.ip();
             if ip.is_loopback() || ip.is_unspecified() || is_private_ip(ip) {
                 warn!(url = %url, ip = %ip, "Webhook URL resolves to restricted address, rejecting");
-                return Err("Webhook URL targets a restricted or private address. External URLs only.".into());
+                return Err(
+                    "Webhook URL targets a restricted or private address. External URLs only."
+                        .into(),
+                );
             }
         }
         Ok(())
@@ -585,15 +594,15 @@ impl WebhookService {
             .await
             .unwrap_or_default();
         let label_names: Vec<String> = labels.into_iter().map(|l| l.name).collect();
-        let project = Project::find_by_id(pool, ctx.task.project_id).await.ok()??;
+        let project = Project::find_by_id(pool, ctx.task.project_id)
+            .await
+            .ok()??;
         let started_at = ctx.execution_process.started_at;
         let completed_at = ctx.execution_process.completed_at;
         let duration_ms = completed_at.map(|c| (c - started_at).num_milliseconds());
         let (pr_url, pr_number) =
             match Merge::find_latest_by_task_attempt_id(pool, ctx.task_attempt.id).await {
-                Ok(Some(Merge::Pr(pr))) => {
-                    (Some(pr.pr_info.url.clone()), Some(pr.pr_info.number))
-                }
+                Ok(Some(Merge::Pr(pr))) => (Some(pr.pr_info.url.clone()), Some(pr.pr_info.number)),
                 _ => (None, None),
             };
         // Step 8 (M6): use Serialize instead of Debug format for run_reason
@@ -642,7 +651,9 @@ impl WebhookService {
             .await
             .unwrap_or_default();
         let label_names: Vec<String> = labels.into_iter().map(|l| l.name).collect();
-        let project = Project::find_by_id(pool, ctx.task.project_id).await.ok()??;
+        let project = Project::find_by_id(pool, ctx.task.project_id)
+            .await
+            .ok()??;
         // Step 8 (M6): use Serialize instead of Debug format for run_reason
         let run_reason = serde_json::to_value(&ctx.execution_process.run_reason)
             .ok()

@@ -77,17 +77,17 @@ pub async fn get_task_labels(
                                 .labels
                                 .into_iter()
                                 .map(|remote_label| Label {
-                                id: remote_label.id,
-                                project_id: remote_label.project_id,
-                                name: remote_label.name,
-                                icon: remote_label.icon,
-                                color: remote_label.color,
-                                shared_label_id: Some(remote_label.id),
-                                version: remote_label.version,
-                                synced_at: None,
-                                created_at: remote_label.created_at,
-                                updated_at: remote_label.updated_at,
-                            })
+                                    id: remote_label.id,
+                                    project_id: remote_label.project_id,
+                                    name: remote_label.name,
+                                    icon: remote_label.icon,
+                                    color: remote_label.color,
+                                    shared_label_id: Some(remote_label.id),
+                                    version: remote_label.version,
+                                    synced_at: None,
+                                    created_at: remote_label.created_at,
+                                    updated_at: remote_label.updated_at,
+                                })
                                 .collect();
                             return Ok(ResponseJson(ApiResponse::success(labels)));
                         }

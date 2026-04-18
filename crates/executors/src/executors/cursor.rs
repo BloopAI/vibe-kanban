@@ -18,7 +18,8 @@ use workspace_utils::{
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnContext, SpawnedChild, StandardCodingAgentExecutor,
+        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnContext, SpawnedChild,
+        StandardCodingAgentExecutor,
     },
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
@@ -69,7 +70,12 @@ impl CursorAgent {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for CursorAgent {
-    async fn spawn(&self, current_dir: &Path, prompt: &str, context: SpawnContext) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        context: SpawnContext,
+    ) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
         let command_parts = self.build_command_builder().build_initial()?;
@@ -91,7 +97,10 @@ impl StandardCodingAgentExecutor for CursorAgent {
         command
             .env("VK_ATTEMPT_ID", context.task_attempt_id.to_string())
             .env("VK_TASK_ID", context.task_id.to_string())
-            .env("VK_EXECUTION_PROCESS_ID", context.execution_process_id.to_string());
+            .env(
+                "VK_EXECUTION_PROCESS_ID",
+                context.execution_process_id.to_string(),
+            );
 
         let mut child = command.group_spawn()?;
 

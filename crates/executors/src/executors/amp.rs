@@ -46,7 +46,12 @@ impl Amp {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Amp {
-    async fn spawn(&self, current_dir: &Path, prompt: &str, context: SpawnContext) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        context: SpawnContext,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder().build_initial()?;
         let (executable_path, args) = command_parts.into_resolved().await?;
 
@@ -70,7 +75,10 @@ impl StandardCodingAgentExecutor for Amp {
         command
             .env("VK_ATTEMPT_ID", context.task_attempt_id.to_string())
             .env("VK_TASK_ID", context.task_id.to_string())
-            .env("VK_EXECUTION_PROCESS_ID", context.execution_process_id.to_string());
+            .env(
+                "VK_EXECUTION_PROCESS_ID",
+                context.execution_process_id.to_string(),
+            );
 
         let mut child = command.group_spawn()?;
 

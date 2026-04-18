@@ -31,9 +31,7 @@ const RESERVED_HEADERS: &[&str] = &[
 ];
 
 /// Validate user-supplied header map: reject reserved names and invalid name/value bytes.
-fn validate_headers(
-    headers: &std::collections::HashMap<String, String>,
-) -> Result<(), ApiError> {
+fn validate_headers(headers: &std::collections::HashMap<String, String>) -> Result<(), ApiError> {
     for (k, v) in headers {
         let lower = k.to_lowercase();
         if lower.starts_with("x-vkswarm-") || RESERVED_HEADERS.contains(&lower.as_str()) {
@@ -121,8 +119,7 @@ pub async fn create_project_webhook(
     WebhookService::validate_url_async(&payload.url)
         .await
         .map_err(ApiError::BadRequest)?;
-    let webhook =
-        Webhook::create(&deployment.db().pool, Some(project_id), &payload).await?;
+    let webhook = Webhook::create(&deployment.db().pool, Some(project_id), &payload).await?;
     Ok(ResponseJson(ApiResponse::success(webhook.into_response())))
 }
 
@@ -200,7 +197,7 @@ pub async fn test_webhook(
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))
         .redirect(reqwest::redirect::Policy::none()) // prevent SSRF via redirect
-        .resolve_to_addrs(&host, &[resolved_addr])   // C1: pin to verified address
+        .resolve_to_addrs(&host, &[resolved_addr]) // C1: pin to verified address
         .build()
         .map_err(|e| ApiError::BadRequest(e.to_string()))?;
 
@@ -210,9 +207,7 @@ pub async fn test_webhook(
     // Apply user headers first (filtered with expanded blocklist — Step 6 H3)
     for (k, v) in webhook.parse_headers() {
         let name_lower = k.to_lowercase();
-        if name_lower.starts_with("x-vkswarm-")
-            || RESERVED_HEADERS.contains(&name_lower.as_str())
-        {
+        if name_lower.starts_with("x-vkswarm-") || RESERVED_HEADERS.contains(&name_lower.as_str()) {
             continue;
         }
         // Defensive header application — skip malformed bytes (Step 5 H5)
@@ -243,7 +238,8 @@ pub async fn test_webhook(
             let response_time_ms = start.elapsed().as_millis() as u64;
             let raw = resp.text().await.unwrap_or_default();
             // UTF-8-safe truncation at 500 characters (M7)
-            let preview: String = raw.char_indices()
+            let preview: String = raw
+                .char_indices()
                 .take_while(|(i, _)| *i < 500)
                 .map(|(_, c)| c)
                 .collect();
@@ -273,14 +269,14 @@ pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             "/webhooks",
             Router::new()
                 .route("/", get(list_global_webhooks).post(create_global_webhook))
-                .route("/{id}", get(get_webhook).put(update_webhook).delete(delete_webhook))
+                .route(
+                    "/{id}",
+                    get(get_webhook).put(update_webhook).delete(delete_webhook),
+                )
                 .route("/{id}/test", post(test_webhook)),
         )
         .nest(
             "/projects/{project_id}/webhooks",
-            Router::new().route(
-                "/",
-                get(list_project_webhooks).post(create_project_webhook),
-            ),
+            Router::new().route("/", get(list_project_webhooks).post(create_project_webhook)),
         )
 }

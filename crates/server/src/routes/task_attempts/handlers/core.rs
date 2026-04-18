@@ -240,7 +240,8 @@ pub async fn get_task_attempt(
                 // Try to find local task by shared_task_id to map back to local task_id
                 let pool = &deployment.db().pool;
                 let local_task =
-                    Task::find_by_shared_task_id(pool, hive_response.attempt.shared_task_id).await?;
+                    Task::find_by_shared_task_id(pool, hive_response.attempt.shared_task_id)
+                        .await?;
 
                 // Use local task_id if available, otherwise use shared_task_id
                 let task_id = local_task

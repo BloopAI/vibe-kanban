@@ -79,7 +79,8 @@ pub async fn get_resolved_variables(
         return Ok(ResponseJson(ApiResponse::success(vec![])));
     }
 
-    let variables = TaskVariable::find_inherited_with_system(&deployment.db().pool, task.id).await?;
+    let variables =
+        TaskVariable::find_inherited_with_system(&deployment.db().pool, task.id).await?;
     Ok(ResponseJson(ApiResponse::success(variables)))
 }
 

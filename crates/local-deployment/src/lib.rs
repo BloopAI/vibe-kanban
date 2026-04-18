@@ -210,18 +210,16 @@ impl Deployment for LocalDeployment {
         // This allows nodes to sync with the hive even when no user is logged in
         let node_auth_client: Option<RemoteClient> =
             match (api_base.as_ref(), std::env::var("VK_NODE_API_KEY").ok()) {
-                (Some(url), Some(api_key)) => {
-                    match RemoteClient::new_with_api_key(url, api_key) {
-                        Ok(client) => {
-                            tracing::info!("Node auth client initialized for hive sync");
-                            Some(client)
-                        }
-                        Err(e) => {
-                            tracing::error!(?e, "failed to create node auth client");
-                            None
-                        }
+                (Some(url), Some(api_key)) => match RemoteClient::new_with_api_key(url, api_key) {
+                    Ok(client) => {
+                        tracing::info!("Node auth client initialized for hive sync");
+                        Some(client)
                     }
-                }
+                    Err(e) => {
+                        tracing::error!(?e, "failed to create node auth client");
+                        None
+                    }
+                },
                 _ => None,
             };
 
