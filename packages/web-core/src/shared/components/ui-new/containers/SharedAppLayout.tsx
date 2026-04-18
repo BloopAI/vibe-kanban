@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { DropResult } from '@hello-pangea/dnd';
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
 import { siDiscord, siGithub } from 'simple-icons';
@@ -16,7 +17,11 @@ import { cn } from '@/shared/lib/utils';
 import { isTauriMac } from '@/shared/lib/platform';
 
 import { NavbarContainer } from './NavbarContainer';
-import { AppBar, type AppBarHostStatus } from '@vibe/ui/components/AppBar';
+import {
+  AppBar,
+  type AppBarHostStatus,
+  type AppBarProject,
+} from '@vibe/ui/components/AppBar';
 import { MobileDrawer } from '@vibe/ui/components/MobileDrawer';
 import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
@@ -31,7 +36,6 @@ import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestinatio
 import {
   getDestinationHostId,
   getProjectDestination,
-  isProjectDestination,
   isLocalWorkspacesDestination,
 } from '@/shared/lib/routes/appNavigation';
 import {
@@ -48,13 +52,20 @@ import { sortProjectsByOrder } from '@/shared/lib/projectOrder';
 import {
   PROJECT_MUTATION,
   PROJECTS_SHAPE,
-  type Project as RemoteProject,
 } from 'shared/remote-types';
 import { AppBarNotificationBellContainer } from '@/pages/workspaces/AppBarNotificationBellContainer';
 import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebarContainer';
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
 import { useRemoteCloudHostsAppBarModel } from '@/shared/hooks/useRemoteCloudHosts';
-import { CloudShutdownExportBanner } from '@/shared/components/CloudShutdownExportBanner';
+import { projectsApi } from '@/shared/lib/api';
+
+function getLocalProjectColor(projectId: string): string {
+  let hash = 0;
+  for (const char of projectId) {
+    hash = (hash * 31 + char.charCodeAt(0)) % 360;
+  }
+  return `${hash} 70% 45%`;
+}
 
 export function SharedAppLayout() {
   const appNavigation = useAppNavigation();
@@ -65,7 +76,7 @@ export function SharedAppLayout() {
     (s) => s.isLeftSidebarVisible
   );
   const { isSignedIn } = useAuth();
-  const { appVersion } = useUserSystem();
+  const { appVersion, loginStatus } = useUserSystem();
   const updateVersion = useAppUpdateStore((s) => s.updateVersion);
   const restartForUpdate = useAppUpdateStore((s) => s.restart);
   const { data: onlineCount } = useDiscordOnlineCount();
@@ -74,6 +85,8 @@ export function SharedAppLayout() {
   const [isAppBarHovered, setIsAppBarHovered] = useState(false);
   const { hosts: remoteCloudHosts } = useRemoteCloudHostsAppBarModel();
   const { hostId: routeHostId } = useParams({ strict: false });
+  const isLocalAuthBypassed =
+    loginStatus?.status === 'loggedin' && !loginStatus.profile;
   const navigate = useNavigate();
 
   // Register CMD+K shortcut globally for all routes under SharedAppLayout
@@ -120,6 +133,15 @@ export function SharedAppLayout() {
     }
   }, [organizations, selectedOrgId, setSelectedOrgId]);
 
+  const {
+    data: localProjects = [],
+    isLoading: isLocalProjectsLoading,
+  } = useQuery({
+    queryKey: ['local-projects'],
+    queryFn: () => projectsApi.list(),
+    enabled: isLocalAuthBypassed,
+    staleTime: 60_000,
+  });
   const projectParams = useMemo(
     () => ({ organization_id: selectedOrgId || '' }),
     [selectedOrgId]
@@ -129,26 +151,45 @@ export function SharedAppLayout() {
     isLoading,
     updateMany: updateManyProjects,
   } = useShape(PROJECTS_SHAPE, projectParams, {
-    enabled: isSignedIn && !!selectedOrgId,
+    enabled: !isLocalAuthBypassed && isSignedIn && !!selectedOrgId,
     mutation: PROJECT_MUTATION,
   });
   const sortedProjects = useMemo(
     () => sortProjectsByOrder(orgProjects),
     [orgProjects]
   );
+  const localAppBarProjects = useMemo<AppBarProject[]>(
+    () =>
+      localProjects.map((project) => ({
+        id: project.id,
+        name: project.name,
+        color: getLocalProjectColor(project.id),
+      })),
+    [localProjects]
+  );
+  const appBarProjects = isLocalAuthBypassed
+    ? localAppBarProjects
+    : sortedProjects;
+  const isProjectsLoading = isLocalAuthBypassed
+    ? isLocalProjectsLoading
+    : isLoading;
   const [orderedProjects, setOrderedProjects] =
-    useState<RemoteProject[]>(sortedProjects);
+    useState<AppBarProject[]>(appBarProjects);
   const [isSavingProjectOrder, setIsSavingProjectOrder] = useState(false);
 
   useEffect(() => {
     if (isSavingProjectOrder) {
       return;
     }
-    setOrderedProjects(sortedProjects);
-  }, [isSavingProjectOrder, sortedProjects]);
+    setOrderedProjects(appBarProjects);
+  }, [appBarProjects, isSavingProjectOrder]);
 
   // Navigate to the first ordered project when org changes
   useEffect(() => {
+    if (isLocalAuthBypassed) {
+      return;
+    }
+
     if (
       prevOrgIdRef.current !== null &&
       prevOrgIdRef.current !== selectedOrgId &&
@@ -164,7 +205,13 @@ export function SharedAppLayout() {
     } else if (prevOrgIdRef.current === null && selectedOrgId) {
       prevOrgIdRef.current = selectedOrgId;
     }
-  }, [selectedOrgId, sortedProjects, isLoading, appNavigation]);
+  }, [
+    appNavigation,
+    isLoading,
+    isLocalAuthBypassed,
+    selectedOrgId,
+    sortedProjects,
+  ]);
 
   // Navigation state for AppBar active indicators
   const projectDestination = useMemo(
@@ -173,11 +220,21 @@ export function SharedAppLayout() {
   );
   const isWorkspacesActive = isLocalWorkspacesDestination(currentDestination);
   const isExportActive = currentDestination?.kind === 'export';
-  const showCloudShutdownBanner =
-    isExportActive || (isSignedIn && isProjectDestination(currentDestination));
   const isWorkspaceSidebarPreviewEnabled =
     !isMobile && isWorkspacesActive && !isLeftSidebarVisible;
-  const activeProjectId = projectDestination?.projectId ?? null;
+  const routeProjectId = projectDestination?.projectId ?? null;
+  const selectedProjectId = useUiPreferencesStore((s) => s.selectedProjectId);
+  const activeProjectId = useMemo(() => {
+    if (!isLocalAuthBypassed) {
+      return routeProjectId;
+    }
+
+    if (routeProjectId && orderedProjects.some((project) => project.id === routeProjectId)) {
+      return routeProjectId;
+    }
+
+    return selectedProjectId;
+  }, [isLocalAuthBypassed, orderedProjects, routeProjectId, selectedProjectId]);
   const activeHostId =
     getDestinationHostId(currentDestination) ?? routeHostId ?? null;
   const sidebarPreview = useWorkspaceSidebarPreviewController({
@@ -205,14 +262,15 @@ export function SharedAppLayout() {
 
   const handleProjectClick = useCallback(
     (projectId: string) => {
+      setSelectedProjectId(projectId);
       appNavigation.goToProject(projectId);
     },
-    [appNavigation]
+    [appNavigation, setSelectedProjectId]
   );
 
   const handleProjectsDragEnd = useCallback(
     async ({ source, destination }: DropResult) => {
-      if (isSavingProjectOrder) {
+      if (isLocalAuthBypassed || isSavingProjectOrder) {
         return;
       }
       if (!destination || source.index === destination.index) {
@@ -245,10 +303,15 @@ export function SharedAppLayout() {
         setIsSavingProjectOrder(false);
       }
     },
-    [isSavingProjectOrder, orderedProjects, updateManyProjects]
+    [isLocalAuthBypassed, isSavingProjectOrder, orderedProjects, updateManyProjects]
   );
 
   const handleCreateProject = useCallback(async () => {
+    if (isLocalAuthBypassed) {
+      appNavigation.goToWorkspacesCreate();
+      return;
+    }
+
     if (!selectedOrgId) return;
 
     try {
@@ -261,7 +324,7 @@ export function SharedAppLayout() {
     } catch {
       // Dialog cancelled
     }
-  }, [selectedOrgId, appNavigation]);
+  }, [appNavigation, isLocalAuthBypassed, selectedOrgId]);
 
   const handleSignIn = useCallback(async () => {
     try {
@@ -303,21 +366,11 @@ export function SharedAppLayout() {
           'bg-primary',
           isMobile
             ? 'flex fixed inset-0 pb-[env(safe-area-inset-bottom)]'
-            : cn(
-                'grid grid-cols-[auto_1fr] h-screen',
-                showCloudShutdownBanner
-                  ? 'grid-rows-[auto_auto_1fr]'
-                  : 'grid-rows-[auto_1fr]'
-              )
+            : 'grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] h-screen'
         )}
       >
         {!isMobile && (
           <>
-            {showCloudShutdownBanner && (
-              <div className="col-span-2">
-                <CloudShutdownExportBanner onClick={handleExportClick} />
-              </div>
-            )}
             {/* Desktop corner spacer. */}
             <div
               data-tauri-drag-region
@@ -346,7 +399,7 @@ export function SharedAppLayout() {
               isExportActive={isExportActive}
               activeProjectId={activeProjectId}
               isSignedIn={isSignedIn}
-              isLoadingProjects={isLoading}
+              isLoadingProjects={isProjectsLoading}
               onSignIn={handleSignIn}
               onHoverStart={() => setIsAppBarHovered(true)}
               onHoverEnd={() => setIsAppBarHovered(false)}
@@ -405,9 +458,6 @@ export function SharedAppLayout() {
 
         {isMobile && (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-            {showCloudShutdownBanner && (
-              <CloudShutdownExportBanner onClick={handleExportClick} />
-            )}
             <NavbarContainer
               mobileMode={isMobile}
               onOrgSelect={setSelectedOrgId}

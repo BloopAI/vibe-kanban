@@ -161,10 +161,10 @@
         "workspaceDir": {
           "label": "工作區目錄",
           "placeholder": "~/",
-          "helper": "工作區將在此路徑內的 .vibe-kanban-workspaces 子目錄中建立。留空以使用系統預設值。變更需要重新啟動應用程式。",
+          "helper": "工作區將在此路徑內直接建立。留空以使用系統預設值。變更需要重新啟動應用程式。",
           "browse": "瀏覽",
           "dialogTitle": "選擇工作區目錄",
-          "dialogDescription": "選擇一個目錄。工作區將在其中的 .vibe-kanban-workspaces 子目錄中建立。"
+          "dialogDescription": "選擇一個目錄。工作區將在其中直接建立。"
         }
       },
       "pullRequests": {

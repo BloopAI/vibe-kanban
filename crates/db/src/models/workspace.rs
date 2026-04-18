@@ -135,6 +135,21 @@ impl Workspace {
         })
     }
 
+    pub async fn update_task_id(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+        task_id: Option<Uuid>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "UPDATE workspaces SET task_id = ?, updated_at = datetime('now', 'subsec') WHERE id = ?",
+        )
+        .bind(task_id)
+        .bind(workspace_id)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     /// Update container reference
     pub async fn update_container_ref(
         pool: &SqlitePool,

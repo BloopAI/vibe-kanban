@@ -29,7 +29,11 @@ import {
  * Component that registers project mutations with ActionsContext.
  * Must be rendered inside both ActionsProvider and ProjectProvider.
  */
-function ProjectMutationsRegistration({ children }: { children: ReactNode }) {
+export function ProjectMutationsRegistration({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const { registerProjectMutations } = useActions();
   const { removeIssue, insertIssue, getIssue, getAssigneesForIssue, issues } =
     useProjectContext();
@@ -102,7 +106,7 @@ function ProjectKanbanBoard() {
   );
 }
 
-function ProjectKanbanLayout({ projectName }: { projectName: string }) {
+export function ProjectKanbanLayout({ projectName }: { projectName: string }) {
   const { issueId, isPanelOpen } = useCurrentKanbanRouteState();
   const isMobile = useIsMobile();
   const { getIssue } = useProjectContext();

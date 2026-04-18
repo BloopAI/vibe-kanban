@@ -140,7 +140,9 @@ kanban_project_view_selections: { [key in string]?: JsonValue },
  */
 kanban_project_view_preferences: { [key in string]?: JsonValue }, };
 
-export type ProjectRepoDefaultsData = { repos: Array<DraftWorkspaceRepo>, };
+export type ProjectStatusConfigData = { id: string, name: string, color: string, hidden: boolean, sort_order: number, };
+
+export type ProjectRepoDefaultsData = { repos: Array<DraftWorkspaceRepo>, statuses?: Array<ProjectStatusConfigData>, };
 
 export type ScratchPayload = { "type": "DRAFT_TASK", "data": string } | { "type": "DRAFT_FOLLOW_UP", "data": DraftFollowUpData } | { "type": "DRAFT_WORKSPACE", "data": DraftWorkspaceData } | { "type": "DRAFT_ISSUE", "data": DraftIssueData } | { "type": "PREVIEW_SETTINGS", "data": PreviewSettingsData } | { "type": "WORKSPACE_NOTES", "data": WorkspaceNotesData } | { "type": "UI_PREFERENCES", "data": UiPreferencesData } | { "type": "PROJECT_REPO_DEFAULTS", "data": ProjectRepoDefaultsData };
 

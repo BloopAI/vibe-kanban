@@ -6,7 +6,10 @@ use axum::{
     response::Json as ResponseJson,
     routing::{delete, post},
 };
-use db::models::{merge::MergeStatus, pull_request::PullRequest, workspace::Workspace};
+use db::models::{
+    merge::MergeStatus, project::Project, pull_request::PullRequest, task::Task,
+    workspace::Workspace,
+};
 use deployment::Deployment;
 use serde::Deserialize;
 use services::services::{diff_stream, remote_client::RemoteClientError, remote_sync};
@@ -26,6 +29,17 @@ pub async fn link_workspace(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<LinkWorkspaceRequest>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let project = Project::find_by_id(&deployment.db().pool, payload.project_id).await?;
+
+    if project.remote_project_id.is_none() {
+        let task = Task::find_by_id(&deployment.db().pool, payload.issue_id).await?;
+        if task.as_ref().map(|task| task.project_id) == Some(payload.project_id) {
+            Workspace::update_task_id(&deployment.db().pool, workspace.id, Some(payload.issue_id))
+                .await?;
+            return Ok(ResponseJson(ApiResponse::success(())));
+        }
+    }
+
     let client = deployment.remote_client()?;
 
     let stats =

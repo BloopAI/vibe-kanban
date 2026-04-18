@@ -124,6 +124,12 @@ pub fn get_vibe_kanban_temp_dir() -> std::path::PathBuf {
     }
 }
 
+pub fn get_default_worktree_root() -> std::path::PathBuf {
+    dirs::home_dir()
+        .map(|home| home.join("code").join("worktrees"))
+        .unwrap_or_else(|| get_vibe_kanban_temp_dir().join("worktrees"))
+}
+
 /// Expand leading ~ to user's home directory.
 pub fn expand_tilde(path_str: &str) -> std::path::PathBuf {
     shellexpand::tilde(path_str).as_ref().into()

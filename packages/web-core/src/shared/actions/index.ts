@@ -428,7 +428,8 @@ export const Actions = {
     label: 'Project Settings',
     icon: GearIcon,
     requiresTarget: ActionTargetType.NONE,
-    isVisible: (ctx) => ctx.layoutMode === 'kanban',
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.kanbanOrgId !== 'local',
     execute: async (ctx) => {
       await SettingsDialog.show({
         initialSection: 'remote-projects',
@@ -504,7 +505,8 @@ export const Actions = {
     label: 'Projects Guide',
     icon: QuestionIcon,
     requiresTarget: ActionTargetType.NONE,
-    isVisible: (ctx) => ctx.layoutMode === 'kanban',
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.kanbanOrgId !== 'local',
     execute: async () => {
       await ProjectsGuideDialog.show();
     },

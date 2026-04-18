@@ -26,6 +26,7 @@ import {
 } from './settings/SettingsHostContext';
 import { SettingsMachineUserSystemProvider } from './settings/SettingsMachineUserSystemProvider';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 
 export interface SettingsDialogProps {
   initialSection?: SettingsSectionType;
@@ -47,6 +48,9 @@ function SettingsDialogNavigation({
   onSectionSelect: (sectionId: SettingsSectionType) => void;
 }) {
   const { t } = useTranslation('settings');
+  const { loginStatus } = useUserSystem();
+  const isLocalOnlySession =
+    loginStatus?.status === 'loggedin' && !loginStatus.profile;
   const {
     availableHosts,
     hostsResolved,
@@ -54,10 +58,17 @@ function SettingsDialogNavigation({
     selectedHostId,
     setSelectedHostId,
   } = useSettingsHost();
-  const hostSections = SETTINGS_SECTION_DEFINITIONS.filter(
+  const visibleSections = SETTINGS_SECTION_DEFINITIONS.filter((section) => {
+    if (!isLocalOnlySession) {
+      return true;
+    }
+
+    return section.id !== 'organizations' && section.id !== 'remote-projects';
+  });
+  const hostSections = visibleSections.filter(
     (section) => section.group === 'host'
   );
-  const universalSections = SETTINGS_SECTION_DEFINITIONS.filter(
+  const universalSections = visibleSections.filter(
     (section) => section.group === 'universal'
   );
   const hostOptions = availableHosts.map((host) => ({
@@ -139,14 +150,20 @@ function SettingsDialogNavigation({
         </div>
       </div>
       <div className="space-y-2">
-        <div className="px-3 pt-1">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-low">
-            {t('settings.layout.nav.accountSettings')}
-          </div>
-        </div>
-        <div className="flex flex-col gap-1">
-          {universalSections.map((section) => renderSectionButton(section.id))}
-        </div>
+        {universalSections.length > 0 && (
+          <>
+            <div className="px-3 pt-1">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-low">
+                {t('settings.layout.nav.accountSettings')}
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              {universalSections.map((section) =>
+                renderSectionButton(section.id)
+              )}
+            </div>
+          </>
+        )}
       </div>
     </nav>
   );
@@ -158,25 +175,45 @@ function SettingsDialogContent({
   onClose,
 }: SettingsDialogContentProps) {
   const { t } = useTranslation('settings');
+  const { loginStatus } = useUserSystem();
   const { isDirty } = useSettingsDirty();
   const { availableHosts, hostsResolved, selectedHost } = useSettingsHost();
+  const isLocalOnlySession =
+    loginStatus?.status === 'loggedin' && !loginStatus.profile;
+  const visibleSections = useMemo(
+    () =>
+      SETTINGS_SECTION_DEFINITIONS.filter((section) => {
+        if (!isLocalOnlySession) {
+          return true;
+        }
+
+        return (
+          section.id !== 'organizations' && section.id !== 'remote-projects'
+        );
+      }),
+    [isLocalOnlySession]
+  );
 
   const resolvedInitialSection = useMemo<SettingsSectionType>(() => {
     if (
       initialSection &&
-      SETTINGS_SECTION_DEFINITIONS.some(
-        (section) => section.id === initialSection
-      )
+      visibleSections.some((section) => section.id === initialSection)
     ) {
       return initialSection;
     }
 
-    if (hostsResolved && availableHosts.length === 0) {
+    if (hostsResolved && availableHosts.length === 0 && !isLocalOnlySession) {
       return 'organizations';
     }
 
     return 'general';
-  }, [availableHosts.length, hostsResolved, initialSection]);
+  }, [
+    availableHosts.length,
+    hostsResolved,
+    initialSection,
+    isLocalOnlySession,
+    visibleSections,
+  ]);
 
   const [activeSection, setActiveSection] = useState<SettingsSectionType>(
     resolvedInitialSection
@@ -217,14 +254,19 @@ function SettingsDialogContent({
   };
 
   useEffect(() => {
+    if (!visibleSections.some((section) => section.id === activeSection)) {
+      setActiveSection('general');
+      return;
+    }
+
     if (
       hostsResolved &&
       isHostSpecificSettingsSection(activeSection) &&
       availableHosts.length === 0
     ) {
-      setActiveSection('organizations');
+      setActiveSection('general');
     }
-  }, [activeSection, availableHosts.length, hostsResolved]);
+  }, [activeSection, availableHosts.length, hostsResolved, visibleSections]);
 
   const handleMobileBack = () => {
     setMobileShowContent(false);

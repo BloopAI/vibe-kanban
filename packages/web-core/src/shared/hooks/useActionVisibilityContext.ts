@@ -9,6 +9,7 @@ import { useDiffViewMode } from '@/shared/stores/useDiffViewStore';
 import { useDiffPaths } from '@/shared/stores/useWorkspaceDiffStore';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
+import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useDevServer } from '@/shared/hooks/useDevServer';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { useShape } from '@/shared/integrations/electric/hooks';
@@ -62,6 +63,10 @@ export function useActionVisibilityContext(
   const hasSelectedKanbanIssue = effectiveIssueIds.length > 0;
   const shouldResolveSelectedIssueParent =
     !!effectiveProjectId && effectiveIssueIds.length === 1;
+  const { config, loginStatus } = useUserSystem();
+  const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
+  const isLocalOnlySession =
+    loginStatus?.status === 'loggedin' && !loginStatus.profile;
 
   const projectIssuesParams = useMemo(
     () => ({ project_id: effectiveProjectId ?? '' }),
@@ -71,7 +76,7 @@ export function useActionVisibilityContext(
     PROJECT_ISSUES_SHAPE,
     projectIssuesParams,
     {
-      enabled: shouldResolveSelectedIssueParent,
+      enabled: shouldResolveSelectedIssueParent && !isLocalOnlySession,
     }
   );
   const hasSelectedKanbanIssueParent = useMemo(() => {
@@ -86,7 +91,6 @@ export function useActionVisibilityContext(
   const layoutMode: LayoutMode = isProjectDestination(destination)
     ? 'kanban'
     : 'workspaces';
-  const { config } = useUserSystem();
   const { isStarting, isStopping, runningDevServers } =
     useDevServer(workspaceId);
   const { data: branchStatus } = useBranchStatus(workspaceId);
@@ -147,6 +151,10 @@ export function useActionVisibilityContext(
       hasSelectedKanbanIssue,
       hasSelectedKanbanIssueParent,
       isCreatingIssue: kanbanCreateMode,
+      kanbanOrgId:
+        layoutMode === 'kanban'
+          ? (isLocalOnlySession ? 'local' : (selectedOrgId ?? undefined))
+          : undefined,
       isSignedIn,
     };
   }, [
@@ -162,6 +170,8 @@ export function useActionVisibilityContext(
     diffViewMode,
     expanded,
     config?.editor?.editor_type,
+    isLocalOnlySession,
+    selectedOrgId,
     isStarting,
     isStopping,
     runningDevServers,

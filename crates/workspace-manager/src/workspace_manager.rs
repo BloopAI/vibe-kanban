@@ -590,9 +590,24 @@ impl WorkspaceManager {
             }
 
             let workspace_path_str = path.to_string_lossy().to_string();
-            if let Ok(false) =
-                DbWorkspace::container_ref_exists(&self.db.pool, &workspace_path_str).await
+            let has_tracked_workspace = match DbWorkspace::resolve_container_ref_by_prefix(
+                &self.db.pool,
+                &workspace_path_str,
+            )
+            .await
             {
+                Ok(_) => true,
+                Err(sqlx::Error::RowNotFound) => false,
+                Err(e) => {
+                    warn!(
+                        "Failed to resolve workspace path {} against tracked workspaces: {}",
+                        workspace_path_str, e
+                    );
+                    continue;
+                }
+            };
+
+            if !has_tracked_workspace {
                 info!("Found orphaned workspace: {}", workspace_path_str);
                 if let Err(e) = Self::cleanup_workspace_without_repos(&path).await {
                     error!(

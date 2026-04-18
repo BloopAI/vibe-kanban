@@ -17,9 +17,11 @@ pub mod execution_processes;
 pub mod frontend;
 pub mod health;
 pub mod host_relay;
+pub mod local_compat;
 pub mod oauth;
 pub mod organizations;
 pub mod preview;
+pub mod projects;
 pub mod relay_auth;
 pub mod releases;
 pub mod remote;
@@ -43,6 +45,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(tags::router(&deployment))
         .merge(oauth::router())
         .merge(organizations::router())
+        .merge(projects::router())
         .merge(filesystem::router())
         .merge(repo::router())
         .merge(events::router(&deployment))
@@ -75,9 +78,10 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
             middleware::validate_origin,
         ))
         .layer(axum::middleware::from_fn(middleware::log_server_errors))
-        .with_state(deployment);
+        .with_state(deployment.clone());
 
     Router::new()
+        .nest("/v1", local_compat::router().with_state(deployment.clone()))
         .route("/", get(frontend::serve_frontend_root))
         .route("/{*path}", get(frontend::serve_frontend))
         .nest("/api", api_routes)

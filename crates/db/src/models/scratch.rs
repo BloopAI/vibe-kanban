@@ -193,10 +193,22 @@ pub struct DraftWorkspaceRepo {
     pub target_branch: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct ProjectStatusConfigData {
+    pub id: String,
+    pub name: String,
+    pub color: String,
+    #[serde(default)]
+    pub hidden: bool,
+    pub sort_order: i64,
+}
+
 /// Data for project repo defaults scratch (default repos/branches per project)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ProjectRepoDefaultsData {
     pub repos: Vec<DraftWorkspaceRepo>,
+    #[serde(default)]
+    pub statuses: Vec<ProjectStatusConfigData>,
 }
 
 /// Data for a draft issue scratch (issue creation on kanban board)

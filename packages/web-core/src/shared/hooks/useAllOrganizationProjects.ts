@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { createShapeCollection } from '@/shared/lib/electric/collections';
 import { PROJECTS_SHAPE, type Project } from 'shared/remote-types';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 
 interface UseAllOrganizationProjectsOptions {
@@ -21,6 +22,9 @@ export function useAllOrganizationProjects(
 ) {
   const { enabled = true } = options;
   const { isSignedIn } = useAuth();
+  const { loginStatus } = useUserSystem();
+  const isLocalOnlySession =
+    loginStatus?.status === 'loggedin' && !loginStatus.profile;
   const { data: orgsData } = useUserOrganizations();
 
   // Stable org IDs list — only recompute when orgsData changes
@@ -33,7 +37,7 @@ export function useAllOrganizationProjects(
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!enabled || !isSignedIn || orgIds.length === 0) {
+    if (!enabled || !isSignedIn || isLocalOnlySession || orgIds.length === 0) {
       setProjects([]);
       setIsLoading(false);
       return;
@@ -87,7 +91,7 @@ export function useAllOrganizationProjects(
     return () => {
       subscriptions.forEach((s) => s.unsubscribe());
     };
-  }, [enabled, isSignedIn, orgIds]);
+  }, [enabled, isSignedIn, isLocalOnlySession, orgIds]);
 
   return { data: projects, isLoading };
 }

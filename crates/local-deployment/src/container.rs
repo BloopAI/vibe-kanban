@@ -60,6 +60,7 @@ use utils::{
 };
 use uuid::Uuid;
 use workspace_manager::{RepoWorkspaceInput, WorkspaceError, WorkspaceManager};
+use worktree_manager::WorktreeManager;
 
 use crate::{command, copy};
 
@@ -856,6 +857,82 @@ impl LocalContainerService {
         format!("{}-{}", short_uuid(workspace_id), task_title_id)
     }
 
+    fn default_workspace_dir(workspace: &Workspace) -> PathBuf {
+        let label = workspace.name.as_deref().unwrap_or("workspace");
+        let workspace_dir_name =
+            LocalContainerService::dir_name_from_workspace(&workspace.id, label);
+        WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name)
+    }
+
+    async fn migrate_workspace_if_needed(
+        &self,
+        workspace: &Workspace,
+        repositories: &[Repo],
+        current_dir: &Path,
+        desired_dir: &Path,
+    ) -> Result<PathBuf, ContainerError> {
+        if current_dir == desired_dir {
+            return Ok(current_dir.to_path_buf());
+        }
+
+        if !current_dir.exists() {
+            return Ok(desired_dir.to_path_buf());
+        }
+
+        if let Some(parent) = desired_dir.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+
+        if desired_dir.exists() {
+            Workspace::update_container_ref(
+                &self.db.pool,
+                workspace.id,
+                &desired_dir.to_string_lossy(),
+            )
+            .await?;
+            return Ok(desired_dir.to_path_buf());
+        }
+
+        if repositories.len() == 1 && current_dir.join(".git").is_file() {
+            let repo = &repositories[0];
+            tokio::fs::create_dir_all(desired_dir).await?;
+            let desired_worktree_path = desired_dir.join(&repo.name);
+            WorktreeManager::move_worktree(&repo.path, current_dir, &desired_worktree_path).await?;
+        } else {
+            tokio::fs::create_dir_all(desired_dir).await?;
+            for repo in repositories {
+                let old_worktree_path = current_dir.join(&repo.name);
+                if !old_worktree_path.exists() {
+                    continue;
+                }
+
+                let new_worktree_path = desired_dir.join(&repo.name);
+                WorktreeManager::move_worktree(&repo.path, &old_worktree_path, &new_worktree_path)
+                    .await?;
+            }
+        }
+
+        if current_dir.exists() {
+            let _ = tokio::fs::remove_dir_all(current_dir).await;
+        }
+
+        Workspace::update_container_ref(
+            &self.db.pool,
+            workspace.id,
+            &desired_dir.to_string_lossy(),
+        )
+        .await?;
+
+        tracing::info!(
+            "Relocated workspace {} from {} to {}",
+            workspace.id,
+            current_dir.display(),
+            desired_dir.display()
+        );
+
+        Ok(desired_dir.to_path_buf())
+    }
+
     async fn track_child_msgs_in_store(&self, id: Uuid, child: &mut AsyncGroupChild) {
         let store = Arc::new(MsgStore::with_limits(
             LIVE_EXECUTION_HISTORY_BYTES,
@@ -1200,12 +1277,8 @@ impl ContainerService for LocalContainerService {
     }
 
     async fn create(&self, workspace: &Workspace) -> Result<ContainerRef, ContainerError> {
-        let label = workspace.name.as_deref().unwrap_or("workspace");
-        let workspace_dir_name =
-            LocalContainerService::dir_name_from_workspace(&workspace.id, label);
-        let workspace_dir = WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name);
-
         let (repositories, workspace_inputs) = self.workspace_repo_inputs(workspace.id).await?;
+        let workspace_dir = Self::default_workspace_dir(workspace);
 
         let created_workspace = WorkspaceManager::create_workspace(
             &workspace_dir,
@@ -1249,12 +1322,16 @@ impl ContainerService for LocalContainerService {
         let (repositories, workspace_inputs) = self.workspace_repo_inputs(workspace.id).await?;
 
         let workspace_dir = if let Some(container_ref) = &workspace.container_ref {
-            PathBuf::from(container_ref)
+            let current_dir = PathBuf::from(container_ref);
+            self.migrate_workspace_if_needed(
+                workspace,
+                &repositories,
+                &current_dir,
+                &Self::default_workspace_dir(workspace),
+            )
+            .await?
         } else {
-            let label = workspace.name.as_deref().unwrap_or("workspace");
-            let workspace_dir_name =
-                LocalContainerService::dir_name_from_workspace(&workspace.id, label);
-            WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name)
+            Self::default_workspace_dir(workspace)
         };
 
         WorkspaceManager::ensure_workspace_exists(
@@ -1265,13 +1342,10 @@ impl ContainerService for LocalContainerService {
         .await
         .map_err(Self::map_workspace_manager_error)?;
 
-        if workspace.container_ref.is_none() {
-            Workspace::update_container_ref(
-                &self.db.pool,
-                workspace.id,
-                &workspace_dir.to_string_lossy(),
-            )
-            .await?;
+        let workspace_dir_str = workspace_dir.to_string_lossy().to_string();
+        if workspace.container_ref.as_deref() != Some(workspace_dir_str.as_str()) {
+            Workspace::update_container_ref(&self.db.pool, workspace.id, &workspace_dir_str)
+                .await?;
         }
 
         if workspace.worktree_deleted {

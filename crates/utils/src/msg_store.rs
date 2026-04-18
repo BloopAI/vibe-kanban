@@ -9,8 +9,9 @@ use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 
 use crate::{log_msg::LogMsg, stream_lines::LinesStreamExt};
 
-// Large default for stores that need full replay from memory. Live execution/event
-// stores should generally use `with_limits` to avoid buffering excessive output.
+// Large default for stores that need full replay from memory (for example, on-demand
+// normalization of historical logs). Live execution/event stores should generally use
+// `with_limits` to keep the desktop server from buffering excessive output in-process.
 const DEFAULT_HISTORY_BYTES: usize = 100000 * 1024;
 const DEFAULT_CHANNEL_CAPACITY: usize = 100000;
 

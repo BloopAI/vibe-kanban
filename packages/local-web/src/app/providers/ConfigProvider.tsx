@@ -24,9 +24,18 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
     save: saveConfig,
   });
 
+  const isLocalOnlySession =
+    userSystemInfo?.login_status?.status === 'loggedin' &&
+    userSystemInfo.login_status.profile == null;
+
   // Set runtime remote API base URL for self-hosting support.
-  // Must run during render (not in useEffect) so it's set before children mount.
-  setRemoteApiBase(userSystemInfo?.shared_api_base);
+  // In local-only mode there is no usable remote auth/session, so force
+  // collections to skip Electric and use local fallback routes directly.
+  // Must run during render (not in useEffect) so it's set before children
+  // mount.
+  setRemoteApiBase(
+    isLocalOnlySession ? null : (userSystemInfo?.shared_api_base ?? null)
+  );
 
   // Sync language with i18n when config changes
   useEffect(() => {

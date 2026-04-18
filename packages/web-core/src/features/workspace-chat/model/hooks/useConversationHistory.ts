@@ -20,9 +20,14 @@ export interface UseConversationHistoryResult {
   isFirstTurn: boolean;
   /** Whether background batches are still loading older history entries */
   isLoadingHistory: boolean;
+  /** Whether more older history can be loaded on demand. */
+  hasMoreHistory: boolean;
+  /** Load another batch of older history entries. */
+  loadMoreHistory: () => Promise<void>;
 }
 import {
   MIN_INITIAL_ENTRIES,
+  REMAINING_BATCH_SIZE,
 } from '@/shared/hooks/useConversationHistory/constants';
 
 export const useConversationHistory = ({
@@ -46,6 +51,8 @@ export const useConversationHistory = ({
     new Map()
   );
   const [isLoadingHistoryState, setIsLoadingHistory] = useState(false);
+  const [hasMoreHistoryState, setHasMoreHistory] = useState(false);
+  const historyEntryLimitRef = useRef(MIN_INITIAL_ENTRIES);
 
   // Derive whether this is the first turn (no follow-up processes exist)
   const isFirstTurn = useMemo(() => {
@@ -257,10 +264,18 @@ export const useConversationHistory = ({
   );
 
   const loadHistoricEntries = useCallback(
-    async (maxEntries?: number): Promise<ExecutionProcessStateStore> => {
+    async (
+      maxEntries?: number
+    ): Promise<{
+      state: ExecutionProcessStateStore;
+      truncated: boolean;
+    }> => {
       const localDisplayedExecutionProcesses: ExecutionProcessStateStore = {};
+      let truncated = false;
 
-      if (!executionProcesses?.current) return localDisplayedExecutionProcesses;
+      if (!executionProcesses?.current) {
+        return { state: localDisplayedExecutionProcesses, truncated };
+      }
 
       for (const executionProcess of [
         ...executionProcesses.current,
@@ -283,11 +298,12 @@ export const useConversationHistory = ({
           maxEntries != null &&
           flattenEntries(localDisplayedExecutionProcesses).length > maxEntries
         ) {
+          truncated = true;
           break;
         }
       }
 
-      return localDisplayedExecutionProcesses;
+      return { state: localDisplayedExecutionProcesses, truncated };
     },
     [executionProcesses]
   );
@@ -343,6 +359,9 @@ export const useConversationHistory = ({
     emittedEmptyInitialRef.current = false;
     streamingProcessIdsRef.current.clear();
     previousStatusMapRef.current.clear();
+    historyEntryLimitRef.current = MIN_INITIAL_ENTRIES;
+    setHasMoreHistory(false);
+    setIsLoadingHistory(false);
     emitEntries(displayedExecutionProcesses.current, 'initial', true);
   }, [scopeKey, emitEntries]);
 
@@ -362,18 +381,17 @@ export const useConversationHistory = ({
 
       emittedEmptyInitialRef.current = false;
 
-      const allInitialEntries = await loadHistoricEntries(MIN_INITIAL_ENTRIES);
+      const { state: allInitialEntries, truncated } = await loadHistoricEntries(
+        MIN_INITIAL_ENTRIES
+      );
       if (cancelled) return;
       loadedInitialEntries.current = true;
+      historyEntryLimitRef.current = MIN_INITIAL_ENTRIES;
+      setHasMoreHistory(truncated);
       mergeIntoDisplayed((state) => {
         Object.assign(state, allInitialEntries);
       });
       emitEntries(displayedExecutionProcesses.current, 'initial', false);
-
-      // Do not auto-load the full historic backlog on workspace open.
-      // Large older sessions can trigger multi-GB normalization spikes on the
-      // local server. Initial history is enough to render the workspace; older
-      // history can be loaded by a future explicit action.
       if (!cancelled) {
         setIsLoadingHistory(false);
       }
@@ -490,5 +508,38 @@ export const useConversationHistory = ({
     }
   }, [scopeKey, idListKey, executionProcessesRaw]);
 
-  return { isFirstTurn, isLoadingHistory: isLoadingHistoryState };
+  const loadMoreHistory = useCallback(async () => {
+    if (!loadedInitialEntries.current) return;
+    if (isLoading || isLoadingHistoryState || !hasMoreHistoryState) return;
+
+    setIsLoadingHistory(true);
+    const nextLimit = historyEntryLimitRef.current + REMAINING_BATCH_SIZE;
+
+    try {
+      const { state: moreHistory, truncated } = await loadHistoricEntries(nextLimit);
+      historyEntryLimitRef.current = nextLimit;
+      setHasMoreHistory(truncated);
+      mergeIntoDisplayed((state) => {
+        Object.entries(moreHistory).forEach(([processId, processState]) => {
+          state[processId] = processState;
+        });
+      });
+      emitEntries(displayedExecutionProcesses.current, 'historic', false);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [
+    emitEntries,
+    hasMoreHistoryState,
+    isLoading,
+    isLoadingHistoryState,
+    loadHistoricEntries,
+  ]);
+
+  return {
+    isFirstTurn,
+    isLoadingHistory: isLoadingHistoryState,
+    hasMoreHistory: hasMoreHistoryState,
+    loadMoreHistory,
+  };
 };

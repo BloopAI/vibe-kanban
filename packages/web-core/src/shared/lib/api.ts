@@ -58,6 +58,7 @@ import {
   Invitation,
   ListInvitationsResponse,
   OpenEditorResponse,
+  Project,
   OpenEditorRequest,
   PrError,
   Scratch,
@@ -832,6 +833,12 @@ export const fileSystemApi = {
 };
 
 // Repo APIs
+export interface RepoNavigationEntry {
+  repo: Repo;
+  latest_workspace_id: string | null;
+  latest_workspace_name: string | null;
+}
+
 export const repoApi = {
   list: async (hostId?: string | null): Promise<Repo[]> => {
     const response = await makeHostAwareRequest('/api/repos', hostId);
@@ -841,6 +848,11 @@ export const repoApi = {
   listRecent: async (): Promise<Repo[]> => {
     const response = await makeRequest('/api/repos/recent');
     return handleApiResponse<Repo[]>(response);
+  },
+
+  listRecentNavigation: async (): Promise<RepoNavigationEntry[]> => {
+    const response = await makeRequest('/api/repos/recent-navigation');
+    return handleApiResponse<RepoNavigationEntry[]>(response);
   },
 
   getById: async (repoId: string, hostId?: string | null): Promise<Repo> => {
@@ -1470,6 +1482,18 @@ export const organizationsApi = {
       method: 'DELETE',
     });
     return handleRemoteResponse<void>(response);
+  },
+};
+
+export const projectsApi = {
+  list: async (): Promise<Project[]> => {
+    const response = await makeRequest('/api/projects');
+    return handleApiResponse<Project[]>(response);
+  },
+
+  getById: async (projectId: string): Promise<Project> => {
+    const response = await makeRequest(`/api/projects/${projectId}`);
+    return handleApiResponse<Project>(response);
   },
 };
 

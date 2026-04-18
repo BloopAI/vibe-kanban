@@ -145,6 +145,7 @@ export interface ActionVisibilityContext {
   hasSelectedKanbanIssue: boolean;
   hasSelectedKanbanIssueParent: boolean;
   isCreatingIssue: boolean;
+  kanbanOrgId?: string;
 
   // Auth state
   isSignedIn: boolean;
