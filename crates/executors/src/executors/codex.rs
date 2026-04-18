@@ -11,7 +11,8 @@ use std::{
 
 use async_trait::async_trait;
 use codex_app_server_protocol::{
-    AskForApproval as CodexAskForApproval, SandboxMode as CodexSandboxMode, ThreadStartParams,
+    AskForApproval as CodexAskForApproval, ReviewTarget, SandboxMode as CodexSandboxMode,
+    ThreadStartParams,
 };
 use codex_protocol::{
     ThreadId,
@@ -37,7 +38,7 @@ use self::{
     normalize_logs::normalize_logs,
 };
 use crate::{
-    actions::SpawnContext,
+    actions::{SpawnContext, coding_agent_review::CodingAgentReviewRequest},
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
     executors::{
@@ -237,6 +238,17 @@ impl StandardCodingAgentExecutor for Codex {
             placeholder_context,
         )
         .await
+    }
+
+    async fn spawn_review(
+        &self,
+        current_dir: &Path,
+        request: &CodingAgentReviewRequest,
+        context: SpawnContext,
+    ) -> Result<SpawnedChild, ExecutorError> {
+        let command_parts = self.build_command_builder().build_initial()?;
+        self.spawn_review_internal(current_dir, command_parts, request, context)
+            .await
     }
 
     fn normalize_logs(
@@ -604,6 +616,62 @@ impl Codex {
         Ok(())
     }
 
+    async fn launch_codex_review(
+        client: Arc<AppServerClient>,
+        thread_params: ThreadStartParams,
+        resume_session: Option<String>,
+        target: ReviewTarget,
+        append_to_original_thread: bool,
+        child_stdout: tokio::process::ChildStdout,
+        child_stdin: tokio::process::ChildStdin,
+        exit_signal_tx: ExitSignalSender,
+    ) -> Result<(), ExecutorError> {
+        let rpc_peer =
+            JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx);
+        client.connect(rpc_peer);
+        client.initialize().await?;
+        let auth_status = client.get_auth_status().await?;
+        if auth_status.requires_openai_auth.unwrap_or(true) && auth_status.auth_method.is_none() {
+            return Err(ExecutorError::AuthRequired(
+                "Codex authentication required".to_string(),
+            ));
+        }
+
+        let conversation_id = match resume_session {
+            None => {
+                let response = client.start_thread(thread_params).await?;
+                ThreadId::try_from(response.thread.id.clone()).map_err(|err| {
+                    ExecutorError::Io(io::Error::other(format!(
+                        "invalid thread id from thread/start: {err}"
+                    )))
+                })?
+            }
+            Some(session_id) => {
+                let response = client
+                    .fork_thread(
+                        ThreadId::try_from(session_id.clone()).map_err(|err| {
+                            ExecutorError::FollowUpNotSupported(format!(
+                                "invalid session/thread id {session_id}: {err}"
+                            ))
+                        })?,
+                        thread_params,
+                    )
+                    .await?;
+                ThreadId::try_from(response.thread.id.clone()).map_err(|err| {
+                    ExecutorError::Io(io::Error::other(format!(
+                        "invalid thread id from thread/fork: {err}"
+                    )))
+                })?
+            }
+        };
+
+        client.register_session(&conversation_id).await?;
+        client
+            .start_review(conversation_id, target, append_to_original_thread)
+            .await?;
+        Ok(())
+    }
+
     pub async fn discover_runtime_capabilities(
         &self,
         current_dir: &Path,
@@ -697,6 +765,98 @@ impl Codex {
     }
 }
 
+impl Codex {
+    async fn spawn_review_internal(
+        &self,
+        current_dir: &Path,
+        command_parts: CommandParts,
+        request: &CodingAgentReviewRequest,
+        context: SpawnContext,
+    ) -> Result<SpawnedChild, ExecutorError> {
+        let (program_path, args) = command_parts.into_resolved().await?;
+        let mut process = Command::new(program_path);
+        process
+            .kill_on_drop(true)
+            .current_dir(current_dir)
+            .args(&args)
+            .env("NODE_NO_WARNINGS", "1")
+            .env("NO_COLOR", "1")
+            .env("RUST_LOG", "error")
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .env("VK_TASK_ATTEMPT_ID", context.task_attempt_id.to_string())
+            .env("VK_TASK_ID", context.task_id.to_string())
+            .env(
+                "VK_EXECUTION_PROCESS_ID",
+                context.execution_process_id.to_string(),
+            );
+
+        process.env_remove("npm_config__jsr_registry");
+        process.env_remove("npm_config_verify_deps_before_run");
+        process.env_remove("npm_config_globalconfig");
+
+        let mut child = process.group_spawn()?;
+        let child_stdout = child.inner().stdout.take().ok_or_else(|| {
+            ExecutorError::Io(std::io::Error::other("Codex app server missing stdout"))
+        })?;
+        let child_stdin = child.inner().stdin.take().ok_or_else(|| {
+            ExecutorError::Io(std::io::Error::other("Codex app server missing stdin"))
+        })?;
+        let new_stdout = create_stdout_pipe_writer(&mut child)?;
+        let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
+        let client = AppServerClient::new(
+            LogWriter::new(new_stdout),
+            self.approvals.clone(),
+            matches!(
+                (&self.sandbox, &self.ask_for_approval),
+                (Some(SandboxMode::DangerFullAccess), None)
+            ),
+        );
+
+        let thread_params = self.build_thread_start_params(current_dir);
+        let resume_session = request.session_id.clone();
+        let target = map_review_target(&request.target);
+        let append_to_original_thread = request.append_to_original_thread;
+        let protocol_peer = Arc::new(ProtocolPeer::Codex(client.clone()));
+        tokio::spawn(async move {
+            let exit_signal_tx = ExitSignalSender::new(exit_signal_tx);
+            if let Err(err) = Self::launch_codex_review(
+                client.clone(),
+                thread_params,
+                resume_session,
+                target,
+                append_to_original_thread,
+                child_stdout,
+                child_stdin,
+                exit_signal_tx.clone(),
+            )
+            .await
+            {
+                tracing::error!("Codex review spawn error: {}", err);
+                client
+                    .log_writer()
+                    .log_raw(&Error::launch_error(err.to_string()).raw())
+                    .await
+                    .ok();
+                exit_signal_tx
+                    .send_exit_signal(ExecutorExitResult::failure(
+                        crate::executors::SessionCompletionReason::Error {
+                            message: err.to_string(),
+                        },
+                    ))
+                    .await;
+            }
+        });
+
+        Ok(SpawnedChild {
+            child,
+            exit_signal: Some(exit_signal_rx),
+            protocol_peer: Some(protocol_peer),
+        })
+    }
+}
+
 fn build_turn_collaboration_mode(
     mode: Option<&CodexCollaborationMode>,
     model: String,
@@ -758,6 +918,32 @@ fn map_runtime_collaboration_mode(mask: CollaborationModeMask) -> CodexRuntimeCo
         reasoning_effort: mask
             .reasoning_effort
             .and_then(|effort| effort.map(|value| value.to_string())),
+    }
+}
+
+fn map_review_target(
+    target: &crate::actions::coding_agent_review::CodingAgentReviewTarget,
+) -> ReviewTarget {
+    match target {
+        crate::actions::coding_agent_review::CodingAgentReviewTarget::UncommittedChanges => {
+            ReviewTarget::UncommittedChanges
+        }
+        crate::actions::coding_agent_review::CodingAgentReviewTarget::BaseBranch { branch } => {
+            ReviewTarget::BaseBranch {
+                branch: branch.clone(),
+            }
+        }
+        crate::actions::coding_agent_review::CodingAgentReviewTarget::Commit { sha, title } => {
+            ReviewTarget::Commit {
+                sha: sha.clone(),
+                title: title.clone(),
+            }
+        }
+        crate::actions::coding_agent_review::CodingAgentReviewTarget::Custom { instructions } => {
+            ReviewTarget::Custom {
+                instructions: instructions.clone(),
+            }
+        }
     }
 }
 

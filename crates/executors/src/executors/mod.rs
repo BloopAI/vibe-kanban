@@ -17,7 +17,7 @@ use workspace_utils::msg_store::MsgStore;
 use crate::logs::utils::EntryIndexProvider;
 
 use crate::{
-    actions::{ExecutorAction, SpawnContext},
+    actions::{ExecutorAction, SpawnContext, coding_agent_review::CodingAgentReviewRequest},
     approvals::ExecutorApprovalService,
     command::CommandBuildError,
     executors::{
@@ -247,6 +247,16 @@ pub trait StandardCodingAgentExecutor {
         prompt: &str,
         session_id: &str,
     ) -> Result<SpawnedChild, ExecutorError>;
+    async fn spawn_review(
+        &self,
+        _current_dir: &Path,
+        _request: &CodingAgentReviewRequest,
+        _context: SpawnContext,
+    ) -> Result<SpawnedChild, ExecutorError> {
+        Err(ExecutorError::FollowUpNotSupported(
+            "review is not supported by this executor".to_string(),
+        ))
+    }
     fn normalize_logs(
         &self,
         _raw_logs_event_store: Arc<MsgStore>,

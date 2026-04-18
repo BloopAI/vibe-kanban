@@ -9,13 +9,15 @@ use uuid::Uuid;
 use crate::{
     actions::{
         coding_agent_follow_up::CodingAgentFollowUpRequest,
-        coding_agent_initial::CodingAgentInitialRequest, script::ScriptRequest,
+        coding_agent_initial::CodingAgentInitialRequest,
+        coding_agent_review::CodingAgentReviewRequest, script::ScriptRequest,
     },
     approvals::ExecutorApprovalService,
     executors::{BaseCodingAgent, ExecutorError, SpawnedChild},
 };
 pub mod coding_agent_follow_up;
 pub mod coding_agent_initial;
+pub mod coding_agent_review;
 pub mod script;
 
 #[derive(Debug, Clone)]
@@ -31,6 +33,7 @@ pub struct SpawnContext {
 pub enum ExecutorActionType {
     CodingAgentInitialRequest,
     CodingAgentFollowUpRequest,
+    CodingAgentReviewRequest,
     ScriptRequest,
 }
 
@@ -67,6 +70,7 @@ impl ExecutorAction {
             ExecutorActionType::CodingAgentFollowUpRequest(request) => {
                 Some(request.base_executor())
             }
+            ExecutorActionType::CodingAgentReviewRequest(request) => Some(request.base_executor()),
             ExecutorActionType::ScriptRequest(_) => None,
         }
     }

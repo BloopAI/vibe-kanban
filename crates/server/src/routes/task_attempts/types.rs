@@ -1,7 +1,9 @@
 //! Request and response types for task_attempts routes.
 
 use db::models::merge::{Merge, MergeStatus};
-use executors::profile::ExecutorProfileId;
+use executors::{
+    actions::coding_agent_review::CodingAgentReviewTarget, profile::ExecutorProfileId,
+};
 use serde::{Deserialize, Serialize};
 use services::services::git::ConflictOp;
 use ts_rs::TS;
@@ -81,6 +83,13 @@ pub struct CreateFollowUpAttempt {
     pub retry_process_id: Option<Uuid>,
     pub force_when_dirty: Option<bool>,
     pub perform_git_reset: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct CreateReviewAttempt {
+    pub variant: Option<String>,
+    #[ts(optional)]
+    pub target: Option<CodingAgentReviewTarget>,
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -316,5 +325,37 @@ mod tests {
         )
         .unwrap();
         assert!(body.use_parent_worktree.is_none());
+    }
+
+    #[test]
+    fn test_create_review_attempt_defaults_target() {
+        let body: CreateReviewAttempt = serde_json::from_str(
+            r#"{
+            "variant": "DEFAULT"
+        }"#,
+        )
+        .unwrap();
+        assert_eq!(body.variant.as_deref(), Some("DEFAULT"));
+        assert!(body.target.is_none());
+    }
+
+    #[test]
+    fn test_create_review_attempt_parses_target() {
+        let body: CreateReviewAttempt = serde_json::from_str(
+            r#"{
+            "variant": null,
+            "target": {
+              "type": "base_branch",
+              "branch": "main"
+            }
+        }"#,
+        )
+        .unwrap();
+        assert_eq!(
+            body.target,
+            Some(CodingAgentReviewTarget::BaseBranch {
+                branch: "main".to_string()
+            })
+        );
     }
 }

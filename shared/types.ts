@@ -242,7 +242,7 @@ export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAct
 
 export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path: Array<string>, template: JsonValue, preconfigured: JsonValue, is_toml_config: boolean, };
 
-export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest;
+export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "CodingAgentReviewRequest" } & CodingAgentReviewRequest | { "type": "ScriptRequest" } & ScriptRequest;
 
 export type ScriptContext = "SetupScript" | "CleanupScript" | "DevServer" | "ToolInstallScript";
 
@@ -795,6 +795,14 @@ export type CodingAgentFollowUpRequest = { prompt: string, session_id: string,
  */
 executor_profile_id: ExecutorProfileId, };
 
+export type CodingAgentReviewRequest = { target: CodingAgentReviewTarget, append_to_original_thread: boolean, session_id: string | null, 
+/**
+ * Executor profile specification
+ */
+executor_profile_id: ExecutorProfileId, };
+
+export type CodingAgentReviewTarget = { "type": "uncommitted_changes" } | { "type": "base_branch", branch: string, } | { "type": "commit", sha: string, title: string | null, } | { "type": "custom", instructions: string, };
+
 export type CreateTaskAttemptBody = { task_id: string, 
 /**
  * Executor profile specification
@@ -810,6 +818,8 @@ target_node_id: string | null,
  * Only valid when the task has a parent_task_id.
  */
 use_parent_worktree: boolean | null, };
+
+export type CreateReviewAttempt = { variant: string | null, target?: CodingAgentReviewTarget, };
 
 export type RunAgentSetupRequest = { executor_profile_id: ExecutorProfileId, };
 

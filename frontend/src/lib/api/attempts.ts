@@ -7,6 +7,7 @@ import type {
   TaskRelationships,
   CreateTaskAttemptBody,
   CreateFollowUpAttempt,
+  CreateReviewAttempt,
   RunAgentSetupRequest,
   RunAgentSetupResponse,
   DraftResponse,
@@ -80,6 +81,20 @@ export const attemptsApi = {
   ): Promise<void> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/follow-up`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
+  review: async (
+    attemptId: string,
+    data: CreateReviewAttempt
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/review`,
       {
         method: 'POST',
         body: JSON.stringify(data),

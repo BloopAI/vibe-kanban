@@ -13,11 +13,11 @@ pub use util::ensure_worktree_path;
 pub use types::{
     AttachPrResponse, BranchStatus, ChangeTargetBranchRequest, ChangeTargetBranchResponse,
     CommitCompareResult, CommitInfo, CreateFollowUpAttempt, CreateGitHubPrRequest, CreatePrError,
-    CreateTaskAttemptBody, CreateTaskAttemptByTaskIdBody, DiffStreamQuery, DirtyFilesResponse,
-    FixSessionsResponse, GitOperationError, ListFilesQuery, OpenEditorRequest, OpenEditorResponse,
-    PushError, RebaseTaskAttemptRequest, RenameBranchRequest, RenameBranchResponse,
-    RunAgentSetupRequest, RunAgentSetupResponse, StashChangesRequest, StashChangesResponse,
-    TaskAttemptQuery, WorktreePathResponse,
+    CreateReviewAttempt, CreateTaskAttemptBody, CreateTaskAttemptByTaskIdBody, DiffStreamQuery,
+    DirtyFilesResponse, FixSessionsResponse, GitOperationError, ListFilesQuery, OpenEditorRequest,
+    OpenEditorResponse, PushError, RebaseTaskAttemptRequest, RenameBranchRequest,
+    RenameBranchResponse, RunAgentSetupRequest, RunAgentSetupResponse, StashChangesRequest,
+    StashChangesResponse, TaskAttemptQuery, WorktreePathResponse,
 };
 
 use axum::{
@@ -70,6 +70,7 @@ use handlers::{
     read_worktree_file,
     rebase_task_attempt,
     rename_branch,
+    review_attempt,
     run_agent_setup,
     start_dev_server,
     stash_changes,
@@ -82,6 +83,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route("/", get(get_task_attempt))
         .route("/follow-up", post(follow_up))
+        .route("/review", post(review_attempt))
         .route("/run-agent-setup", post(run_agent_setup))
         .route("/gh-cli-setup", post(gh_cli_setup_handler))
         .route(
@@ -143,6 +145,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     // The middleware finds the task by shared_task_id and loads its most recent attempt.
     let by_task_id_router = Router::new()
         .route("/follow-up", post(follow_up))
+        .route("/review", post(review_attempt))
         .route("/stop", post(stop_task_attempt_execution))
         .route("/branch-status", get(get_task_attempt_branch_status))
         .route("/push", post(push_task_attempt_branch))

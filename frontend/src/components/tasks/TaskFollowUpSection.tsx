@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 //
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { imagesApi, templatesApi } from '@/lib/api';
+import { attemptsApi } from '@/lib/api/attempts';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import {
   useBranchStatus,
@@ -54,6 +55,7 @@ import {
   type Template as PickerTemplate,
 } from '@/components/tasks/TemplatePicker';
 import ModelChangeWarningDialog from '@/components/dialogs/ModelChangeWarningDialog';
+import { getStatusCallback } from '@/contexts/TaskOptimisticContext';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
@@ -271,7 +273,8 @@ export function TaskFollowUpSection({
 
     if (
       actionType.type === 'CodingAgentInitialRequest' ||
-      actionType.type === 'CodingAgentFollowUpRequest'
+      actionType.type === 'CodingAgentFollowUpRequest' ||
+      actionType.type === 'CodingAgentReviewRequest'
     ) {
       executor = actionType.executor_profile_id.executor;
     }
@@ -420,6 +423,31 @@ export function TaskFollowUpSection({
   const isDraftLocked = !!draft?.sending;
   const isEditable =
     isDraftLoaded && !isDraftLocked && !isRetryActive && !hasPendingApproval;
+  const canStartReview = useMemo(() => {
+    if (
+      !runtimeCapabilities?.supports_review ||
+      isAttemptRunning ||
+      !isEditable
+    ) {
+      return false;
+    }
+    return !Boolean(
+      conflictResolutionInstructions ||
+        reviewMarkdown ||
+        clickedMarkdown ||
+        followUpMessage.trim() ||
+        images.length > 0
+    );
+  }, [
+    runtimeCapabilities?.supports_review,
+    isAttemptRunning,
+    isEditable,
+    conflictResolutionInstructions,
+    reviewMarkdown,
+    clickedMarkdown,
+    followUpMessage,
+    images.length,
+  ]);
 
   // Keyboard shortcut handler - unified submit (add to queue when running, send when idle)
   const handleSubmitShortcut = useCallback(
@@ -767,6 +795,40 @@ export function TaskFollowUpSection({
                       disabled={!isEditable}
                     >
                       {t('followUp.clearReviewComments')}
+                    </Button>
+                  )}
+                  {runtimeCapabilities?.supports_review && (
+                    <Button
+                      onClick={async () => {
+                        if (!selectedAttemptId) return;
+                        try {
+                          setFollowUpError(null);
+                          await attemptsApi.review(selectedAttemptId, {
+                            variant: selectedVariant,
+                            target: undefined,
+                          });
+                          const updateStatus = getStatusCallback(
+                            task.project_id
+                          );
+                          updateStatus?.(task.id, 'inprogress');
+                          jumpToLogsTab();
+                        } catch (error: unknown) {
+                          const err = error as { message?: string };
+                          setFollowUpError(
+                            `Failed to start review execution: ${err.message ?? 'Unknown error'}`
+                          );
+                        }
+                      }}
+                      disabled={!canStartReview || isSendingFollowUp}
+                      size="sm"
+                      variant="secondary"
+                      title={
+                        canStartReview
+                          ? 'Review current changes against the target branch with Codex.'
+                          : 'Clear follow-up draft inputs before starting a review run.'
+                      }
+                    >
+                      Review with Codex
                     </Button>
                   )}
                   <Button

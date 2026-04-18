@@ -119,28 +119,31 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
     return date.toLocaleString();
   };
 
-  const fetchProcessDetails = useCallback(async (processId: string) => {
-    // Skip local API calls for remote attempts - data comes from Hive
-    if (assignmentId) return;
+  const fetchProcessDetails = useCallback(
+    async (processId: string) => {
+      // Skip local API calls for remote attempts - data comes from Hive
+      if (assignmentId) return;
 
-    try {
-      setLoadingProcessId(processId);
-      const result = await executionProcessesApi.getDetails(processId);
+      try {
+        setLoadingProcessId(processId);
+        const result = await executionProcessesApi.getDetails(processId);
 
-      if (result !== undefined) {
-        setLocalProcessDetails((prev) => ({
-          ...prev,
-          [processId]: result,
-        }));
+        if (result !== undefined) {
+          setLocalProcessDetails((prev) => ({
+            ...prev,
+            [processId]: result,
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch process details:', err);
+      } finally {
+        setLoadingProcessId((current) =>
+          current === processId ? null : current
+        );
       }
-    } catch (err) {
-      console.error('Failed to fetch process details:', err);
-    } finally {
-      setLoadingProcessId((current) =>
-        current === processId ? null : current
-      );
-    }
-  }, [assignmentId]);
+    },
+    [assignmentId]
+  );
 
   // Automatically fetch process details when selectedProcessId changes (local only)
   useEffect(() => {
@@ -250,6 +253,8 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
                             {t('processes.agent')}{' '}
                             {process.executor_action.typ.type ===
                               'CodingAgentInitialRequest' ||
+                            process.executor_action.typ.type ===
+                              'CodingAgentReviewRequest' ||
                             process.executor_action.typ.type ===
                               'CodingAgentFollowUpRequest' ? (
                               <ProfileVariantBadge

@@ -77,6 +77,7 @@ pub enum CodexEvent {
     Error(Error),
     /// An approval response (denied or timed out only generates entries)
     Approval(Approval),
+    DynamicToolLifecycle(DynamicToolLifecycle),
     /// Session ID extracted from various sources (without model params)
     SessionStart(String),
     /// Model parameters with optional session ID (from NewConversationResponse)
@@ -166,6 +167,9 @@ impl LogNormalizer for CodexNormalizer {
         // Try to parse as Approval
         if let Ok(approval) = serde_json::from_str::<Approval>(line) {
             return Some(CodexEvent::Approval(approval));
+        }
+        if let Ok(dynamic_tool) = serde_json::from_str::<DynamicToolLifecycle>(line) {
+            return Some(CodexEvent::DynamicToolLifecycle(dynamic_tool));
         }
 
         // Try to parse as JSONRPCResponse for session ID and model params
@@ -337,6 +341,9 @@ impl LogNormalizer for CodexNormalizer {
                 } else {
                     vec![]
                 }
+            }
+            CodexEvent::DynamicToolLifecycle(lifecycle) => {
+                lifecycle.process(&mut self.state, entry_index)
             }
             CodexEvent::SessionStart(_) => {
                 // Session ID is handled by extract_session_id and driver
@@ -1372,11 +1379,9 @@ impl CodexNormalizer {
                 action_type: ActionType::Tool {
                     tool_name: tool.clone(),
                     arguments: Some(arguments),
-                    result: Some(ToolResult::markdown(
-                        "Dynamic tool calls are not yet supported by Vibe Kanban.",
-                    )),
+                    result: None,
                 },
-                status: ToolStatus::Failed,
+                status: ToolStatus::Created,
             },
             content: tool,
             metadata: serde_json::to_value(ToolCallMetadata {
@@ -1738,6 +1743,37 @@ struct McpToolState {
     status: ToolStatus,
 }
 
+struct GenericToolState {
+    index: Option<usize>,
+    tool_name: String,
+    arguments: Option<Value>,
+    result: Option<ToolResult>,
+    status: ToolStatus,
+    call_id: String,
+}
+
+impl ToNormalizedEntry for GenericToolState {
+    fn to_normalized_entry(&self) -> NormalizedEntry {
+        NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::ToolUse {
+                tool_name: self.tool_name.clone(),
+                action_type: ActionType::Tool {
+                    tool_name: self.tool_name.clone(),
+                    arguments: self.arguments.clone(),
+                    result: self.result.clone(),
+                },
+                status: self.status.clone(),
+            },
+            content: self.tool_name.clone(),
+            metadata: serde_json::to_value(ToolCallMetadata {
+                tool_call_id: self.call_id.clone(),
+            })
+            .ok(),
+        }
+    }
+}
+
 impl ToNormalizedEntry for McpToolState {
     fn to_normalized_entry(&self) -> NormalizedEntry {
         let tool_name = format!("mcp:{}:{}", self.invocation.server, self.invocation.tool);
@@ -1839,6 +1875,7 @@ struct LogState {
     mcp_tools: HashMap<String, McpToolState>,
     patches: HashMap<String, PatchState>,
     web_searches: HashMap<String, WebSearchState>,
+    dynamic_tools: HashMap<String, GenericToolState>,
     token_usage_info: Option<TokenUsageInfo>,
     /// Entry index for the token usage display entry (replaced in-place each turn)
     token_usage_index: Option<usize>,
@@ -1859,6 +1896,7 @@ impl LogState {
             mcp_tools: HashMap::new(),
             patches: HashMap::new(),
             web_searches: HashMap::new(),
+            dynamic_tools: HashMap::new(),
             token_usage_info: None,
             token_usage_index: None,
         }
@@ -2288,6 +2326,108 @@ pub enum Approval {
         tool_name: String,
         approval_status: ApprovalStatus,
     },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum DynamicToolLifecycle {
+    Request {
+        call_id: String,
+        tool_name: String,
+        arguments: Value,
+    },
+    Response {
+        call_id: String,
+        tool_name: String,
+        arguments: Value,
+        output: String,
+        success: bool,
+        approval_status: ApprovalStatus,
+    },
+}
+
+impl DynamicToolLifecycle {
+    pub fn response(
+        call_id: String,
+        tool_name: String,
+        arguments: Value,
+        output: String,
+        success: bool,
+        approval_status: ApprovalStatus,
+    ) -> Self {
+        Self::Response {
+            call_id,
+            tool_name,
+            arguments,
+            output,
+            success,
+            approval_status,
+        }
+    }
+
+    pub fn raw(&self) -> String {
+        serde_json::to_string(self).unwrap_or_default()
+    }
+
+    fn process(&self, state: &mut LogState, entry_index: &EntryIndexProvider) -> Vec<Patch> {
+        match self {
+            Self::Request {
+                call_id,
+                tool_name,
+                arguments,
+            } => {
+                let entry = state
+                    .dynamic_tools
+                    .entry(call_id.clone())
+                    .or_insert_with(|| GenericToolState {
+                        index: Some(entry_index.next()),
+                        tool_name: tool_name.clone(),
+                        arguments: Some(arguments.clone()),
+                        result: None,
+                        status: ToolStatus::Created,
+                        call_id: call_id.clone(),
+                    });
+                entry.tool_name = tool_name.clone();
+                entry.arguments = Some(arguments.clone());
+                entry.status = ToolStatus::Created;
+                vec![ConversationPatch::add_normalized_entry(
+                    entry.index.unwrap_or_else(|| entry_index.next()),
+                    entry.to_normalized_entry(),
+                )]
+            }
+            Self::Response {
+                call_id,
+                tool_name,
+                arguments,
+                output,
+                success,
+                approval_status: _,
+            } => {
+                let entry = state
+                    .dynamic_tools
+                    .entry(call_id.clone())
+                    .or_insert_with(|| GenericToolState {
+                        index: Some(entry_index.next()),
+                        tool_name: tool_name.clone(),
+                        arguments: Some(arguments.clone()),
+                        result: None,
+                        status: ToolStatus::Created,
+                        call_id: call_id.clone(),
+                    });
+                entry.tool_name = tool_name.clone();
+                entry.arguments = Some(arguments.clone());
+                entry.result = Some(ToolResult::markdown(output.clone()));
+                entry.status = if *success {
+                    ToolStatus::Success
+                } else {
+                    ToolStatus::Failed
+                };
+                vec![ConversationPatch::replace(
+                    entry.index.unwrap_or_else(|| entry_index.next()),
+                    entry.to_normalized_entry(),
+                )]
+            }
+        }
+    }
 }
 
 impl Approval {

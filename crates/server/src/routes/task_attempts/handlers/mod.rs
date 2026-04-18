@@ -3,6 +3,7 @@
 //! Handlers are organized by concern:
 //! - `core`: CRUD operations, status, commits, children, sessions, dev server
 //! - `follow_up`: Follow-up execution with retry logic
+//! - `review`: Native review execution for supported agents
 //! - `git_ops`: Git operations (merge, rebase, push, stash, branch)
 //! - `github`: PR creation, attachment, gh CLI setup
 //! - `worktree`: File browser, cleanup, worktree path access
@@ -11,6 +12,7 @@ pub mod core;
 pub mod follow_up;
 pub mod git_ops;
 pub mod github;
+pub mod review;
 pub mod worktree;
 
 // Re-export all handlers for convenient access from the router
@@ -27,6 +29,7 @@ pub use git_ops::{
     push_task_attempt_branch, rebase_task_attempt, rename_branch, stash_changes,
 };
 pub use github::{attach_existing_pr, create_github_pr, gh_cli_setup_handler};
+pub use review::review_attempt;
 pub use worktree::{
     cleanup_worktree, get_worktree_path, list_worktree_files, purge_build_artifacts,
     read_worktree_file, stream_task_attempt_diff_ws,

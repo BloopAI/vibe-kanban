@@ -59,6 +59,7 @@ export function useDefaultVariant({ processes, profiles }: Args) {
         switch (typ.type) {
           case 'CodingAgentInitialRequest':
           case 'CodingAgentFollowUpRequest':
+          case 'CodingAgentReviewRequest':
             return typ.executor_profile_id;
           case 'ScriptRequest':
             curr = curr.next_action;

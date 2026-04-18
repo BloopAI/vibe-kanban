@@ -12,8 +12,9 @@ use codex_app_server_protocol::{
     CommandExecutionRequestApprovalResponse, FileChangeApprovalDecision,
     FileChangeRequestApprovalResponse, GetAuthStatusParams, GetAuthStatusResponse,
     InitializeParams, InitializeResponse, JSONRPCError, JSONRPCNotification, JSONRPCRequest,
-    JSONRPCResponse, ModelListParams, ModelListResponse, RequestId, ServerNotification,
-    ServerRequest, ThreadForkParams, ThreadForkResponse, ThreadStartParams, ThreadStartResponse,
+    JSONRPCResponse, ModelListParams, ModelListResponse, RequestId, ReviewDelivery,
+    ReviewStartParams, ReviewStartResponse, ReviewTarget, ServerNotification, ServerRequest,
+    ThreadForkParams, ThreadForkResponse, ThreadStartParams, ThreadStartResponse,
     ToolRequestUserInputAnswer, ToolRequestUserInputQuestion, ToolRequestUserInputResponse,
     TurnInterruptParams, TurnInterruptResponse, TurnStartParams, TurnStartResponse, UserInput,
 };
@@ -152,6 +153,32 @@ impl AppServerClient {
         self.set_current_turn_id(Some(response.turn.id.clone()))
             .await;
         Ok(response)
+    }
+
+    pub async fn start_review(
+        &self,
+        thread_id: ThreadId,
+        target: ReviewTarget,
+        append_to_original_thread: bool,
+    ) -> Result<TurnStartResponse, ExecutorError> {
+        let request = ClientRequest::ReviewStart {
+            request_id: self.next_request_id(),
+            params: ReviewStartParams {
+                thread_id: thread_id.to_string(),
+                target,
+                delivery: Some(if append_to_original_thread {
+                    ReviewDelivery::Inline
+                } else {
+                    ReviewDelivery::Detached
+                }),
+            },
+        };
+        let response: ReviewStartResponse = self.send_request(request, "review/start").await?;
+        self.set_current_turn_id(Some(response.turn.id.clone()))
+            .await;
+        Ok(TurnStartResponse {
+            turn: response.turn,
+        })
     }
 
     pub async fn send_user_message(&self, message: String) -> Result<(), ExecutorError> {
@@ -330,23 +357,19 @@ impl AppServerClient {
                 Ok(())
             }
             ServerRequest::DynamicToolCall { request_id, params } => {
-                tracing::warn!(
-                    tool = %params.tool,
-                    call_id = %params.call_id,
-                    "dynamic tool call requested but not implemented"
-                );
-                send_server_response(
-                    peer,
-                    request_id,
-                    codex_app_server_protocol::DynamicToolCallResponse {
-                        output: format!(
-                            "Dynamic tool `{}` is not yet supported by Vibe Kanban.",
-                            params.tool
-                        ),
-                        success: false,
-                    },
-                )
-                .await
+                let _ = self
+                    .log_writer
+                    .log_raw(
+                        &crate::executors::codex::normalize_logs::DynamicToolLifecycle::Request {
+                            call_id: params.call_id.clone(),
+                            tool_name: format!("dynamic:{}", params.tool),
+                            arguments: params.arguments.clone(),
+                        }
+                        .raw(),
+                    )
+                    .await;
+                let response = self.handle_dynamic_tool_call(&params).await;
+                send_server_response(peer, request_id, response).await
             }
             ServerRequest::ChatgptAuthTokensRefresh { .. }
             | ServerRequest::ApplyPatchApproval { .. }
@@ -526,6 +549,126 @@ impl AppServerClient {
         let mut guard = self.current_turn_id.lock().await;
         *guard = turn_id;
     }
+
+    async fn handle_dynamic_tool_call(
+        &self,
+        params: &codex_app_server_protocol::DynamicToolCallParams,
+    ) -> codex_app_server_protocol::DynamicToolCallResponse {
+        let response = match DynamicToolAdapter::invoke(&params.tool, &params.arguments) {
+            Ok(output) => codex_app_server_protocol::DynamicToolCallResponse {
+                output,
+                success: true,
+            },
+            Err(err) => codex_app_server_protocol::DynamicToolCallResponse {
+                output: err,
+                success: false,
+            },
+        };
+
+        let tool_name = format!("dynamic:{}", params.tool);
+        let approval_status = if response.success {
+            ApprovalStatus::Approved
+        } else {
+            ApprovalStatus::Denied {
+                reason: Some(response.output.clone()),
+            }
+        };
+        let _ = self
+            .log_writer
+            .log_raw(
+                &crate::executors::codex::normalize_logs::DynamicToolLifecycle::response(
+                    params.call_id.clone(),
+                    tool_name,
+                    params.arguments.clone(),
+                    response.output.clone(),
+                    response.success,
+                    approval_status,
+                )
+                .raw(),
+            )
+            .await;
+
+        response
+    }
+}
+
+struct DynamicToolAdapter;
+
+impl DynamicToolAdapter {
+    fn invoke(tool: &str, arguments: &Value) -> Result<String, String> {
+        match tool {
+            "vk.git_status" => Self::git_status(),
+            "vk.list_files" => Self::list_files(arguments),
+            "vk.read_file" => Self::read_file(arguments),
+            other => Err(format!(
+                "Dynamic tool `{other}` is not supported. Supported tools: vk.git_status, vk.list_files, vk.read_file."
+            )),
+        }
+    }
+
+    fn git_status() -> Result<String, String> {
+        run_dynamic_tool_command(
+            std::process::Command::new("git")
+                .arg("status")
+                .arg("--short")
+                .arg("--branch"),
+        )
+    }
+
+    fn list_files(arguments: &Value) -> Result<String, String> {
+        let path = arguments
+            .get("path")
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or(".");
+        let max_entries = arguments
+            .get("max_entries")
+            .and_then(Value::as_u64)
+            .unwrap_or(200) as usize;
+        let output =
+            run_dynamic_tool_command(std::process::Command::new("rg").arg("--files").arg(path))?;
+        let lines = output.lines().take(max_entries).collect::<Vec<_>>();
+        Ok(lines.join("\n"))
+    }
+
+    fn read_file(arguments: &Value) -> Result<String, String> {
+        let path = arguments
+            .get("path")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "vk.read_file requires a string `path` argument.".to_string())?;
+        let max_bytes = arguments
+            .get("max_bytes")
+            .and_then(Value::as_u64)
+            .unwrap_or(32 * 1024) as usize;
+        let bytes = std::fs::read(path).map_err(|err| format!("Failed to read `{path}`: {err}"))?;
+        let truncated = bytes.len() > max_bytes;
+        let slice = &bytes[..bytes.len().min(max_bytes)];
+        let text = String::from_utf8_lossy(slice).to_string();
+        if truncated {
+            Ok(format!("{text}\n\n[truncated to {max_bytes} bytes]"))
+        } else {
+            Ok(text)
+        }
+    }
+}
+
+fn run_dynamic_tool_command(command: &mut std::process::Command) -> Result<String, String> {
+    let output = command
+        .output()
+        .map_err(|err| format!("Failed to execute dynamic tool command: {err}"))?;
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        Err(if !stderr.is_empty() {
+            stderr
+        } else if !stdout.is_empty() {
+            stdout
+        } else {
+            format!("Command exited with status {}", output.status)
+        })
+    }
 }
 
 #[async_trait]
@@ -651,6 +794,7 @@ fn request_id(request: &ClientRequest) -> RequestId {
         | ClientRequest::ThreadStart { request_id, .. }
         | ClientRequest::ThreadFork { request_id, .. }
         | ClientRequest::TurnStart { request_id, .. }
+        | ClientRequest::ReviewStart { request_id, .. }
         | ClientRequest::TurnInterrupt { request_id, .. }
         | ClientRequest::ModelList { request_id, .. }
         | ClientRequest::CollaborationModeList { request_id, .. }

@@ -285,6 +285,8 @@ export const useConversationHistory = ({
           p.executionProcess.executor_action.typ.type ===
             'CodingAgentFollowUpRequest' ||
           p.executionProcess.executor_action.typ.type ===
+            'CodingAgentReviewRequest' ||
+          p.executionProcess.executor_action.typ.type ===
             'CodingAgentInitialRequest'
       )
       .sort(
@@ -322,7 +324,8 @@ export const useConversationHistory = ({
         const typ = executorAction.typ;
         if (
           typ.type === 'CodingAgentInitialRequest' ||
-          typ.type === 'CodingAgentFollowUpRequest'
+          typ.type === 'CodingAgentFollowUpRequest' ||
+          typ.type === 'CodingAgentReviewRequest'
         ) {
           return 'Coding Agent';
         }
@@ -378,14 +381,21 @@ export const useConversationHistory = ({
             p.executionProcess.executor_action.typ.type ===
               'CodingAgentInitialRequest' ||
             p.executionProcess.executor_action.typ.type ===
+              'CodingAgentReviewRequest' ||
+            p.executionProcess.executor_action.typ.type ===
               'CodingAgentFollowUpRequest'
           ) {
+            const prompt =
+              p.executionProcess.executor_action.typ.type ===
+              'CodingAgentReviewRequest'
+                ? 'Review with Codex'
+                : p.executionProcess.executor_action.typ.prompt;
             // New user message
             const userNormalizedEntry: NormalizedEntry = {
               entry_type: {
                 type: 'user_message',
               },
-              content: p.executionProcess.executor_action.typ.prompt,
+              content: prompt,
               timestamp: null,
               metadata: null,
             };
@@ -804,11 +814,16 @@ export const useConversationHistory = ({
 
       // Convert to patches - use attempt.id as a synthetic execution process id
       // logEntriesToPatches already adds patchKey and executionProcessId
-      const entriesWithKey = logEntriesToPatches(chronologicalEntries, attempt.id);
+      const entriesWithKey = logEntriesToPatches(
+        chronologicalEntries,
+        attempt.id
+      );
 
       // Validate executor against BaseCodingAgent enum
       const validExecutors = Object.values(BaseCodingAgent);
-      const executor = validExecutors.includes(attempt.executor as BaseCodingAgent)
+      const executor = validExecutors.includes(
+        attempt.executor as BaseCodingAgent
+      )
         ? (attempt.executor as BaseCodingAgent)
         : BaseCodingAgent.CLAUDE_CODE; // Default fallback
 
@@ -840,7 +855,13 @@ export const useConversationHistory = ({
       console.warn('Error loading remote attempt logs:', err);
       return false;
     }
-  }, [attempt.id, attempt.created_at, attempt.updated_at, attempt.executor, effectiveLimit]);
+  }, [
+    attempt.id,
+    attempt.created_at,
+    attempt.updated_at,
+    attempt.executor,
+    effectiveLimit,
+  ]);
 
   // Initial load when attempt changes
   useEffect(() => {

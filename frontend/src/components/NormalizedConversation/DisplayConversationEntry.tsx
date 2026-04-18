@@ -66,7 +66,7 @@ type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
 
 /**
  * Extract executor variant from execution process data.
- * Only CodingAgentInitialRequest and CodingAgentFollowUpRequest types have variants.
+ * Only coding-agent execution request types have variants.
  * Returns null if no variant is present.
  *
  * Currently used for displaying executor variant in UserMessage headers when available.
@@ -76,7 +76,8 @@ const getExecutorVariant = (execProcess?: ExecutionProcess): string | null => {
   const typ = execProcess.executor_action.typ;
   if (
     typ.type === 'CodingAgentInitialRequest' ||
-    typ.type === 'CodingAgentFollowUpRequest'
+    typ.type === 'CodingAgentFollowUpRequest' ||
+    typ.type === 'CodingAgentReviewRequest'
   ) {
     return typ.executor_profile_id?.variant ?? null;
   }
@@ -737,7 +738,8 @@ const formatTokenTimestamp = (
     }
 
     const parts = new Intl.DateTimeFormat('en-GB', options).formatToParts(date);
-    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
+    const get = (type: string) =>
+      parts.find((p) => p.type === type)?.value ?? '00';
 
     // Milliseconds are not timezone-dependent
     const ms = date.getMilliseconds().toString().padStart(3, '0');
@@ -1099,7 +1101,8 @@ function DisplayConversationEntry({
   if (entry.entry_type.type === 'token_usage') {
     const tu = entry.entry_type;
     const tsEnabled = config?.timestamps?.token_timestamp_enabled ?? false;
-    const tsFormat = config?.timestamps?.token_timestamp_format ?? 'HH:mm:ss.SSS dd/MM/yyyy';
+    const tsFormat =
+      config?.timestamps?.token_timestamp_format ?? 'HH:mm:ss.SSS dd/MM/yyyy';
     const timezone = config?.timestamps?.timezone ?? 'LOCAL';
     const fmtNum = (n: bigint) =>
       Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -1107,7 +1110,11 @@ function DisplayConversationEntry({
       tu.context_window && tu.context_window > 0n
         ? Math.min(
             100,
-            Math.round((Number(tu.input_tokens + tu.output_tokens) / Number(tu.context_window)) * 100)
+            Math.round(
+              (Number(tu.input_tokens + tu.output_tokens) /
+                Number(tu.context_window)) *
+                100
+            )
           )
         : null;
 
@@ -1119,25 +1126,44 @@ function DisplayConversationEntry({
               {formatTokenTimestamp(entry.timestamp, timezone, tsFormat)}
             </span>
           )}
-          <span title={t('conversation.tokenUsage.inputTitle')}>↓ {fmtNum(tu.input_tokens)}</span>
+          <span title={t('conversation.tokenUsage.inputTitle')}>
+            ↓ {fmtNum(tu.input_tokens)}
+          </span>
           {tu.cached_input_tokens > 0n && (
-            <span title={t('conversation.tokenUsage.cachedTitle')} className="opacity-60">
-              {t('conversation.tokenUsage.cache')} {fmtNum(tu.cached_input_tokens)}
+            <span
+              title={t('conversation.tokenUsage.cachedTitle')}
+              className="opacity-60"
+            >
+              {t('conversation.tokenUsage.cache')}{' '}
+              {fmtNum(tu.cached_input_tokens)}
             </span>
           )}
-          <span title={t('conversation.tokenUsage.outputTitle')}>↑ {fmtNum(tu.output_tokens)}</span>
+          <span title={t('conversation.tokenUsage.outputTitle')}>
+            ↑ {fmtNum(tu.output_tokens)}
+          </span>
           {tu.reasoning_tokens > 0n && (
-            <span title={t('conversation.tokenUsage.reasoningTitle')} className="opacity-60">
+            <span
+              title={t('conversation.tokenUsage.reasoningTitle')}
+              className="opacity-60"
+            >
               {t('conversation.tokenUsage.think')} {fmtNum(tu.reasoning_tokens)}
             </span>
           )}
-          <span title={t('conversation.tokenUsage.lastTitle')} className="opacity-70">
+          <span
+            title={t('conversation.tokenUsage.lastTitle')}
+            className="opacity-70"
+          >
             {t('conversation.tokenUsage.last')} {fmtNum(tu.last_total_tokens)}
           </span>
           {pct !== null && (
             <span
-              title={t('conversation.tokenUsage.contextTitle', { pct, tokens: fmtNum(tu.context_window!) })}
-              className={pct >= 90 ? 'text-red-500' : pct >= 70 ? 'text-amber-500' : ''}
+              title={t('conversation.tokenUsage.contextTitle', {
+                pct,
+                tokens: fmtNum(tu.context_window!),
+              })}
+              className={
+                pct >= 90 ? 'text-red-500' : pct >= 70 ? 'text-amber-500' : ''
+              }
             >
               {t('conversation.tokenUsage.ctx')} {pct}%
             </span>
