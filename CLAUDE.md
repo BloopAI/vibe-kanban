@@ -8,6 +8,7 @@
 - **Stateless Services**: Service structs should be stateless and `Clone`. Pass dependencies via function parameters.
 - **UUID Identifiers**: All entities use UUID v4 for primary keys.
 - **UTC Timestamps**: All timestamps stored as `DateTime<Utc>` (Rust) and ISO 8601 strings (JSON/SQLite).
+- **GitHub Targeting**: Open pull requests only against `davidrudduck/vk-swarm`. Do not open PRs against `BloopAI/vibe-kanban` from this workspace.
 
 ## 2. Tech Stack
 
