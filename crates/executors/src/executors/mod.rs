@@ -14,7 +14,6 @@ use thiserror::Error;
 use ts_rs::TS;
 use workspace_utils::msg_store::MsgStore;
 
-use crate::executors::claude::protocol::ProtocolPeer;
 use crate::logs::utils::EntryIndexProvider;
 
 use crate::{
@@ -22,8 +21,15 @@ use crate::{
     approvals::ExecutorApprovalService,
     command::CommandBuildError,
     executors::{
-        amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
-        droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
+        amp::Amp,
+        claude::{ClaudeCode, protocol::ProtocolPeer as ClaudeProtocolPeer},
+        codex::{Codex, client::AppServerClient},
+        copilot::Copilot,
+        cursor::CursorAgent,
+        droid::Droid,
+        gemini::Gemini,
+        opencode::Opencode,
+        qwen::QwenCode,
     },
     mcp_config::McpConfig,
 };
@@ -357,12 +363,42 @@ impl ExecutorExitResult {
 /// and mark it according to the result.
 pub type ExecutorExitSignal = tokio::sync::oneshot::Receiver<ExecutorExitResult>;
 
+#[derive(Clone)]
+pub enum ProtocolPeer {
+    Claude(Arc<ClaudeProtocolPeer>),
+    Codex(Arc<AppServerClient>),
+}
+
+impl std::fmt::Debug for ProtocolPeer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Claude(_) => f.write_str("ProtocolPeer::Claude(..)"),
+            Self::Codex(_) => f.write_str("ProtocolPeer::Codex(..)"),
+        }
+    }
+}
+
+impl ProtocolPeer {
+    pub async fn send_user_message(&self, content: String) -> Result<(), ExecutorError> {
+        match self {
+            Self::Claude(peer) => peer.send_user_message(content).await,
+            Self::Codex(client) => client.send_user_message(content).await,
+        }
+    }
+
+    pub async fn interrupt(&self) -> Result<bool, ExecutorError> {
+        match self {
+            Self::Claude(_) => Ok(false),
+            Self::Codex(client) => client.interrupt_current_turn().await,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct SpawnedChild {
     pub child: AsyncGroupChild,
     pub exit_signal: Option<ExecutorExitSignal>,
-    /// Protocol peer for message injection (Claude Code only).
-    /// When present, allows sending messages to the running agent.
+    /// Protocol peer for live message injection and agent-aware control.
     pub protocol_peer: Option<Arc<ProtocolPeer>>,
 }
 

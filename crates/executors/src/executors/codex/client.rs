@@ -13,8 +13,8 @@ use codex_app_server_protocol::{
     InitializeParams, InitializeResponse, JSONRPCError, JSONRPCNotification, JSONRPCRequest,
     JSONRPCResponse, RequestId, ServerNotification, ServerRequest, ThreadForkParams,
     ThreadForkResponse, ThreadStartParams, ThreadStartResponse, ToolRequestUserInputAnswer,
-    ToolRequestUserInputQuestion, ToolRequestUserInputResponse, TurnStartParams, TurnStartResponse,
-    UserInput,
+    ToolRequestUserInputQuestion, ToolRequestUserInputResponse, TurnInterruptParams,
+    TurnInterruptResponse, TurnStartParams, TurnStartResponse, UserInput,
 };
 use codex_protocol::{ThreadId, config_types::CollaborationMode, protocol::ReviewDecision};
 use serde::{Serialize, de::DeserializeOwned};
@@ -36,6 +36,7 @@ pub struct AppServerClient {
     log_writer: LogWriter,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     conversation_id: Mutex<Option<ThreadId>>,
+    current_turn_id: Mutex<Option<String>>,
     pending_feedback: Mutex<VecDeque<String>>,
     auto_approve: bool,
 }
@@ -52,6 +53,7 @@ impl AppServerClient {
             approvals,
             auto_approve,
             conversation_id: Mutex::new(None),
+            current_turn_id: Mutex::new(None),
             pending_feedback: Mutex::new(VecDeque::new()),
         })
     }
@@ -62,6 +64,10 @@ impl AppServerClient {
 
     fn rpc(&self) -> &JsonRpcPeer {
         self.rpc.get().expect("Codex RPC peer not attached")
+    }
+
+    pub fn log_writer(&self) -> &LogWriter {
+        &self.log_writer
     }
 
     pub async fn initialize(&self) -> Result<(), ExecutorError> {
@@ -141,7 +147,41 @@ impl AppServerClient {
                 collaboration_mode,
             },
         };
-        self.send_request(request, "turn/start").await
+        let response: TurnStartResponse = self.send_request(request, "turn/start").await?;
+        self.set_current_turn_id(Some(response.turn.id.clone()))
+            .await;
+        Ok(response)
+    }
+
+    pub async fn send_user_message(&self, message: String) -> Result<(), ExecutorError> {
+        let thread_id = (*self.conversation_id.lock().await).ok_or_else(|| {
+            ExecutorError::Io(io::Error::other(
+                "Codex conversation/thread id unavailable for user message injection",
+            ))
+        })?;
+        self.start_turn(thread_id, message, None).await.map(|_| ())
+    }
+
+    pub async fn interrupt_current_turn(&self) -> Result<bool, ExecutorError> {
+        let thread_id = (*self.conversation_id.lock().await).ok_or_else(|| {
+            ExecutorError::Io(io::Error::other(
+                "Codex conversation/thread id unavailable for interrupt",
+            ))
+        })?;
+        let turn_id = self.current_turn_id.lock().await.clone().ok_or_else(|| {
+            ExecutorError::Io(io::Error::other("Codex turn id unavailable for interrupt"))
+        })?;
+
+        let request = ClientRequest::TurnInterrupt {
+            request_id: self.next_request_id(),
+            params: TurnInterruptParams {
+                thread_id: thread_id.to_string(),
+                turn_id,
+            },
+        };
+        self.send_request::<TurnInterruptResponse>(request, "turn/interrupt")
+            .await?;
+        Ok(true)
     }
 
     pub async fn get_auth_status(&self) -> Result<GetAuthStatusResponse, ExecutorError> {
@@ -459,6 +499,11 @@ impl AppServerClient {
             }
         });
     }
+
+    async fn set_current_turn_id(&self, turn_id: Option<String>) {
+        let mut guard = self.current_turn_id.lock().await;
+        *guard = turn_id;
+    }
 }
 
 #[async_trait]
@@ -525,6 +570,7 @@ impl JsonRpcCallbacks for AppServerClient {
 
         let method = notification.method.as_str();
         if method == "turn/completed" {
+            self.set_current_turn_id(None).await;
             tracing::debug!(
                 event = "ExecutorFinished",
                 method = method,
@@ -583,6 +629,7 @@ fn request_id(request: &ClientRequest) -> RequestId {
         | ClientRequest::ThreadStart { request_id, .. }
         | ClientRequest::ThreadFork { request_id, .. }
         | ClientRequest::TurnStart { request_id, .. }
+        | ClientRequest::TurnInterrupt { request_id, .. }
         | ClientRequest::GetAuthStatus { request_id, .. } => request_id.clone(),
         _ => unreachable!("request_id called for unsupported request variant"),
     }

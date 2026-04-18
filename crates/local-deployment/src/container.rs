@@ -30,9 +30,7 @@ use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::{
     actions::{Executable, ExecutorAction, SpawnContext},
     approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
-    executors::{
-        BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal, claude::protocol::ProtocolPeer,
-    },
+    executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal, ProtocolPeer},
     logs::{
         NormalizedEntry, NormalizedEntryType,
         utils::{
@@ -85,8 +83,8 @@ pub struct LocalContainerService {
     db: DBService,
     child_store: Arc<RwLock<HashMap<Uuid, Arc<RwLock<AsyncGroupChild>>>>>,
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
-    /// Protocol peers for message injection (keyed by execution_process_id).
-    /// Only Claude Code executors have protocol peers.
+    /// Protocol peers for live message injection and agent-aware control
+    /// (keyed by execution_process_id).
     protocol_peers: Arc<RwLock<HashMap<Uuid, Arc<ProtocolPeer>>>>,
     /// Entry index providers for message injection (keyed by execution_process_id).
     /// Used to track the next entry index for normalized log entries.
@@ -182,7 +180,7 @@ impl LocalContainerService {
         map.remove(id);
     }
 
-    /// Get a protocol peer for message injection (Claude Code only).
+    /// Get a protocol peer for live message injection / control.
     pub async fn get_protocol_peer(&self, exec_id: &Uuid) -> Option<Arc<ProtocolPeer>> {
         let map = self.protocol_peers.read().await;
         map.get(exec_id).cloned()
@@ -1701,6 +1699,33 @@ impl ContainerService for LocalContainerService {
         )
         .await?;
 
+        // Ask the agent to interrupt first if it supports a protocol-native stop.
+        // We still fall back to killing the process group below.
+        if let Some(peer) = self.get_protocol_peer(&execution_process.id).await {
+            match peer.interrupt().await {
+                Ok(true) => {
+                    tracing::debug!(
+                        execution_process_id = %execution_process.id,
+                        "Sent protocol interrupt before process termination"
+                    );
+                    tokio::time::sleep(Duration::from_millis(250)).await;
+                }
+                Ok(false) => {
+                    tracing::trace!(
+                        execution_process_id = %execution_process.id,
+                        "Protocol peer does not support interrupt"
+                    );
+                }
+                Err(err) => {
+                    tracing::warn!(
+                        execution_process_id = %execution_process.id,
+                        error = %err,
+                        "Protocol interrupt failed; falling back to process termination"
+                    );
+                }
+            }
+        }
+
         // Kill the child process and remove from the store
         const LOCK_TIMEOUT: Duration = Duration::from_secs(5);
         {
@@ -2005,7 +2030,7 @@ impl ContainerService for LocalContainerService {
             tracing::debug!(
                 execution_process_id = %execution_process_id,
                 message_len = message.len(),
-                "Injecting message into running Claude Code process"
+                "Injecting message into running agent process"
             );
 
             // Emit log entry BEFORE injecting to stdin so the injected message

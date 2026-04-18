@@ -41,8 +41,8 @@ use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, SpawnedChild,
-        StandardCodingAgentExecutor,
+        AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, ProtocolPeer,
+        SpawnedChild, StandardCodingAgentExecutor,
         codex::{jsonrpc::ExitSignalSender, normalize_logs::Error},
     },
     logs::utils::EntryIndexProvider,
@@ -402,6 +402,14 @@ impl Codex {
 
         let new_stdout = create_stdout_pipe_writer(&mut child)?;
         let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
+        let client = AppServerClient::new(
+            LogWriter::new(new_stdout),
+            self.approvals.clone(),
+            matches!(
+                (&self.sandbox, &self.ask_for_approval),
+                (Some(SandboxMode::DangerFullAccess), None)
+            ),
+        );
 
         let params = self.build_thread_start_params(current_dir);
         let resume_session = resume_session.map(|s| s.to_string());
@@ -409,24 +417,17 @@ impl Codex {
         let model = self.model.clone();
         let model_reasoning_effort = self.model_reasoning_effort.clone();
         let developer_instructions = self.developer_instructions.clone();
-        let auto_approve = matches!(
-            (&self.sandbox, &self.ask_for_approval),
-            (Some(SandboxMode::DangerFullAccess), None)
-        );
-        let approvals = self.approvals.clone();
+        let protocol_peer = Arc::new(ProtocolPeer::Codex(client.clone()));
         tokio::spawn(async move {
             let exit_signal_tx = ExitSignalSender::new(exit_signal_tx);
-            let log_writer = LogWriter::new(new_stdout);
             if let Err(err) = Self::launch_codex_app_server(
+                client.clone(),
                 params,
                 resume_session,
                 combined_prompt,
                 child_stdout,
                 child_stdin,
-                log_writer.clone(),
                 exit_signal_tx.clone(),
-                approvals,
-                auto_approve,
                 collaboration_mode,
                 model,
                 model_reasoning_effort,
@@ -442,7 +443,8 @@ impl Codex {
                         return;
                     }
                     ExecutorError::AuthRequired(message) => {
-                        log_writer
+                        client
+                            .log_writer()
                             .log_raw(&Error::auth_required(message.clone()).raw())
                             .await
                             .ok();
@@ -458,7 +460,8 @@ impl Codex {
                     }
                     _ => {
                         tracing::error!("Codex spawn error: {}", err);
-                        log_writer
+                        client
+                            .log_writer()
                             .log_raw(&Error::launch_error(err.to_string()).raw())
                             .await
                             .ok();
@@ -478,27 +481,24 @@ impl Codex {
         Ok(SpawnedChild {
             child,
             exit_signal: Some(exit_signal_rx),
-            protocol_peer: None,
+            protocol_peer: Some(protocol_peer),
         })
     }
 
     #[allow(clippy::too_many_arguments)]
     async fn launch_codex_app_server(
+        client: Arc<AppServerClient>,
         thread_params: ThreadStartParams,
         resume_session: Option<String>,
         combined_prompt: String,
         child_stdout: tokio::process::ChildStdout,
         child_stdin: tokio::process::ChildStdin,
-        log_writer: LogWriter,
         exit_signal_tx: ExitSignalSender,
-        approvals: Option<Arc<dyn ExecutorApprovalService>>,
-        auto_approve: bool,
         collaboration_mode: Option<CodexCollaborationMode>,
         model: Option<String>,
         model_reasoning_effort: Option<ReasoningEffort>,
         developer_instructions: Option<String>,
     ) -> Result<(), ExecutorError> {
-        let client = AppServerClient::new(log_writer, approvals, auto_approve);
         let rpc_peer =
             JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx);
         client.connect(rpc_peer);

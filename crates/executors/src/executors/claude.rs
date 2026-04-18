@@ -28,8 +28,8 @@ use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
-        codex::client::LogWriter, session_index,
+        AppendPrompt, AvailabilityInfo, ExecutorError, ProtocolPeer as ExecutorProtocolPeer,
+        SpawnedChild, StandardCodingAgentExecutor, codex::client::LogWriter, session_index,
     },
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
@@ -447,7 +447,7 @@ impl ClaudeCode {
             } else {
                 Some(exit_signal_rx)
             },
-            protocol_peer: Some(protocol_peer),
+            protocol_peer: Some(Arc::new(ExecutorProtocolPeer::Claude(protocol_peer))),
         })
     }
 }
@@ -911,12 +911,8 @@ impl ClaudeLogProcessor {
                     }
                     // Silently ignore internal plumbing subtypes that have no log-viewer value
                     Some(
-                        "status"
-                        | "hook_started"
-                        | "hook_progress"
-                        | "hook_response"
-                        | "files_persisted"
-                        | "task_progress",
+                        "status" | "hook_started" | "hook_progress" | "hook_response"
+                        | "files_persisted" | "task_progress",
                     ) => {}
                     Some("api_retry") => {
                         if let ClaudeJson::System {
@@ -927,7 +923,12 @@ impl ClaudeLogProcessor {
                         } = claude_json
                         {
                             let attempt_str = attempt
-                                .map(|a| format!(" (attempt {a}{})", max_retries.map(|m| format!("/{m}")).unwrap_or_default()))
+                                .map(|a| {
+                                    format!(
+                                        " (attempt {a}{})",
+                                        max_retries.map(|m| format!("/{m}")).unwrap_or_default()
+                                    )
+                                })
                                 .unwrap_or_default();
                             let error_str = error
                                 .as_deref()
@@ -944,7 +945,10 @@ impl ClaudeLogProcessor {
                         }
                     }
                     Some("compact_boundary") => {
-                        if let ClaudeJson::System { compact_metadata, .. } = claude_json {
+                        if let ClaudeJson::System {
+                            compact_metadata, ..
+                        } = claude_json
+                        {
                             let trigger = compact_metadata
                                 .as_ref()
                                 .and_then(|m| m.get("trigger"))
@@ -974,7 +978,10 @@ impl ClaudeLogProcessor {
                         }
                     }
                     Some("task_notification") => {
-                        if let ClaudeJson::System { status, summary, .. } = claude_json {
+                        if let ClaudeJson::System {
+                            status, summary, ..
+                        } = claude_json
+                        {
                             let status_str = status.as_deref().unwrap_or("unknown");
                             let summary_str = summary
                                 .as_deref()
