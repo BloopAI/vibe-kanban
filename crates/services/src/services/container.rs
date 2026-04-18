@@ -1181,14 +1181,14 @@ pub trait ContainerService {
             .write()
             .await
             .insert(execution_process.id, Arc::new(MsgStore::new()));
-        if *run_reason != ExecutionProcessRunReason::ArchiveScript {
-            if let Err(e) = Workspace::set_archived(&self.db().pool, workspace.id, false).await {
-                self.msg_stores()
-                    .write()
-                    .await
-                    .remove(&execution_process.id);
-                return Err(e.into());
-            }
+        if *run_reason != ExecutionProcessRunReason::ArchiveScript
+            && let Err(e) = Workspace::set_archived(&self.db().pool, workspace.id, false).await
+        {
+            self.msg_stores()
+                .write()
+                .await
+                .remove(&execution_process.id);
+            return Err(e.into());
         }
 
         if let Some(prompt) = match executor_action.typ() {

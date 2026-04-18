@@ -204,6 +204,10 @@
                             "url"
                           ],
                           "properties": {
+                            "url": {
+                              "description": "A URL that can be opened by the webview when using the Opener APIs.\n\nWildcards can be used following the UNIX glob pattern.\n\nExamples:\n\n- \"https://*\" : allows all HTTPS origin\n\n- \"https://*.github.com/tauri-apps/tauri\": allows any subdomain of \"github.com\" with the \"tauri-apps/api\" path\n\n- \"https://myapi.service.com/users/*\": allows access to any URLs that begins with \"https://myapi.service.com/users/\"",
+                              "type": "string"
+                            },
                             "app": {
                               "description": "An application to open this url with, for example: firefox.",
                               "allOf": [
@@ -211,10 +215,6 @@
                                   "$ref": "#/definitions/Application"
                                 }
                               ]
-                            },
-                            "url": {
-                              "description": "A URL that can be opened by the webview when using the Opener APIs.\n\nWildcards can be used following the UNIX glob pattern.\n\nExamples:\n\n- \"https://*\" : allows all HTTPS origin\n\n- \"https://*.github.com/tauri-apps/tauri\": allows any subdomain of \"github.com\" with the \"tauri-apps/api\" path\n\n- \"https://myapi.service.com/users/*\": allows access to any URLs that begins with \"https://myapi.service.com/users/\"",
-                              "type": "string"
                             }
                           }
                         },
@@ -224,6 +224,10 @@
                             "path"
                           ],
                           "properties": {
+                            "path": {
+                              "description": "A path that can be opened by the webview when using the Opener APIs.\n\nThe pattern can start with a variable that resolves to a system base directory. The variables are: `$AUDIO`, `$CACHE`, `$CONFIG`, `$DATA`, `$LOCALDATA`, `$DESKTOP`, `$DOCUMENT`, `$DOWNLOAD`, `$EXE`, `$FONT`, `$HOME`, `$PICTURE`, `$PUBLIC`, `$RUNTIME`, `$TEMPLATE`, `$VIDEO`, `$RESOURCE`, `$APP`, `$LOG`, `$TEMP`, `$APPCONFIG`, `$APPDATA`, `$APPLOCALDATA`, `$APPCACHE`, `$APPLOG`.",
+                              "type": "string"
+                            },
                             "app": {
                               "description": "An application to open this path with, for example: xdg-open.",
                               "allOf": [
@@ -231,10 +235,6 @@
                                   "$ref": "#/definitions/Application"
                                 }
                               ]
-                            },
-                            "path": {
-                              "description": "A path that can be opened by the webview when using the Opener APIs.\n\nThe pattern can start with a variable that resolves to a system base directory. The variables are: `$AUDIO`, `$CACHE`, `$CONFIG`, `$DATA`, `$LOCALDATA`, `$DESKTOP`, `$DOCUMENT`, `$DOWNLOAD`, `$EXE`, `$FONT`, `$HOME`, `$PICTURE`, `$PUBLIC`, `$RUNTIME`, `$TEMPLATE`, `$VIDEO`, `$RESOURCE`, `$APP`, `$LOG`, `$TEMP`, `$APPCONFIG`, `$APPDATA`, `$APPLOCALDATA`, `$APPCACHE`, `$APPLOG`.",
-                              "type": "string"
                             }
                           }
                         }
@@ -252,6 +252,10 @@
                             "url"
                           ],
                           "properties": {
+                            "url": {
+                              "description": "A URL that can be opened by the webview when using the Opener APIs.\n\nWildcards can be used following the UNIX glob pattern.\n\nExamples:\n\n- \"https://*\" : allows all HTTPS origin\n\n- \"https://*.github.com/tauri-apps/tauri\": allows any subdomain of \"github.com\" with the \"tauri-apps/api\" path\n\n- \"https://myapi.service.com/users/*\": allows access to any URLs that begins with \"https://myapi.service.com/users/\"",
+                              "type": "string"
+                            },
                             "app": {
                               "description": "An application to open this url with, for example: firefox.",
                               "allOf": [
@@ -259,10 +263,6 @@
                                   "$ref": "#/definitions/Application"
                                 }
                               ]
-                            },
-                            "url": {
-                              "description": "A URL that can be opened by the webview when using the Opener APIs.\n\nWildcards can be used following the UNIX glob pattern.\n\nExamples:\n\n- \"https://*\" : allows all HTTPS origin\n\n- \"https://*.github.com/tauri-apps/tauri\": allows any subdomain of \"github.com\" with the \"tauri-apps/api\" path\n\n- \"https://myapi.service.com/users/*\": allows access to any URLs that begins with \"https://myapi.service.com/users/\"",
-                              "type": "string"
                             }
                           }
                         },
@@ -272,6 +272,10 @@
                             "path"
                           ],
                           "properties": {
+                            "path": {
+                              "description": "A path that can be opened by the webview when using the Opener APIs.\n\nThe pattern can start with a variable that resolves to a system base directory. The variables are: `$AUDIO`, `$CACHE`, `$CONFIG`, `$DATA`, `$LOCALDATA`, `$DESKTOP`, `$DOCUMENT`, `$DOWNLOAD`, `$EXE`, `$FONT`, `$HOME`, `$PICTURE`, `$PUBLIC`, `$RUNTIME`, `$TEMPLATE`, `$VIDEO`, `$RESOURCE`, `$APP`, `$LOG`, `$TEMP`, `$APPCONFIG`, `$APPDATA`, `$APPLOCALDATA`, `$APPCACHE`, `$APPLOG`.",
+                              "type": "string"
+                            },
                             "app": {
                               "description": "An application to open this path with, for example: xdg-open.",
                               "allOf": [
@@ -279,10 +283,6 @@
                                   "$ref": "#/definitions/Application"
                                 }
                               ]
-                            },
-                            "path": {
-                              "description": "A path that can be opened by the webview when using the Opener APIs.\n\nThe pattern can start with a variable that resolves to a system base directory. The variables are: `$AUDIO`, `$CACHE`, `$CONFIG`, `$DATA`, `$LOCALDATA`, `$DESKTOP`, `$DOCUMENT`, `$DOWNLOAD`, `$EXE`, `$FONT`, `$HOME`, `$PICTURE`, `$PUBLIC`, `$RUNTIME`, `$TEMPLATE`, `$VIDEO`, `$RESOURCE`, `$APP`, `$LOG`, `$TEMP`, `$APPCONFIG`, `$APPDATA`, `$APPLOCALDATA`, `$APPCACHE`, `$APPLOG`.",
-                              "type": "string"
                             }
                           }
                         }
@@ -391,6 +391,14 @@
                             "name"
                           ],
                           "properties": {
+                            "name": {
+                              "description": "The name for this allowed shell command configuration.\n\nThis name will be used inside of the webview API to call this command along with any specified arguments.",
+                              "type": "string"
+                            },
+                            "cmd": {
+                              "description": "The command name. It can start with a variable that resolves to a system base directory. The variables are: `$AUDIO`, `$CACHE`, `$CONFIG`, `$DATA`, `$LOCALDATA`, `$DESKTOP`, `$DOCUMENT`, `$DOWNLOAD`, `$EXE`, `$FONT`, `$HOME`, `$PICTURE`, `$PUBLIC`, `$RUNTIME`, `$TEMPLATE`, `$VIDEO`, `$RESOURCE`, `$LOG`, `$TEMP`, `$APPCONFIG`, `$APPDATA`, `$APPLOCALDATA`, `$APPCACHE`, `$APPLOG`.",
+                              "type": "string"
+                            },
                             "args": {
                               "description": "The allowed arguments for the command execution.",
                               "allOf": [
@@ -398,14 +406,6 @@
                                   "$ref": "#/definitions/ShellScopeEntryAllowedArgs"
                                 }
                               ]
-                            },
-                            "cmd": {
-                              "description": "The command name. It can start with a variable that resolves to a system base directory. The variables are: `$AUDIO`, `$CACHE`, `$CONFIG`, `$DATA`, `$LOCALDATA`, `$DESKTOP`, `$DOCUMENT`, `$DOWNLOAD`, `$EXE`, `$FONT`, `$HOME`, `$PICTURE`, `$PUBLIC`, `$RUNTIME`, `$TEMPLATE`, `$VIDEO`, `$RESOURCE`, `$LOG`, `$TEMP`, `$APPCONFIG`, `$APPDATA`, `$APPLOCALDATA`, `$APPCACHE`, `$APPLOG`.",
-                              "type": "string"
-                            },
-                            "name": {
-                              "description": "The name for this allowed shell command configuration.\n\nThis name will be used inside of the webview API to call this command along with any specified arguments.",
-                              "type": "string"
                             }
                           },
                           "additionalProperties": false
@@ -417,6 +417,10 @@
                             "sidecar"
                           ],
                           "properties": {
+                            "name": {
+                              "description": "The name for this allowed shell command configuration.\n\nThis name will be used inside of the webview API to call this command along with any specified arguments.",
+                              "type": "string"
+                            },
                             "args": {
                               "description": "The allowed arguments for the command execution.",
                               "allOf": [
@@ -424,10 +428,6 @@
                                   "$ref": "#/definitions/ShellScopeEntryAllowedArgs"
                                 }
                               ]
-                            },
-                            "name": {
-                              "description": "The name for this allowed shell command configuration.\n\nThis name will be used inside of the webview API to call this command along with any specified arguments.",
-                              "type": "string"
                             },
                             "sidecar": {
                               "description": "If this command is a sidecar command.",
@@ -451,6 +451,14 @@
                             "name"
                           ],
                           "properties": {
+                            "name": {
+                              "description": "The name for this allowed shell command configuration.\n\nThis name will be used inside of the webview API to call this command along with any specified arguments.",
+                              "type": "string"
+                            },
+                            "cmd": {
+                              "description": "The command name. It can start with a variable that resolves to a system base directory. The variables are: `$AUDIO`, `$CACHE`, `$CONFIG`, `$DATA`, `$LOCALDATA`, `$DESKTOP`, `$DOCUMENT`, `$DOWNLOAD`, `$EXE`, `$FONT`, `$HOME`, `$PICTURE`, `$PUBLIC`, `$RUNTIME`, `$TEMPLATE`, `$VIDEO`, `$RESOURCE`, `$LOG`, `$TEMP`, `$APPCONFIG`, `$APPDATA`, `$APPLOCALDATA`, `$APPCACHE`, `$APPLOG`.",
+                              "type": "string"
+                            },
                             "args": {
                               "description": "The allowed arguments for the command execution.",
                               "allOf": [
@@ -458,14 +466,6 @@
                                   "$ref": "#/definitions/ShellScopeEntryAllowedArgs"
                                 }
                               ]
-                            },
-                            "cmd": {
-                              "description": "The command name. It can start with a variable that resolves to a system base directory. The variables are: `$AUDIO`, `$CACHE`, `$CONFIG`, `$DATA`, `$LOCALDATA`, `$DESKTOP`, `$DOCUMENT`, `$DOWNLOAD`, `$EXE`, `$FONT`, `$HOME`, `$PICTURE`, `$PUBLIC`, `$RUNTIME`, `$TEMPLATE`, `$VIDEO`, `$RESOURCE`, `$LOG`, `$TEMP`, `$APPCONFIG`, `$APPDATA`, `$APPLOCALDATA`, `$APPCACHE`, `$APPLOG`.",
-                              "type": "string"
-                            },
-                            "name": {
-                              "description": "The name for this allowed shell command configuration.\n\nThis name will be used inside of the webview API to call this command along with any specified arguments.",
-                              "type": "string"
                             }
                           },
                           "additionalProperties": false
@@ -477,6 +477,10 @@
                             "sidecar"
                           ],
                           "properties": {
+                            "name": {
+                              "description": "The name for this allowed shell command configuration.\n\nThis name will be used inside of the webview API to call this command along with any specified arguments.",
+                              "type": "string"
+                            },
                             "args": {
                               "description": "The allowed arguments for the command execution.",
                               "allOf": [
@@ -484,10 +488,6 @@
                                   "$ref": "#/definitions/ShellScopeEntryAllowedArgs"
                                 }
                               ]
-                            },
-                            "name": {
-                              "description": "The name for this allowed shell command configuration.\n\nThis name will be used inside of the webview API to call this command along with any specified arguments.",
-                              "type": "string"
                             },
                             "sidecar": {
                               "description": "If this command is a sidecar command.",
@@ -3001,6 +3001,22 @@
         }
       ]
     },
+    "ShellScopeEntryAllowedArgs": {
+      "description": "A set of command arguments allowed to be executed by the webview API.\n\nA value of `true` will allow any arguments to be passed to the command. `false` will disable all arguments. A list of [`ShellScopeEntryAllowedArg`] will set those arguments as the only valid arguments to be passed to the attached command configuration.",
+      "anyOf": [
+        {
+          "description": "Use a simple boolean to allow all or disable all arguments to this command configuration.",
+          "type": "boolean"
+        },
+        {
+          "description": "A specific set of [`ShellScopeEntryAllowedArg`] that are valid to call for the command configuration.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ShellScopeEntryAllowedArg"
+          }
+        }
+      ]
+    },
     "ShellScopeEntryAllowedArg": {
       "description": "A command argument allowed to be executed by the webview API.",
       "anyOf": [
@@ -3015,33 +3031,17 @@
             "validator"
           ],
           "properties": {
+            "validator": {
+              "description": "[regex] validator to require passed values to conform to an expected input.\n\nThis will require the argument value passed to this variable to match the `validator` regex before it will be executed.\n\nThe regex string is by default surrounded by `^...$` to match the full string. For example the `https?://\\w+` regex would be registered as `^https?://\\w+$`.\n\n[regex]: <https://docs.rs/regex/latest/regex/#syntax>",
+              "type": "string"
+            },
             "raw": {
               "description": "Marks the validator as a raw regex, meaning the plugin should not make any modification at runtime.\n\nThis means the regex will not match on the entire string by default, which might be exploited if your regex allow unexpected input to be considered valid. When using this option, make sure your regex is correct.",
               "default": false,
               "type": "boolean"
-            },
-            "validator": {
-              "description": "[regex] validator to require passed values to conform to an expected input.\n\nThis will require the argument value passed to this variable to match the `validator` regex before it will be executed.\n\nThe regex string is by default surrounded by `^...$` to match the full string. For example the `https?://\\w+` regex would be registered as `^https?://\\w+$`.\n\n[regex]: <https://docs.rs/regex/latest/regex/#syntax>",
-              "type": "string"
             }
           },
           "additionalProperties": false
-        }
-      ]
-    },
-    "ShellScopeEntryAllowedArgs": {
-      "description": "A set of command arguments allowed to be executed by the webview API.\n\nA value of `true` will allow any arguments to be passed to the command. `false` will disable all arguments. A list of [`ShellScopeEntryAllowedArg`] will set those arguments as the only valid arguments to be passed to the attached command configuration.",
-      "anyOf": [
-        {
-          "description": "Use a simple boolean to allow all or disable all arguments to this command configuration.",
-          "type": "boolean"
-        },
-        {
-          "description": "A specific set of [`ShellScopeEntryAllowedArg`] that are valid to call for the command configuration.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ShellScopeEntryAllowedArg"
-          }
         }
       ]
     }
