@@ -1012,4 +1012,18 @@ mod tests {
             Some(&Value::Bool(true))
         );
     }
+
+    #[test]
+    fn map_review_target_preserves_base_branch_target() {
+        let target = map_review_target(
+            &crate::actions::coding_agent_review::CodingAgentReviewTarget::BaseBranch {
+                branch: "main".to_string(),
+            },
+        );
+
+        assert!(matches!(
+            target,
+            ReviewTarget::BaseBranch { ref branch } if branch == "main"
+        ));
+    }
 }

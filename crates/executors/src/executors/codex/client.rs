@@ -94,10 +94,7 @@ impl AppServerClient {
         &self,
         params: ThreadStartParams,
     ) -> Result<ThreadStartResponse, ExecutorError> {
-        let request = ClientRequest::ThreadStart {
-            request_id: self.next_request_id(),
-            params,
-        };
+        let request = build_thread_start_request(self.next_request_id(), params);
         self.send_request(request, "thread/start").await
     }
 
@@ -130,25 +127,12 @@ impl AppServerClient {
         message: String,
         collaboration_mode: Option<CollaborationMode>,
     ) -> Result<TurnStartResponse, ExecutorError> {
-        let request = ClientRequest::TurnStart {
-            request_id: self.next_request_id(),
-            params: TurnStartParams {
-                thread_id: thread_id.to_string(),
-                input: vec![UserInput::Text {
-                    text: message,
-                    text_elements: vec![],
-                }],
-                cwd: None,
-                approval_policy: None,
-                sandbox_policy: None,
-                model: None,
-                effort: None,
-                summary: None,
-                personality: None,
-                output_schema: None,
-                collaboration_mode,
-            },
-        };
+        let request = build_turn_start_request(
+            self.next_request_id(),
+            thread_id,
+            message,
+            collaboration_mode,
+        );
         let response: TurnStartResponse = self.send_request(request, "turn/start").await?;
         self.set_current_turn_id(Some(response.turn.id.clone()))
             .await;
@@ -161,18 +145,12 @@ impl AppServerClient {
         target: ReviewTarget,
         append_to_original_thread: bool,
     ) -> Result<TurnStartResponse, ExecutorError> {
-        let request = ClientRequest::ReviewStart {
-            request_id: self.next_request_id(),
-            params: ReviewStartParams {
-                thread_id: thread_id.to_string(),
-                target,
-                delivery: Some(if append_to_original_thread {
-                    ReviewDelivery::Inline
-                } else {
-                    ReviewDelivery::Detached
-                }),
-            },
-        };
+        let request = build_review_start_request(
+            self.next_request_id(),
+            thread_id,
+            target,
+            append_to_original_thread,
+        );
         let response: ReviewStartResponse = self.send_request(request, "review/start").await?;
         self.set_current_turn_id(Some(response.turn.id.clone()))
             .await;
@@ -200,13 +178,7 @@ impl AppServerClient {
             ExecutorError::Io(io::Error::other("Codex turn id unavailable for interrupt"))
         })?;
 
-        let request = ClientRequest::TurnInterrupt {
-            request_id: self.next_request_id(),
-            params: TurnInterruptParams {
-                thread_id: thread_id.to_string(),
-                turn_id,
-            },
-        };
+        let request = build_turn_interrupt_request(self.next_request_id(), thread_id, turn_id);
         self.send_request::<TurnInterruptResponse>(request, "turn/interrupt")
             .await?;
         Ok(true)
@@ -516,25 +488,12 @@ impl AppServerClient {
 
     fn spawn_feedback_message(&self, conversation_id: ThreadId, feedback: String) {
         let peer = self.rpc().clone();
-        let request = ClientRequest::TurnStart {
-            request_id: peer.next_request_id(),
-            params: TurnStartParams {
-                thread_id: conversation_id.to_string(),
-                input: vec![UserInput::Text {
-                    text: format!("User feedback: {feedback}"),
-                    text_elements: vec![],
-                }],
-                cwd: None,
-                approval_policy: None,
-                sandbox_policy: None,
-                model: None,
-                effort: None,
-                summary: None,
-                personality: None,
-                output_schema: None,
-                collaboration_mode: None,
-            },
-        };
+        let request = build_turn_start_request(
+            peer.next_request_id(),
+            conversation_id,
+            format!("User feedback: {feedback}"),
+            None,
+        );
         tokio::spawn(async move {
             if let Err(err) = peer
                 .request::<TurnStartResponse, _>(request_id(&request), &request, "turn/start")
@@ -600,8 +559,9 @@ impl DynamicToolAdapter {
             "vk.git_status" => Self::git_status(),
             "vk.list_files" => Self::list_files(arguments),
             "vk.read_file" => Self::read_file(arguments),
+            "vk.search_files" => Self::search_files(arguments),
             other => Err(format!(
-                "Dynamic tool `{other}` is not supported. Supported tools: vk.git_status, vk.list_files, vk.read_file."
+                "Dynamic tool `{other}` is not supported. Supported tools: vk.git_status, vk.list_files, vk.read_file, vk.search_files."
             )),
         }
     }
@@ -649,6 +609,39 @@ impl DynamicToolAdapter {
         } else {
             Ok(text)
         }
+    }
+
+    fn search_files(arguments: &Value) -> Result<String, String> {
+        let query = arguments
+            .get("query")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| {
+                "vk.search_files requires a non-empty string `query` argument.".to_string()
+            })?;
+        let path = arguments
+            .get("path")
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or(".");
+        let max_matches = arguments
+            .get("max_matches")
+            .and_then(Value::as_u64)
+            .unwrap_or(100)
+            .clamp(1, 500)
+            .to_string();
+
+        run_dynamic_tool_command(
+            std::process::Command::new("rg")
+                .arg("-n")
+                .arg("--no-heading")
+                .arg("--color=never")
+                .arg("--max-count")
+                .arg(max_matches)
+                .arg(query)
+                .arg(path),
+        )
     }
 }
 
@@ -803,6 +796,71 @@ fn request_id(request: &ClientRequest) -> RequestId {
     }
 }
 
+fn build_thread_start_request(request_id: RequestId, params: ThreadStartParams) -> ClientRequest {
+    ClientRequest::ThreadStart { request_id, params }
+}
+
+fn build_turn_start_request(
+    request_id: RequestId,
+    thread_id: ThreadId,
+    message: String,
+    collaboration_mode: Option<CollaborationMode>,
+) -> ClientRequest {
+    ClientRequest::TurnStart {
+        request_id,
+        params: TurnStartParams {
+            thread_id: thread_id.to_string(),
+            input: vec![UserInput::Text {
+                text: message,
+                text_elements: vec![],
+            }],
+            cwd: None,
+            approval_policy: None,
+            sandbox_policy: None,
+            model: None,
+            effort: None,
+            summary: None,
+            personality: None,
+            output_schema: None,
+            collaboration_mode,
+        },
+    }
+}
+
+fn build_review_start_request(
+    request_id: RequestId,
+    thread_id: ThreadId,
+    target: ReviewTarget,
+    append_to_original_thread: bool,
+) -> ClientRequest {
+    ClientRequest::ReviewStart {
+        request_id,
+        params: ReviewStartParams {
+            thread_id: thread_id.to_string(),
+            target,
+            delivery: Some(if append_to_original_thread {
+                ReviewDelivery::Inline
+            } else {
+                ReviewDelivery::Detached
+            }),
+        },
+    }
+}
+
+fn build_turn_interrupt_request(
+    request_id: RequestId,
+    thread_id: ThreadId,
+    turn_id: String,
+) -> ClientRequest {
+    ClientRequest::TurnInterrupt {
+        request_id,
+        params: TurnInterruptParams {
+            thread_id: thread_id.to_string(),
+            turn_id,
+        },
+    }
+}
+
 fn map_command_decision(decision: ReviewDecision) -> CommandExecutionApprovalDecision {
     match decision {
         ReviewDecision::Approved => CommandExecutionApprovalDecision::Accept,
@@ -865,6 +923,139 @@ fn user_input_answers_from_response(
     }
 
     mapped
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use codex_protocol::ThreadId;
+    use serde_json::json;
+    use tempfile::tempdir;
+
+    #[test]
+    fn build_turn_start_request_wraps_plain_text_input() {
+        let thread_id = ThreadId::new();
+        let request = build_turn_start_request(
+            RequestId::Integer(7),
+            thread_id,
+            "follow-up".to_string(),
+            None,
+        );
+
+        match request {
+            ClientRequest::TurnStart { request_id, params } => {
+                assert_eq!(request_id, RequestId::Integer(7));
+                assert_eq!(params.thread_id, thread_id.to_string());
+                assert_eq!(
+                    params.input,
+                    vec![UserInput::Text {
+                        text: "follow-up".to_string(),
+                        text_elements: vec![],
+                    }]
+                );
+                assert!(params.collaboration_mode.is_none());
+            }
+            other => panic!("unexpected request: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn build_review_start_request_uses_inline_delivery_when_requested() {
+        let thread_id = ThreadId::new();
+        let request = build_review_start_request(
+            RequestId::Integer(9),
+            thread_id,
+            ReviewTarget::BaseBranch {
+                branch: "main".to_string(),
+            },
+            true,
+        );
+
+        match request {
+            ClientRequest::ReviewStart { request_id, params } => {
+                assert_eq!(request_id, RequestId::Integer(9));
+                assert_eq!(params.thread_id, thread_id.to_string());
+                assert_eq!(params.delivery, Some(ReviewDelivery::Inline));
+                assert!(matches!(
+                    params.target,
+                    ReviewTarget::BaseBranch { ref branch } if branch == "main"
+                ));
+            }
+            other => panic!("unexpected request: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn build_turn_interrupt_request_targets_current_turn() {
+        let thread_id = ThreadId::new();
+        let request =
+            build_turn_interrupt_request(RequestId::Integer(11), thread_id, "turn-123".to_string());
+
+        match request {
+            ClientRequest::TurnInterrupt { request_id, params } => {
+                assert_eq!(request_id, RequestId::Integer(11));
+                assert_eq!(params.thread_id, thread_id.to_string());
+                assert_eq!(params.turn_id, "turn-123");
+            }
+            other => panic!("unexpected request: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn build_thread_start_request_preserves_native_params() {
+        let request = build_thread_start_request(
+            RequestId::Integer(3),
+            ThreadStartParams {
+                model: Some("gpt-5.4".to_string()),
+                model_provider: Some("openai".to_string()),
+                cwd: Some("/tmp/worktree".to_string()),
+                approval_policy: None,
+                sandbox: None,
+                config: None,
+                base_instructions: Some("base".to_string()),
+                developer_instructions: Some("dev".to_string()),
+                personality: None,
+                ephemeral: None,
+                dynamic_tools: None,
+                mock_experimental_field: None,
+                experimental_raw_events: false,
+            },
+        );
+
+        match request {
+            ClientRequest::ThreadStart { request_id, params } => {
+                assert_eq!(request_id, RequestId::Integer(3));
+                assert_eq!(params.model.as_deref(), Some("gpt-5.4"));
+                assert_eq!(params.cwd.as_deref(), Some("/tmp/worktree"));
+                assert_eq!(params.base_instructions.as_deref(), Some("base"));
+                assert_eq!(params.developer_instructions.as_deref(), Some("dev"));
+            }
+            other => panic!("unexpected request: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn dynamic_tool_adapter_reads_file_with_truncation_notice() {
+        let dir = tempdir().expect("tempdir");
+        let path = dir.path().join("notes.txt");
+        std::fs::write(&path, "abcdefghijklmnopqrstuvwxyz").expect("write file");
+
+        let output = DynamicToolAdapter::read_file(&json!({
+            "path": path.to_string_lossy(),
+            "max_bytes": 8
+        }))
+        .expect("read file");
+
+        assert!(output.starts_with("abcdefgh"));
+        assert!(output.contains("[truncated to 8 bytes]"));
+    }
+
+    #[test]
+    fn dynamic_tool_adapter_search_files_requires_query() {
+        let err =
+            DynamicToolAdapter::search_files(&json!({})).expect_err("missing query should fail");
+        assert!(err.contains("requires a non-empty string `query`"));
+    }
 }
 
 fn map_file_change_decision(decision: ReviewDecision) -> FileChangeApprovalDecision {

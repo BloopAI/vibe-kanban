@@ -1,6 +1,7 @@
 // useConversationHistory.ts
 import {
   BaseCodingAgent,
+  CodingAgentReviewTarget,
   CommandExitStatus,
   ExecutionProcess,
   ExecutionProcessStatus,
@@ -324,10 +325,12 @@ export const useConversationHistory = ({
         const typ = executorAction.typ;
         if (
           typ.type === 'CodingAgentInitialRequest' ||
-          typ.type === 'CodingAgentFollowUpRequest' ||
-          typ.type === 'CodingAgentReviewRequest'
+          typ.type === 'CodingAgentFollowUpRequest'
         ) {
           return 'Coding Agent';
+        }
+        if (typ.type === 'CodingAgentReviewRequest') {
+          return 'Codex Review';
         }
         if (typ.type === 'ScriptRequest') {
           switch (typ.context) {
@@ -388,7 +391,7 @@ export const useConversationHistory = ({
             const prompt =
               p.executionProcess.executor_action.typ.type ===
               'CodingAgentReviewRequest'
-                ? 'Review with Codex'
+                ? formatReviewPrompt(p.executionProcess.executor_action.typ.target)
                 : p.executionProcess.executor_action.typ.prompt;
             // New user message
             const userNormalizedEntry: NormalizedEntry = {
@@ -1000,4 +1003,19 @@ export const useConversationHistory = ({
   }, [attempt.id, emitEntries]);
 
   return {};
+};
+
+const formatReviewPrompt = (target: CodingAgentReviewTarget): string => {
+  switch (target.type) {
+    case 'uncommitted_changes':
+      return 'Review uncommitted changes';
+    case 'base_branch':
+      return `Review changes against \`${target.branch}\``;
+    case 'commit':
+      return target.title
+        ? `Review commit \`${target.sha}\` (${target.title})`
+        : `Review commit \`${target.sha}\``;
+    case 'custom':
+      return target.instructions;
+  }
 };

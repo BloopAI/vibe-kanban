@@ -263,4 +263,28 @@ describe('edge cases', () => {
 
     expect(screen.getByText('CLAUDE_CODE / ROUTER')).toBeInTheDocument();
   });
+
+  it('renders stopped execution markers with user-facing status text', () => {
+    const entry: NormalizedEntry = {
+      timestamp: new Date().toISOString(),
+      entry_type: {
+        type: 'execution_end',
+        process_id: 'proc-1',
+        process_name: 'Codex Review',
+        started_at: '2026-04-18T10:00:00.000Z',
+        ended_at: '2026-04-18T10:00:05.000Z',
+        duration_seconds: BigInt(5),
+        status: 'killed',
+      },
+      content: '',
+      metadata: null,
+    };
+
+    render(
+      <DisplayConversationEntry entry={entry} expansionKey="execution-end" />
+    );
+
+    expect(screen.getByText('Stopped')).toBeInTheDocument();
+    expect(screen.getByText(/Codex Review finished at/i)).toBeInTheDocument();
+  });
 });

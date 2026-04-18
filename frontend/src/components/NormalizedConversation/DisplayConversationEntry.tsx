@@ -475,7 +475,8 @@ const ToolCallCard: React.FC<{
 
   // Compute defaults from entry
   const linkifyUrls = entryType?.tool_name === 'Tool Install Script';
-  const defaultExpanded = linkifyUrls;
+  const isDynamicTool = entryType?.tool_name?.startsWith('dynamic:') ?? false;
+  const defaultExpanded = linkifyUrls || isDynamicTool;
 
   const [expanded, toggle] = useExpandable(
     `tool-entry:${expansionKey}`,
@@ -489,11 +490,13 @@ const ToolCallCard: React.FC<{
   const isTool = actionType?.action === 'tool';
 
   // Label and content
-  const label = isCommand ? 'Ran' : entryType?.tool_name || 'Tool';
+  const label = isCommand
+    ? 'Ran'
+    : formatToolLabel(entryType?.tool_name || 'Tool');
 
   const inlineText = isNormalizedEntry ? entry.content.trim() : '';
   const isSingleLine = inlineText !== '' && !/\r?\n/.test(inlineText);
-  const showInlineSummary = isSingleLine;
+  const showInlineSummary = isSingleLine && !isDynamicTool;
 
   // Command details
   const commandResult = isCommand ? actionType.result : null;
@@ -774,7 +777,7 @@ const ExecutionMarker: React.FC<{
   const formattedStartTime = formatTimestamp(startedAt, timezone);
   const formattedEndTime = endedAt ? formatTimestamp(endedAt, timezone) : '';
 
-  const statusLabel = status ? ` (${status})` : '';
+  const statusMeta = status ? getExecutionStatusMeta(status) : null;
   const durationLabel =
     durationSeconds !== undefined
       ? ` - ${formatDuration(durationSeconds)}`
@@ -788,14 +791,69 @@ const ExecutionMarker: React.FC<{
           {processName} started at {formattedStartTime}
         </span>
       ) : (
-        <span>
-          {processName} finished at {formattedEndTime}
-          {durationLabel}
-          {statusLabel}
+        <span className="flex flex-wrap items-center gap-2">
+          <span>
+            {processName} finished at {formattedEndTime}
+            {durationLabel}
+          </span>
+          {statusMeta && (
+            <span
+              className={cn(
+                'inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide',
+                statusMeta.className
+              )}
+            >
+              {statusMeta.label}
+            </span>
+          )}
         </span>
       )}
     </div>
   );
+};
+
+const getExecutionStatusMeta = (status: string) => {
+  switch (status) {
+    case 'completed':
+      return {
+        label: 'Completed',
+        className:
+          'border-emerald-400/40 text-emerald-700 dark:text-emerald-300',
+      };
+    case 'failed':
+      return {
+        label: 'Failed',
+        className: 'border-red-400/40 text-red-700 dark:text-red-300',
+      };
+    case 'killed':
+      return {
+        label: 'Stopped',
+        className: 'border-amber-400/40 text-amber-700 dark:text-amber-200',
+      };
+    case 'interrupted':
+      return {
+        label: 'Interrupted',
+        className: 'border-amber-400/40 text-amber-700 dark:text-amber-200',
+      };
+    case 'aborted':
+      return {
+        label: 'Aborted',
+        className: 'border-red-400/40 text-red-700 dark:text-red-300',
+      };
+    default:
+      return {
+        label: status,
+        className: 'border-border text-muted-foreground',
+      };
+  }
+};
+
+const formatToolLabel = (toolName: string): string => {
+  if (toolName.startsWith('dynamic:')) {
+    return toolName.slice('dynamic:'.length);
+  }
+
+  return toolName;
 };
 
 const isPendingApprovalStatus = (

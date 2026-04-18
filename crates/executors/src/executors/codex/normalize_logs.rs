@@ -11,14 +11,14 @@ use std::{
 
 use codex_app_server_protocol::{
     AgentMessageDeltaNotification, CommandExecutionRequestApprovalParams,
-    CommandExecutionStatus as V2CommandExecutionStatus, DynamicToolCallParams,
-    FileUpdateChange as V2FileUpdateChange, ItemCompletedNotification, ItemStartedNotification,
-    JSONRPCNotification, JSONRPCRequest, JSONRPCResponse, McpToolCallProgressNotification,
-    McpToolCallResult as V2McpToolCallResult, McpToolCallStatus as V2McpToolCallStatus,
-    PatchApplyStatus as V2PatchApplyStatus, ReasoningSummaryTextDeltaNotification,
-    ReasoningTextDeltaNotification, ServerNotification, ThreadForkResponse, ThreadItem,
-    ThreadStartResponse, ThreadTokenUsageUpdatedNotification, ToolRequestUserInputParams,
-    ToolRequestUserInputQuestion, TurnPlanStep, TurnPlanUpdatedNotification,
+    CommandExecutionStatus as V2CommandExecutionStatus, FileUpdateChange as V2FileUpdateChange,
+    ItemCompletedNotification, ItemStartedNotification, JSONRPCNotification, JSONRPCRequest,
+    JSONRPCResponse, McpToolCallProgressNotification, McpToolCallResult as V2McpToolCallResult,
+    McpToolCallStatus as V2McpToolCallStatus, PatchApplyStatus as V2PatchApplyStatus,
+    ReasoningSummaryTextDeltaNotification, ReasoningTextDeltaNotification, ServerNotification,
+    ThreadForkResponse, ThreadItem, ThreadStartResponse, ThreadTokenUsageUpdatedNotification,
+    ToolRequestUserInputParams, ToolRequestUserInputQuestion, TurnPlanStep,
+    TurnPlanUpdatedNotification,
 };
 use codex_mcp_types::ContentBlock;
 use codex_protocol::{
@@ -28,10 +28,11 @@ use codex_protocol::{
         AgentMessageDeltaEvent, AgentMessageEvent, AgentReasoningDeltaEvent, AgentReasoningEvent,
         AgentReasoningSectionBreakEvent, ApplyPatchApprovalRequestEvent, BackgroundEventEvent,
         ErrorEvent, EventMsg, ExecApprovalRequestEvent, ExecCommandBeginEvent, ExecCommandEndEvent,
-        ExecCommandOutputDeltaEvent, ExecOutputStream, FileChange as CodexProtoFileChange,
-        McpInvocation, McpToolCallBeginEvent, McpToolCallEndEvent, PatchApplyBeginEvent,
-        PatchApplyEndEvent, StreamErrorEvent, TokenUsageInfo, ViewImageToolCallEvent, WarningEvent,
-        WebSearchBeginEvent, WebSearchEndEvent,
+        ExecCommandOutputDeltaEvent, ExecOutputStream, ExitedReviewModeEvent,
+        FileChange as CodexProtoFileChange, McpInvocation, McpToolCallBeginEvent,
+        McpToolCallEndEvent, PatchApplyBeginEvent, PatchApplyEndEvent, ReviewRequest,
+        StreamErrorEvent, TokenUsageInfo, TurnAbortReason, TurnAbortedEvent,
+        ViewImageToolCallEvent, WarningEvent, WebSearchBeginEvent, WebSearchEndEvent,
     },
 };
 use json_patch::Patch;
@@ -271,19 +272,6 @@ impl LogNormalizer for CodexNormalizer {
             return Some(CodexEvent::UserInputRequest {
                 item_id: params.item_id,
                 questions: map_user_input_questions(params.questions),
-            });
-        }
-
-        if let Ok(request) = serde_json::from_str::<JSONRPCRequest>(line)
-            && request.method == "item/tool/call"
-            && let Ok(params) = serde_json::from_value::<DynamicToolCallParams>(
-                request.params.unwrap_or(Value::Null),
-            )
-        {
-            return Some(CodexEvent::DynamicToolCall {
-                item_id: params.call_id,
-                tool: params.tool,
-                arguments: params.arguments,
             });
         }
 
@@ -1091,11 +1079,15 @@ impl CodexNormalizer {
             | EventMsg::ReasoningContentDelta(..)
             | EventMsg::ReasoningRawContentDelta(..)
             | EventMsg::ListCustomPromptsResponse(..)
-            | EventMsg::TurnAborted(..)
             | EventMsg::ShutdownComplete
-            | EventMsg::EnteredReviewMode(..)
-            | EventMsg::ExitedReviewMode(..)
             | EventMsg::TurnComplete(..) => vec![],
+            EventMsg::TurnAborted(event) => self.process_turn_aborted(event, entry_index),
+            EventMsg::EnteredReviewMode(review) => {
+                self.process_review_mode_started(review, entry_index)
+            }
+            EventMsg::ExitedReviewMode(event) => {
+                self.process_review_mode_exited(event, entry_index)
+            }
             other => {
                 tracing::debug!(event = ?other, "ignoring unhandled codex event");
                 vec![]
@@ -1371,25 +1363,109 @@ impl CodexNormalizer {
         self.state.assistant = None;
         self.state.thinking = None;
 
-        let index = entry_index.next();
-        let entry = NormalizedEntry {
-            timestamp: None,
-            entry_type: NormalizedEntryType::ToolUse {
-                tool_name: tool.clone(),
-                action_type: ActionType::Tool {
-                    tool_name: tool.clone(),
-                    arguments: Some(arguments),
-                    result: None,
-                },
+        let tool_name = format!("dynamic:{tool}");
+        let entry = self
+            .state
+            .dynamic_tools
+            .entry(item_id.clone())
+            .or_insert_with(|| GenericToolState {
+                index: Some(entry_index.next()),
+                tool_name: tool_name.clone(),
+                arguments: Some(arguments.clone()),
+                result: None,
                 status: ToolStatus::Created,
-            },
-            content: tool,
-            metadata: serde_json::to_value(ToolCallMetadata {
-                tool_call_id: item_id,
-            })
-            .ok(),
+                call_id: item_id.clone(),
+            });
+        entry.tool_name = tool_name;
+        entry.arguments = Some(arguments);
+        entry.status = ToolStatus::Created;
+        let Some(index) = entry.index else {
+            return vec![];
         };
-        vec![ConversationPatch::add_normalized_entry(index, entry)]
+        vec![ConversationPatch::replace(
+            index,
+            entry.to_normalized_entry(),
+        )]
+    }
+
+    fn process_turn_aborted(
+        &mut self,
+        event: TurnAbortedEvent,
+        entry_index: &EntryIndexProvider,
+    ) -> Vec<Patch> {
+        self.state.assistant = None;
+        self.state.thinking = None;
+
+        let content = match event.reason {
+            TurnAbortReason::Interrupted => "Codex turn interrupted.".to_string(),
+            TurnAbortReason::Replaced => "Codex turn replaced by a newer request.".to_string(),
+            TurnAbortReason::ReviewEnded => "Codex review turn ended.".to_string(),
+        };
+
+        vec![ConversationPatch::add_normalized_entry(
+            entry_index.next(),
+            NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::SystemMessage,
+                content,
+                metadata: None,
+            },
+        )]
+    }
+
+    fn process_review_mode_started(
+        &mut self,
+        review: ReviewRequest,
+        entry_index: &EntryIndexProvider,
+    ) -> Vec<Patch> {
+        self.state.assistant = None;
+        self.state.thinking = None;
+
+        let hint = review
+            .user_facing_hint
+            .as_deref()
+            .map(str::trim)
+            .filter(|hint| !hint.is_empty())
+            .map(str::to_string)
+            .unwrap_or_else(|| describe_review_target(&review.target));
+
+        vec![ConversationPatch::add_normalized_entry(
+            entry_index.next(),
+            NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::SystemMessage,
+                content: format!("Codex review started: {hint}"),
+                metadata: None,
+            },
+        )]
+    }
+
+    fn process_review_mode_exited(
+        &mut self,
+        event: ExitedReviewModeEvent,
+        entry_index: &EntryIndexProvider,
+    ) -> Vec<Patch> {
+        self.state.assistant = None;
+        self.state.thinking = None;
+
+        let content = match event.review_output {
+            Some(output) => format!(
+                "Codex review completed with {} finding{}.",
+                output.findings.len(),
+                if output.findings.len() == 1 { "" } else { "s" }
+            ),
+            None => "Codex review completed.".to_string(),
+        };
+
+        vec![ConversationPatch::add_normalized_entry(
+            entry_index.next(),
+            NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::SystemMessage,
+                content,
+                metadata: None,
+            },
+        )]
     }
 
     fn process_v2_plan_update(
@@ -1553,6 +1629,24 @@ fn todo_item_from_plan_step(step: TurnPlanStep) -> TodoItem {
             codex_app_server_protocol::TurnPlanStepStatus::Completed => "completed".to_string(),
         },
         priority: None,
+    }
+}
+
+fn describe_review_target(target: &codex_protocol::protocol::ReviewTarget) -> String {
+    match target {
+        codex_protocol::protocol::ReviewTarget::UncommittedChanges => {
+            "reviewing uncommitted changes".to_string()
+        }
+        codex_protocol::protocol::ReviewTarget::BaseBranch { branch } => {
+            format!("reviewing changes against `{branch}`")
+        }
+        codex_protocol::protocol::ReviewTarget::Commit { sha, title } => title
+            .as_ref()
+            .map(|title| format!("reviewing commit `{sha}` ({title})"))
+            .unwrap_or_else(|| format!("reviewing commit `{sha}`")),
+        codex_protocol::protocol::ReviewTarget::Custom { instructions } => {
+            instructions.trim().to_string()
+        }
     }
 }
 
@@ -2072,6 +2166,7 @@ fn build_command_output(stdout: Option<&str>, stderr: Option<&str>) -> Option<St
 mod tests {
     use super::*;
     use crate::logs::utils::EntryIndexProvider;
+    use json_patch::PatchOperation;
     use serde_json::json;
 
     fn normalizer() -> CodexNormalizer {
@@ -2232,6 +2327,128 @@ mod tests {
     }
 
     #[test]
+    fn dynamic_tool_lifecycle_reuses_single_entry_index() {
+        let mut normalizer = normalizer();
+        let msg_store = Arc::new(MsgStore::default());
+        let entry_index = EntryIndexProvider::default();
+
+        let request_patches = normalizer.process_event(
+            CodexEvent::DynamicToolCall {
+                item_id: "call-1".to_string(),
+                tool: "vk.read_file".to_string(),
+                arguments: json!({ "path": "src/main.rs" }),
+            },
+            &msg_store,
+            &entry_index,
+        );
+        let lifecycle_patches = normalizer.process_event(
+            CodexEvent::DynamicToolLifecycle(DynamicToolLifecycle::Request {
+                call_id: "call-1".to_string(),
+                tool_name: "dynamic:vk.read_file".to_string(),
+                arguments: json!({ "path": "src/main.rs" }),
+            }),
+            &msg_store,
+            &entry_index,
+        );
+        let response_patches = normalizer.process_event(
+            CodexEvent::DynamicToolLifecycle(DynamicToolLifecycle::response(
+                "call-1".to_string(),
+                "dynamic:vk.read_file".to_string(),
+                json!({ "path": "src/main.rs" }),
+                "fn main() {}".to_string(),
+                true,
+                ApprovalStatus::Approved,
+            )),
+            &msg_store,
+            &entry_index,
+        );
+
+        assert_eq!(request_patches.len(), 1);
+        assert_eq!(lifecycle_patches.len(), 1);
+        assert_eq!(response_patches.len(), 1);
+
+        let PatchOperation::Replace(request_patch) = &request_patches[0].0[0] else {
+            panic!("expected replace patch for raw dynamic tool request");
+        };
+        let PatchOperation::Replace(lifecycle_patch) = &lifecycle_patches[0].0[0] else {
+            panic!("expected replace patch for lifecycle request");
+        };
+        let PatchOperation::Replace(response_patch) = &response_patches[0].0[0] else {
+            panic!("expected replace patch for lifecycle response");
+        };
+
+        assert_eq!(request_patch.path, lifecycle_patch.path);
+        assert_eq!(request_patch.path, response_patch.path);
+    }
+
+    #[test]
+    fn turn_aborted_event_becomes_system_message() {
+        let mut normalizer = normalizer();
+        let msg_store = Arc::new(MsgStore::default());
+        let entry_index = EntryIndexProvider::default();
+
+        let patches = normalizer.process_event(
+            CodexEvent::Event(EventMsg::TurnAborted(TurnAbortedEvent {
+                reason: TurnAbortReason::Interrupted,
+            })),
+            &msg_store,
+            &entry_index,
+        );
+
+        assert_eq!(patches.len(), 1);
+        let PatchOperation::Add(patch) = &patches[0].0[0] else {
+            panic!("expected add patch for turn aborted");
+        };
+        let rendered = patch.value.to_string();
+        assert!(rendered.contains("system_message"));
+        assert!(rendered.contains("Codex turn interrupted."));
+    }
+
+    #[test]
+    fn review_lifecycle_events_become_system_messages() {
+        let mut normalizer = normalizer();
+        let msg_store = Arc::new(MsgStore::default());
+        let entry_index = EntryIndexProvider::default();
+
+        let started = normalizer.process_event(
+            CodexEvent::Event(EventMsg::EnteredReviewMode(ReviewRequest {
+                target: codex_protocol::protocol::ReviewTarget::BaseBranch {
+                    branch: "main".to_string(),
+                },
+                user_facing_hint: None,
+            })),
+            &msg_store,
+            &entry_index,
+        );
+        let finished = normalizer.process_event(
+            CodexEvent::Event(EventMsg::ExitedReviewMode(ExitedReviewModeEvent {
+                review_output: Some(codex_protocol::protocol::ReviewOutputEvent {
+                    findings: vec![],
+                    overall_correctness: "correct".to_string(),
+                    overall_explanation: "Looks good".to_string(),
+                    overall_confidence_score: 0.9,
+                }),
+            })),
+            &msg_store,
+            &entry_index,
+        );
+
+        let PatchOperation::Add(started_patch) = &started[0].0[0] else {
+            panic!("expected add patch for review start");
+        };
+        let PatchOperation::Add(finished_patch) = &finished[0].0[0] else {
+            panic!("expected add patch for review finish");
+        };
+        let started_rendered = started_patch.value.to_string();
+        let finished_rendered = finished_patch.value.to_string();
+
+        assert!(
+            started_rendered.contains("Codex review started: reviewing changes against `main`")
+        );
+        assert!(finished_rendered.contains("Codex review completed with 0 findings."));
+    }
+
+    #[test]
     fn parses_v2_command_item_completion() {
         let event = normalizer()
             .parse_line(
@@ -2375,6 +2592,7 @@ impl DynamicToolLifecycle {
                 tool_name,
                 arguments,
             } => {
+                let is_new = !state.dynamic_tools.contains_key(call_id);
                 let entry = state
                     .dynamic_tools
                     .entry(call_id.clone())
@@ -2389,10 +2607,8 @@ impl DynamicToolLifecycle {
                 entry.tool_name = tool_name.clone();
                 entry.arguments = Some(arguments.clone());
                 entry.status = ToolStatus::Created;
-                vec![ConversationPatch::add_normalized_entry(
-                    entry.index.unwrap_or_else(|| entry_index.next()),
-                    entry.to_normalized_entry(),
-                )]
+                let index = entry.index.unwrap_or_else(|| entry_index.next());
+                vec![upsert_patch(index, entry.to_normalized_entry(), is_new)]
             }
             Self::Response {
                 call_id,
@@ -2402,6 +2618,7 @@ impl DynamicToolLifecycle {
                 success,
                 approval_status: _,
             } => {
+                let is_new = !state.dynamic_tools.contains_key(call_id);
                 let entry = state
                     .dynamic_tools
                     .entry(call_id.clone())
@@ -2421,10 +2638,8 @@ impl DynamicToolLifecycle {
                 } else {
                     ToolStatus::Failed
                 };
-                vec![ConversationPatch::replace(
-                    entry.index.unwrap_or_else(|| entry_index.next()),
-                    entry.to_normalized_entry(),
-                )]
+                let index = entry.index.unwrap_or_else(|| entry_index.next());
+                vec![upsert_patch(index, entry.to_normalized_entry(), is_new)]
             }
         }
     }

@@ -272,6 +272,44 @@ fn map_codex_runtime_capabilities(
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use executors::executors::codex::{CodexRuntimeCollaborationMode, CodexRuntimeModel};
+
+    #[test]
+    fn map_codex_runtime_capabilities_preserves_native_flags() {
+        let mapped = map_codex_runtime_capabilities(CodexRuntimeCapabilities {
+            models: vec![CodexRuntimeModel {
+                id: "gpt-5.4".to_string(),
+                model: "gpt-5.4".to_string(),
+                display_name: "GPT-5.4".to_string(),
+                description: "test".to_string(),
+                supported_reasoning_efforts: vec!["medium".to_string()],
+                default_reasoning_effort: Some("medium".to_string()),
+                is_default: true,
+            }],
+            collaboration_modes: vec![CodexRuntimeCollaborationMode {
+                value: Some("plan".to_string()),
+                label: "Plan".to_string(),
+                model: Some("gpt-5.4".to_string()),
+                reasoning_effort: Some("high".to_string()),
+            }],
+            supports_interrupt: true,
+            supports_review: true,
+            supports_live_follow_up_messages: true,
+        });
+
+        assert_eq!(mapped.executor, BaseCodingAgent::Codex);
+        assert!(mapped.supports_interrupt);
+        assert!(mapped.supports_review);
+        assert!(mapped.supports_live_follow_up_messages);
+        assert_eq!(mapped.models.len(), 1);
+        assert_eq!(mapped.collaboration_modes.len(), 1);
+        assert_eq!(mapped.collaboration_modes[0].value.as_deref(), Some("plan"));
+    }
+}
+
 async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &Config) {
     if !old.disclaimer_acknowledged && new.disclaimer_acknowledged {
         // Spawn auto project setup as background task to avoid blocking config response
