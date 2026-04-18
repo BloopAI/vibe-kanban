@@ -16,7 +16,7 @@ use codex_app_server_protocol::{
 use codex_protocol::{
     ThreadId,
     config_types::{
-        CollaborationMode as ProtocolCollaborationMode, ModeKind,
+        CollaborationMode as ProtocolCollaborationMode, CollaborationModeMask, ModeKind,
         Settings as ProtocolCollaborationSettings,
     },
     openai_models::ReasoningEffort as ProtocolReasoningEffort,
@@ -48,6 +48,34 @@ use crate::{
     logs::utils::EntryIndexProvider,
     stdout_dup::create_stdout_pipe_writer,
 };
+
+#[derive(Debug, Clone)]
+pub struct CodexRuntimeModel {
+    pub id: String,
+    pub model: String,
+    pub display_name: String,
+    pub description: String,
+    pub supported_reasoning_efforts: Vec<String>,
+    pub default_reasoning_effort: Option<String>,
+    pub is_default: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct CodexRuntimeCollaborationMode {
+    pub value: Option<String>,
+    pub label: String,
+    pub model: Option<String>,
+    pub reasoning_effort: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CodexRuntimeCapabilities {
+    pub models: Vec<CodexRuntimeModel>,
+    pub collaboration_modes: Vec<CodexRuntimeCollaborationMode>,
+    pub supports_interrupt: bool,
+    pub supports_review: bool,
+    pub supports_live_follow_up_messages: bool,
+}
 
 /// Sandbox policy modes for Codex
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr)]
@@ -112,6 +140,7 @@ pub enum ReasoningSummaryFormat {
 
 /// Native Codex collaboration mode presets.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr)]
+#[ts(export)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum CodexCollaborationMode {
@@ -156,6 +185,7 @@ pub struct Codex {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub developer_instructions: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(type = "string | null")]
     pub collaboration_mode: Option<CodexCollaborationMode>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
@@ -573,6 +603,98 @@ impl Codex {
         }
         Ok(())
     }
+
+    pub async fn discover_runtime_capabilities(
+        &self,
+        current_dir: &Path,
+    ) -> Result<CodexRuntimeCapabilities, ExecutorError> {
+        let command_parts = self.build_command_builder().build_initial()?;
+        let (program_path, args) = command_parts.into_resolved().await?;
+
+        let mut process = Command::new(program_path);
+        process
+            .kill_on_drop(true)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .current_dir(current_dir)
+            .args(&args)
+            .env("NODE_NO_WARNINGS", "1")
+            .env("NO_COLOR", "1")
+            .env("RUST_LOG", "error");
+
+        process.env_remove("npm_config__jsr_registry");
+        process.env_remove("npm_config_verify_deps_before_run");
+        process.env_remove("npm_config_globalconfig");
+
+        let mut child = process.group_spawn()?;
+        let child_stdout = child.inner().stdout.take().ok_or_else(|| {
+            ExecutorError::Io(std::io::Error::other("Codex app server missing stdout"))
+        })?;
+        let child_stdin = child.inner().stdin.take().ok_or_else(|| {
+            ExecutorError::Io(std::io::Error::other("Codex app server missing stdin"))
+        })?;
+
+        let (exit_signal_tx, _exit_signal_rx) = tokio::sync::oneshot::channel();
+        let client = AppServerClient::new(LogWriter::new(tokio::io::sink()), None, false);
+        let rpc_peer = JsonRpcPeer::spawn(
+            child_stdin,
+            child_stdout,
+            client.clone(),
+            ExitSignalSender::new(exit_signal_tx),
+        );
+        client.connect(rpc_peer);
+
+        let result = async {
+            client.initialize().await?;
+            let auth_status = client.get_auth_status().await?;
+            if auth_status.requires_openai_auth.unwrap_or(true) && auth_status.auth_method.is_none()
+            {
+                return Err(ExecutorError::AuthRequired(
+                    "Codex authentication required".to_string(),
+                ));
+            }
+
+            let model_response = client.list_models().await?;
+            let collaboration_response = client.list_collaboration_modes().await.ok();
+
+            Ok(CodexRuntimeCapabilities {
+                models: model_response
+                    .data
+                    .into_iter()
+                    .map(|model| CodexRuntimeModel {
+                        id: model.id,
+                        model: model.model,
+                        display_name: model.display_name,
+                        description: model.description,
+                        supported_reasoning_efforts: model
+                            .supported_reasoning_efforts
+                            .into_iter()
+                            .map(|effort| effort.reasoning_effort.to_string())
+                            .collect(),
+                        default_reasoning_effort: Some(model.default_reasoning_effort.to_string()),
+                        is_default: model.is_default,
+                    })
+                    .collect(),
+                collaboration_modes: collaboration_response
+                    .map(|response| {
+                        response
+                            .data
+                            .into_iter()
+                            .map(map_runtime_collaboration_mode)
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+                supports_interrupt: true,
+                supports_review: true,
+                supports_live_follow_up_messages: true,
+            })
+        }
+        .await;
+
+        let _ = child.kill().await;
+        result
+    }
 }
 
 fn build_turn_collaboration_mode(
@@ -619,6 +741,23 @@ fn local_reasoning_effort(effort: ProtocolReasoningEffort) -> ReasoningEffort {
         ProtocolReasoningEffort::Medium => ReasoningEffort::Medium,
         ProtocolReasoningEffort::High => ReasoningEffort::High,
         ProtocolReasoningEffort::XHigh => ReasoningEffort::Xhigh,
+    }
+}
+
+fn map_runtime_collaboration_mode(mask: CollaborationModeMask) -> CodexRuntimeCollaborationMode {
+    CodexRuntimeCollaborationMode {
+        value: mask.mode.map(|mode| match mode {
+            ModeKind::Plan => "plan".to_string(),
+            ModeKind::Code => "code".to_string(),
+            ModeKind::PairProgramming => "pair-programming".to_string(),
+            ModeKind::Execute => "execute".to_string(),
+            ModeKind::Custom => "custom".to_string(),
+        }),
+        label: mask.name,
+        model: mask.model,
+        reasoning_effort: mask
+            .reasoning_effort
+            .and_then(|effort| effort.map(|value| value.to_string())),
     }
 }
 

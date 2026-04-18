@@ -10,6 +10,7 @@ import type {
   AvailabilityInfo,
   BaseCodingAgent,
 } from 'shared/types';
+import type { AgentRuntimeCapabilities } from '@/lib/agentRuntimeCapabilities';
 import { makeRequest, handleApiResponse } from './utils';
 
 export interface SlashCommandItem {
@@ -74,6 +75,15 @@ export const configApi = {
       `/api/agents/check-availability?executor=${encodeURIComponent(agent)}`
     );
     return handleApiResponse<AvailabilityInfo>(response);
+  },
+
+  getAgentRuntimeCapabilities: async (
+    agent: BaseCodingAgent
+  ): Promise<AgentRuntimeCapabilities> => {
+    const response = await makeRequest(
+      `/api/agents/runtime-capabilities?executor=${encodeURIComponent(agent)}`
+    );
+    return handleApiResponse<AgentRuntimeCapabilities>(response);
   },
 
   /**

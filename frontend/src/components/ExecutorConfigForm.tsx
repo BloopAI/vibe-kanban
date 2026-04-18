@@ -18,11 +18,13 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { shadcnTheme } from './rjsf';
 import { BaseCodingAgent } from 'shared/types';
+import type { AgentRuntimeCapabilities } from '@/lib/agentRuntimeCapabilities';
 // Using custom shadcn/ui widgets instead of @rjsf/shadcn theme
 
 interface ExecutorConfigFormProps {
   executor: BaseCodingAgent;
   value: unknown;
+  runtimeCapabilities?: AgentRuntimeCapabilities | null;
   onSubmit?: (formData: unknown) => void;
   onChange?: (formData: unknown) => void;
   onSave?: (formData: unknown) => Promise<void>;
@@ -36,6 +38,7 @@ import schemas from 'virtual:executor-schemas';
 export function ExecutorConfigForm({
   executor,
   value,
+  runtimeCapabilities,
   onSubmit,
   onChange,
   onSave,
@@ -49,8 +52,59 @@ export function ExecutorConfigForm({
   >([]);
 
   const schema = useMemo(() => {
-    return schemas[executor];
-  }, [executor]);
+    const baseSchema = schemas[executor];
+    if (!baseSchema || executor !== BaseCodingAgent.CODEX) {
+      return baseSchema;
+    }
+
+    const nextSchema = JSON.parse(JSON.stringify(baseSchema)) as Record<
+      string,
+      unknown
+    >;
+    const properties = (nextSchema.properties ?? {}) as Record<string, unknown>;
+
+    if (runtimeCapabilities?.models?.length) {
+      const defaultModel =
+        runtimeCapabilities.models.find((model) => model.is_default)?.display_name ??
+        'Runtime default';
+      properties.model = {
+        ...(properties.model as Record<string, unknown>),
+        enum: [
+          ...runtimeCapabilities.models.map((model) => model.model),
+          null,
+        ],
+        enumNames: [
+          ...runtimeCapabilities.models.map(
+            (model) => `${model.display_name} (${model.model})`
+          ),
+          `Use ${defaultModel}`,
+        ],
+      };
+    }
+
+    if (runtimeCapabilities?.collaboration_modes?.length) {
+      const discoveredModes = runtimeCapabilities.collaboration_modes.filter(
+        (mode): mode is typeof mode & { value: string } => !!mode.value
+      );
+      if (discoveredModes.length) {
+        properties.collaboration_mode = {
+          ...(properties.collaboration_mode as Record<string, unknown>),
+          enum: [...discoveredModes.map((mode) => mode.value), null],
+          enumNames: [
+            ...discoveredModes.map((mode) => {
+              const details = [mode.model, mode.reasoning_effort]
+                .filter(Boolean)
+                .join(' • ');
+              return details ? `${mode.label} (${details})` : mode.label;
+            }),
+            'No native collaboration mode',
+          ],
+        };
+      }
+    }
+
+    return nextSchema;
+  }, [executor, runtimeCapabilities]);
 
   useEffect(() => {
     setFormData(value || {});

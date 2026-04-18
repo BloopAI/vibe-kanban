@@ -7,14 +7,15 @@ use std::{
 
 use async_trait::async_trait;
 use codex_app_server_protocol::{
-    ClientInfo, ClientNotification, ClientRequest, CommandExecutionApprovalDecision,
+    ClientInfo, ClientNotification, ClientRequest, CollaborationModeListParams,
+    CollaborationModeListResponse, CommandExecutionApprovalDecision,
     CommandExecutionRequestApprovalResponse, FileChangeApprovalDecision,
     FileChangeRequestApprovalResponse, GetAuthStatusParams, GetAuthStatusResponse,
     InitializeParams, InitializeResponse, JSONRPCError, JSONRPCNotification, JSONRPCRequest,
-    JSONRPCResponse, RequestId, ServerNotification, ServerRequest, ThreadForkParams,
-    ThreadForkResponse, ThreadStartParams, ThreadStartResponse, ToolRequestUserInputAnswer,
-    ToolRequestUserInputQuestion, ToolRequestUserInputResponse, TurnInterruptParams,
-    TurnInterruptResponse, TurnStartParams, TurnStartResponse, UserInput,
+    JSONRPCResponse, ModelListParams, ModelListResponse, RequestId, ServerNotification,
+    ServerRequest, ThreadForkParams, ThreadForkResponse, ThreadStartParams, ThreadStartResponse,
+    ToolRequestUserInputAnswer, ToolRequestUserInputQuestion, ToolRequestUserInputResponse,
+    TurnInterruptParams, TurnInterruptResponse, TurnStartParams, TurnStartResponse, UserInput,
 };
 use codex_protocol::{ThreadId, config_types::CollaborationMode, protocol::ReviewDecision};
 use serde::{Serialize, de::DeserializeOwned};
@@ -193,6 +194,27 @@ impl AppServerClient {
             },
         };
         self.send_request(request, "getAuthStatus").await
+    }
+
+    pub async fn list_models(&self) -> Result<ModelListResponse, ExecutorError> {
+        let request = ClientRequest::ModelList {
+            request_id: self.next_request_id(),
+            params: ModelListParams {
+                cursor: None,
+                limit: Some(100),
+            },
+        };
+        self.send_request(request, "model/list").await
+    }
+
+    pub async fn list_collaboration_modes(
+        &self,
+    ) -> Result<CollaborationModeListResponse, ExecutorError> {
+        let request = ClientRequest::CollaborationModeList {
+            request_id: self.next_request_id(),
+            params: CollaborationModeListParams {},
+        };
+        self.send_request(request, "collaborationMode/list").await
     }
     async fn handle_server_request(
         &self,
@@ -630,6 +652,8 @@ fn request_id(request: &ClientRequest) -> RequestId {
         | ClientRequest::ThreadFork { request_id, .. }
         | ClientRequest::TurnStart { request_id, .. }
         | ClientRequest::TurnInterrupt { request_id, .. }
+        | ClientRequest::ModelList { request_id, .. }
+        | ClientRequest::CollaborationModeList { request_id, .. }
         | ClientRequest::GetAuthStatus { request_id, .. } => request_id.clone(),
         _ => unreachable!("request_id called for unsupported request variant"),
     }

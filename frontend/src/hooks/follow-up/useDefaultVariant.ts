@@ -130,6 +130,7 @@ export function useDefaultVariant({ processes, profiles }: Args) {
     selectedVariant,
     setSelectedVariant,
     currentProfile,
+    currentExecutor: latestProfileId?.executor ?? null,
     wouldModelChange,
     previousVariantInfo,
   } as const;

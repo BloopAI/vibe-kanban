@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, time::Duration};
 
 use axum::{
     Json, Router,
@@ -13,8 +13,8 @@ use deployment::{Deployment, DeploymentError};
 use executors::{
     executors::{
         AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, CodingAgent,
-        SlashCommandDescription, StandardCodingAgentExecutor,
-        claude::slash_commands::AgentInfo,
+        SlashCommandDescription, StandardCodingAgentExecutor, claude::slash_commands::AgentInfo,
+        codex::CodexRuntimeCapabilities,
     },
     mcp_config::{McpConfig, read_agent_config, write_agent_config},
     profile::{ExecutorConfigs, ExecutorProfileId},
@@ -28,8 +28,8 @@ use services::services::config::{
 };
 use tokio::fs;
 use ts_rs::TS;
-use uuid::Uuid;
 use utils::{api::oauth::LoginStatus, assets::config_path, response::ApiResponse};
+use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
@@ -47,6 +47,10 @@ pub fn router() -> Router<DeploymentImpl> {
             get(check_editor_availability),
         )
         .route("/agents/check-availability", get(check_agent_availability))
+        .route(
+            "/agents/runtime-capabilities",
+            get(get_agent_runtime_capabilities),
+        )
         .route("/slash-commands", get(get_slash_commands))
 }
 
@@ -92,6 +96,35 @@ pub struct UserSystemInfo {
     pub capabilities: HashMap<String, Vec<BaseAgentCapability>>,
 }
 
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct AgentRuntimeModel {
+    pub id: String,
+    pub model: String,
+    pub display_name: String,
+    pub description: String,
+    pub supported_reasoning_efforts: Vec<String>,
+    pub default_reasoning_effort: Option<String>,
+    pub is_default: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct AgentRuntimeCollaborationMode {
+    pub value: Option<String>,
+    pub label: String,
+    pub model: Option<String>,
+    pub reasoning_effort: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct AgentRuntimeCapabilities {
+    pub executor: BaseCodingAgent,
+    pub supports_interrupt: bool,
+    pub supports_review: bool,
+    pub supports_live_follow_up_messages: bool,
+    pub models: Vec<AgentRuntimeModel>,
+    pub collaboration_modes: Vec<AgentRuntimeCollaborationMode>,
+}
+
 // TODO: update frontend, BE schema has changed, this replaces GET /config and /config/constants
 #[axum::debug_handler]
 async fn get_user_system_info(
@@ -119,6 +152,58 @@ async fn get_user_system_info(
     };
 
     ResponseJson(ApiResponse::success(user_system_info))
+}
+
+async fn get_agent_runtime_capabilities(
+    State(_deployment): State<DeploymentImpl>,
+    Query(query): Query<McpServerQuery>,
+) -> ResponseJson<ApiResponse<AgentRuntimeCapabilities>> {
+    let profiles = ExecutorConfigs::get_cached();
+    let Some(agent) = profiles.get_coding_agent(&ExecutorProfileId::new(query.executor)) else {
+        return ResponseJson(ApiResponse::error("Executor not found"));
+    };
+
+    let current_dir = match std::env::current_dir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            return ResponseJson(ApiResponse::error(&format!(
+                "Failed to resolve working directory: {err}"
+            )));
+        }
+    };
+
+    let capabilities = match agent {
+        CodingAgent::Codex(codex) => {
+            match tokio::time::timeout(
+                Duration::from_secs(15),
+                codex.discover_runtime_capabilities(&current_dir),
+            )
+            .await
+            {
+                Ok(Ok(capabilities)) => map_codex_runtime_capabilities(capabilities),
+                Ok(Err(err)) => {
+                    return ResponseJson(ApiResponse::error(&format!(
+                        "Failed to discover Codex runtime capabilities: {err}"
+                    )));
+                }
+                Err(_) => {
+                    return ResponseJson(ApiResponse::error(
+                        "Timed out while discovering Codex runtime capabilities",
+                    ));
+                }
+            }
+        }
+        _ => AgentRuntimeCapabilities {
+            executor: query.executor,
+            supports_interrupt: false,
+            supports_review: false,
+            supports_live_follow_up_messages: false,
+            models: vec![],
+            collaboration_modes: vec![],
+        },
+    };
+
+    ResponseJson(ApiResponse::success(capabilities))
 }
 
 async fn update_config(
@@ -150,6 +235,40 @@ async fn update_config(
             ResponseJson(ApiResponse::success(new_config))
         }
         Err(e) => ResponseJson(ApiResponse::error(&format!("Failed to save config: {}", e))),
+    }
+}
+
+fn map_codex_runtime_capabilities(
+    capabilities: CodexRuntimeCapabilities,
+) -> AgentRuntimeCapabilities {
+    AgentRuntimeCapabilities {
+        executor: BaseCodingAgent::Codex,
+        supports_interrupt: capabilities.supports_interrupt,
+        supports_review: capabilities.supports_review,
+        supports_live_follow_up_messages: capabilities.supports_live_follow_up_messages,
+        models: capabilities
+            .models
+            .into_iter()
+            .map(|model| AgentRuntimeModel {
+                id: model.id,
+                model: model.model,
+                display_name: model.display_name,
+                description: model.description,
+                supported_reasoning_efforts: model.supported_reasoning_efforts,
+                default_reasoning_effort: model.default_reasoning_effort,
+                is_default: model.is_default,
+            })
+            .collect(),
+        collaboration_modes: capabilities
+            .collaboration_modes
+            .into_iter()
+            .map(|mode| AgentRuntimeCollaborationMode {
+                value: mode.value,
+                label: mode.label,
+                model: mode.model,
+                reasoning_effort: mode.reasoning_effort,
+            })
+            .collect(),
     }
 }
 

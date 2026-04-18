@@ -23,6 +23,7 @@ import { Loader2 } from 'lucide-react';
 
 import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
+import { useAgentRuntimeCapabilities } from '@/hooks/useAgentRuntimeCapabilities';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useFeedback } from '@/hooks/useFeedback';
 import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateConfigurationDialog';
@@ -55,6 +56,11 @@ export function AgentSettings() {
   const [useFormEditor, setUseFormEditor] = useState(true);
   const [selectedExecutorType, setSelectedExecutorType] =
     useState<BaseCodingAgent>('CLAUDE_CODE' as BaseCodingAgent);
+  const {
+    data: runtimeCapabilities,
+    isLoading: runtimeCapabilitiesLoading,
+    error: runtimeCapabilitiesError,
+  } = useAgentRuntimeCapabilities(selectedExecutorType);
   const [selectedConfiguration, setSelectedConfiguration] =
     useState<string>('DEFAULT');
   const [localParsedProfiles, setLocalParsedProfiles] =
@@ -511,6 +517,18 @@ export function AgentSettings() {
                 </div>
               </div>
 
+              {selectedExecutorType === 'CODEX' && (
+                <Alert>
+                  <AlertDescription>
+                    {runtimeCapabilitiesLoading
+                      ? 'Discovering Codex runtime capabilities...'
+                      : runtimeCapabilitiesError
+                        ? 'Codex runtime discovery unavailable. Falling back to saved schema defaults.'
+                        : `Discovered ${runtimeCapabilities?.models.length ?? 0} models and ${runtimeCapabilities?.collaboration_modes.length ?? 0} collaboration presets from the Codex runtime.`}
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {(() => {
                 const executorsMap =
                   localParsedProfiles.executors as unknown as ExecutorsMap;
@@ -520,6 +538,7 @@ export function AgentSettings() {
                   ]?.[selectedExecutorType] && (
                     <ExecutorConfigForm
                       executor={selectedExecutorType}
+                      runtimeCapabilities={runtimeCapabilities ?? null}
                       value={
                         (executorsMap[selectedExecutorType][
                           selectedConfiguration

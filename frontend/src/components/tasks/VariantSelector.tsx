@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import type { ExecutorConfig } from 'shared/types';
+import { describeExecutorVariant } from '@/lib/executorProfiles';
 
 type Props = {
   currentProfile: ExecutorConfig | null;
@@ -31,6 +32,16 @@ const VariantSelectorInner = forwardRef<HTMLButtonElement, Props>(
 
     const hasVariants =
       currentProfile && Object.keys(currentProfile).length > 0;
+    const selectedConfig =
+      currentProfile?.[(selectedVariant || 'DEFAULT') as keyof typeof currentProfile];
+    const selectedExecutor = selectedConfig
+      ? Object.keys(selectedConfig as Record<string, unknown>)[0]
+      : null;
+    const selectedSummary = describeExecutorVariant(
+      currentProfile as Record<string, Record<string, unknown>>,
+      selectedExecutor,
+      selectedVariant
+    );
 
     if (!currentProfile) return null;
 
@@ -65,24 +76,48 @@ const VariantSelectorInner = forwardRef<HTMLButtonElement, Props>(
             )}
             disabled={disabled}
           >
-            <span className="text-xs truncate flex-1 text-left">
-              {selectedVariant || 'DEFAULT'}
-            </span>
+            <div className="min-w-0 flex-1 text-left">
+              <div className="text-xs truncate">
+                {selectedVariant || 'DEFAULT'}
+              </div>
+              {selectedSummary && (
+                <div className="text-[10px] truncate text-muted-foreground">
+                  {selectedSummary}
+                </div>
+              )}
+            </div>
             <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           {Object.entries(currentProfile)
             .sort(([a], [b]) => a.localeCompare(b))
-            .map(([variantLabel]) => (
+            .map(([variantLabel, variantConfig]) => {
+              const executor = Object.keys(
+                variantConfig as Record<string, unknown>
+              )[0];
+              const summary = describeExecutorVariant(
+                currentProfile as Record<string, Record<string, unknown>>,
+                executor,
+                variantLabel
+              );
+              return (
               <DropdownMenuItem
                 key={variantLabel}
                 onClick={() => onChange(variantLabel)}
                 className={selectedVariant === variantLabel ? 'bg-accent' : ''}
               >
-                {variantLabel}
+                <div className="min-w-0">
+                  <div>{variantLabel}</div>
+                  {summary && (
+                    <div className="truncate text-[11px] text-muted-foreground">
+                      {summary}
+                    </div>
+                  )}
+                </div>
               </DropdownMenuItem>
-            ))}
+              );
+            })}
         </DropdownMenuContent>
       </DropdownMenu>
     );

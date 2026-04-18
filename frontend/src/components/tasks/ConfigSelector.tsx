@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import type { ExecutorProfileId } from 'shared/types';
+import { describeExecutorVariant } from '@/lib/executorProfiles';
 
 interface ConfigSelectorProps {
   profiles: Record<string, Record<string, unknown>> | null;
@@ -30,6 +31,11 @@ export function ConfigSelector({
   const configs = selectedAgent && profiles ? profiles[selectedAgent] : null;
   const configOptions = configs ? Object.keys(configs).sort() : [];
   const selectedVariant = selectedExecutorProfile?.variant || 'DEFAULT';
+  const selectedSummary = describeExecutorVariant(
+    profiles,
+    selectedAgent,
+    selectedExecutorProfile?.variant ?? null
+  );
 
   if (
     !selectedAgent ||
@@ -55,9 +61,16 @@ export function ConfigSelector({
             disabled={disabled}
             aria-label="Select configuration"
           >
-            <div className="flex items-center gap-1.5 w-full">
-              <Settings2 className="h-3 w-3" />
-              <span className="truncate">{selectedVariant}</span>
+            <div className="flex items-center gap-1.5 w-full min-w-0">
+              <Settings2 className="h-3 w-3 shrink-0" />
+              <div className="min-w-0 text-left">
+                <div className="truncate">{selectedVariant}</div>
+                {selectedSummary && (
+                  <div className="truncate text-[10px] text-muted-foreground">
+                    {selectedSummary}
+                  </div>
+                )}
+              </div>
             </div>
             <ArrowDown className="h-3 w-3" />
           </Button>
@@ -79,7 +92,22 @@ export function ConfigSelector({
                   : ''
               }
             >
-              {variant}
+              <div className="min-w-0">
+                <div>{variant}</div>
+                {describeExecutorVariant(
+                  profiles,
+                  selectedAgent,
+                  variant === 'DEFAULT' ? null : variant
+                ) && (
+                  <div className="truncate text-[11px] text-muted-foreground">
+                    {describeExecutorVariant(
+                      profiles,
+                      selectedAgent,
+                      variant === 'DEFAULT' ? null : variant
+                    )}
+                  </div>
+                )}
+              </div>
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>

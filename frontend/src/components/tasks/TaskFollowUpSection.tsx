@@ -45,6 +45,7 @@ import { useDraftEditor } from '@/hooks/follow-up/useDraftEditor';
 import { useDraftAutosave } from '@/hooks/follow-up/useDraftAutosave';
 import { useFollowUpSend } from '@/hooks/follow-up/useFollowUpSend';
 import { useDefaultVariant } from '@/hooks/follow-up/useDefaultVariant';
+import { useAgentRuntimeCapabilities } from '@/hooks/useAgentRuntimeCapabilities';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { insertImageMarkdownAtPosition } from '@/utils/markdownImages';
 import { useTranslation } from 'react-i18next';
@@ -227,9 +228,12 @@ export function TaskFollowUpSection({
     selectedVariant,
     setSelectedVariant,
     currentProfile,
+    currentExecutor,
     wouldModelChange,
     previousVariantInfo,
   } = useDefaultVariant({ processes, profiles: profiles ?? null });
+  const { data: runtimeCapabilities } =
+    useAgentRuntimeCapabilities(currentExecutor);
 
   // Handle variant change with model change detection
   const handleVariantChange = useCallback(
@@ -711,7 +715,9 @@ export function TaskFollowUpSection({
                     ) : (
                       <>
                         <StopCircle className="h-4 w-4 mr-2" />
-                        {t('followUp.stop')}
+                        {runtimeCapabilities?.supports_interrupt
+                          ? 'Interrupt'
+                          : t('followUp.stop')}
                       </>
                     )}
                   </Button>
