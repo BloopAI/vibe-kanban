@@ -4,15 +4,16 @@ pub mod normalize_logs;
 pub mod session;
 use std::{
     collections::HashMap,
+    io,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
 use async_trait::async_trait;
-use codex_app_server_protocol::NewConversationParams;
-use codex_protocol::{
-    config_types::SandboxMode as CodexSandboxMode, protocol::AskForApproval as CodexAskForApproval,
+use codex_app_server_protocol::{
+    AskForApproval as CodexAskForApproval, SandboxMode as CodexSandboxMode, ThreadStartParams,
 };
+use codex_protocol::ThreadId;
 use command_group::AsyncCommandGroup;
 use derivative::Derivative;
 use schemars::JsonSchema;
@@ -27,7 +28,6 @@ use self::{
     client::{AppServerClient, LogWriter},
     jsonrpc::JsonRpcPeer,
     normalize_logs::normalize_logs,
-    session::SessionHandler,
 };
 use crate::{
     actions::SpawnContext,
@@ -151,9 +151,15 @@ impl StandardCodingAgentExecutor for Codex {
         self.approvals = Some(approvals);
     }
 
-    async fn spawn(&self, current_dir: &Path, prompt: &str, context: SpawnContext) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        context: SpawnContext,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder().build_initial()?;
-        self.spawn_internal(current_dir, prompt, command_parts, None, context).await
+        self.spawn_internal(current_dir, prompt, command_parts, None, context)
+            .await
     }
 
     async fn spawn_follow_up(
@@ -172,8 +178,14 @@ impl StandardCodingAgentExecutor for Codex {
             execution_process_id: Uuid::nil(),
         };
 
-        self.spawn_internal(current_dir, prompt, command_parts, Some(session_id), placeholder_context)
-            .await
+        self.spawn_internal(
+            current_dir,
+            prompt,
+            command_parts,
+            Some(session_id),
+            placeholder_context,
+        )
+        .await
     }
 
     fn normalize_logs(
@@ -233,7 +245,7 @@ impl Codex {
         apply_overrides(builder, &self.cmd)
     }
 
-    fn build_new_conversation_params(&self, cwd: &Path) -> NewConversationParams {
+    fn build_thread_start_params(&self, cwd: &Path) -> ThreadStartParams {
         let sandbox = match self.sandbox.as_ref() {
             None | Some(SandboxMode::Auto) => Some(CodexSandboxMode::WorkspaceWrite), // match the Auto preset in codex
             Some(SandboxMode::ReadOnly) => Some(CodexSandboxMode::ReadOnly),
@@ -253,18 +265,20 @@ impl Codex {
             Some(AskForApproval::Never) => Some(CodexAskForApproval::Never),
         };
 
-        NewConversationParams {
+        ThreadStartParams {
             model: self.model.clone(),
-            profile: self.profile.clone(),
+            model_provider: self.model_provider.clone(),
             cwd: Some(cwd.to_string_lossy().to_string()),
             approval_policy,
             sandbox,
             config: self.build_config_overrides(),
             base_instructions: self.base_instructions.clone(),
-            include_apply_patch_tool: self.include_apply_patch_tool,
-            model_provider: self.model_provider.clone(),
-            compact_prompt: self.compact_prompt.clone(),
             developer_instructions: self.developer_instructions.clone(),
+            personality: None,
+            ephemeral: None,
+            dynamic_tools: None,
+            mock_experimental_field: None,
+            experimental_raw_events: false,
         }
     }
 
@@ -333,7 +347,10 @@ impl Codex {
         process
             .env("VK_ATTEMPT_ID", context.task_attempt_id.to_string())
             .env("VK_TASK_ID", context.task_id.to_string())
-            .env("VK_EXECUTION_PROCESS_ID", context.execution_process_id.to_string());
+            .env(
+                "VK_EXECUTION_PROCESS_ID",
+                context.execution_process_id.to_string(),
+            );
 
         let mut child = process.group_spawn()?;
 
@@ -347,7 +364,7 @@ impl Codex {
         let new_stdout = create_stdout_pipe_writer(&mut child)?;
         let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
 
-        let params = self.build_new_conversation_params(current_dir);
+        let params = self.build_thread_start_params(current_dir);
         let resume_session = resume_session.map(|s| s.to_string());
         let auto_approve = matches!(
             (&self.sandbox, &self.ask_for_approval),
@@ -420,7 +437,7 @@ impl Codex {
 
     #[allow(clippy::too_many_arguments)]
     async fn launch_codex_app_server(
-        conversation_params: NewConversationParams,
+        thread_params: ThreadStartParams,
         resume_session: Option<String>,
         combined_prompt: String,
         child_stdout: tokio::process::ChildStdout,
@@ -443,34 +460,40 @@ impl Codex {
         }
         match resume_session {
             None => {
-                let params = conversation_params;
-                let response = client.new_conversation(params).await?;
-                let conversation_id = response.conversation_id;
+                let response = client.start_thread(thread_params).await?;
+                let conversation_id =
+                    ThreadId::try_from(response.thread.id.clone()).map_err(|err| {
+                        ExecutorError::Io(io::Error::other(format!(
+                            "invalid thread id from thread/start: {err}"
+                        )))
+                    })?;
                 client.register_session(&conversation_id).await?;
-                client.add_conversation_listener(conversation_id).await?;
-                client
-                    .send_user_message(conversation_id, combined_prompt)
-                    .await?;
+                client.start_turn(conversation_id, combined_prompt).await?;
             }
             Some(session_id) => {
-                let (rollout_path, _forked_session_id) =
-                    SessionHandler::fork_rollout_file(&session_id)
-                        .map_err(|e| ExecutorError::FollowUpNotSupported(e.to_string()))?;
-                let overrides = conversation_params;
                 let response = client
-                    .resume_conversation(rollout_path.clone(), overrides)
+                    .fork_thread(
+                        ThreadId::try_from(session_id.clone()).map_err(|err| {
+                            ExecutorError::FollowUpNotSupported(format!(
+                                "invalid session/thread id {session_id}: {err}"
+                            ))
+                        })?,
+                        thread_params,
+                    )
                     .await?;
                 tracing::debug!(
-                    "resuming session using rollout file {}, response {:?}",
-                    rollout_path.display(),
+                    "forked session using thread id {}, response {:?}",
+                    session_id,
                     response
                 );
-                let conversation_id = response.conversation_id;
+                let conversation_id =
+                    ThreadId::try_from(response.thread.id.clone()).map_err(|err| {
+                        ExecutorError::Io(io::Error::other(format!(
+                            "invalid thread id from thread/fork: {err}"
+                        )))
+                    })?;
                 client.register_session(&conversation_id).await?;
-                client.add_conversation_listener(conversation_id).await?;
-                client
-                    .send_user_message(conversation_id, combined_prompt)
-                    .await?;
+                client.start_turn(conversation_id, combined_prompt).await?;
             }
         }
         Ok(())

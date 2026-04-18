@@ -10,7 +10,14 @@ use std::{
 };
 
 use codex_app_server_protocol::{
-    JSONRPCNotification, JSONRPCResponse, NewConversationResponse, ServerNotification,
+    AgentMessageDeltaNotification, CommandExecutionRequestApprovalParams,
+    CommandExecutionStatus as V2CommandExecutionStatus, FileUpdateChange as V2FileUpdateChange,
+    ItemCompletedNotification, ItemStartedNotification, JSONRPCNotification, JSONRPCRequest,
+    JSONRPCResponse, McpToolCallProgressNotification, McpToolCallResult as V2McpToolCallResult,
+    McpToolCallStatus as V2McpToolCallStatus, PatchApplyStatus as V2PatchApplyStatus,
+    ReasoningSummaryTextDeltaNotification, ReasoningTextDeltaNotification, ServerNotification,
+    ThreadForkResponse, ThreadItem, ThreadStartResponse, ThreadTokenUsageUpdatedNotification,
+    TurnPlanStep, TurnPlanUpdatedNotification,
 };
 use codex_mcp_types::ContentBlock;
 use codex_protocol::{
@@ -27,7 +34,6 @@ use codex_protocol::{
     },
 };
 use json_patch::Patch;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use workspace_utils::{
@@ -39,7 +45,6 @@ use workspace_utils::{
 
 use crate::{
     approvals::ToolCallMetadata,
-    executors::codex::session::SessionHandler,
     logs::{
         ActionType, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
         NormalizedEntryError, NormalizedEntryType, TodoItem, ToolResult, ToolResultValueType,
@@ -79,6 +84,41 @@ pub enum CodexEvent {
         model: String,
         reasoning_effort: Option<ReasoningEffort>,
     },
+    AgentMessageDelta(String),
+    ReasoningDelta(String),
+    CommandApprovalRequest {
+        item_id: String,
+        command: String,
+    },
+    CommandItem {
+        item_id: String,
+        command: String,
+        output: Option<String>,
+        exit_code: Option<i32>,
+        status: ToolStatus,
+    },
+    PatchItem {
+        item_id: String,
+        changes: Vec<(String, Vec<FileChange>)>,
+        status: ToolStatus,
+        awaiting_approval: bool,
+    },
+    McpToolItem {
+        item_id: String,
+        invocation: McpInvocation,
+        result: Option<ToolResult>,
+        status: ToolStatus,
+    },
+    McpToolProgress {
+        item_id: String,
+        message: String,
+    },
+    PlanUpdate {
+        plan: Vec<TodoItem>,
+        explanation: Option<String>,
+    },
+    TokenUsage(TokenUsageInfo),
+    ViewImage(PathBuf),
     /// Main event from JSONRPC notification
     Event(EventMsg),
 }
@@ -120,39 +160,92 @@ impl LogNormalizer for CodexNormalizer {
 
         // Try to parse as JSONRPCResponse for session ID and model params
         if let Ok(response) = serde_json::from_str::<JSONRPCResponse>(line) {
-            if let Ok(conv_response) =
-                serde_json::from_value::<NewConversationResponse>(response.result.clone())
+            if let Ok(start_response) =
+                serde_json::from_value::<ThreadStartResponse>(response.result.clone())
             {
-                let session_id = SessionHandler::extract_session_id_from_rollout_path(
-                    conv_response.rollout_path,
-                )
-                .ok();
                 return Some(CodexEvent::ModelParamsWithSession {
-                    session_id,
-                    model: conv_response.model,
-                    reasoning_effort: conv_response.reasoning_effort,
+                    session_id: Some(start_response.thread.id),
+                    model: start_response.model,
+                    reasoning_effort: start_response.reasoning_effort,
                 });
             }
-            // Even if we can't parse NewConversationResponse, it's a JSONRPC response, skip
-            return None;
-        }
-
-        // Try to parse as ServerNotification for session ID
-        if let Ok(server_notification) = serde_json::from_str::<ServerNotification>(line) {
-            if let ServerNotification::SessionConfigured(session_configured) = server_notification {
-                return Some(CodexEvent::SessionStart(
-                    session_configured.session_id.to_string(),
-                ));
+            if let Ok(fork_response) =
+                serde_json::from_value::<ThreadForkResponse>(response.result.clone())
+            {
+                return Some(CodexEvent::ModelParamsWithSession {
+                    session_id: Some(fork_response.thread.id),
+                    model: fork_response.model,
+                    reasoning_effort: fork_response.reasoning_effort,
+                });
             }
             return None;
         }
 
-        // Best-effort extraction of session ID from logs
-        if let Some(session_id) = line
-            .strip_prefix(r#"{"method":"sessionConfigured","params":{"sessionId":""#)
-            .and_then(|suffix| SESSION_ID.captures(suffix).and_then(|caps| caps.get(1)))
+        // Try to parse as ServerNotification for v2 session and turn events first.
+        if let Ok(server_notification) = serde_json::from_str::<ServerNotification>(line) {
+            match server_notification {
+                ServerNotification::ThreadStarted(payload) => {
+                    return Some(CodexEvent::SessionStart(payload.thread.id));
+                }
+                ServerNotification::AgentMessageDelta(AgentMessageDeltaNotification {
+                    delta,
+                    ..
+                }) => return Some(CodexEvent::AgentMessageDelta(delta)),
+                ServerNotification::ReasoningTextDelta(ReasoningTextDeltaNotification {
+                    delta,
+                    ..
+                })
+                | ServerNotification::ReasoningSummaryTextDelta(
+                    ReasoningSummaryTextDeltaNotification { delta, .. },
+                ) => return Some(CodexEvent::ReasoningDelta(delta)),
+                ServerNotification::ItemStarted(ItemStartedNotification { item, .. }) => {
+                    return parse_v2_thread_item(item, true, &self.worktree_path);
+                }
+                ServerNotification::ItemCompleted(ItemCompletedNotification { item, .. }) => {
+                    return parse_v2_thread_item(item, false, &self.worktree_path);
+                }
+                ServerNotification::McpToolCallProgress(McpToolCallProgressNotification {
+                    item_id,
+                    message,
+                    ..
+                }) => {
+                    return Some(CodexEvent::McpToolProgress { item_id, message });
+                }
+                ServerNotification::TurnPlanUpdated(TurnPlanUpdatedNotification {
+                    plan,
+                    explanation,
+                    ..
+                }) => {
+                    return Some(CodexEvent::PlanUpdate {
+                        plan: plan.into_iter().map(todo_item_from_plan_step).collect(),
+                        explanation,
+                    });
+                }
+                ServerNotification::ThreadTokenUsageUpdated(payload) => {
+                    return Some(CodexEvent::TokenUsage(token_usage_info_from_v2(payload)));
+                }
+                ServerNotification::SessionConfigured(session_configured) => {
+                    return Some(CodexEvent::SessionStart(
+                        session_configured.session_id.to_string(),
+                    ));
+                }
+                _ => return None,
+            }
+        }
+
+        if let Ok(request) = serde_json::from_str::<JSONRPCRequest>(line)
+            && request.method == "item/commandExecution/requestApproval"
+            && let Ok(params) = serde_json::from_value::<CommandExecutionRequestApprovalParams>(
+                request.params.unwrap_or(Value::Null),
+            )
         {
-            return Some(CodexEvent::SessionStart(session_id.as_str().to_string()));
+            return Some(CodexEvent::CommandApprovalRequest {
+                item_id: params.item_id,
+                command: params
+                    .command
+                    .or(params.reason)
+                    .unwrap_or_else(|| "command execution".to_string()),
+            });
         }
 
         // Try to parse as JSONRPCNotification
@@ -176,6 +269,11 @@ impl LogNormalizer for CodexNormalizer {
                 session_id: Some(id),
                 ..
             } => Some(id.clone()),
+            CodexEvent::CommandApprovalRequest { item_id, .. }
+            | CodexEvent::CommandItem { item_id, .. }
+            | CodexEvent::PatchItem { item_id, .. }
+            | CodexEvent::McpToolItem { item_id, .. }
+            | CodexEvent::McpToolProgress { item_id, .. } => Some(item_id.clone()),
             CodexEvent::Event(EventMsg::SessionConfigured(payload)) => {
                 Some(payload.session_id.to_string())
             }
@@ -217,6 +315,58 @@ impl LogNormalizer for CodexNormalizer {
                 let idx = entry_index.next();
                 vec![ConversationPatch::add_normalized_entry(idx, entry)]
             }
+            CodexEvent::AgentMessageDelta(delta) => {
+                self.process_v2_agent_message_delta(delta, entry_index)
+            }
+            CodexEvent::ReasoningDelta(delta) => {
+                self.process_v2_reasoning_delta(delta, entry_index)
+            }
+            CodexEvent::CommandApprovalRequest { item_id, command } => {
+                self.process_v2_command_approval(item_id, command, entry_index)
+            }
+            CodexEvent::CommandItem {
+                item_id,
+                command,
+                output,
+                exit_code,
+                status,
+            } => self.process_v2_command_item(
+                item_id,
+                command,
+                output,
+                exit_code,
+                status,
+                entry_index,
+            ),
+            CodexEvent::PatchItem {
+                item_id,
+                changes,
+                status,
+                awaiting_approval,
+            } => {
+                self.process_v2_patch_item(item_id, changes, status, awaiting_approval, entry_index)
+            }
+            CodexEvent::McpToolItem {
+                item_id,
+                invocation,
+                result,
+                status,
+            } => self.process_v2_mcp_tool_item(item_id, invocation, result, status, entry_index),
+            CodexEvent::McpToolProgress { item_id, message } => {
+                self.process_v2_mcp_tool_progress(item_id, message, entry_index)
+            }
+            CodexEvent::PlanUpdate { plan, explanation } => {
+                self.process_v2_plan_update(plan, explanation, entry_index)
+            }
+            CodexEvent::TokenUsage(info) => self.process_event_msg(
+                EventMsg::TokenCount(codex_protocol::protocol::TokenCountEvent {
+                    info: Some(info),
+                    rate_limits: None,
+                }),
+                msg_store,
+                entry_index,
+            ),
+            CodexEvent::ViewImage(path) => self.process_v2_view_image(path, entry_index),
             CodexEvent::Event(event_msg) => {
                 self.process_event_msg(event_msg, msg_store, entry_index)
             }
@@ -240,7 +390,11 @@ impl CodexNormalizer {
                 // Return model params entry
                 let entry = create_model_params_entry(payload.model, payload.reasoning_effort);
                 let idx = entry_index.next();
-                tracing::debug!(event = "SessionConfigured", entry_index = idx, "normalizer: assigned entry");
+                tracing::debug!(
+                    event = "SessionConfigured",
+                    entry_index = idx,
+                    "normalizer: assigned entry"
+                );
                 vec![ConversationPatch::add_normalized_entry(idx, entry)]
             }
             EventMsg::AgentMessageDelta(AgentMessageDeltaEvent { delta }) => {
@@ -896,6 +1050,292 @@ impl CodexNormalizer {
             }
         }
     }
+
+    fn process_v2_agent_message_delta(
+        &mut self,
+        delta: String,
+        entry_index: &EntryIndexProvider,
+    ) -> Vec<Patch> {
+        let thinking_was_some = self.state.thinking.is_some();
+        let assistant_was_some = self.state.assistant.is_some();
+        self.state.thinking = None;
+        let (entry, index, is_new) = self.state.assistant_message_append(delta);
+        tracing::debug!(
+            event = "AgentMessageDeltaV2",
+            entry_index = index,
+            is_new_entry = is_new,
+            thinking_cleared = thinking_was_some,
+            assistant_preexisted = assistant_was_some,
+            next_counter = entry_index.current(),
+            "normalizer: streaming assistant delta"
+        );
+        vec![upsert_patch(index, entry, is_new)]
+    }
+
+    fn process_v2_reasoning_delta(
+        &mut self,
+        delta: String,
+        entry_index: &EntryIndexProvider,
+    ) -> Vec<Patch> {
+        let assistant_was_some = self.state.assistant.is_some();
+        let thinking_was_some = self.state.thinking.is_some();
+        self.state.assistant = None;
+        let (entry, index, is_new) = self.state.thinking_append(delta);
+        tracing::debug!(
+            event = "ReasoningDeltaV2",
+            entry_index = index,
+            is_new_entry = is_new,
+            assistant_cleared = assistant_was_some,
+            thinking_preexisted = thinking_was_some,
+            next_counter = entry_index.current(),
+            "normalizer: streaming reasoning delta"
+        );
+        vec![upsert_patch(index, entry, is_new)]
+    }
+
+    fn process_v2_command_approval(
+        &mut self,
+        item_id: String,
+        command: String,
+        entry_index: &EntryIndexProvider,
+    ) -> Vec<Patch> {
+        self.state.assistant = None;
+        self.state.thinking = None;
+        let command_state = self.state.commands.entry(item_id.clone()).or_default();
+        if command_state.command.is_empty() {
+            command_state.command = command;
+        }
+        command_state.awaiting_approval = true;
+        command_state.call_id = item_id;
+
+        if let Some(index) = command_state.index {
+            vec![ConversationPatch::replace(
+                index,
+                command_state.to_normalized_entry(),
+            )]
+        } else {
+            let index = entry_index.next();
+            command_state.index = Some(index);
+            vec![ConversationPatch::add_normalized_entry(
+                index,
+                command_state.to_normalized_entry(),
+            )]
+        }
+    }
+
+    fn process_v2_command_item(
+        &mut self,
+        item_id: String,
+        command: String,
+        output: Option<String>,
+        exit_code: Option<i32>,
+        status: ToolStatus,
+        entry_index: &EntryIndexProvider,
+    ) -> Vec<Patch> {
+        self.state.assistant = None;
+        self.state.thinking = None;
+        let command_state = self.state.commands.entry(item_id.clone()).or_default();
+        if command_state.index.is_none() {
+            command_state.index = Some(entry_index.next());
+        }
+        if command_state.command.is_empty() {
+            command_state.command = command;
+        }
+        command_state.formatted_output = output;
+        command_state.exit_code = exit_code;
+        command_state.awaiting_approval = false;
+        command_state.status = status;
+        command_state.call_id = item_id;
+
+        let Some(index) = command_state.index else {
+            return vec![];
+        };
+        vec![ConversationPatch::replace(
+            index,
+            command_state.to_normalized_entry(),
+        )]
+    }
+
+    fn process_v2_patch_item(
+        &mut self,
+        item_id: String,
+        changes: Vec<(String, Vec<FileChange>)>,
+        status: ToolStatus,
+        awaiting_approval: bool,
+        entry_index: &EntryIndexProvider,
+    ) -> Vec<Patch> {
+        self.state.assistant = None;
+        self.state.thinking = None;
+
+        let patch_state = self.state.patches.entry(item_id.clone()).or_default();
+        let mut patches = Vec::new();
+        let mut iter = changes.into_iter();
+
+        for entry in &mut patch_state.entries {
+            if let Some((path, file_changes)) = iter.next() {
+                entry.path = path;
+                entry.changes = file_changes;
+            }
+            entry.status = status.clone();
+            entry.awaiting_approval = awaiting_approval;
+            entry.call_id = item_id.clone();
+            if let Some(index) = entry.index {
+                patches.push(ConversationPatch::replace(
+                    index,
+                    entry.to_normalized_entry(),
+                ));
+            } else {
+                let index = entry_index.next();
+                entry.index = Some(index);
+                patches.push(ConversationPatch::add_normalized_entry(
+                    index,
+                    entry.to_normalized_entry(),
+                ));
+            }
+        }
+
+        for (path, file_changes) in iter {
+            let index = entry_index.next();
+            let entry = PatchEntry {
+                index: Some(index),
+                path,
+                changes: file_changes,
+                status: status.clone(),
+                awaiting_approval,
+                call_id: item_id.clone(),
+            };
+            patches.push(ConversationPatch::add_normalized_entry(
+                index,
+                entry.to_normalized_entry(),
+            ));
+            patch_state.entries.push(entry);
+        }
+
+        patches
+    }
+
+    fn process_v2_mcp_tool_item(
+        &mut self,
+        item_id: String,
+        invocation: McpInvocation,
+        result: Option<ToolResult>,
+        status: ToolStatus,
+        entry_index: &EntryIndexProvider,
+    ) -> Vec<Patch> {
+        self.state.assistant = None;
+        self.state.thinking = None;
+        let mcp_tool_state = self
+            .state
+            .mcp_tools
+            .entry(item_id.clone())
+            .or_insert_with(|| McpToolState {
+                index: Some(entry_index.next()),
+                invocation: invocation.clone(),
+                result: None,
+                status: ToolStatus::Created,
+            });
+        mcp_tool_state.invocation = invocation;
+        mcp_tool_state.result = result;
+        mcp_tool_state.status = status;
+        let Some(index) = mcp_tool_state.index else {
+            return vec![];
+        };
+        vec![ConversationPatch::replace(
+            index,
+            mcp_tool_state.to_normalized_entry(),
+        )]
+    }
+
+    fn process_v2_mcp_tool_progress(
+        &mut self,
+        item_id: String,
+        message: String,
+        entry_index: &EntryIndexProvider,
+    ) -> Vec<Patch> {
+        let mcp_tool_state = self
+            .state
+            .mcp_tools
+            .entry(item_id.clone())
+            .or_insert_with(|| McpToolState {
+                index: Some(entry_index.next()),
+                invocation: McpInvocation {
+                    server: "mcp".to_string(),
+                    tool: message.clone(),
+                    arguments: Some(Value::Null),
+                },
+                result: None,
+                status: ToolStatus::Created,
+            });
+        let Some(index) = mcp_tool_state.index else {
+            return vec![];
+        };
+        vec![ConversationPatch::replace(
+            index,
+            mcp_tool_state.to_normalized_entry(),
+        )]
+    }
+
+    fn process_v2_plan_update(
+        &mut self,
+        plan: Vec<TodoItem>,
+        explanation: Option<String>,
+        entry_index: &EntryIndexProvider,
+    ) -> Vec<Patch> {
+        let explanation = explanation
+            .as_ref()
+            .map(|text| text.trim())
+            .filter(|text| !text.is_empty())
+            .map(|text| text.to_string());
+        let content = explanation.clone().unwrap_or_else(|| {
+            if plan.is_empty() {
+                "Plan updated".to_string()
+            } else {
+                format!("Plan updated ({} steps)", plan.len())
+            }
+        });
+
+        let idx = entry_index.next();
+        let entry = NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::ToolUse {
+                tool_name: "plan".to_string(),
+                action_type: ActionType::TodoManagement {
+                    todos: plan,
+                    operation: "update".to_string(),
+                },
+                status: ToolStatus::Success,
+            },
+            content,
+            metadata: None,
+        };
+        vec![ConversationPatch::add_normalized_entry(idx, entry)]
+    }
+
+    fn process_v2_view_image(
+        &mut self,
+        path: PathBuf,
+        entry_index: &EntryIndexProvider,
+    ) -> Vec<Patch> {
+        self.state.assistant = None;
+        self.state.thinking = None;
+        let path_str = path.to_string_lossy().to_string();
+        let worktree_path_str = self.worktree_path.to_string_lossy().to_string();
+        let relative_path = make_path_relative(&path_str, &worktree_path_str);
+        let idx = entry_index.next();
+        let entry = NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::ToolUse {
+                tool_name: "view_image".to_string(),
+                action_type: ActionType::FileRead {
+                    path: relative_path.clone(),
+                },
+                status: ToolStatus::Success,
+            },
+            content: format!("`{relative_path}`"),
+            metadata: None,
+        };
+        vec![ConversationPatch::add_normalized_entry(idx, entry)]
+    }
 }
 
 /// Helper to create an upsert patch (add or replace depending on is_new)
@@ -904,6 +1344,188 @@ fn upsert_patch(index: usize, entry: NormalizedEntry, is_new: bool) -> Patch {
         ConversationPatch::add_normalized_entry(index, entry)
     } else {
         ConversationPatch::replace(index, entry)
+    }
+}
+
+fn parse_v2_thread_item(
+    item: ThreadItem,
+    is_started: bool,
+    worktree_path: &Path,
+) -> Option<CodexEvent> {
+    match item {
+        ThreadItem::CommandExecution {
+            id,
+            command,
+            aggregated_output,
+            exit_code,
+            status,
+            ..
+        } => {
+            let status = match status {
+                V2CommandExecutionStatus::InProgress => ToolStatus::Created,
+                V2CommandExecutionStatus::Completed => ToolStatus::Success,
+                V2CommandExecutionStatus::Failed | V2CommandExecutionStatus::Declined => {
+                    ToolStatus::Failed
+                }
+            };
+            Some(CodexEvent::CommandItem {
+                item_id: id,
+                command,
+                output: aggregated_output,
+                exit_code,
+                status,
+            })
+        }
+        ThreadItem::FileChange {
+            id,
+            changes,
+            status,
+        } => Some(CodexEvent::PatchItem {
+            item_id: id,
+            changes: normalize_v2_file_changes(worktree_path, &changes),
+            status: match status {
+                V2PatchApplyStatus::InProgress => ToolStatus::Created,
+                V2PatchApplyStatus::Completed => ToolStatus::Success,
+                V2PatchApplyStatus::Failed | V2PatchApplyStatus::Declined => ToolStatus::Failed,
+            },
+            awaiting_approval: is_started && matches!(status, V2PatchApplyStatus::Declined),
+        }),
+        ThreadItem::McpToolCall {
+            id,
+            server,
+            tool,
+            arguments,
+            result,
+            error,
+            status,
+            ..
+        } => {
+            let invocation = McpInvocation {
+                server,
+                tool,
+                arguments: Some(arguments),
+            };
+            let result = result.map(tool_result_from_v2_mcp_result).or_else(|| {
+                error.map(|err| ToolResult {
+                    r#type: ToolResultValueType::Markdown,
+                    value: Value::String(err.message),
+                })
+            });
+            Some(CodexEvent::McpToolItem {
+                item_id: id,
+                invocation,
+                result,
+                status: match status {
+                    V2McpToolCallStatus::InProgress => ToolStatus::Created,
+                    V2McpToolCallStatus::Completed => ToolStatus::Success,
+                    V2McpToolCallStatus::Failed => ToolStatus::Failed,
+                },
+            })
+        }
+        ThreadItem::ImageView { path, .. } => Some(CodexEvent::ViewImage(PathBuf::from(path))),
+        _ => None,
+    }
+}
+
+fn todo_item_from_plan_step(step: TurnPlanStep) -> TodoItem {
+    TodoItem {
+        content: step.step,
+        status: match step.status {
+            codex_app_server_protocol::TurnPlanStepStatus::Pending => "pending".to_string(),
+            codex_app_server_protocol::TurnPlanStepStatus::InProgress => "in_progress".to_string(),
+            codex_app_server_protocol::TurnPlanStepStatus::Completed => "completed".to_string(),
+        },
+        priority: None,
+    }
+}
+
+fn tool_result_from_v2_mcp_result(value: V2McpToolCallResult) -> ToolResult {
+    if value
+        .content
+        .iter()
+        .all(|block| matches!(block, ContentBlock::TextContent(_)))
+    {
+        ToolResult {
+            r#type: ToolResultValueType::Markdown,
+            value: Value::String(
+                value
+                    .content
+                    .iter()
+                    .map(|block| {
+                        if let ContentBlock::TextContent(content) = block {
+                            content.text.clone()
+                        } else {
+                            unreachable!()
+                        }
+                    })
+                    .collect::<Vec<String>>()
+                    .join("\n"),
+            ),
+        }
+    } else {
+        ToolResult {
+            r#type: ToolResultValueType::Json,
+            value: value
+                .structured_content
+                .unwrap_or_else(|| serde_json::to_value(value.content).unwrap_or_default()),
+        }
+    }
+}
+
+fn normalize_v2_file_changes(
+    worktree_path: &Path,
+    changes: &[V2FileUpdateChange],
+) -> Vec<(String, Vec<FileChange>)> {
+    let worktree_path = worktree_path.to_string_lossy();
+    changes
+        .iter()
+        .map(|change| {
+            let relative = make_path_relative(&change.path, worktree_path.as_ref());
+            let file_changes = match &change.kind {
+                codex_app_server_protocol::PatchChangeKind::Add => vec![FileChange::Write {
+                    content: String::new(),
+                }],
+                codex_app_server_protocol::PatchChangeKind::Delete => vec![FileChange::Delete],
+                codex_app_server_protocol::PatchChangeKind::Update { move_path } => {
+                    let mut edits = Vec::new();
+                    if let Some(dest) = move_path {
+                        let dest_rel = make_path_relative(
+                            dest.to_string_lossy().as_ref(),
+                            worktree_path.as_ref(),
+                        );
+                        edits.push(FileChange::Rename { new_path: dest_rel });
+                    }
+                    let hunks = extract_unified_diff_hunks(&change.diff);
+                    let diff = concatenate_diff_hunks(&relative, &hunks);
+                    edits.push(FileChange::Edit {
+                        unified_diff: diff,
+                        has_line_numbers: true,
+                    });
+                    edits
+                }
+            };
+            (relative, file_changes)
+        })
+        .collect()
+}
+
+fn token_usage_info_from_v2(payload: ThreadTokenUsageUpdatedNotification) -> TokenUsageInfo {
+    TokenUsageInfo {
+        total_token_usage: codex_protocol::protocol::TokenUsage {
+            total_tokens: payload.token_usage.total.total_tokens,
+            input_tokens: payload.token_usage.total.input_tokens,
+            cached_input_tokens: payload.token_usage.total.cached_input_tokens,
+            output_tokens: payload.token_usage.total.output_tokens,
+            reasoning_output_tokens: payload.token_usage.total.reasoning_output_tokens,
+        },
+        last_token_usage: codex_protocol::protocol::TokenUsage {
+            total_tokens: payload.token_usage.last.total_tokens,
+            input_tokens: payload.token_usage.last.input_tokens,
+            cached_input_tokens: payload.token_usage.last.cached_input_tokens,
+            output_tokens: payload.token_usage.last.output_tokens,
+            reasoning_output_tokens: payload.token_usage.last.reasoning_output_tokens,
+        },
+        model_context_window: payload.token_usage.model_context_window,
     }
 }
 
@@ -1276,12 +1898,141 @@ fn build_command_output(stdout: Option<&str>, stderr: Option<&str>) -> Option<St
     }
 }
 
-static SESSION_ID: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
-    Regex::new(
-        r#"^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"#,
-    )
-    .expect("valid regex")
-});
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::logs::utils::EntryIndexProvider;
+    use serde_json::json;
+
+    fn normalizer() -> CodexNormalizer {
+        CodexNormalizer::new(
+            PathBuf::from("/tmp/worktree"),
+            EntryIndexProvider::default(),
+        )
+    }
+
+    #[test]
+    fn parses_thread_start_response_into_model_params() {
+        let event = normalizer()
+            .parse_line(
+                &json!({
+                    "id": 1,
+                    "result": {
+                        "thread": {
+                            "id": "11111111-1111-1111-1111-111111111111",
+                            "preview": "",
+                            "modelProvider": "openai",
+                            "createdAt": 0,
+                            "updatedAt": 0,
+                            "path": null,
+                            "cwd": "/tmp/worktree",
+                            "cliVersion": "0.1.0",
+                            "source": "app-server",
+                            "gitInfo": null,
+                            "turns": []
+                        },
+                        "model": "gpt-5.1-codex",
+                        "modelProvider": "openai",
+                        "cwd": "/tmp/worktree",
+                        "approvalPolicy": "never",
+                        "sandbox": { "type": "workspaceWrite" },
+                        "reasoningEffort": "medium"
+                    }
+                })
+                .to_string(),
+            )
+            .expect("thread/start response should parse");
+
+        match event {
+            CodexEvent::ModelParamsWithSession {
+                session_id,
+                model,
+                reasoning_effort,
+            } => {
+                assert_eq!(
+                    session_id.as_deref(),
+                    Some("11111111-1111-1111-1111-111111111111")
+                );
+                assert_eq!(model, "gpt-5.1-codex");
+                assert_eq!(reasoning_effort, Some(ReasoningEffort::Medium));
+            }
+            other => panic!("unexpected event: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parses_v2_command_approval_request() {
+        let event = normalizer()
+            .parse_line(
+                &json!({
+                    "id": 2,
+                    "method": "item/commandExecution/requestApproval",
+                    "params": {
+                        "threadId": "11111111-1111-1111-1111-111111111111",
+                        "turnId": "turn-1",
+                        "itemId": "item-1",
+                        "command": "cargo test",
+                        "cwd": "/tmp/worktree"
+                    }
+                })
+                .to_string(),
+            )
+            .expect("approval request should parse");
+
+        match event {
+            CodexEvent::CommandApprovalRequest { item_id, command } => {
+                assert_eq!(item_id, "item-1");
+                assert_eq!(command, "cargo test");
+            }
+            other => panic!("unexpected event: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parses_v2_command_item_completion() {
+        let event = normalizer()
+            .parse_line(
+                &json!({
+                    "method": "item/completed",
+                    "params": {
+                        "threadId": "11111111-1111-1111-1111-111111111111",
+                        "turnId": "turn-1",
+                        "item": {
+                            "type": "commandExecution",
+                            "id": "item-2",
+                            "command": "cargo test",
+                            "cwd": "/tmp/worktree",
+                            "processId": "proc-1",
+                            "status": "completed",
+                            "commandActions": [],
+                            "aggregatedOutput": "ok",
+                            "exitCode": 0,
+                            "durationMs": 12
+                        }
+                    }
+                })
+                .to_string(),
+            )
+            .expect("item/completed should parse");
+
+        match event {
+            CodexEvent::CommandItem {
+                item_id,
+                command,
+                output,
+                exit_code,
+                status,
+            } => {
+                assert_eq!(item_id, "item-2");
+                assert_eq!(command, "cargo test");
+                assert_eq!(output.as_deref(), Some("ok"));
+                assert_eq!(exit_code, Some(0));
+                assert_eq!(status, ToolStatus::Success);
+            }
+            other => panic!("unexpected event: {other:?}"),
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Error {
