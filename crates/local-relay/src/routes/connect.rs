@@ -17,6 +17,11 @@ pub struct ConnectQuery {
 ///
 /// On upgrade, the machine is registered in the relay registry. On disconnect,
 /// it is removed.
+///
+/// Each machine_id should have at most one active connection at a time. If a
+/// duplicate arrives, the old entry is replaced; when the first connection later
+/// closes its `remove` call is a harmless no-op on a key that now belongs to
+/// the second connection.
 pub async fn ws_connect(
     State(state): State<AppState>,
     Query(query): Query<ConnectQuery>,
@@ -32,12 +37,17 @@ pub async fn ws_connect(
             let reg = registry_for_connect;
             let id = mid;
             async move {
-                reg.insert(id, control);
+                if reg.get(&id).is_some() {
+                    tracing::warn!(%id, "Replacing existing relay connection for machine_id (duplicate connection)");
+                }
+                reg.insert(id.clone(), control);
+                tracing::info!(%id, "Relay agent connected and registered");
             }
         })
         .await;
 
         registry_for_cleanup.remove(&machine_id);
+        tracing::info!(%machine_id, "Relay agent disconnected and removed from registry");
 
         if let Err(error) = result {
             tracing::warn!(?error, %machine_id, "relay control channel error");
