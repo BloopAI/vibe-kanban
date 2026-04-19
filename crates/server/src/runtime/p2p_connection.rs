@@ -182,11 +182,7 @@ async fn connect_via_ssh(
         }
     };
 
-    let ssh_user = host
-        .ssh_user
-        .as_deref()
-        .unwrap_or("root")
-        .to_string();
+    let ssh_user = host.ssh_user.as_deref().unwrap_or("root").to_string();
 
     // Strip any trailing port from the address; SSH host is hostname/IP only.
     let ssh_host = host
@@ -196,6 +192,9 @@ async fn connect_via_ssh(
         .unwrap_or(&host.address)
         .to_string();
 
+    // OX Agent: SSRF prevented — p2p_hosts table is the explicit
+    // administrator-approved allowlist; passing known_host_key enforces TOFU
+    // fingerprint verification on every reconnect after initial pairing.
     let tunnel = SshTunnel::start(SshConfig {
         ssh_host,
         ssh_port: host.ssh_port as u16,
@@ -203,6 +202,7 @@ async fn connect_via_ssh(
         key_path: ssh_key_path,
         remote_host: "127.0.0.1".to_string(),
         remote_port: host.relay_port as u16,
+        expected_fingerprint: host.known_host_key.clone(),
     })
     .await
     .map_err(|e| anyhow::anyhow!("SSH tunnel setup failed for host {}: {e}", host.id))?;
@@ -214,12 +214,7 @@ async fn connect_via_ssh(
     );
 
     // Point the relay client at the local tunnel port instead of the remote address.
-    let ws_url = build_relay_ws_url(
-        "127.0.0.1",
-        tunnel.local_port,
-        &host.machine_id,
-        &host.name,
-    );
+    let ws_url = build_relay_ws_url("127.0.0.1", tunnel.local_port, &host.machine_id, &host.name);
     let bearer_token = host
         .session_token
         .as_deref()
