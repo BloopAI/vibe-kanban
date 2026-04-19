@@ -192,7 +192,7 @@ Changes take effect on the next reconnection attempt.
 
 ### Rotating a session token
 
-Session tokens are rotated automatically every 24 hours. To rotate a token immediately (e.g. after a suspected leak):
+Session tokens are rotated automatically on the interval set by `P2P_SESSION_ROTATION_HOURS` (default: every 24 hours). To rotate a token immediately (e.g. after a suspected leak):
 
 1. Open Settings → **Remote Hosts**
 2. Click **Edit** on the host
@@ -220,7 +220,7 @@ Click **Remove** on a host row to delete it entirely, including all configuratio
 
 ### Rate limiting
 
-The pairing endpoints enforce a sliding-window limit of **5 attempts per 15 minutes** per IP address. Exceeded attempts are logged and rejected with a `429 Too Many Requests` response.
+The pairing endpoints enforce a sliding-window rate limit per IP address. The default is **5 attempts per 15 minutes**, configurable via environment variables. Exceeded attempts are logged and rejected with a `429 Too Many Requests` response.
 
 ### Audit log
 
@@ -245,80 +245,77 @@ When pairing via SSH, the remote server's host key fingerprint is captured on fi
 
 ### Session token rotation
 
-Session tokens rotate automatically every 24 hours. Each token is a 256-bit random value. Tokens are never transmitted in plaintext over the network — connections are WebSocket (upgrade from HTTP) or SSH-tunnelled.
+Session tokens rotate automatically on a configurable interval (default: every 24 hours). Each token is a 256-bit random value. Tokens are never transmitted in plaintext over the network — connections are WebSocket (upgrade from HTTP) or SSH-tunnelled.
 
 ## Configuration reference
 
-The values below are compile-time constants in the source. Changing them requires rebuilding from source. The relay port is the only value configurable per host at runtime without a rebuild.
+All P2P behaviour is configurable via environment variables set on the **local machine** (the one running the client). No rebuild is required — values are read when Vibe Kanban starts.
+
+Set variables in your shell environment or in a `.env` file in the workspace root.
+
+```bash .env
+# Rate limiting
+P2P_RATE_LIMIT_MAX_ATTEMPTS=5
+P2P_RATE_LIMIT_WINDOW_MINUTES=15
+
+# Session token rotation
+P2P_SESSION_ROTATION_HOURS=24
+
+# Connection manager backoff
+P2P_RECONNECT_INITIAL_DELAY_SECS=2
+P2P_RECONNECT_MAX_DELAY_SECS=60
+P2P_POLL_INTERVAL_SECS=30
+```
 
 ### Relay port
 
-The relay port is configured **per host** at pairing time — there is no global config file to change. The default is `8081`.
+The relay port is configured **per host** at pairing time — not via a global environment variable. The default is `8081`.
 
 To use a different port:
 
-- **Pairing-code flow** — enter the address as `hostname:port` in the Address field, or set the relay port field directly if shown
-- **SSH key flow** — set the **Relay port on remote** field to your chosen port in the SSH pair form
+- **Pairing-code flow** — set the relay port field in the Add via pairing code form
+- **SSH key flow** — set the **Relay port on remote** field in the SSH pair form
 - **After pairing** — open the **Edit** panel for the host row and update the relay port there
 
 Ensure the chosen port is open in the remote machine's firewall.
 
 ### Rate limiting
 
-| Parameter | Default | Source constant |
+| Environment variable | Default | Description |
 |---|---|---|
-| Maximum attempts | `5` | `MAX_ATTEMPTS` |
-| Sliding window | `15 minutes` | `WINDOW_MINUTES` |
+| `P2P_RATE_LIMIT_MAX_ATTEMPTS` | `5` | Maximum pairing attempts per IP per window |
+| `P2P_RATE_LIMIT_WINDOW_MINUTES` | `15` | Sliding window duration in minutes |
 
-Both limits apply to pairing-code and SSH key pairing, counted per client IP address. They share the same sliding window — five failed attempts of any kind from the same IP locks that IP out for the window duration.
-
-To change these values, edit the two constants at the top of `crates/server/src/routes/p2p_hosts.rs` and rebuild:
-
-```rust
-// crates/server/src/routes/p2p_hosts.rs
-const MAX_ATTEMPTS: i64 = 5;    // maximum pairing attempts per window
-const WINDOW_MINUTES: i64 = 15; // sliding window length in minutes
-```
+Both limits apply to pairing-code and SSH key pairing, counted per client IP address. They share the same window — five failed attempts of any kind from the same IP locks that IP out for the full window duration.
 
 <Warning>
-Lowering `MAX_ATTEMPTS` below `3` or `WINDOW_MINUTES` below `5` may lock out legitimate users on shared NAT networks where multiple machines share one IP. Raising them weakens brute-force protection.
+Lowering `P2P_RATE_LIMIT_MAX_ATTEMPTS` below `3` or `P2P_RATE_LIMIT_WINDOW_MINUTES` below `5` may lock out legitimate users on shared NAT networks where multiple machines share one IP. Raising them weakens brute-force protection.
 </Warning>
 
-### Session token rotation interval
+### Session token rotation
 
-| Parameter | Default | Source constant |
+| Environment variable | Default | Description |
 |---|---|---|
-| Auto-rotation interval | `24 hours` | `TOKEN_ROTATION_INTERVAL` |
+| `P2P_SESSION_ROTATION_HOURS` | `24` | Auto-rotation interval in whole hours |
 
-To change the rotation interval, edit the constant in `crates/server/src/runtime/p2p_connection.rs` and rebuild:
+Common values:
 
-```rust
-// crates/server/src/runtime/p2p_connection.rs
-const TOKEN_ROTATION_INTERVAL: Duration = Duration::from_secs(24 * 60 * 60);
-```
-
-Common alternative values:
-
-| Desired interval | Seconds expression |
+| Desired interval | Value |
 |---|---|
-| 6 hours | `6 * 60 * 60` |
-| 12 hours | `12 * 60 * 60` |
-| 48 hours | `48 * 60 * 60` |
-| 7 days | `7 * 24 * 60 * 60` |
+| 6 hours | `6` |
+| 12 hours | `12` |
+| 48 hours | `48` |
+| 7 days | `168` |
 
-You can trigger an immediate manual rotation for any specific host at any time without a rebuild — see [Rotating a session token](#rotating-a-session-token).
+You can trigger an immediate manual rotation for any specific host at any time regardless of this interval — see [Rotating a session token](#rotating-a-session-token).
 
 ### Reconnection timing
 
-The connection manager uses exponential backoff when a relay connection drops.
-
-| Parameter | Default | Source constant |
+| Environment variable | Default | Description |
 |---|---|---|
-| Initial reconnect delay | `2 seconds` | `P2P_RECONNECT_INITIAL_DELAY_SECS` |
-| Maximum reconnect delay | `60 seconds` | `P2P_RECONNECT_MAX_DELAY_SECS` |
-| Host poll interval | `30 seconds` | `P2P_POLL_INTERVAL_SECS` |
-
-All three constants are at the top of `crates/server/src/runtime/p2p_connection.rs`.
+| `P2P_RECONNECT_INITIAL_DELAY_SECS` | `2` | Initial backoff delay after a dropped connection (seconds) |
+| `P2P_RECONNECT_MAX_DELAY_SECS` | `60` | Maximum backoff delay (seconds) — doubles each attempt until this cap |
+| `P2P_POLL_INTERVAL_SECS` | `30` | How often to check for newly paired hosts (seconds) |
 
 ## Troubleshooting
 
@@ -352,7 +349,7 @@ All three constants are at the top of `crates/server/src/runtime/p2p_connection.
 </Accordion>
 
 <Accordion title="Pairing code says 'rate limit exceeded'">
-  More than 5 pairing attempts were made from the same IP in 15 minutes. Wait 15 minutes and try again, or use SSH key pairing instead (it shares the same rate-limit window). If you need to adjust the limit, see [Rate limiting](#rate-limiting-1) in the Configuration reference.
+  More than `P2P_RATE_LIMIT_MAX_ATTEMPTS` attempts were made from the same IP within the `P2P_RATE_LIMIT_WINDOW_MINUTES` window (defaults: 5 attempts / 15 minutes). Wait for the window to expire and try again, or use SSH key pairing instead. To adjust the limits, see the [Rate limiting](#rate-limiting) configuration reference.
 </Accordion>
 
 <Accordion title="Projects from remote host are not loading">
