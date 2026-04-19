@@ -85,3 +85,24 @@
 - Not complete / known gaps:
   - PR `#6` still needs merge
   - backup retention validation was not rerun during the sync cleanup step
+# 2026-04-19 Workspace Polling Hotfix
+
+- A second frontend churn path was identified after the earlier kanban/sidebar fix.
+- Root cause: mounted workspace views were still polling branch status and issue-linked workspaces every 5 seconds.
+- Primary files:
+  - `packages/web-core/src/shared/hooks/useBranchStatus.ts`
+  - `packages/web-core/src/shared/hooks/useTaskWorkspaces.ts`
+- Fix:
+  - disable default 5s polling for both hooks
+  - add `staleTime`
+  - disable `refetchOnWindowFocus`
+  - disable `refetchOnMount`
+- Why this mattered:
+  - the first stress test only exercised raw HTTP endpoints and missed the browser-mounted polling path
+  - real workspace UI usage could still drive repeated `/api/workspaces/:id/git/status` and `/api/workspaces?task_id=...` calls
+  - under sustained live use, that recreated the same multi-GB server bloat / timeout pattern
+- Post-fix validation:
+  - repeated workspace-open emulation for `OpsPB::Linking in reports`, `VK:: Wire Ntfy`, and `Vk::Ops`
+  - combined polling plus summaries POST load
+  - no endpoint failures
+  - RSS stayed roughly in the `32–51 MB` range instead of climbing into GB territory
