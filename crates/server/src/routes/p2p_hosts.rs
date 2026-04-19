@@ -22,8 +22,17 @@ use crate::{DeploymentImpl, error::ApiError, p2p::PairingStore};
 // ---------------------------------------------------------------------------
 
 const PAIRING_CHARSET: &[u8] = b"23456789ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz";
-const MAX_ATTEMPTS: i64 = 5;
-const WINDOW_MINUTES: i64 = 15;
+fn rate_limit_config() -> (i64, i64) {
+    let max_attempts = std::env::var("P2P_RATE_LIMIT_MAX_ATTEMPTS")
+        .ok()
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(5);
+    let window_minutes = std::env::var("P2P_RATE_LIMIT_WINDOW_MINUTES")
+        .ok()
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(15);
+    (max_attempts, window_minutes)
+}
 
 fn generate_pairing_code() -> String {
     let mut rng = rand::thread_rng();
@@ -160,10 +169,11 @@ async fn pair_host(
 ) -> Result<Json<ApiResponse<PairResponse>>, ApiError> {
     let ip = &req.caller_address;
 
-    // Rate-limit: at most 5 attempts per IP in the last 15 minutes.
+    // Rate-limit: at most N attempts per IP in the last W minutes (env-configurable).
+    let (max_attempts, window_minutes) = rate_limit_config();
     let attempts =
-        p2p_hosts::count_recent_pairing_attempts(deployment.db(), ip, WINDOW_MINUTES).await?;
-    if attempts >= MAX_ATTEMPTS {
+        p2p_hosts::count_recent_pairing_attempts(deployment.db(), ip, window_minutes).await?;
+    if attempts >= max_attempts {
         log_event(
             deployment.db(),
             event::PAIRING_FAILED,
@@ -248,9 +258,10 @@ async fn ssh_pair(
     let relay_port = req.relay_port.unwrap_or(8081) as i64;
     let db = deployment.db();
 
-    // Rate-limit: at most 5 SSH pairing attempts per IP in the last 15 minutes.
-    let attempts = p2p_hosts::count_recent_pairing_attempts(db, &ip, WINDOW_MINUTES).await?;
-    if attempts >= MAX_ATTEMPTS {
+    // Rate-limit: at most N SSH pairing attempts per IP in the last W minutes (env-configurable).
+    let (max_attempts, window_minutes) = rate_limit_config();
+    let attempts = p2p_hosts::count_recent_pairing_attempts(db, &ip, window_minutes).await?;
+    if attempts >= max_attempts {
         log_event(
             db,
             event::SSH_PAIR_FAILED,

@@ -21,10 +21,48 @@ use tokio_util::sync::CancellationToken;
 
 use crate::DeploymentImpl;
 
-const P2P_RECONNECT_INITIAL_DELAY_SECS: u64 = 2;
-const P2P_RECONNECT_MAX_DELAY_SECS: u64 = 60;
-const P2P_POLL_INTERVAL_SECS: u64 = 30;
-const TOKEN_ROTATION_INTERVAL: Duration = Duration::from_secs(24 * 60 * 60);
+/// Runtime configuration read from environment variables once at startup.
+///
+/// | Env var | Default | Description |
+/// |---|---|---|
+/// | `P2P_SESSION_ROTATION_HOURS` | `24` | Session token auto-rotation interval in hours |
+/// | `P2P_RECONNECT_INITIAL_DELAY_SECS` | `2` | Initial backoff delay on reconnect |
+/// | `P2P_RECONNECT_MAX_DELAY_SECS` | `60` | Maximum backoff delay on reconnect |
+/// | `P2P_POLL_INTERVAL_SECS` | `30` | How often to poll for new paired hosts |
+struct P2pConfig {
+    reconnect_initial_delay: Duration,
+    reconnect_max_delay: Duration,
+    poll_interval: Duration,
+    token_rotation_interval: Duration,
+}
+
+impl P2pConfig {
+    fn from_env() -> Self {
+        let reconnect_initial = std::env::var("P2P_RECONNECT_INITIAL_DELAY_SECS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(2);
+        let reconnect_max = std::env::var("P2P_RECONNECT_MAX_DELAY_SECS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(60);
+        let poll = std::env::var("P2P_POLL_INTERVAL_SECS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(30);
+        let rotation_hours = std::env::var("P2P_SESSION_ROTATION_HOURS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(24);
+
+        Self {
+            reconnect_initial_delay: Duration::from_secs(reconnect_initial),
+            reconnect_max_delay: Duration::from_secs(reconnect_max),
+            poll_interval: Duration::from_secs(poll),
+            token_rotation_interval: Duration::from_secs(rotation_hours * 60 * 60),
+        }
+    }
+}
 
 pub struct P2pConnectionManager {
     deployment: DeploymentImpl,
@@ -42,15 +80,18 @@ impl P2pConnectionManager {
     pub async fn run(self) {
         tracing::debug!("P2P connection manager started");
 
+        let config = P2pConfig::from_env();
+
         // Spawn a background task that rotates all paired hosts' session tokens
-        // every 24 hours, bounding the useful lifetime of any leaked token.
+        // on the configured interval, bounding the useful lifetime of any leaked token.
         let rotation_deployment = self.deployment.clone();
         let rotation_shutdown = self.shutdown.clone();
+        let token_rotation_interval = config.token_rotation_interval;
         tokio::spawn(async move {
             loop {
                 tokio::select! {
                     _ = rotation_shutdown.cancelled() => break,
-                    _ = tokio::time::sleep(TOKEN_ROTATION_INTERVAL) => {}
+                    _ = tokio::time::sleep(token_rotation_interval) => {}
                 }
                 match db::p2p_hosts::list_paired_hosts(rotation_deployment.db()).await {
                     Ok(hosts) => {
@@ -85,6 +126,9 @@ impl P2pConnectionManager {
         });
 
         let mut active_machine_ids: HashSet<String> = HashSet::new();
+        let poll_interval = config.poll_interval;
+        let reconnect_initial_delay = config.reconnect_initial_delay;
+        let reconnect_max_delay = config.reconnect_max_delay;
 
         loop {
             let server_addr = match self.deployment.client_info().get_server_addr() {
@@ -93,7 +137,7 @@ impl P2pConnectionManager {
                     tracing::debug!("Server address not yet available; P2P connections deferred");
                     tokio::select! {
                         _ = self.shutdown.cancelled() => break,
-                        _ = tokio::time::sleep(Duration::from_secs(P2P_POLL_INTERVAL_SECS)) => continue,
+                        _ = tokio::time::sleep(poll_interval) => continue,
                     }
                 }
             };
@@ -138,6 +182,8 @@ impl P2pConnectionManager {
                             server_addr,
                             shutdown,
                             machine_id,
+                            reconnect_initial_delay,
+                            reconnect_max_delay,
                         ));
                     }
                 }
@@ -148,7 +194,7 @@ impl P2pConnectionManager {
 
             tokio::select! {
                 _ = self.shutdown.cancelled() => break,
-                _ = tokio::time::sleep(Duration::from_secs(P2P_POLL_INTERVAL_SECS)) => {}
+                _ = tokio::time::sleep(poll_interval) => {}
             }
         }
 
@@ -319,9 +365,10 @@ async fn connect_with_backoff(
     local_addr: SocketAddr,
     shutdown: CancellationToken,
     machine_id: String,
+    initial_delay: Duration,
+    max_delay: Duration,
 ) {
-    let mut delay = Duration::from_secs(P2P_RECONNECT_INITIAL_DELAY_SECS);
-    let max_delay = Duration::from_secs(P2P_RECONNECT_MAX_DELAY_SECS);
+    let mut delay = initial_delay;
 
     loop {
         if shutdown.is_cancelled() {
