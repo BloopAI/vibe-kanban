@@ -45,6 +45,7 @@ function getProjectInitials(name: string): string {
 
 interface AppBarProps {
   projects: AppBarProject[];
+  archivedProjects?: AppBarProject[];
   hosts?: AppBarHost[];
   onPairHostClick?: () => void;
   activeHostId?: string | null;
@@ -54,6 +55,7 @@ interface AppBarProps {
   onHostClick?: (hostId: string, status: AppBarHostStatus) => void;
   showWorkspacesButton?: boolean;
   onProjectClick: (projectId: string) => void;
+  onArchivedProjectClick?: (projectId: string) => void;
   onProjectsDragEnd: (result: DropResult) => void;
   isSavingProjectOrder?: boolean;
   isWorkspacesActive: boolean;
@@ -79,6 +81,7 @@ export interface AppBarProject {
   id: string;
   name: string;
   color: string;
+  archived?: boolean;
 }
 
 export type AppBarHostStatus = 'online' | 'offline' | 'unpaired';
@@ -155,6 +158,7 @@ type AppBarSectionItem =
       isSavingProjectOrder?: boolean;
       onProjectClick: (projectId: string) => void;
       onProjectsDragEnd: (result: DropResult) => void;
+      archived?: boolean;
     };
 
 function getStandardAppBarButtonClassName({
@@ -197,6 +201,7 @@ function getHostButtonClassName({
 
 export function AppBar({
   projects,
+  archivedProjects = [],
   hosts = [],
   onPairHostClick,
   activeHostId = null,
@@ -206,6 +211,7 @@ export function AppBar({
   onHostClick,
   showWorkspacesButton = true,
   onProjectClick,
+  onArchivedProjectClick,
   onProjectsDragEnd,
   isSavingProjectOrder,
   isWorkspacesActive,
@@ -305,6 +311,18 @@ export function AppBar({
       isSavingProjectOrder,
       onProjectClick,
       onProjectsDragEnd,
+    });
+  }
+
+  if (archivedProjects.length > 0 && onArchivedProjectClick) {
+    projectSectionItems.push({
+      key: 'archived-project-list',
+      kind: 'project-list',
+      projects: archivedProjects,
+      activeProjectId,
+      onProjectClick: onArchivedProjectClick,
+      onProjectsDragEnd,
+      archived: true,
     });
   }
 
@@ -444,9 +462,11 @@ export function AppBar({
         return (
           <DragDropContext onDragEnd={item.onProjectsDragEnd}>
             <Droppable
-              droppableId="app-bar-projects"
+              droppableId={
+                item.archived ? 'app-bar-archived-projects' : 'app-bar-projects'
+              }
               direction="vertical"
-              isDropDisabled={item.isSavingProjectOrder}
+              isDropDisabled={item.isSavingProjectOrder || item.archived}
             >
               {(dropProvided) => (
                 <div
@@ -460,7 +480,7 @@ export function AppBar({
                       draggableId={project.id}
                       index={index}
                       disableInteractiveElementBlocking
-                      isDragDisabled={item.isSavingProjectOrder}
+                      isDragDisabled={item.isSavingProjectOrder || item.archived}
                     >
                       {(dragProvided, snapshot) => (
                         <div
@@ -476,11 +496,13 @@ export function AppBar({
                               onClick={() => item.onProjectClick(project.id)}
                               className={cn(
                                 appBarItemBaseClassName,
-                                'cursor-grab',
+                                item.archived ? 'cursor-pointer' : 'cursor-grab',
                                 snapshot.isDragging && 'shadow-lg',
                                 item.activeProjectId === project.id
                                   ? ''
-                                  : 'bg-primary text-normal hover:opacity-80'
+                                  : item.archived
+                                    ? 'bg-primary text-low hover:bg-brand/10 hover:text-normal'
+                                    : 'bg-primary text-normal hover:opacity-80'
                               )}
                               style={
                                 item.activeProjectId === project.id

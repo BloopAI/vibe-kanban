@@ -53,3 +53,19 @@
   - workspace linking/refresh works
 - Not complete / known gaps:
   - none blocking normal project work in the `vibe-kanban` board
+
+## 2026-04-18T23:45:00Z | vk/cc95-vk-archive-proje | local project archive flow
+
+- Intent: keep the local left-column project list manageable by hiding inactive projects behind an archive/restore flow.
+- Completed:
+  - added a persistent `archived` flag to local projects
+  - exposed local project archive updates through `/api/projects/:project_id`
+  - hid archived local projects from the main AppBar/mobile drawer list and surfaced them in an Archived restore section
+  - added an archive action to the local project settings dialog
+  - regenerated `shared/types.ts`
+- Verified:
+  - `cargo run --bin generate_types`
+  - `cargo fmt --all`
+- Not complete / known gaps:
+  - full frontend formatting/typecheck could not run in this worktree because `prettier` and `tsc` are not installed
+  - full `cargo check --workspace` was started but not waited through to completion after the successful type-generation build
