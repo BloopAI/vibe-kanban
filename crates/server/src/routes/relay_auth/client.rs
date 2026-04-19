@@ -144,11 +144,14 @@ pub async fn pair_relay_host(
 
 pub async fn list_relay_paired_hosts(
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<ListRelayPairedHostsResponse>>, ApiError> {
-    let hosts = deployment.relay_hosts()?.list_hosts().await;
-    Ok(ResponseJson(ApiResponse::success(
-        ListRelayPairedHostsResponse { hosts },
-    )))
+) -> ResponseJson<ApiResponse<ListRelayPairedHostsResponse>> {
+    // When relay is not configured (self-hosted mode), return empty list
+    // rather than a 400 error so the frontend can degrade gracefully.
+    let hosts = match deployment.relay_hosts() {
+        Ok(relay) => relay.list_hosts().await,
+        Err(_) => vec![],
+    };
+    ResponseJson(ApiResponse::success(ListRelayPairedHostsResponse { hosts }))
 }
 
 pub async fn remove_relay_paired_host(

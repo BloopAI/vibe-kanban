@@ -129,6 +129,12 @@ export default defineConfig({
   },
   server: {
     port: parseInt(process.env.FRONTEND_PORT || '3000'),
+    // Give HMR its own WebSocket port so Vite's upgrade handler does not
+    // intercept API WebSocket connections before the proxy can forward them.
+    // Use +10 offset to avoid colliding with backend (+1) and preview proxy (+2).
+    hmr: {
+      port: parseInt(process.env.FRONTEND_PORT || '3000') + 10,
+    },
     proxy: {
       '/api': {
         target: `http://localhost:${process.env.BACKEND_PORT || '3001'}`,

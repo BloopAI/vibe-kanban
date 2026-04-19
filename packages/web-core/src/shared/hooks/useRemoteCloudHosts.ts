@@ -4,7 +4,7 @@ import type { AppBarHost, AppBarHostStatus } from '@vibe/ui/components/AppBar';
 import type { PairRelayHostRequest, RelayPairedHost } from 'shared/types';
 import type { RelayHost } from 'shared/remote-types';
 import { relayApi } from '@/shared/lib/api';
-import { listRelayHosts } from '@/shared/lib/remoteApi';
+import { getRemoteApiUrl, listRelayHosts } from '@/shared/lib/remoteApi';
 
 export type RemoteCloudHostStatus = AppBarHostStatus;
 
@@ -44,10 +44,15 @@ async function fetchRemoteCloudHostsState(): Promise<RemoteCloudHostsState> {
   }
 
   let remoteHosts: RelayHost[] = [];
-  try {
-    remoteHosts = await listRelayHosts();
-  } catch {
-    remoteHosts = [];
+  // Only call the remote API when a cloud URL is actually configured.
+  // Without it, getToken() would hit /api/auth/token, get a 400, and React
+  // Query would surface that as an unhandled error that blocks the UI.
+  if (getRemoteApiUrl()) {
+    try {
+      remoteHosts = await listRelayHosts();
+    } catch {
+      remoteHosts = [];
+    }
   }
 
   const remoteHostsById = new Map(remoteHosts.map((host) => [host.id, host]));

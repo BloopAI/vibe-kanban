@@ -137,24 +137,96 @@ Sign in with your configured OAuth provider (GitHub or Google).
 
 ## Step 6: Connect the Desktop Client (Optional)
 
-To use the desktop client with your local server:
+Instead of exporting environment variables every time you open a terminal, create a `.env` file in the **repository root**. The `pnpm run dev` script automatically reads it.
+
+### Using `.env` (recommended)
 
 ```bash
-# In a new terminal, from the repository root
-export VK_SHARED_API_BASE=http://localhost:3000
+cp .env.example .env   # if an example exists, otherwise create it fresh
+```
 
+Create `.env` in the repo root:
+
+```env .env
+# ── Ports ────────────────────────────────────────────────────────────
+# Ports are auto-assigned by the dev script. Override only if needed.
+FRONTEND_PORT=3002
+BACKEND_PORT=3003
+HOST=127.0.0.1
+
+# ── Cloud integration (optional) ─────────────────────────────────────
+# Point the desktop client at your local Cloud stack (Step 4 above).
+# Remove or leave empty to run fully offline.
+VK_SHARED_API_BASE=http://localhost:3000
+VK_SHARED_RELAY_API_BASE=http://localhost:8082
+
+# ── Self-hosted remote access (P2P) ──────────────────────────────────
+# All values below are optional — defaults shown.
+P2P_PAIRING_PORT=9876          # Port the pairing server listens on
+P2P_RATE_LIMIT_MAX=5           # Max failed pairing attempts per window
+P2P_RATE_LIMIT_WINDOW_MINUTES=15   # Rolling window length for rate limiting
+P2P_TOKEN_ROTATION_HOURS=24    # How often session tokens auto-rotate
+P2P_RECONNECT_INITIAL_DELAY_SECS=5  # First reconnect backoff (seconds)
+P2P_RECONNECT_MAX_DELAY_SECS=300    # Maximum reconnect backoff (seconds)
+P2P_POLL_INTERVAL_SECS=30          # How often to poll DB for new paired hosts
+
+# ── Miscellaneous ─────────────────────────────────────────────────────
+# Disable automatic worktree cleanup (useful during dev)
+# DISABLE_WORKTREE_CLEANUP=1
+```
+
+Then start the desktop app normally:
+
+```bash
 pnpm install
 pnpm run dev
 ```
 
-The desktop client will now connect to your local Cloud instance instead of the hosted version.
+### Using dotenvx (encrypted `.env`)
 
-To test relay/tunnel mode end-to-end, add:
+[dotenvx](https://dotenvx.com) lets you encrypt your `.env` file and commit it safely — useful when you have secrets (API keys, P2P pre-shared keys) that you want to share across machines.
 
 ```bash
-export VK_SHARED_API_BASE=https://localhost:3001
-export VK_SHARED_RELAY_API_BASE=https://relay.localhost:3001
-export VK_TUNNEL=1
+# Install
+npm install -g @dotenvx/dotenvx
+
+# Encrypt your existing .env
+dotenvx encrypt
+
+# Run dev with dotenvx loading the decrypted values
+dotenvx run -- pnpm run dev
+```
+
+The encrypted `.env` and the `.env.keys` file (containing the decryption key) are created automatically. Commit the encrypted `.env` and keep `.env.keys` out of version control (it's already in `.gitignore` after `dotenvx encrypt`).
+
+<Warning>
+Never commit `.env`, `.env.keys`, or any file containing plaintext secrets. The `.gitignore` already excludes `.env*` except `.env.example`.
+</Warning>
+
+### Key Environment Variable Reference
+
+| Variable | Default | Description |
+|---|---|---|
+| `FRONTEND_PORT` | auto | Vite dev server port |
+| `BACKEND_PORT` | auto | Rust backend port |
+| `HOST` | `127.0.0.1` | Bind address for the backend |
+| `VK_SHARED_API_BASE` | _(none)_ | URL of a Vibe Kanban Cloud instance |
+| `VK_SHARED_RELAY_API_BASE` | _(none)_ | URL of the relay server |
+| `P2P_PAIRING_PORT` | `9876` | Self-hosted pairing server port |
+| `P2P_RATE_LIMIT_MAX` | `5` | Max pairing attempts per window |
+| `P2P_RATE_LIMIT_WINDOW_MINUTES` | `15` | Rate-limit rolling window (minutes) |
+| `P2P_TOKEN_ROTATION_HOURS` | `24` | Session token auto-rotation interval |
+| `P2P_RECONNECT_INITIAL_DELAY_SECS` | `5` | Initial reconnect backoff |
+| `P2P_RECONNECT_MAX_DELAY_SECS` | `300` | Maximum reconnect backoff |
+| `P2P_POLL_INTERVAL_SECS` | `30` | Interval to poll DB for paired hosts |
+| `DISABLE_WORKTREE_CLEANUP` | _(unset)_ | Set to `1` to skip worktree cleanup |
+
+To test relay/tunnel mode end-to-end, set:
+
+```env .env
+VK_SHARED_API_BASE=https://localhost:3001
+VK_SHARED_RELAY_API_BASE=https://relay.localhost:3001
+VK_TUNNEL=1
 ```
 
 This mode requires local HTTPS + Caddy routing (next step).
