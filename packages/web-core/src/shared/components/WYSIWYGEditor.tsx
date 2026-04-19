@@ -87,6 +87,7 @@ import {
 } from '@/shared/dialogs/command-bar/selections/repoSelection';
 import { fetchAttachmentSasUrl } from '@/shared/lib/remoteApi';
 import { writeClipboardViaBridge } from '@/shared/lib/clipboard';
+import { ReadOnlyCodeBlockCopyPlugin } from '@/shared/components/ReadOnlyCodeBlockCopyPlugin';
 import type { SendMessageShortcut } from 'shared/types';
 import type { BaseCodingAgent } from 'shared/types';
 
@@ -598,6 +599,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 )}
                 {/* Link sanitization for read-only mode */}
                 {disabled && <ReadOnlyLinkPlugin />}
+                {disabled && <ReadOnlyCodeBlockCopyPlugin />}
                 {/* Clickable code for file paths in read-only mode */}
                 {disabled && findMatchingDiffPath && onCodeClick && (
                   <ClickableCodePlugin

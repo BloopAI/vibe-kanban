@@ -1,10 +1,16 @@
-import { useMemo, type ComponentPropsWithoutRef } from 'react';
+import {
+  Children,
+  useMemo,
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+} from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { cn } from '@/shared/lib/utils';
+import { CodeBlockCopyButton } from './CodeBlockCopyButton';
 import { MermaidDiagram } from './MermaidDiagram';
 
 interface MarkdownPreviewProps {
@@ -20,6 +26,19 @@ const rehypePlugins: any[] = [
   [rehypeSanitize, defaultSchema],
   rehypeHighlight,
 ];
+
+function extractTextContent(node: ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return String(node);
+  }
+  if (Array.isArray(node)) {
+    return node.map(extractTextContent).join('');
+  }
+  if (node && typeof node === 'object' && 'props' in node) {
+    return extractTextContent(node.props?.children);
+  }
+  return '';
+}
 
 export function MarkdownPreview({
   content,
@@ -158,12 +177,21 @@ export function MarkdownPreview({
           return <>{children}</>;
         }
         return (
-          <pre
-            className="text-xs p-base rounded-sm bg-panel overflow-auto mb-3 font-ibm-plex-mono"
-            {...props}
-          >
-            {children}
-          </pre>
+          <div className="group relative mb-3">
+            <CodeBlockCopyButton
+              text={extractTextContent(Children.toArray(children)).replace(
+                /\n$/,
+                ''
+              )}
+              className="absolute right-2 top-2 z-10 opacity-0 group-hover:opacity-100"
+            />
+            <pre
+              className="text-xs rounded-sm bg-panel overflow-auto font-ibm-plex-mono p-base pr-12 pt-10"
+              {...props}
+            >
+              {children}
+            </pre>
+          </div>
         );
       },
       code: ({

@@ -153,7 +153,9 @@ export function useActionVisibilityContext(
       isCreatingIssue: kanbanCreateMode,
       kanbanOrgId:
         layoutMode === 'kanban'
-          ? (isLocalOnlySession ? 'local' : (selectedOrgId ?? undefined))
+          ? isLocalOnlySession
+            ? 'local'
+            : (selectedOrgId ?? undefined)
           : undefined,
       isSignedIn,
     };

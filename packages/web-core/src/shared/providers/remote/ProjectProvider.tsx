@@ -90,7 +90,10 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
 
     const handleWorkspaceLinkRefresh = (event: Event) => {
       const customEvent = event as CustomEvent<WorkspaceLinkRefreshDetail>;
-      if (customEvent.detail?.projectId && customEvent.detail.projectId !== projectId) {
+      if (
+        customEvent.detail?.projectId &&
+        customEvent.detail.projectId !== projectId
+      ) {
         return;
       }
 

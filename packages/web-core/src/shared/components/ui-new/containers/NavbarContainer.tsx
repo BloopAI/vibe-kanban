@@ -201,7 +201,10 @@ export function NavbarContainer({
   const linkedProjectId = linkedRemoteWorkspace?.project_id ?? null;
   const linkedIssueId = linkedRemoteWorkspace?.issue_id ?? null;
   const shouldResolveBreadcrumbData =
-    !isLocalOnlySession && !isOnProjectPage && !isCreateMode && !!linkedProjectId;
+    !isLocalOnlySession &&
+    !isOnProjectPage &&
+    !isCreateMode &&
+    !!linkedProjectId;
   const shouldResolveIssueBreadcrumb =
     shouldResolveBreadcrumbData && !!linkedIssueId;
 
