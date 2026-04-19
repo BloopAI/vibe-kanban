@@ -205,9 +205,9 @@ function SshConfigEditForm({
   const [sshUser, setSshUser] = useState(host.ssh_user ?? '');
   const [sshPort, setSshPort] = useState(host.ssh_port ?? 22);
   const [sshKeyPath, setSshKeyPath] = useState(host.ssh_key_path ?? '');
-  const [connectionMode, setConnectionMode] = useState<'auto' | 'direct' | 'ssh'>(
-    (host.connection_mode as 'auto' | 'direct' | 'ssh') ?? 'auto',
-  );
+  const [connectionMode, setConnectionMode] = useState<
+    'auto' | 'direct' | 'ssh'
+  >((host.connection_mode as 'auto' | 'direct' | 'ssh') ?? 'auto');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
