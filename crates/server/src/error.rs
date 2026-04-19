@@ -21,6 +21,7 @@ use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
     file::FileError,
+    local_remote::LocalRemoteError,
     remote_client::RemoteClientError,
     repo::RepoError as RepoServiceError,
 };
@@ -100,6 +101,16 @@ impl From<&'static str> for ApiError {
 impl From<RemoteClientNotConfigured> for ApiError {
     fn from(_: RemoteClientNotConfigured) -> Self {
         ApiError::BadRequest("Remote client not configured".to_string())
+    }
+}
+
+impl From<LocalRemoteError> for ApiError {
+    fn from(err: LocalRemoteError) -> Self {
+        match err {
+            LocalRemoteError::NotFound => ApiError::BadRequest("Not found".to_string()),
+            LocalRemoteError::Sqlx(e) => ApiError::Database(e),
+            LocalRemoteError::Invalid(msg) => ApiError::BadRequest(msg),
+        }
     }
 }
 

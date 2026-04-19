@@ -188,8 +188,8 @@ function getOrCreateSourceRuntime(sourceKey: string): SourceRuntime {
   }
 
   const created: SourceRuntime = {
-    mode: 'electric',
-    fallbackLocked: false,
+    mode: globalElectricDisabled ? 'fallback' : 'electric',
+    fallbackLocked: globalElectricDisabled,
     refreshers: new Set(),
     fallbackSwitchers: new Set(),
   };
@@ -208,6 +208,24 @@ function lockSourceToFallback(sourceKey: string): void {
   for (const switcher of switchers) {
     switcher();
   }
+}
+
+let globalElectricDisabled = false;
+
+/**
+ * Locks all current and future Electric collections to fallback (REST polling).
+ * Used in local-only desktop mode where no ElectricSQL service is available.
+ * Idempotent.
+ */
+export function lockElectricToFallback(): void {
+  globalElectricDisabled = true;
+  for (const sourceKey of sourceRuntimes.keys()) {
+    lockSourceToFallback(sourceKey);
+  }
+}
+
+export function isElectricGloballyDisabled(): boolean {
+  return globalElectricDisabled;
 }
 
 function registerFallbackSwitcher(

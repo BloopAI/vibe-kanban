@@ -19,6 +19,7 @@ use services::services::{
     auth::AuthContext,
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
+    cursor_mcp::CursorMcpService,
     events::{EventError, EventService},
     file::{FileError, FileService},
     file_search::FileSearchCache,
@@ -106,6 +107,10 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn queued_message_service(&self) -> &QueuedMessageService;
 
+    /// In-memory rendezvous for the Cursor MCP "wait_for_user_input" bridge.
+    /// See [`services::services::cursor_mcp`] for the protocol.
+    fn cursor_mcp(&self) -> &CursorMcpService;
+
     fn auth_context(&self) -> &AuthContext;
 
     fn relay_control(&self) -> &Arc<RelayControl>;
@@ -126,6 +131,20 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
         Err(RemoteClientNotConfigured)
+    }
+
+    /// Returns a local SQLite-backed mirror of the cloud `RemoteClient`
+    /// surface when the deployment is in `local_only` mode (no cloud at all).
+    /// Default returns `None` so non-local deployments keep talking to cloud.
+    fn local_remote(&self) -> Option<services::services::local_remote::LocalRemote> {
+        None
+    }
+
+    /// Whether this deployment is in local-only mode (no cloud calls).
+    /// When true, frontend's `shared_api_base` is `""` (same-origin), Electric
+    /// shape sync is disabled, and `/api/remote/*` proxy goes through SQLite.
+    fn local_only(&self) -> bool {
+        false
     }
 
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {

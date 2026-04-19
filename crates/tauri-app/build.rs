@@ -1,5 +1,13 @@
 fn main() {
     println!("cargo:rerun-if-env-changed=SENTRY_DSN");
+    // Expose the build-time Rust target triple so the runtime can locate the
+    // sidecar binary in dev mode (where it lives at
+    // `crates/tauri-app/binaries/vibe-kanban-mcp-<triple>(.exe)`). Bundled
+    // builds put the sidecar next to the main exe and don't need the triple,
+    // but injecting it here keeps the resolver simple.
+    if let Ok(target) = std::env::var("TARGET") {
+        println!("cargo:rustc-env=VK_TAURI_TARGET_TRIPLE={target}");
+    }
     tauri_build::build();
 
     #[cfg(target_os = "windows")]

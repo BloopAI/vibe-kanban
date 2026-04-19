@@ -362,6 +362,16 @@
       "description": "Configure Model Context Protocol servers to extend coding agent capabilities with custom tools and resources.",
       "loading": "Loading MCP configuration...",
       "applying": "Applying configuration...",
+      "externalClients": {
+        "title": "Connect external MCP clients",
+        "descriptionBundled": "Paste this snippet into Cursor, Claude Desktop, Raycast, or any other MCP client to give it access to this Vibe Kanban instance. Uses the bundled MCP server binary — no extra installation required.",
+        "descriptionNpx": "Paste this snippet into Cursor, Claude Desktop, Raycast, or any other MCP client to give it access to this Vibe Kanban instance. Falls back to the npm package when no bundled binary is available (e.g. browser builds).",
+        "binaryLabel": "Bundled MCP binary path",
+        "binaryHelper": "Absolute path of the vibe-kanban-mcp binary that was bundled with this desktop install. The MCP client will spawn this binary directly.",
+        "snippetLabel": "MCP client configuration",
+        "snippetHelper": "Add the contents to your MCP client's configuration file (e.g. ~/.cursor/mcp.json, ~/.claude.json, Raycast MCP settings).",
+        "copy": "Copy"
+      },
       "labels": {
         "agent": "Agent",
         "agentPlaceholder": "Select executor",

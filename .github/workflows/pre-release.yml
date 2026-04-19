@@ -886,6 +886,31 @@ jobs:
           echo "APPLE_API_ISSUER=$API_ISSUER" >> $GITHUB_ENV
           echo "APPLE_API_KEY_PATH=$KEY_PATH" >> $GITHUB_ENV
 
+      - name: Build MCP sidecar binary
+        run: |
+          # The Tauri bundle embeds `vibe-kanban-mcp` via `bundle.externalBin`
+          # (see crates/tauri-app/tauri.conf.json) so the desktop install can
+          # spawn the local MCP server without requiring users to run npx.
+          # tauri-build validates the file exists at
+          # `crates/tauri-app/binaries/vibe-kanban-mcp-<triple>(.exe)` before
+          # bundling, so we have to produce it here, with the same toolchain
+          # used by the Tauri build below.
+          if [[ "${{ matrix.target }}" == "aarch64-pc-windows-msvc" ]]; then
+            chmod +x scripts/ring-cc-wrapper.sh scripts/clang
+            export PATH="${{ github.workspace }}/scripts:$PATH"
+            export RING_CC=/usr/lib/llvm-19/bin/clang
+            export DEFAULT_CC=clang-cl
+            export CC_aarch64_pc_windows_msvc="${{ github.workspace }}/scripts/ring-cc-wrapper.sh"
+            export CARGO_PROFILE_RELEASE_DEBUG=0
+          fi
+
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            cargo xwin build --cross-compiler clang-cl --release --target ${{ matrix.target }} -p mcp --bin vibe-kanban-mcp
+          else
+            cargo build --release --target ${{ matrix.target }} -p mcp --bin vibe-kanban-mcp
+          fi
+          node scripts/prepare-tauri-sidecars.js --target ${{ matrix.target }} --skip-build
+
       - name: Build Tauri app
         run: |
           if [[ "${{ matrix.target }}" == "aarch64-pc-windows-msvc" ]]; then

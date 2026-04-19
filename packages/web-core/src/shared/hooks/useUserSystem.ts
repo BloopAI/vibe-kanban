@@ -18,6 +18,8 @@ export interface UserSystemState {
   machineId: string | null;
   loginStatus: LoginStatus | null;
   remoteAuthDegraded: string | null;
+  /** Absolute path of the bundled `vibe-kanban-mcp` sidecar (Tauri only). */
+  mcpBinaryPath: string | null;
 }
 
 export interface UserSystemContextType {
@@ -39,6 +41,7 @@ export interface UserSystemContextType {
   machineId: string | null;
   loginStatus: LoginStatus | null;
   remoteAuthDegraded: string | null;
+  mcpBinaryPath: string | null;
   setEnvironment: (env: Environment | null) => void;
   setProfiles: (profiles: Record<string, ExecutorProfile> | null) => void;
   setCapabilities: (caps: Record<string, BaseAgentCapability[]> | null) => void;

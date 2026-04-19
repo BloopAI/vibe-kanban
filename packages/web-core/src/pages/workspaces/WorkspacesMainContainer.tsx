@@ -15,6 +15,7 @@ import {
   type ConversationListHandle,
 } from '@/features/workspace-chat/ui/ConversationListContainer';
 import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
+import { CursorMcpStatusBanner } from '@/features/workspace-chat/ui/CursorMcpStatusBanner';
 import { ContextBarContainer } from './ContextBarContainer';
 import { EntriesProvider } from '@/features/workspace-chat/model/contexts/EntriesContext';
 import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/MessageEditContext';
@@ -206,6 +207,11 @@ export const WorkspacesMainContainer = forwardRef<
       onWheel={(e) => forwardWheelToScroller(e, conversationListRef)}
     >
       <div className="w-chat max-w-full h-full">
+        {selectedSession?.executor === 'CURSOR_MCP' && (
+          <div className="px-2 pt-2">
+            <CursorMcpStatusBanner sessionId={selectedSession.id} />
+          </div>
+        )}
         <RetryUiProvider workspaceId={workspaceWithSession.id}>
           <ConversationList
             key={entriesProviderKey}

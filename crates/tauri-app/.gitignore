@@ -1,0 +1,6 @@
+# Sidecar binaries are produced by `scripts/prepare-tauri-sidecars.js`
+# (called automatically from `pnpm run tauri:build` / `tauri:dev`) and
+# embedded into the bundle via `tauri.conf.json` -> `bundle.externalBin`.
+# They MUST exist before `cargo tauri build` runs but should never be
+# committed.
+binaries/

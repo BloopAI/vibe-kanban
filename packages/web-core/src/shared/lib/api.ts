@@ -396,6 +396,46 @@ export const sessionsApi = {
   },
 };
 
+// Cursor MCP (PChat-like persistent chat) APIs
+export const cursorMcpApi = {
+  /** Snapshot of the in-memory conversation + pending waits for a session. */
+  getState: async (
+    sessionId: string
+  ): Promise<import('shared/types').CursorMcpSessionSnapshot> => {
+    const response = await makeRequest(
+      `/api/cursor-mcp/sessions/${sessionId}/state`
+    );
+    return handleApiResponse<
+      import('shared/types').CursorMcpSessionSnapshot
+    >(response);
+  },
+
+  /** Cancel a queued wait (sends `__USER_DISMISSED_QUEUE__` back to Cursor). */
+  cancelWait: async (
+    sessionId: string,
+    requestId: string
+  ): Promise<boolean> => {
+    const response = await makeRequest(
+      `/api/cursor-mcp/sessions/${sessionId}/cancel`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ request_id: requestId }),
+      }
+    );
+    return handleApiResponse<boolean>(response);
+  },
+
+  /** Returns the JSON snippet to drop into ~/.cursor/mcp.json. */
+  getLaunchConfig: async (
+    sessionId: string
+  ): Promise<import('shared/types').LaunchConfig> => {
+    const response = await makeRequest(
+      `/api/cursor-mcp/sessions/${sessionId}/launch-config`
+    );
+    return handleApiResponse<import('shared/types').LaunchConfig>(response);
+  },
+};
+
 // Workspace APIs
 export const workspacesApi = {
   createAndStart: async (

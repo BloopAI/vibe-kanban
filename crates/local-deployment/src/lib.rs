@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use api_types::LoginStatus;
+use api_types::{LoginStatus, ProfileResponse};
 use async_trait::async_trait;
 use client_info::ClientInfo;
 use db::DBService;
@@ -21,6 +21,7 @@ use services::services::{
     auth::AuthContext,
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
+    cursor_mcp::CursorMcpService,
     events::EventService,
     file::FileService,
     file_search::FileSearchCache,
@@ -64,7 +65,10 @@ pub struct LocalDeployment {
     file_search_cache: Arc<FileSearchCache>,
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
+    cursor_mcp: CursorMcpService,
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
+    local_remote: services::services::local_remote::LocalRemote,
+    local_only: bool,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
     trusted_key_auth: TrustedKeyAuthRuntime,
@@ -159,6 +163,7 @@ impl Deployment for LocalDeployment {
 
         let approvals = Approvals::new();
         let queued_message_service = QueuedMessageService::new();
+        let cursor_mcp = CursorMcpService::new();
 
         let oauth_credentials = Arc::new(OAuthCredentials::new(credentials_path()));
         if let Err(e) = oauth_credentials.load().await {
@@ -263,6 +268,11 @@ impl Deployment for LocalDeployment {
             PrMonitorService::spawn(db, analytics, container, rc, pr_sync_notify.clone()).await;
         }
 
+        let local_remote = services::services::local_remote::LocalRemote::new(db.pool.clone());
+        let local_only = std::env::var("VK_LOCAL_ONLY")
+            .map(|v| !v.is_empty() && v != "0" && v.to_lowercase() != "false")
+            .unwrap_or(false);
+
         let deployment = Self {
             config,
             user_id,
@@ -278,7 +288,10 @@ impl Deployment for LocalDeployment {
             file_search_cache,
             approvals,
             queued_message_service,
+            cursor_mcp,
             remote_client,
+            local_remote,
+            local_only,
             auth_context,
             oauth_handoffs,
             trusted_key_auth,
@@ -350,6 +363,10 @@ impl Deployment for LocalDeployment {
         &self.queued_message_service
     }
 
+    fn cursor_mcp(&self) -> &CursorMcpService {
+        &self.cursor_mcp
+    }
+
     fn auth_context(&self) -> &AuthContext {
         &self.auth_context
     }
@@ -381,6 +398,18 @@ impl Deployment for LocalDeployment {
     fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime {
         &self.trusted_key_auth
     }
+
+    fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
+        self.remote_client.clone()
+    }
+
+    fn local_remote(&self) -> Option<services::services::local_remote::LocalRemote> {
+        Some(self.local_remote.clone())
+    }
+
+    fn local_only(&self) -> bool {
+        self.local_only
+    }
 }
 
 impl LocalDeployment {
@@ -403,6 +432,24 @@ impl LocalDeployment {
     }
 
     pub async fn get_login_status(&self) -> LoginStatus {
+        // Local-only desktop mode: short-circuit to the seeded local user so
+        // the UI treats us as signed-in (no cloud OAuth round-trip, no
+        // OnboardingSignInPage gate, RootRedirectPage falls through to the
+        // first project / kanban board). The seeded user UUID matches the
+        // `LOCAL_USER_ID` constant in
+        // `packages/web-core/src/shared/lib/auth/runtime.ts` and the row
+        // inserted by migration `20260420000000_local_remote_core.sql`.
+        if self.local_only {
+            return LoginStatus::LoggedIn {
+                profile: Some(ProfileResponse {
+                    user_id: Uuid::from_u128(1),
+                    username: Some("local".to_string()),
+                    email: "local@vibe-kanban.local".to_string(),
+                    providers: Vec::new(),
+                }),
+            };
+        }
+
         if self.auth_context.get_credentials().await.is_none() {
             self.auth_context.clear_profile().await;
             self.auth_context.clear_remote_auth_degraded_slug().await;

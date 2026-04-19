@@ -354,6 +354,16 @@
       "description": "配置模型上下文协议服务器，使用自定义工具和资源扩展编码代理功能。",
       "loading": "加载 MCP 配置中...",
       "applying": "应用配置中...",
+      "externalClients": {
+        "title": "连接外部 MCP 客户端",
+        "descriptionBundled": "把下面这段配置粘贴到 Cursor、Claude Desktop、Raycast 等 MCP 客户端中，即可让它访问当前这个 Vibe Kanban。使用桌面端自带的 MCP 二进制，无需额外安装。",
+        "descriptionNpx": "把下面这段配置粘贴到 Cursor、Claude Desktop、Raycast 等 MCP 客户端中。当未发现自带二进制时（如浏览器模式），会回退到 npm 包。",
+        "binaryLabel": "内置 MCP 二进制路径",
+        "binaryHelper": "本桌面端安装包内自带的 vibe-kanban-mcp 二进制绝对路径。MCP 客户端会直接启动这个二进制。",
+        "snippetLabel": "MCP 客户端配置",
+        "snippetHelper": "把内容写入你的 MCP 客户端配置文件（例如 ~/.cursor/mcp.json、~/.claude.json、Raycast MCP 设置）。",
+        "copy": "复制"
+      },
       "labels": {
         "agent": "代理",
         "agentPlaceholder": "选择执行器",

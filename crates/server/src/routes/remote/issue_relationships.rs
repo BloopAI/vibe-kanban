@@ -8,6 +8,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::get,
 };
+use deployment::Deployment;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -29,6 +30,11 @@ async fn list_issue_relationships(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ListIssueRelationshipsQuery>,
 ) -> Result<ResponseJson<ApiResponse<ListIssueRelationshipsResponse>>, ApiError> {
+    if deployment.local_only() {
+        let lr = deployment.local_remote().expect("local_remote configured");
+        let response = lr.list_issue_relationships(query.issue_id).await?;
+        return Ok(ResponseJson(ApiResponse::success(response)));
+    }
     let client = deployment.remote_client()?;
     let response = client.list_issue_relationships(query.issue_id).await?;
     Ok(ResponseJson(ApiResponse::success(response)))
@@ -38,6 +44,11 @@ async fn create_issue_relationship(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreateIssueRelationshipRequest>,
 ) -> Result<ResponseJson<ApiResponse<MutationResponse<IssueRelationship>>>, ApiError> {
+    if deployment.local_only() {
+        let lr = deployment.local_remote().expect("local_remote configured");
+        let response = lr.create_issue_relationship(&request).await?;
+        return Ok(ResponseJson(ApiResponse::success(response)));
+    }
     let client = deployment.remote_client()?;
     let response = client.create_issue_relationship(&request).await?;
     Ok(ResponseJson(ApiResponse::success(response)))
@@ -47,6 +58,11 @@ async fn delete_issue_relationship(
     State(deployment): State<DeploymentImpl>,
     Path(relationship_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    if deployment.local_only() {
+        let lr = deployment.local_remote().expect("local_remote configured");
+        lr.delete_issue_relationship(relationship_id).await?;
+        return Ok(ResponseJson(ApiResponse::success(())));
+    }
     let client = deployment.remote_client()?;
     client.delete_issue_relationship(relationship_id).await?;
     Ok(ResponseJson(ApiResponse::success(())))

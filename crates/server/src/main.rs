@@ -114,10 +114,10 @@ async fn main() -> Result<(), VibeKanbanError> {
 
     let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
 
-    let main_listener = tokio::net::TcpListener::bind(format!("{host}:{port}")).await?;
+    let main_listener = bind_or_explain(&host, port, "main HTTP server").await?;
     let actual_main_port = main_listener.local_addr()?.port();
 
-    let proxy_listener = tokio::net::TcpListener::bind(format!("{host}:{proxy_port}")).await?;
+    let proxy_listener = bind_or_explain(&host, proxy_port, "preview proxy").await?;
     let actual_proxy_port = proxy_listener.local_addr()?.port();
 
     if let Err(e) = write_port_file_with_proxy(actual_main_port, Some(actual_proxy_port)).await {
@@ -195,6 +195,42 @@ async fn main() -> Result<(), VibeKanbanError> {
     perform_cleanup_actions(&deployment).await;
 
     Ok(())
+}
+
+/// Bind a TCP listener and, on `AddrInUse`, print a loud error with the PID
+/// holding the port and a kill hint before propagating the error. This turns
+/// the otherwise-cryptic `Error: Io(Os { code: 48, kind: AddrInUse, ... })`
+/// into something actionable when a previous `cargo watch -x 'run'` left a
+/// stale `target/debug/server` running on the same port.
+async fn bind_or_explain(
+    host: &str,
+    port: u16,
+    role: &str,
+) -> std::io::Result<tokio::net::TcpListener> {
+    match tokio::net::TcpListener::bind(format!("{host}:{port}")).await {
+        Ok(listener) => Ok(listener),
+        Err(err) if err.kind() == std::io::ErrorKind::AddrInUse => {
+            let pid_hint = std::process::Command::new("lsof")
+                .args(["-ti", &format!("tcp:{port}"), "-sTCP:LISTEN"])
+                .output()
+                .ok()
+                .and_then(|o| {
+                    let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
+                    if s.is_empty() { None } else { Some(s) }
+                });
+            let kill_hint = match pid_hint {
+                Some(pid) => format!(" Run: kill -9 {pid}"),
+                None => String::new(),
+            };
+            tracing::error!(
+                "Failed to bind {role} on {host}:{port}: address already in use. \
+                 A previous vibe-kanban backend is likely still listening on this port.{}",
+                kill_hint
+            );
+            Err(err)
+        }
+        Err(err) => Err(err),
+    }
 }
 
 pub async fn shutdown_signal() {

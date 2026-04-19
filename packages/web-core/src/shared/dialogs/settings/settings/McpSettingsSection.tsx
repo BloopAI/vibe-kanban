@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PlusIcon } from '@phosphor-icons/react';
+import { CheckIcon, CopyIcon, PlusIcon } from '@phosphor-icons/react';
 import type { BaseCodingAgent, ExecutorProfile } from 'shared/types';
 import { McpConfig } from 'shared/types';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { McpConfigStrategyGeneral } from '@/shared/lib/mcpStrategies';
+import { writeClipboardViaBridge } from '@/shared/lib/clipboard';
 import { cn } from '@/shared/lib/utils';
 import { toPrettyCase } from '@/shared/lib/string';
 import {
@@ -27,7 +28,7 @@ export function McpSettingsSection() {
   const { t } = useTranslation('settings');
   const { setDirty: setContextDirty } = useSettingsDirty();
   const machineClient = useSettingsMachineClient();
-  const { config, profiles } = useUserSystem();
+  const { config, profiles, mcpBinaryPath } = useUserSystem();
   const [mcpServers, setMcpServers] = useState('{}');
   const [originalMcpServers, setOriginalMcpServers] = useState('{}');
   const [mcpConfig, setMcpConfig] = useState<McpConfig | null>(null);
@@ -243,6 +244,20 @@ export function McpSettingsSection() {
       ) || ''
     : '';
 
+  // JSON snippet that external MCP clients (Cursor, Claude Desktop, Raycast,
+  // …) can paste verbatim to point at *this* machine's vibe-kanban server.
+  // - Tauri desktop builds: invoke the bundled sidecar binary directly so
+  //   nothing has to be installed and the client always points at the right
+  //   server (the binary auto-discovers our port via the port file).
+  // - Browser/headless builds: fall back to `npx vibe-kanban@latest --mcp`
+  //   which downloads and runs the published binary on demand.
+  const externalClientConfig = useMemo(() => {
+    const server = mcpBinaryPath
+      ? { command: mcpBinaryPath, args: ['--mode', 'global'] }
+      : { command: 'npx', args: ['-y', 'vibe-kanban@latest', '--mcp'] };
+    return JSON.stringify({ mcpServers: { vibe_kanban: server } }, null, 2);
+  }, [mcpBinaryPath]);
+
   if (!config) {
     return (
       <div className="py-8">
@@ -267,6 +282,31 @@ export function McpSettingsSection() {
           {t('settings.mcp.save.successMessage')}
         </div>
       )}
+
+      {/* External MCP clients — connect Cursor/Claude/Raycast to this machine */}
+      <SettingsCard
+        title={t('settings.mcp.externalClients.title')}
+        description={t(
+          mcpBinaryPath
+            ? 'settings.mcp.externalClients.descriptionBundled'
+            : 'settings.mcp.externalClients.descriptionNpx'
+        )}
+      >
+        {mcpBinaryPath && (
+          <SettingsField
+            label={t('settings.mcp.externalClients.binaryLabel')}
+            description={t('settings.mcp.externalClients.binaryHelper')}
+          >
+            <CopyableValue value={mcpBinaryPath} />
+          </SettingsField>
+        )}
+        <SettingsField
+          label={t('settings.mcp.externalClients.snippetLabel')}
+          description={t('settings.mcp.externalClients.snippetHelper')}
+        >
+          <CopyableSnippet value={externalClientConfig} />
+        </SettingsField>
+      </SettingsCard>
 
       {/* MCP Configuration */}
       <SettingsCard
@@ -428,3 +468,79 @@ export function McpSettingsSection() {
 
 // Alias for backwards compatibility
 export { McpSettingsSection as McpSettingsSectionContent };
+
+/**
+ * Read-only one-line value (e.g. an absolute file path) with an inline copy
+ * button. Renders as monospace text in a subdued box.
+ */
+function CopyableValue({ value }: { value: string }) {
+  const { t } = useTranslation('settings');
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await writeClipboardViaBridge(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="relative bg-secondary border border-border rounded-sm px-base py-half pr-10 font-mono text-xs text-high break-all">
+      {value}
+      <button
+        type="button"
+        onClick={() => void handleCopy()}
+        className={cn(
+          'absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-sm',
+          'text-low hover:text-high hover:bg-secondary/60 transition-colors'
+        )}
+        aria-label={t('settings.mcp.externalClients.copy')}
+        title={t('settings.mcp.externalClients.copy')}
+      >
+        {copied ? (
+          <CheckIcon className="size-icon-xs text-success" weight="bold" />
+        ) : (
+          <CopyIcon className="size-icon-xs" />
+        )}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Read-only multi-line code block (e.g. a JSON config snippet) with a copy
+ * button anchored in the top-right corner.
+ */
+function CopyableSnippet({ value }: { value: string }) {
+  const { t } = useTranslation('settings');
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await writeClipboardViaBridge(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="relative">
+      <pre className="bg-secondary border border-border rounded-sm px-base py-half pr-12 font-mono text-xs text-high overflow-x-auto whitespace-pre">
+        {value}
+      </pre>
+      <button
+        type="button"
+        onClick={() => void handleCopy()}
+        className={cn(
+          'absolute right-2 top-2 p-1 rounded-sm',
+          'text-low hover:text-high hover:bg-secondary/60 transition-colors'
+        )}
+        aria-label={t('settings.mcp.externalClients.copy')}
+        title={t('settings.mcp.externalClients.copy')}
+      >
+        {copied ? (
+          <CheckIcon className="size-icon-xs text-success" weight="bold" />
+        ) : (
+          <CopyIcon className="size-icon-xs" />
+        )}
+      </button>
+    </div>
+  );
+}

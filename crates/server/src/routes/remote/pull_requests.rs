@@ -23,6 +23,11 @@ async fn list_pull_requests(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ListPullRequestsQuery>,
 ) -> Result<ResponseJson<ApiResponse<ListPullRequestsResponse>>, ApiError> {
+    if deployment.local_only() {
+        let lr = deployment.local_remote().expect("local_remote configured");
+        let response = lr.list_pull_requests(query.issue_id).await?;
+        return Ok(ResponseJson(ApiResponse::success(response)));
+    }
     let client = deployment.remote_client()?;
     let response = client.list_pull_requests(query.issue_id).await?;
     Ok(ResponseJson(ApiResponse::success(response)))

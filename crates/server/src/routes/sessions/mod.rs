@@ -22,6 +22,7 @@ use executors::{
     actions::{
         ExecutorAction, ExecutorActionType, coding_agent_follow_up::CodingAgentFollowUpRequest,
     },
+    executors::BaseCodingAgent,
     profile::ExecutorConfig,
 };
 use serde::Deserialize;
@@ -164,6 +165,80 @@ pub async fn follow_up(
     if session.executor.is_none() {
         Session::update_executor(pool, session.id, &executor_profile_id.executor.to_string())
             .await?;
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // CURSOR_MCP fast path: there is no real coding agent process to spawn.
+    // The user's reply is delivered to the in-memory cursor-mcp rendezvous
+    // (resolving the front pending `wait_for_user_input` call from Cursor's
+    // Composer Agent). We still ensure a single placeholder
+    // execution_process exists per session so the rest of the system —
+    // queue, scratch, normalized-logs WS, etc. — has something to bind to.
+    // See `services::cursor_mcp` and `routes::cursor_mcp` for the full
+    // protocol.
+    // ─────────────────────────────────────────────────────────────────
+    if matches!(executor_profile_id.executor, BaseCodingAgent::CursorMcp) {
+        let prompt = payload.prompt.clone();
+
+        // 1. Try to resolve any front-of-queue wait with this user reply.
+        //    `false` return means there was no pending wait — the service
+        //    still appends the message to the in-memory conversation so
+        //    the UI can show it.
+        let _ = deployment
+            .cursor_mcp()
+            .resolve_with_user_reply(session.id, prompt.clone())
+            .await;
+
+        // 2. Make sure a placeholder execution_process exists. Skip if
+        //    one is already on file.
+        let prior = ExecutionProcess::find_by_session_id(pool, session.id, false).await?;
+        if let Some(latest) = prior.into_iter().last() {
+            // Best-effort scratch cleanup mirrors the normal happy path.
+            if let Err(e) = Scratch::delete(pool, session.id, &ScratchType::DraftFollowUp).await {
+                tracing::debug!(
+                    "Failed to delete draft follow-up scratch for cursor-mcp session {}: {}",
+                    session.id,
+                    e
+                );
+            }
+            return Ok(ResponseJson(ApiResponse::success(latest)));
+        }
+
+        // First-ever follow-up: spawn the placeholder via the standard
+        // start_execution flow so its execution_process and MsgStore are
+        // wired into the container layer like every other agent.
+        let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+        let cleanup_action = deployment.container().cleanup_actions_for_repos(&repos);
+        let working_dir = session
+            .agent_working_dir
+            .as_ref()
+            .filter(|dir| !dir.is_empty())
+            .cloned();
+        let initial = ExecutorActionType::CodingAgentInitialRequest(
+            executors::actions::coding_agent_initial::CodingAgentInitialRequest {
+                prompt,
+                executor_config: payload.executor_config.clone(),
+                working_dir,
+            },
+        );
+        let action = ExecutorAction::new(initial, cleanup_action.map(Box::new));
+        let execution_process = deployment
+            .container()
+            .start_execution(
+                &workspace,
+                &session,
+                &action,
+                &ExecutionProcessRunReason::CodingAgent,
+            )
+            .await?;
+        if let Err(e) = Scratch::delete(pool, session.id, &ScratchType::DraftFollowUp).await {
+            tracing::debug!(
+                "Failed to delete draft follow-up scratch for cursor-mcp session {}: {}",
+                session.id,
+                e
+            );
+        }
+        return Ok(ResponseJson(ApiResponse::success(execution_process)));
     }
 
     if let Some(proc_id) = payload.retry_process_id {

@@ -5,6 +5,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::get,
 };
+use deployment::Deployment;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -21,6 +22,11 @@ async fn get_workspace_by_local_id(
     State(deployment): State<DeploymentImpl>,
     Path(local_workspace_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
+    if deployment.local_only() {
+        let lr = deployment.local_remote().expect("local_remote configured");
+        let workspace = lr.get_workspace_by_local_id(local_workspace_id).await?;
+        return Ok(ResponseJson(ApiResponse::success(workspace)));
+    }
     let client = deployment.remote_client()?;
     let workspace = client.get_workspace_by_local_id(local_workspace_id).await?;
     Ok(ResponseJson(ApiResponse::success(workspace)))

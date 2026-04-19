@@ -2,6 +2,8 @@ import { ReactNode, useCallback, useEffect } from 'react';
 import { configApi } from '@/shared/lib/api';
 import { updateLanguageFromConfig } from '@/i18n/config';
 import { setRemoteApiBase } from '@/shared/lib/remoteApi';
+import { setLocalOnlyMode } from '@/shared/lib/auth/runtime';
+import { lockElectricToFallback } from '@/shared/lib/electric/collections';
 import { useUserSystemController } from '@/shared/hooks/useUserSystemController';
 import { UserSystemContext } from '@/shared/hooks/useUserSystem';
 import { tokenManager } from '@/shared/lib/auth/tokenManager';
@@ -27,6 +29,14 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   // Set runtime remote API base URL for self-hosting support.
   // Must run during render (not in useEffect) so it's set before children mount.
   setRemoteApiBase(userSystemInfo?.shared_api_base);
+
+  // Local-only desktop mode: lock the Electric/cloud-sync layer into fallback
+  // (REST polling) and inject a static auth token so cloud-bound `/v1/*`
+  // requests resolve to the embedded server.
+  if (userSystemInfo?.local_only) {
+    setLocalOnlyMode(true);
+    lockElectricToFallback();
+  }
 
   // Sync language with i18n when config changes
   useEffect(() => {

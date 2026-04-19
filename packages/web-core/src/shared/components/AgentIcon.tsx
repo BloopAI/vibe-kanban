@@ -23,6 +23,8 @@ export function getAgentName(
       return 'OpenCode';
     case BaseCodingAgent.CURSOR_AGENT:
       return 'Cursor';
+    case BaseCodingAgent.CURSOR_MCP:
+      return 'Cursor (MCP)';
     case BaseCodingAgent.QWEN_CODE:
       return 'Qwen';
     case BaseCodingAgent.COPILOT:
@@ -63,6 +65,9 @@ export function AgentIcon({ agent, className = 'h-4 w-4' }: AgentIconProps) {
       break;
     case BaseCodingAgent.CURSOR_AGENT:
       iconPath = `/agents/cursor${suffix}.svg`;
+      break;
+    case BaseCodingAgent.CURSOR_MCP:
+      iconPath = `/agents/cursor-mcp${suffix}.svg`;
       break;
     case BaseCodingAgent.QWEN_CODE:
       iconPath = `/agents/qwen${suffix}.svg`;

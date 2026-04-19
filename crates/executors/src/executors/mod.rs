@@ -23,7 +23,7 @@ use crate::{
     env::ExecutionEnv,
     executors::{
         amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
-        droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
+        cursor_mcp::CursorMcp, droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
     },
     logs::utils::patch,
     mcp_config::McpConfig,
@@ -36,6 +36,7 @@ pub mod claude;
 pub mod codex;
 pub mod copilot;
 pub mod cursor;
+pub mod cursor_mcp;
 pub mod droid;
 pub mod gemini;
 pub mod opencode;
@@ -116,6 +117,10 @@ pub enum CodingAgent {
     #[strum_discriminants(serde(alias = "CURSOR"))]
     #[strum_discriminants(strum(serialize = "CURSOR", serialize = "CURSOR_AGENT"))]
     CursorAgent,
+    /// Cursor IDE (Composer Agent) connected to vibe-kanban over a stdio
+    /// MCP "PChat-like" bridge that exposes a single `wait_for_user_input`
+    /// tool. See [`cursor_mcp`] for the full design.
+    CursorMcp,
     QwenCode,
     Copilot,
     Droid,
@@ -193,6 +198,10 @@ impl CodingAgent {
                 vec![BaseAgentCapability::SessionFork]
             }
             Self::CursorAgent(_) => vec![BaseAgentCapability::SetupHelper],
+            // CURSOR_MCP has no CLI to install; the user is expected to
+            // already have Cursor IDE. No setup helper, no session fork
+            // (the conversation lives entirely outside vibe-kanban).
+            Self::CursorMcp(_) => vec![],
             Self::Amp(_) | Self::Copilot(_) | Self::Droid(_) => vec![],
             #[cfg(feature = "qa-mode")]
             Self::QaMock(_) => vec![], // QA mock doesn't need special capabilities
@@ -419,5 +428,16 @@ mod tests {
         let result: Result<BaseCodingAgent, _> = serde_json::from_str(r#""CURSOR""#);
         assert!(result.is_ok(), "CURSOR should deserialize via serde");
         assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
+    }
+
+    #[test]
+    fn test_cursor_mcp_deserialization() {
+        let result = BaseCodingAgent::from_str("CURSOR_MCP");
+        assert!(result.is_ok(), "CURSOR_MCP should be valid");
+        assert_eq!(result.unwrap(), BaseCodingAgent::CursorMcp);
+
+        let result: Result<BaseCodingAgent, _> = serde_json::from_str(r#""CURSOR_MCP""#);
+        assert!(result.is_ok(), "CURSOR_MCP should deserialize via serde");
+        assert_eq!(result.unwrap(), BaseCodingAgent::CursorMcp);
     }
 }

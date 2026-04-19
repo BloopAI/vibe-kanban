@@ -50,6 +50,11 @@
         }
       }
     },
+    "CURSOR_MCP": {
+      "DEFAULT": {
+        "CURSOR_MCP": {}
+      }
+    },
     "COPILOT": {
       "DEFAULT": {
         "COPILOT": {

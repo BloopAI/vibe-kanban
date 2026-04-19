@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{sync::Arc, time::Duration};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use services::services::{
@@ -114,6 +114,28 @@ fn main() {
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .expect("Failed to install rustls crypto provider");
+
+    // Desktop client defaults to local-only mode: the embedded server uses its
+    // SQLite-backed `LocalRemote` instead of calling api.vibekanban.com. Set
+    // BEFORE LocalDeployment is constructed (env is read once at startup).
+    // Setting any non-empty value other than "0" / "false" enables it; users
+    // can opt out with `VK_LOCAL_ONLY=0` if they want to point at the cloud.
+    if std::env::var_os("VK_LOCAL_ONLY").is_none() {
+        // SAFETY: single-threaded at this point — main hasn't spawned tasks
+        unsafe { std::env::set_var("VK_LOCAL_ONLY", "1") };
+    }
+
+    // Locate the bundled `vibe-kanban-mcp` sidecar binary and expose its
+    // absolute path via `VK_MCP_BINARY` so the embedded server can surface
+    // it on `/api/info` for the Settings → MCP "copy config" UI. Resolution
+    // strategy lives in `resolve_mcp_sidecar_path` (handles dev + bundled).
+    if std::env::var_os("VK_MCP_BINARY").is_none()
+        && let Some(path) = resolve_mcp_sidecar_path()
+    {
+        // SAFETY: single-threaded at this point — main hasn't spawned tasks
+        unsafe { std::env::set_var("VK_MCP_BINARY", &path) };
+        tracing::debug!("Resolved bundled MCP sidecar at {}", path.display());
+    }
 
     let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
     let filter_string = format!(
@@ -372,6 +394,49 @@ fn show_window(app: &tauri::AppHandle) {
         let _ = window.show();
         let _ = window.set_focus();
     }
+}
+
+/// Locate the bundled `vibe-kanban-mcp` sidecar binary on disk.
+///
+/// `tauri.conf.json` declares `bundle.externalBin = ["binaries/vibe-kanban-mcp"]`,
+/// which Tauri places **next to the main executable** in every supported
+/// bundle layout (macOS `<App>.app/Contents/MacOS/`, Windows install dir,
+/// Linux `/usr/lib/<bundle-id>/`). In dev mode the binary lives at
+/// `crates/tauri-app/binaries/vibe-kanban-mcp-<triple>(.exe)` (produced by
+/// `scripts/prepare-tauri-sidecars.js`). We try both, returning the first
+/// path that exists.
+fn resolve_mcp_sidecar_path() -> Option<PathBuf> {
+    let exe_name = if cfg!(windows) {
+        "vibe-kanban-mcp.exe"
+    } else {
+        "vibe-kanban-mcp"
+    };
+
+    // Bundled / installed: same directory as the running executable.
+    if let Ok(current_exe) = std::env::current_exe()
+        && let Some(parent) = current_exe.parent()
+    {
+        let candidate = parent.join(exe_name);
+        if candidate.exists() {
+            return Some(candidate);
+        }
+    }
+
+    // Dev fallback: <crate-root>/binaries/vibe-kanban-mcp-<triple>(.exe)
+    let triple = option_env!("VK_TAURI_TARGET_TRIPLE")?;
+    let dev_name = if cfg!(windows) {
+        format!("vibe-kanban-mcp-{triple}.exe")
+    } else {
+        format!("vibe-kanban-mcp-{triple}")
+    };
+    let dev_candidate = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("binaries")
+        .join(dev_name);
+    if dev_candidate.exists() {
+        return Some(dev_candidate);
+    }
+
+    None
 }
 
 fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(

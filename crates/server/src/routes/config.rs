@@ -10,6 +10,7 @@ use axum::{
     routing::{get, put},
 };
 use deployment::{Deployment, DeploymentError};
+// Re-export for trait method `local_only()` resolution at call site:
 use executors::{
     executors::{
         AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, StandardCodingAgentExecutor,
@@ -99,6 +100,16 @@ pub struct UserSystemInfo {
     pub capabilities: HashMap<String, Vec<BaseAgentCapability>>,
     pub shared_api_base: Option<String>,
     pub preview_proxy_port: Option<u16>,
+    /// True when the embedded server is running standalone (no cloud calls).
+    /// Frontend uses this to lock Electric collections to fallback polling
+    /// and to short-circuit auth.
+    pub local_only: bool,
+    /// Absolute path of the bundled `vibe-kanban-mcp` sidecar binary, when
+    /// the server runs inside the Tauri desktop app. The Tauri shell sets
+    /// `VK_MCP_BINARY` at startup (see `crates/tauri-app/src/main.rs`); the
+    /// Settings → MCP UI uses this to render a one-click MCP client config.
+    /// `None` for browser/dev/headless deployments.
+    pub mcp_binary_path: Option<String>,
 }
 
 // TODO: update frontend, BE schema has changed, this replaces GET /config and /config/constants
@@ -106,7 +117,16 @@ pub struct UserSystemInfo {
 async fn get_user_system_info(
     State(deployment): State<DeploymentImpl>,
 ) -> ResponseJson<ApiResponse<UserSystemInfo>> {
-    let config = deployment.config().read().await.clone();
+    let mut config = deployment.config().read().await.clone();
+    // Local-only desktop mode: bypass the cloud sign-in onboarding gate.
+    // RootRedirectPage / OnboardingSignInPage / LandingPage all branch on
+    // `config.remote_onboarding_acknowledged` to decide whether to force-route
+    // the user through `/onboarding/*`. We override the response without
+    // writing to disk so opting back out of local-only (`VK_LOCAL_ONLY=0`)
+    // restores the original config state.
+    if deployment.local_only() {
+        config.remote_onboarding_acknowledged = true;
+    }
     let login_status = match tokio::time::timeout(
         std::time::Duration::from_secs(2),
         deployment.get_login_status(),
@@ -170,8 +190,18 @@ async fn get_user_system_info(
             }
             caps
         },
-        shared_api_base: deployment.remote_info().get_api_base(),
+        shared_api_base: if deployment.local_only() {
+            // Same-origin: frontend's getRemoteApiUrl() resolves to "" so all
+            // /v1/* and /shape/* requests land on the local server.
+            Some(String::new())
+        } else {
+            deployment.remote_info().get_api_base()
+        },
         preview_proxy_port: deployment.client_info().get_preview_proxy_port(),
+        local_only: deployment.local_only(),
+        mcp_binary_path: std::env::var("VK_MCP_BINARY")
+            .ok()
+            .filter(|p| !p.is_empty()),
     };
 
     ResponseJson(ApiResponse::success(user_system_info))

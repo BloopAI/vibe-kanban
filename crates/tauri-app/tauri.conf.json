@@ -20,6 +20,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "externalBin": [
+      "binaries/vibe-kanban-mcp"
+    ],
     "macOS": {
       "bundleName": "Vibe Kanban"
     },
@@ -34,14 +37,14 @@
     "category": "DeveloperTool",
     "shortDescription": "AI-powered development workspace",
     "longDescription": "Vibe Kanban: Collaborative AI workspace for software development",
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": false
   },
   "plugins": {
     "macos-fps": {},
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyN0ZCNDVCMDhFMDdEQjAKUldTd2ZlQUlXN1IvTWt1Z0ZmaWpsUUVGOHl3QUExRVVWL0crWkROSjViRUZSTXdUODN4WkFlQ1AK",
       "endpoints": [
-        "__TAURI_UPDATE_ENDPOINT__"
+        "https://updater.vibe-kanban.local/latest.json"
       ]
     }
   }

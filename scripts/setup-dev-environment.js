@@ -9,7 +9,7 @@ const DEV_ASSETS_SEED = path.join(__dirname, "..", "dev_assets_seed");
 const DEV_ASSETS = path.join(__dirname, "..", "dev_assets");
 
 /**
- * Check if a port is available
+ * Check if a port is available (i.e. nothing is listening on it).
  */
 function isPortAvailable(port) {
   return new Promise((resolve) => {
@@ -23,11 +23,63 @@ function isPortAvailable(port) {
 }
 
 /**
- * Find a free port starting from a given port
+ * Detect a leftover vibe-kanban backend process holding a port.
+ *
+ * Returns the listener PID if `http://localhost:<port>/api/health` responds
+ * with the vibe-kanban-shaped JSON envelope (`{ success, data: "OK", ... }`),
+ * `null` otherwise (port held by something else, or no HTTP server at all).
+ *
+ * Used so `findFreePort()` can print a loud, actionable warning instead of
+ * silently advancing to the next port — a stale `target/debug/server` left
+ * behind by an unclean shutdown will otherwise reliably collide with whatever
+ * BACKEND_PORT we hand back, panicking the next `cargo watch` iteration with
+ * `Address already in use` (see also: `pnpm run tauri:dev` first-run bug).
+ */
+async function detectStaleVibeKanbanBackend(port) {
+  let body;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 500);
+    const res = await fetch(`http://localhost:${port}/api/health`, {
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    body = await res.json();
+  } catch {
+    return null;
+  }
+  if (!body || body.success !== true || body.data !== "OK") return null;
+
+  // Resolve the listener PID via lsof so the warning is actionable.
+  let pid = null;
+  try {
+    const { execSync } = require("child_process");
+    pid = execSync(`lsof -ti tcp:${port} -sTCP:LISTEN`, { encoding: "utf8" })
+      .trim()
+      .split(/\s+/)[0]
+      || null;
+  } catch {
+    /* lsof not available or no listener — best-effort */
+  }
+  return pid;
+}
+
+/**
+ * Find a free port starting from a given port. If a candidate port is held by
+ * a stale vibe-kanban backend, advance past it and print a kill hint so the
+ * caller can clean up.
  */
 async function findFreePort(startPort = 3000) {
   let port = startPort;
   while (!(await isPortAvailable(port))) {
+    const stalePid = await detectStaleVibeKanbanBackend(port);
+    if (stalePid) {
+      console.warn(
+        `[setup-dev] port ${port} is held by a leftover vibe-kanban backend (pid ${stalePid}). ` +
+          `Skipping. To reclaim it: kill -9 ${stalePid}`
+      );
+    }
     port++;
     if (port > 65535) {
       throw new Error("No available ports found");

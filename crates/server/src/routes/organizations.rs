@@ -50,10 +50,13 @@ pub fn router() -> Router<DeploymentImpl> {
 async fn list_organizations(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ListOrganizationsResponse>>, ApiError> {
+    if deployment.local_only() {
+        let lr = deployment.local_remote().expect("local_remote configured");
+        let response = lr.list_organizations().await?;
+        return Ok(ResponseJson(ApiResponse::success(response)));
+    }
     let client = deployment.remote_client()?;
-
     let response = client.list_organizations().await?;
-
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
@@ -61,10 +64,18 @@ async fn get_organization(
     State(deployment): State<DeploymentImpl>,
     Path(id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<GetOrganizationResponse>>, ApiError> {
+    if deployment.local_only() {
+        let lr = deployment.local_remote().expect("local_remote configured");
+        let organization = lr.get_organization(id).await?;
+        return Ok(ResponseJson(ApiResponse::success(
+            GetOrganizationResponse {
+                organization,
+                user_role: "ADMIN".to_string(),
+            },
+        )));
+    }
     let client = deployment.remote_client()?;
-
     let response = client.get_organization(id).await?;
-
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
@@ -185,10 +196,13 @@ async fn list_members(
     State(deployment): State<DeploymentImpl>,
     Path(org_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<ListMembersResponse>>, ApiError> {
+    if deployment.local_only() {
+        let lr = deployment.local_remote().expect("local_remote configured");
+        let response = lr.list_organization_members(org_id).await?;
+        return Ok(ResponseJson(ApiResponse::success(response)));
+    }
     let client = deployment.remote_client()?;
-
     let response = client.list_members(org_id).await?;
-
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
