@@ -26,6 +26,7 @@ import {
 import type { RepoAction } from '@vibe/ui/components/RepoCard';
 
 type UiPreferencesScratchData = UiPreferencesData & {
+  local_project_order?: string[];
   show_left_column_links?: boolean | null;
 };
 
@@ -52,6 +53,7 @@ function storeToScratchData(state: {
   workspaceSort: WorkspaceSortState;
   selectedOrgId: string | null;
   selectedProjectId: string | null;
+  localProjectOrder: string[];
   createDraftWorkspaceByDefault: boolean;
   showLeftColumnLinks: boolean;
   kanbanProjectViewSelections: Record<string, KanbanProjectViewSelection>;
@@ -89,6 +91,7 @@ function storeToScratchData(state: {
     },
     selected_org_id: state.selectedOrgId,
     selected_project_id: state.selectedProjectId,
+    local_project_order: state.localProjectOrder,
     create_draft_workspace_by_default: state.createDraftWorkspaceByDefault,
     show_left_column_links: state.showLeftColumnLinks,
     kanban_project_view_selections: state.kanbanProjectViewSelections as Record<
@@ -118,6 +121,7 @@ function scratchDataToStore(data: UiPreferencesScratchData): {
   workspaceSort: WorkspaceSortState;
   selectedOrgId: string | null;
   selectedProjectId: string | null;
+  localProjectOrder: string[];
   createDraftWorkspaceByDefault: boolean;
   showLeftColumnLinks: boolean;
   kanbanProjectViewSelections: Record<string, KanbanProjectViewSelection>;
@@ -176,6 +180,7 @@ function scratchDataToStore(data: UiPreferencesScratchData): {
     },
     selectedOrgId: data.selected_org_id ?? null,
     selectedProjectId: data.selected_project_id ?? null,
+    localProjectOrder: data.local_project_order ?? [],
     createDraftWorkspaceByDefault:
       data.create_draft_workspace_by_default ??
       DEFAULT_CREATE_DRAFT_WORKSPACE_BY_DEFAULT,
@@ -220,6 +225,7 @@ export function useUiPreferencesScratch() {
     workspaceSort: state.workspaceSort,
     selectedOrgId: state.selectedOrgId,
     selectedProjectId: state.selectedProjectId,
+    localProjectOrder: state.localProjectOrder,
     createDraftWorkspaceByDefault: state.createDraftWorkspaceByDefault,
     showLeftColumnLinks: state.showLeftColumnLinks,
     kanbanProjectViewSelections: state.kanbanProjectViewSelections,
@@ -255,6 +261,7 @@ export function useUiPreferencesScratch() {
       workspaceSort: currentState.workspaceSort,
       selectedOrgId: currentState.selectedOrgId,
       selectedProjectId: currentState.selectedProjectId,
+      localProjectOrder: currentState.localProjectOrder,
       createDraftWorkspaceByDefault: currentState.createDraftWorkspaceByDefault,
       showLeftColumnLinks: currentState.showLeftColumnLinks,
       kanbanProjectViewSelections: currentState.kanbanProjectViewSelections,
@@ -311,6 +318,7 @@ export function useUiPreferencesScratch() {
         workspaceSort: serverState.workspaceSort,
         selectedOrgId: serverState.selectedOrgId,
         selectedProjectId: serverState.selectedProjectId,
+        localProjectOrder: serverState.localProjectOrder,
         createDraftWorkspaceByDefault:
           serverState.createDraftWorkspaceByDefault,
         showLeftColumnLinks: serverState.showLeftColumnLinks,
