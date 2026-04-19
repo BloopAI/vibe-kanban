@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DropResult } from '@hello-pangea/dnd';
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
 import { siDiscord, siGithub } from 'simple-icons';
@@ -27,6 +27,7 @@ import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
+import { useUserContext } from '@/shared/hooks/useUserContext';
 import { useDiscordOnlineCount } from '@/shared/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/shared/hooks/useGitHubStars';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
@@ -54,7 +55,7 @@ import { AppBarNotificationBellContainer } from '@/pages/workspaces/AppBarNotifi
 import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebarContainer';
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
 import { useRemoteCloudHostsAppBarModel } from '@/shared/hooks/useRemoteCloudHosts';
-import { projectsApi } from '@/shared/lib/api';
+import { projectsApi, workspacesApi } from '@/shared/lib/api';
 
 function getLocalProjectColor(projectId: string): string {
   let hash = 0;
@@ -87,6 +88,21 @@ function orderLocalProjects(
   return [...ordered, ...projectById.values()];
 }
 
+function workspaceNeedsReview(workspace: {
+  has_pending_approval?: boolean;
+  has_unseen_turns?: boolean;
+  latest_process_status?: string | null;
+}): boolean {
+  if (workspace.has_pending_approval) {
+    return true;
+  }
+
+  return (
+    workspace.has_unseen_turns === true &&
+    workspace.latest_process_status !== 'running'
+  );
+}
+
 export function SharedAppLayout() {
   const appNavigation = useAppNavigation();
   const currentDestination = useCurrentAppDestination();
@@ -99,6 +115,7 @@ export function SharedAppLayout() {
     (s) => s.showLeftColumnLinks
   );
   const { isSignedIn } = useAuth();
+  const { workspaces: userWorkspaces } = useUserContext();
   const { appVersion, loginStatus } = useUserSystem();
   const updateVersion = useAppUpdateStore((s) => s.updateVersion);
   const restartForUpdate = useAppUpdateStore((s) => s.restart);
@@ -197,26 +214,110 @@ export function SharedAppLayout() {
       ),
     [localProjectOrder, localProjects]
   );
-  const allAppBarProjects = isLocalAuthBypassed
-    ? localAppBarProjects
-    : sortedProjects;
-  const isProjectsLoading = isLocalAuthBypassed
-    ? isLocalProjectsLoading
-    : isLoading;
-  const archivedProjects = useMemo(
+
+  const {
+    data: activeWorkspaceSummaries = [],
+    isLoading: isActiveWorkspaceSummariesLoading,
+  } = useQuery({
+    queryKey: ['workspace-summaries', 'active'],
+    queryFn: () => workspacesApi.listSummaries(false),
+    staleTime: 1000,
+    refetchInterval: 15000,
+  });
+  const {
+    data: archivedWorkspaceSummaries = [],
+    isLoading: isArchivedWorkspaceSummariesLoading,
+  } = useQuery({
+    queryKey: ['workspace-summaries', 'archived'],
+    queryFn: () => workspacesApi.listSummaries(true),
+    staleTime: 1000,
+    refetchInterval: 15000,
+  });
+  const localProjectWorkspaceQueries = useQueries({
+    queries: localProjects.map((project) => ({
+      queryKey: ['project-workspaces', project.id],
+      queryFn: () => projectsApi.listWorkspaces(project.id),
+      enabled: isLocalAuthBypassed,
+      staleTime: 1000,
+      refetchInterval: 15000,
+    })),
+  });
+  const needsReviewWorkspaceIds = useMemo(() => {
+    const summaries = [
+      ...activeWorkspaceSummaries,
+      ...archivedWorkspaceSummaries,
+    ];
+    return new Set(
+      summaries
+        .filter((summary) => workspaceNeedsReview(summary))
+        .map((summary) => summary.workspace_id)
+    );
+  }, [activeWorkspaceSummaries, archivedWorkspaceSummaries]);
+  const needsReviewProjectIds = useMemo(() => {
+    const projectIds = new Set<string>();
+
+    if (isLocalAuthBypassed) {
+      for (const query of localProjectWorkspaceQueries) {
+        for (const workspace of query.data ?? []) {
+          if (
+            workspace.local_workspace_id &&
+            needsReviewWorkspaceIds.has(workspace.local_workspace_id)
+          ) {
+            projectIds.add(workspace.project_id);
+          }
+        }
+      }
+
+      return projectIds;
+    }
+
+    for (const workspace of userWorkspaces) {
+      if (
+        workspace.local_workspace_id &&
+        needsReviewWorkspaceIds.has(workspace.local_workspace_id)
+      ) {
+        projectIds.add(workspace.project_id);
+      }
+    }
+
+    return projectIds;
+  }, [
+    isLocalAuthBypassed,
+    localProjectWorkspaceQueries,
+    needsReviewWorkspaceIds,
+    userWorkspaces,
+  ]);
+  const allAppBarProjects = useMemo(
     () =>
-      allAppBarProjects.filter(
-        (project) => 'archived' in project && project.archived
+      (isLocalAuthBypassed ? localAppBarProjects : sortedProjects).map(
+        (project) => ({
+          ...project,
+          hasNeedsReview: needsReviewProjectIds.has(project.id),
+        })
       ),
+    [
+      isLocalAuthBypassed,
+      localAppBarProjects,
+      needsReviewProjectIds,
+      sortedProjects,
+    ]
+  );
+  const archivedProjects = useMemo(
+    () => allAppBarProjects.filter((project) => project.archived),
     [allAppBarProjects]
   );
   const appBarProjects = useMemo(
-    () =>
-      allAppBarProjects.filter(
-        (project) => !('archived' in project) || !project.archived
-      ),
+    () => allAppBarProjects.filter((project) => !project.archived),
     [allAppBarProjects]
   );
+  const isProjectsLoading = isLocalAuthBypassed
+    ? isLocalProjectsLoading ||
+      isActiveWorkspaceSummariesLoading ||
+      isArchivedWorkspaceSummariesLoading ||
+      localProjectWorkspaceQueries.some((query) => query.isLoading)
+    : isLoading ||
+      isActiveWorkspaceSummariesLoading ||
+      isArchivedWorkspaceSummariesLoading;
   const [orderedProjects, setOrderedProjects] =
     useState<AppBarProject[]>(appBarProjects);
   const [isSavingProjectOrder, setIsSavingProjectOrder] = useState(false);

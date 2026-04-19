@@ -86,6 +86,7 @@ export interface AppBarProject {
   name: string;
   color: string;
   archived?: boolean;
+  hasNeedsReview?: boolean;
 }
 
 export type AppBarHostStatus = 'online' | 'offline' | 'unpaired';
@@ -499,31 +500,43 @@ export function AppBar({
                           style={dragProvided.draggableProps.style}
                         >
                           <Tooltip content={project.name} side="right">
-                            <button
-                              type="button"
-                              onClick={() => item.onProjectClick(project.id)}
-                              className={cn(
-                                appBarItemBaseClassName,
-                                item.archived ? 'cursor-pointer' : 'cursor-grab',
-                                snapshot.isDragging && 'shadow-lg',
-                                item.activeProjectId === project.id
-                                  ? ''
-                                  : item.archived
-                                    ? 'bg-primary text-low hover:bg-brand/10 hover:text-normal'
-                                    : 'bg-primary text-normal hover:opacity-80'
+                            <div className="relative">
+                              {project.hasNeedsReview && (
+                                <span
+                                  className="absolute -right-1 -top-1 z-10 h-3 w-3 rounded-full border border-secondary bg-brand"
+                                  aria-hidden="true"
+                                />
                               )}
-                              style={
-                                item.activeProjectId === project.id
-                                  ? {
-                                      color: `hsl(${project.color})`,
-                                      backgroundColor: `hsl(${project.color} / 0.2)`,
-                                    }
-                                  : undefined
-                              }
-                              aria-label={project.name}
-                            >
-                              {getProjectInitials(project.name)}
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => item.onProjectClick(project.id)}
+                                className={cn(
+                                  appBarItemBaseClassName,
+                                  item.archived ? 'cursor-pointer' : 'cursor-grab',
+                                  snapshot.isDragging && 'shadow-lg',
+                                  item.activeProjectId === project.id
+                                    ? ''
+                                    : item.archived
+                                      ? 'bg-primary text-low hover:bg-brand/10 hover:text-normal'
+                                      : 'bg-primary text-normal hover:opacity-80'
+                                )}
+                                style={
+                                  item.activeProjectId === project.id
+                                    ? {
+                                        color: `hsl(${project.color})`,
+                                        backgroundColor: `hsl(${project.color} / 0.2)`,
+                                      }
+                                    : undefined
+                                }
+                                aria-label={
+                                  project.hasNeedsReview
+                                    ? `${project.name} (needs review)`
+                                    : project.name
+                                }
+                              >
+                                {getProjectInitials(project.name)}
+                              </button>
+                            </div>
                           </Tooltip>
                         </div>
                       )}
