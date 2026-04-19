@@ -247,6 +247,79 @@ When pairing via SSH, the remote server's host key fingerprint is captured on fi
 
 Session tokens rotate automatically every 24 hours. Each token is a 256-bit random value. Tokens are never transmitted in plaintext over the network — connections are WebSocket (upgrade from HTTP) or SSH-tunnelled.
 
+## Configuration reference
+
+The values below are compile-time constants in the source. Changing them requires rebuilding from source. The relay port is the only value configurable per host at runtime without a rebuild.
+
+### Relay port
+
+The relay port is configured **per host** at pairing time — there is no global config file to change. The default is `8081`.
+
+To use a different port:
+
+- **Pairing-code flow** — enter the address as `hostname:port` in the Address field, or set the relay port field directly if shown
+- **SSH key flow** — set the **Relay port on remote** field to your chosen port in the SSH pair form
+- **After pairing** — open the **Edit** panel for the host row and update the relay port there
+
+Ensure the chosen port is open in the remote machine's firewall.
+
+### Rate limiting
+
+| Parameter | Default | Source constant |
+|---|---|---|
+| Maximum attempts | `5` | `MAX_ATTEMPTS` |
+| Sliding window | `15 minutes` | `WINDOW_MINUTES` |
+
+Both limits apply to pairing-code and SSH key pairing, counted per client IP address. They share the same sliding window — five failed attempts of any kind from the same IP locks that IP out for the window duration.
+
+To change these values, edit the two constants at the top of `crates/server/src/routes/p2p_hosts.rs` and rebuild:
+
+```rust
+// crates/server/src/routes/p2p_hosts.rs
+const MAX_ATTEMPTS: i64 = 5;    // maximum pairing attempts per window
+const WINDOW_MINUTES: i64 = 15; // sliding window length in minutes
+```
+
+<Warning>
+Lowering `MAX_ATTEMPTS` below `3` or `WINDOW_MINUTES` below `5` may lock out legitimate users on shared NAT networks where multiple machines share one IP. Raising them weakens brute-force protection.
+</Warning>
+
+### Session token rotation interval
+
+| Parameter | Default | Source constant |
+|---|---|---|
+| Auto-rotation interval | `24 hours` | `TOKEN_ROTATION_INTERVAL` |
+
+To change the rotation interval, edit the constant in `crates/server/src/runtime/p2p_connection.rs` and rebuild:
+
+```rust
+// crates/server/src/runtime/p2p_connection.rs
+const TOKEN_ROTATION_INTERVAL: Duration = Duration::from_secs(24 * 60 * 60);
+```
+
+Common alternative values:
+
+| Desired interval | Seconds expression |
+|---|---|
+| 6 hours | `6 * 60 * 60` |
+| 12 hours | `12 * 60 * 60` |
+| 48 hours | `48 * 60 * 60` |
+| 7 days | `7 * 24 * 60 * 60` |
+
+You can trigger an immediate manual rotation for any specific host at any time without a rebuild — see [Rotating a session token](#rotating-a-session-token).
+
+### Reconnection timing
+
+The connection manager uses exponential backoff when a relay connection drops.
+
+| Parameter | Default | Source constant |
+|---|---|---|
+| Initial reconnect delay | `2 seconds` | `P2P_RECONNECT_INITIAL_DELAY_SECS` |
+| Maximum reconnect delay | `60 seconds` | `P2P_RECONNECT_MAX_DELAY_SECS` |
+| Host poll interval | `30 seconds` | `P2P_POLL_INTERVAL_SECS` |
+
+All three constants are at the top of `crates/server/src/runtime/p2p_connection.rs`.
+
 ## Troubleshooting
 
 <AccordionGroup>
@@ -262,7 +335,7 @@ Session tokens rotate automatically every 24 hours. Each token is a 256-bit rand
   - Confirm the private key path is correct and the file is readable by Vibe Kanban
   - Verify the key is authorised on the remote machine: `~/.ssh/authorized_keys` should contain the matching public key
   - Check that the SSH user exists on the remote machine and has login access
-  - Try `ssh -i <key-path> <user>@<host> -p <port>` from your terminal to confirm the key works independently
+  - Try connecting manually with `ssh -i <key-path> -p <port> <user>@<host>` from your terminal to confirm the key works independently
 </Accordion>
 
 <Accordion title="SSH pairing fails with 'Connection refused'">
@@ -279,7 +352,7 @@ Session tokens rotate automatically every 24 hours. Each token is a 256-bit rand
 </Accordion>
 
 <Accordion title="Pairing code says 'rate limit exceeded'">
-  More than 5 pairing attempts were made from the same IP in 15 minutes. Wait 15 minutes and try again, or use SSH key pairing instead (it shares the same rate-limit window).
+  More than 5 pairing attempts were made from the same IP in 15 minutes. Wait 15 minutes and try again, or use SSH key pairing instead (it shares the same rate-limit window). If you need to adjust the limit, see [Rate limiting](#rate-limiting-1) in the Configuration reference.
 </Accordion>
 
 <Accordion title="Projects from remote host are not loading">
