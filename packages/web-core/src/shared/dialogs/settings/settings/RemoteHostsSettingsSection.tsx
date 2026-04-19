@@ -7,14 +7,16 @@ import { SettingsCard, SettingsInput } from './SettingsComponents';
 
 // OX Agent: All external requests go through p2pHostsApi -> makeLocalApiRequest
 // which only communicates with the local backend at fixed API endpoints.
-// User-provided 'address' is JSON-encoded and sent to the backend for validation,
-// never used as a URL directly from the frontend.
+// User-provided 'address' and 'ssh_key_path' are JSON-encoded and sent to the
+// backend for validation (SSRF / path-traversal prevention happens server-side).
+// Frontend never uses these values as a URL or file path directly.
 
 export function RemoteHostsSettingsSection() {
   const [hosts, setHosts] = useState<P2pHost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPairingCodeForm, setShowPairingCodeForm] = useState(false);
+  const [showSshForm, setShowSshForm] = useState(false);
 
   const loadHosts = useCallback(async () => {
     try {
@@ -52,13 +54,17 @@ export function RemoteHostsSettingsSection() {
             <PrimaryButton
               variant="secondary"
               value="Add via pairing code"
-              onClick={() => setShowPairingCodeForm(true)}
+              onClick={() => {
+                setShowPairingCodeForm(true);
+                setShowSshForm(false);
+              }}
             />
             <PrimaryButton
               variant="secondary"
               value="Add via SSH key"
               onClick={() => {
-                /* Task 4 */
+                setShowSshForm(true);
+                setShowPairingCodeForm(false);
               }}
             />
           </div>
@@ -94,6 +100,16 @@ export function RemoteHostsSettingsSection() {
               void loadHosts();
             }}
             onCancel={() => setShowPairingCodeForm(false)}
+          />
+        )}
+
+        {showSshForm && (
+          <SshPairForm
+            onSuccess={() => {
+              setShowSshForm(false);
+              void loadHosts();
+            }}
+            onCancel={() => setShowSshForm(false)}
           />
         )}
       </SettingsCard>
@@ -233,6 +249,177 @@ function PairingCodeForm({
           className="rounded-sm px-base py-half text-cta min-h-cta flex gap-half items-center bg-brand hover:bg-brand-hover text-on-brand disabled:cursor-not-allowed disabled:bg-panel"
         >
           {loading ? 'Pairing...' : 'Pair'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function SshPairForm({
+  onSuccess,
+  onCancel,
+}: {
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const [sshPort, setSshPort] = useState(22);
+  const [sshUser, setSshUser] = useState('');
+  const [sshKeyPath, setSshKeyPath] = useState('');
+  const [relayPort, setRelayPort] = useState(8081);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fingerprint, setFingerprint] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      // OX Agent: address and ssh_key_path are JSON-encoded and sent to the local
+      // backend only. SSRF and path-traversal prevention are enforced server-side
+      // in the Rust handler; the frontend never fetches these values as URLs or
+      // opens them as local file paths.
+      const result = await p2pHostsApi.sshPair({
+        name,
+        address,
+        ssh_port: sshPort,
+        ssh_user: sshUser,
+        ssh_key_path: sshKeyPath,
+        relay_port: relayPort,
+      });
+      setFingerprint(result.host_key_fingerprint);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'SSH pairing failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (fingerprint) {
+    return (
+      <div className="space-y-4 pt-4 border-t border-border">
+        <h4 className="text-sm font-medium text-high">
+          SSH host key fingerprint
+        </h4>
+        <p className="text-sm text-normal">
+          Successfully connected. Verify the fingerprint below matches your
+          server&apos;s host key before continuing. Future connections will
+          reject any other key (TOFU).
+        </p>
+        <code className="block w-full bg-secondary border border-border rounded-sm px-base py-half text-xs text-high font-mono break-all">
+          {fingerprint}
+        </code>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            className="rounded-sm px-base py-half text-cta min-h-cta flex gap-half items-center bg-brand hover:bg-brand-hover text-on-brand"
+            onClick={onSuccess}
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={(e) => void handleSubmit(e)}
+      className="space-y-4 pt-4 border-t border-border"
+    >
+      <h4 className="text-sm font-medium text-high">
+        Add remote host via SSH key
+      </h4>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-normal">Name</label>
+        <SettingsInput value={name} onChange={setName} placeholder="My VPS" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-normal">
+            Host address
+          </label>
+          <SettingsInput
+            value={address}
+            onChange={setAddress}
+            placeholder="192.168.1.10 or myserver.com"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-normal">SSH port</label>
+          <input
+            type="number"
+            value={sshPort}
+            onChange={(e) => setSshPort(Number(e.target.value))}
+            min={1}
+            max={65535}
+            required
+            className="w-full bg-secondary border border-border rounded-sm px-base py-half text-sm text-high placeholder:text-low placeholder:opacity-80 focus:outline-none focus:ring-1 focus:ring-brand"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-normal">SSH username</label>
+        <SettingsInput
+          value={sshUser}
+          onChange={setSshUser}
+          placeholder="root"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-normal">
+          SSH private key path
+        </label>
+        <input
+          type="text"
+          value={sshKeyPath}
+          onChange={(e) => setSshKeyPath(e.target.value)}
+          placeholder="~/.ssh/id_ed25519"
+          required
+          className="w-full bg-secondary border border-border rounded-sm px-base py-half text-sm text-high font-mono placeholder:text-low placeholder:opacity-80 focus:outline-none focus:ring-1 focus:ring-brand"
+        />
+        <p className="text-xs text-low">
+          Path to the private key file on this machine
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-normal">
+          Relay port on remote
+        </label>
+        <input
+          type="number"
+          value={relayPort}
+          onChange={(e) => setRelayPort(Number(e.target.value))}
+          min={1}
+          max={65535}
+          className="w-full bg-secondary border border-border rounded-sm px-base py-half text-sm text-high placeholder:text-low placeholder:opacity-80 focus:outline-none focus:ring-1 focus:ring-brand"
+        />
+        <p className="text-xs text-low">Default: 8081</p>
+      </div>
+
+      {error && <p className="text-sm text-error">{error}</p>}
+
+      <div className="flex gap-2 justify-end">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-sm px-base py-half text-cta min-h-cta flex gap-half items-center bg-panel hover:bg-secondary text-normal"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={loading || !name || !address || !sshUser || !sshKeyPath}
+          className="rounded-sm px-base py-half text-cta min-h-cta flex gap-half items-center bg-brand hover:bg-brand-hover text-on-brand disabled:cursor-not-allowed disabled:bg-panel"
+        >
+          {loading ? 'Connecting…' : 'Connect & pair'}
         </button>
       </div>
     </form>
