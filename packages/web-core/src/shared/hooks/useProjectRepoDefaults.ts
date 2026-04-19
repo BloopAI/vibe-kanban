@@ -2,9 +2,16 @@ import { scratchApi, ApiError } from '@/shared/lib/api';
 import {
   ScratchType,
   type DraftWorkspaceRepo,
-  type ProjectStatusConfigData,
   type ScratchPayload,
 } from 'shared/types';
+
+export interface ProjectStatusConfigData {
+  id: string;
+  name: string;
+  color: string;
+  hidden: boolean;
+  sort_order: number;
+}
 
 const SCRATCH_TYPE = ScratchType.PROJECT_REPO_DEFAULTS;
 

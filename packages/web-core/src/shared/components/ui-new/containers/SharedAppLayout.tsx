@@ -176,11 +176,11 @@ export function SharedAppLayout() {
     ? isLocalProjectsLoading
     : isLoading;
   const archivedProjects = useMemo(
-    () => allAppBarProjects.filter((project) => project.archived),
+    () => allAppBarProjects.filter((project) => 'archived' in project && project.archived),
     [allAppBarProjects]
   );
   const appBarProjects = useMemo(
-    () => allAppBarProjects.filter((project) => !project.archived),
+    () => allAppBarProjects.filter((project) => !('archived' in project) || !project.archived),
     [allAppBarProjects]
   );
   const [orderedProjects, setOrderedProjects] =
