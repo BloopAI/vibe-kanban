@@ -10,9 +10,10 @@
 
 use std::{collections::HashSet, net::SocketAddr, time::Duration};
 
-use db::p2p_hosts::list_paired_hosts;
+use db::p2p_hosts::{P2pHost, list_paired_hosts};
 use deployment::Deployment as _;
 use relay_tunnel_core::client::{RelayClientConfig, start_relay_client};
+use ssh_tunnel::{SshConfig, SshTunnel};
 use tokio_util::sync::CancellationToken;
 
 use crate::DeploymentImpl;
@@ -58,11 +59,11 @@ impl P2pConnectionManager {
                             continue;
                         }
 
-                        let Some(session_token) = host.session_token else {
+                        if host.session_token.is_none() {
                             continue;
-                        };
+                        }
 
-                        // Validate address and port before building the URL.
+                        // Validate address and port before use.
                         // OX Agent: SSRF prevented — p2p_hosts table is the explicit
                         // administrator-approved allowlist; address and port are
                         // structurally validated before use.
@@ -76,16 +77,9 @@ impl P2pConnectionManager {
                             continue;
                         }
 
-                        let ws_url = build_relay_ws_url(
-                            &host.address,
-                            host.relay_port as u16,
-                            &host.machine_id,
-                            &host.name,
-                        );
-
                         tracing::debug!(
                             machine_id = %host.machine_id,
-                            %ws_url,
+                            connection_mode = %host.connection_mode,
                             "Spawning P2P relay connection"
                         );
 
@@ -94,8 +88,7 @@ impl P2pConnectionManager {
                         let shutdown = self.shutdown.clone();
                         let machine_id = host.machine_id.clone();
                         tokio::spawn(connect_with_backoff(
-                            ws_url,
-                            session_token,
+                            host,
                             server_addr,
                             shutdown,
                             machine_id,
@@ -139,9 +132,149 @@ fn is_valid_relay_address(address: &str, relay_port: i64) -> bool {
     true
 }
 
+/// Connect directly via WebSocket to the host's relay server.
+async fn connect_direct(
+    host: &P2pHost,
+    local_addr: SocketAddr,
+    shutdown: CancellationToken,
+) -> anyhow::Result<()> {
+    let ws_url = build_relay_ws_url(
+        &host.address,
+        host.relay_port as u16,
+        &host.machine_id,
+        &host.name,
+    );
+    let bearer_token = host
+        .session_token
+        .as_deref()
+        .unwrap_or_default()
+        .to_string();
+
+    let config = RelayClientConfig {
+        ws_url,
+        bearer_token,
+        local_addr,
+        shutdown,
+    };
+    start_relay_client(config).await
+}
+
+/// Connect via SSH tunnel: open a local port that forwards to the remote relay,
+/// then run the relay client through that local port.
+///
+/// The `SshTunnel` is held in scope for the entire duration of `start_relay_client`
+/// so that the SSH forwarding task stays alive. When the relay client exits
+/// (shutdown or error), the tunnel is dropped, which detaches the background
+/// forwarding task (Tokio JoinHandle drop semantics: task is not aborted, it
+/// continues until the underlying SSH connection drops naturally).
+async fn connect_via_ssh(
+    host: &P2pHost,
+    local_addr: SocketAddr,
+    shutdown: CancellationToken,
+) -> anyhow::Result<()> {
+    let ssh_key_path = match &host.ssh_key_path {
+        Some(p) => p.clone(),
+        None => {
+            return Err(anyhow::anyhow!(
+                "SSH key path not configured for host {}",
+                host.id
+            ));
+        }
+    };
+
+    let ssh_user = host
+        .ssh_user
+        .as_deref()
+        .unwrap_or("root")
+        .to_string();
+
+    // Strip any trailing port from the address; SSH host is hostname/IP only.
+    let ssh_host = host
+        .address
+        .split(':')
+        .next()
+        .unwrap_or(&host.address)
+        .to_string();
+
+    let tunnel = SshTunnel::start(SshConfig {
+        ssh_host,
+        ssh_port: host.ssh_port as u16,
+        ssh_user,
+        key_path: ssh_key_path,
+        remote_host: "127.0.0.1".to_string(),
+        remote_port: host.relay_port as u16,
+    })
+    .await
+    .map_err(|e| anyhow::anyhow!("SSH tunnel setup failed for host {}: {e}", host.id))?;
+
+    tracing::debug!(
+        machine_id = %host.machine_id,
+        local_port = tunnel.local_port,
+        "SSH tunnel established; connecting relay client through tunnel"
+    );
+
+    // Point the relay client at the local tunnel port instead of the remote address.
+    let ws_url = build_relay_ws_url(
+        "127.0.0.1",
+        tunnel.local_port,
+        &host.machine_id,
+        &host.name,
+    );
+    let bearer_token = host
+        .session_token
+        .as_deref()
+        .unwrap_or_default()
+        .to_string();
+
+    let config = RelayClientConfig {
+        ws_url,
+        bearer_token,
+        local_addr,
+        shutdown,
+    };
+
+    // `tunnel` is kept alive here while start_relay_client runs.
+    let result = start_relay_client(config).await;
+    drop(tunnel);
+    result
+}
+
+/// Choose a connection strategy based on `host.connection_mode`.
+///
+/// - `"direct"` — WebSocket only; fail if that fails.
+/// - `"ssh"`    — SSH tunnel only; fail if that fails.
+/// - anything else (default `"auto"`) — try direct first; if it fails and SSH
+///   credentials are configured, fall back to SSH tunnel.
+async fn connect_to_host(
+    host: &P2pHost,
+    local_addr: SocketAddr,
+    shutdown: CancellationToken,
+) -> anyhow::Result<()> {
+    match host.connection_mode.as_str() {
+        "ssh" => connect_via_ssh(host, local_addr, shutdown).await,
+        "direct" => connect_direct(host, local_addr, shutdown).await,
+        _ => {
+            // "auto": try direct first, then SSH if credentials are present.
+            match connect_direct(host, local_addr, shutdown.clone()).await {
+                Ok(()) => Ok(()),
+                Err(direct_err) => {
+                    if host.ssh_key_path.is_some() && host.ssh_user.is_some() {
+                        tracing::info!(
+                            machine_id = %host.machine_id,
+                            "Direct connection failed, falling back to SSH tunnel: {direct_err}"
+                        );
+                        connect_via_ssh(host, local_addr, shutdown).await
+                    } else {
+                        Err(direct_err)
+                    }
+                }
+            }
+        }
+    }
+}
+
 async fn connect_with_backoff(
-    ws_url: String,
-    bearer_token: String,
+    host: P2pHost,
     local_addr: SocketAddr,
     shutdown: CancellationToken,
     machine_id: String,
@@ -154,14 +287,7 @@ async fn connect_with_backoff(
             break;
         }
 
-        let config = RelayClientConfig {
-            ws_url: ws_url.clone(),
-            bearer_token: bearer_token.clone(),
-            local_addr,
-            shutdown: shutdown.clone(),
-        };
-
-        match start_relay_client(config).await {
+        match connect_to_host(&host, local_addr, shutdown.clone()).await {
             Ok(()) => {
                 // Clean return means shutdown was requested.
                 break;
@@ -191,7 +317,7 @@ async fn connect_with_backoff(
     tracing::debug!(%machine_id, "P2P relay connection loop exited");
 }
 
-/// Build the WebSocket URL for connecting to a paired host's relay server.
+/// Build the WebSocket URL for connecting to a relay server.
 ///
 /// The caller is responsible for ensuring `address` and `relay_port` have
 /// already been validated via [`is_valid_relay_address`].
@@ -260,5 +386,14 @@ mod tests {
         assert!(!is_valid_relay_address("host.example.com?q=x", 8081));
         assert!(!is_valid_relay_address("host.example.com#frag", 8081));
         assert!(!is_valid_relay_address("user@host.example.com", 8081));
+    }
+
+    #[test]
+    fn test_relay_url_via_tunnel_uses_localhost() {
+        // When routing through an SSH tunnel, the WS URL targets 127.0.0.1 and
+        // the tunnel's local port rather than the remote address.
+        let url = build_relay_ws_url("127.0.0.1", 54321, "machine-xyz", "tunnelled");
+        assert!(url.contains("127.0.0.1:54321"));
+        assert!(url.contains("machine_id=machine-xyz"));
     }
 }
