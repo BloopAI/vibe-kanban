@@ -7,6 +7,7 @@ import {
   type MouseEvent,
   type RefObject,
 } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
@@ -75,6 +76,7 @@ import { useIssueMultiSelect } from '@/shared/hooks/useIssueMultiSelect';
 import { useIssueSelectionStore } from '@/shared/stores/useIssueSelectionStore';
 import { BulkActionBarContainer } from './BulkActionBarContainer';
 import { saveProjectStatusDefaults } from '@/shared/hooks/useProjectRepoDefaults';
+import { projectsApi } from '@/shared/lib/api';
 
 const areStringSetsEqual = (left: string[], right: string[]): boolean => {
   if (left.length !== right.length) {
@@ -225,6 +227,8 @@ function LocalProjectSettingsDialog({
   issues,
   onClose,
 }: LocalProjectSettingsDialogProps) {
+  const queryClient = useQueryClient();
+  const appNavigation = useAppNavigation();
   const countsByStatusId = useMemo(() => {
     const counts = new Map<string, number>();
     issues.forEach((issue) => {
@@ -338,6 +342,28 @@ function LocalProjectSettingsDialog({
     }
   }, [draftStatuses, onClose, projectId]);
 
+  const archiveProject = useCallback(async () => {
+    try {
+      setIsSaving(true);
+      setError(null);
+      await projectsApi.update(projectId, { archived: true });
+      await queryClient.invalidateQueries({ queryKey: ['local-projects'] });
+      await queryClient.invalidateQueries({
+        queryKey: ['local-project', projectId],
+      });
+      onClose();
+      appNavigation.goToWorkspaces();
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : 'Failed to archive project.'
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }, [appNavigation, onClose, projectId, queryClient]);
+
   return (
     <>
       <div
@@ -366,6 +392,25 @@ function LocalProjectSettingsDialog({
           <div className="space-y-4 px-4 py-4">
             <div className="rounded-sm border border-border bg-secondary/40 px-3 py-2 text-sm text-low">
               Local-only boards keep their columns in local project scratch now. Add, move, and remove empty columns here. Removing a column with issues is blocked.
+            </div>
+            <div className="flex items-center justify-between gap-4 rounded-sm border border-border bg-panel px-3 py-2">
+              <div>
+                <div className="text-sm font-medium text-high">
+                  Archive project
+                </div>
+                <div className="text-xs text-low">
+                  Hide this project from the main sidebar until it is restored
+                  from Archived.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void archiveProject()}
+                disabled={isSaving}
+                className="rounded-sm border border-border px-3 py-2 text-sm text-high transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Archive
+              </button>
             </div>
             <div className="flex gap-2">
               <input

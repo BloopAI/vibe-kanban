@@ -168,7 +168,12 @@ fn normalize_status_key(value: &str) -> String {
     value
         .chars()
         .filter(|ch| ch.is_ascii_alphanumeric())
-        .flat_map(|ch| ch.to_ascii_lowercase().to_string().chars().collect::<Vec<_>>())
+        .flat_map(|ch| {
+            ch.to_ascii_lowercase()
+                .to_string()
+                .chars()
+                .collect::<Vec<_>>()
+        })
         .collect()
 }
 
@@ -249,7 +254,10 @@ fn status_sort_order(name: &str) -> i64 {
 }
 
 fn status_hidden(name: &str) -> bool {
-    matches!(normalize_status_key(name).as_str(), "cancelled" | "canceled")
+    matches!(
+        normalize_status_key(name).as_str(),
+        "cancelled" | "canceled"
+    )
 }
 
 fn extract_status_name(description: Option<&str>, fallback: &TaskStatus) -> String {
@@ -288,16 +296,22 @@ fn ensure_status_metadata(description: Option<String>, status_name: &str) -> Opt
         }
     }
 
-    let mut next = lines.join("
-");
+    let mut next = lines.join(
+        "
+",
+    );
     if !replaced {
         if !next.trim().is_empty() {
-            next.push_str("
+            next.push_str(
+                "
 
-");
+",
+            );
         }
-        next.push_str("Local metadata
-- Original Status: ");
+        next.push_str(
+            "Local metadata
+- Original Status: ",
+        );
         next.push_str(status_name);
     }
 
@@ -318,11 +332,9 @@ fn compat_statuses(
     let mut ordered_statuses = Vec::<ProjectStatusConfigData>::new();
     let mut seen_keys = HashSet::<String>::new();
 
-    let push_status = |
-        ordered_statuses: &mut Vec<ProjectStatusConfigData>,
-        seen_keys: &mut HashSet<String>,
-        status: ProjectStatusConfigData,
-    | {
+    let push_status = |ordered_statuses: &mut Vec<ProjectStatusConfigData>,
+                       seen_keys: &mut HashSet<String>,
+                       status: ProjectStatusConfigData| {
         let key = normalize_status_key(&status.name);
         if key.is_empty() || seen_keys.contains(&key) {
             return;
@@ -444,24 +456,25 @@ fn trim_matching_wrappers(value: &str, wrapper: char) -> &str {
 
 fn extract_cloud_metadata_value(description: Option<&str>, key: &str) -> Option<String> {
     let prefix = format!("- {key}:");
-    description
-        .unwrap_or_default()
-        .lines()
-        .find_map(|line| {
-            let value = line.trim().strip_prefix(&prefix)?.trim();
-            if value.is_empty() {
-                return None;
-            }
-            let value = trim_matching_wrappers(trim_matching_wrappers(value, '`'), '"').trim();
-            if value.is_empty() {
-                None
-            } else {
-                Some(value.to_string())
-            }
-        })
+    description.unwrap_or_default().lines().find_map(|line| {
+        let value = line.trim().strip_prefix(&prefix)?.trim();
+        if value.is_empty() {
+            return None;
+        }
+        let value = trim_matching_wrappers(trim_matching_wrappers(value, '`'), '"').trim();
+        if value.is_empty() {
+            None
+        } else {
+            Some(value.to_string())
+        }
+    })
 }
 
-fn extract_simple_id(title: &str, description: Option<&str>, issue_number: i64) -> (String, String, i64) {
+fn extract_simple_id(
+    title: &str,
+    description: Option<&str>,
+    issue_number: i64,
+) -> (String, String, i64) {
     if let Some(simple_id) = extract_cloud_metadata_value(description, "Original Cloud Issue ID") {
         let display_title = title
             .strip_prefix(&format!("{simple_id} · "))
@@ -679,6 +692,7 @@ fn synthetic_project_from_repos(
         project: Project {
             id: scratch.id,
             name: primary_repo.display_name.clone(),
+            archived: false,
             default_agent_working_dir: primary_repo.default_working_dir.clone(),
             remote_project_id: None,
             created_at: scratch.created_at,
@@ -797,7 +811,6 @@ async fn load_project_tasks(
     .fetch_all(&deployment.db().pool)
     .await?)
 }
-
 
 async fn load_synthetic_workspaces(
     deployment: &DeploymentImpl,
@@ -936,7 +949,8 @@ async fn list_fallback_issues(
 ) -> Result<ResponseJson<serde_json::Value>, ApiError> {
     let tasks = load_project_tasks(&deployment, query.project_id).await?;
     if !tasks.is_empty() {
-        let configured_statuses = load_project_status_configs(&deployment, query.project_id).await?;
+        let configured_statuses =
+            load_project_status_configs(&deployment, query.project_id).await?;
         let statuses = compat_statuses(query.project_id, &tasks, &configured_statuses);
         let status_ids_by_key = statuses
             .iter()
@@ -1064,10 +1078,7 @@ async fn list_fallback_pull_requests(
             .into_iter()
             .filter_map(|workspace| workspace.task_id.map(|task_id| (workspace.id, task_id)))
             .collect::<HashMap<_, _>>();
-        let project_task_ids = task_rows
-            .iter()
-            .map(|task| task.id)
-            .collect::<HashSet<_>>();
+        let project_task_ids = task_rows.iter().map(|task| task.id).collect::<HashSet<_>>();
 
         let mut prs = PullRequest::find_all_with_workspace(&deployment.db().pool)
             .await?
@@ -1095,7 +1106,10 @@ async fn list_fallback_pull_requests(
             })
             .collect::<Vec<_>>();
 
-        let linked_issue_ids = prs.iter().map(|pr| pr.issue_id.clone()).collect::<HashSet<_>>();
+        let linked_issue_ids = prs
+            .iter()
+            .map(|pr| pr.issue_id.clone())
+            .collect::<HashSet<_>>();
         prs.extend(
             task_rows
                 .iter()
@@ -1159,10 +1173,7 @@ async fn list_fallback_pull_request_issues(
             .into_iter()
             .filter_map(|workspace| workspace.task_id.map(|task_id| (workspace.id, task_id)))
             .collect::<HashMap<_, _>>();
-        let project_task_ids = task_rows
-            .iter()
-            .map(|task| task.id)
-            .collect::<HashSet<_>>();
+        let project_task_ids = task_rows.iter().map(|task| task.id).collect::<HashSet<_>>();
 
         let mut pull_request_issues = PullRequest::find_all_with_workspace(&deployment.db().pool)
             .await?
@@ -1256,8 +1267,7 @@ async fn create_issue(
     }
 
     let project_tasks = load_project_tasks(&deployment, request.project_id).await?;
-    let configured_statuses =
-        load_project_status_configs(&deployment, request.project_id).await?;
+    let configured_statuses = load_project_status_configs(&deployment, request.project_id).await?;
     let status_name = resolve_status_name(
         request.project_id,
         &project_tasks,
@@ -1291,8 +1301,7 @@ async fn update_issue(
         .await?
         .ok_or(sqlx::Error::RowNotFound)?;
     let project_tasks = load_project_tasks(&deployment, existing.project_id).await?;
-    let configured_statuses =
-        load_project_status_configs(&deployment, existing.project_id).await?;
+    let configured_statuses = load_project_status_configs(&deployment, existing.project_id).await?;
     let status_name = request
         .status_id
         .as_deref()
@@ -1315,7 +1324,10 @@ async fn update_issue(
         &deployment.db().pool,
         issue_id,
         request.title,
-        Some(ensure_status_metadata(next_description_source, &status_name)),
+        Some(ensure_status_metadata(
+            next_description_source,
+            &status_name,
+        )),
         Some(parse_task_status(&status_name)),
         request.parent_issue_id,
     )
@@ -1363,7 +1375,10 @@ async fn bulk_update_issues(
             &deployment.db().pool,
             update.id,
             update.title,
-            Some(ensure_status_metadata(next_description_source, &status_name)),
+            Some(ensure_status_metadata(
+                next_description_source,
+                &status_name,
+            )),
             Some(parse_task_status(&status_name)),
             update.parent_issue_id,
         )

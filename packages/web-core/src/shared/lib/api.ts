@@ -1495,6 +1495,17 @@ export const projectsApi = {
     const response = await makeRequest(`/api/projects/${projectId}`);
     return handleApiResponse<Project>(response);
   },
+
+  update: async (
+    projectId: string,
+    data: { archived: boolean }
+  ): Promise<Project> => {
+    const response = await makeRequest(`/api/projects/${projectId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Project>(response);
+  },
 };
 
 export const remoteProjectsApi = {

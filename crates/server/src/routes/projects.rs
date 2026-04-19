@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use axum::{
-    Router,
+    Json, Router,
     extract::{Path, State},
     response::Json as ResponseJson,
     routing::get,
@@ -12,6 +12,7 @@ use db::models::{
     scratch::{Scratch, ScratchPayload, ScratchType},
 };
 use deployment::Deployment;
+use serde::Deserialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -19,6 +20,11 @@ use crate::{DeploymentImpl, error::ApiError};
 
 fn normalize_project_name(name: &str) -> String {
     name.trim().to_ascii_lowercase()
+}
+
+#[derive(Debug, Deserialize)]
+struct UpdateProjectRequest {
+    archived: bool,
 }
 
 async fn list_synthetic_projects(deployment: &DeploymentImpl) -> Result<Vec<Project>, ApiError> {
@@ -47,6 +53,7 @@ async fn list_synthetic_projects(deployment: &DeploymentImpl) -> Result<Vec<Proj
         synthetic_projects.push(Project {
             id: scratch.id,
             name: primary_repo.display_name.clone(),
+            archived: false,
             default_agent_working_dir: primary_repo.default_working_dir.clone(),
             remote_project_id: None,
             created_at: scratch.created_at,
@@ -98,6 +105,7 @@ async fn find_exact_synthetic_project(
     Ok(Some(Project {
         id: scratch.id,
         name: primary_repo.display_name.clone(),
+        archived: false,
         default_agent_working_dir: primary_repo.default_working_dir.clone(),
         remote_project_id: None,
         created_at: scratch.created_at,
@@ -165,10 +173,20 @@ async fn get_project(
     Ok(ResponseJson(ApiResponse::success(project)))
 }
 
+async fn update_project(
+    State(deployment): State<DeploymentImpl>,
+    Path(project_id): Path<Uuid>,
+    Json(payload): Json<UpdateProjectRequest>,
+) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
+    let project =
+        Project::set_archived(&deployment.db().pool, project_id, payload.archived).await?;
+    Ok(ResponseJson(ApiResponse::success(project)))
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     let inner = Router::new()
         .route("/", get(list_projects))
-        .route("/{project_id}", get(get_project));
+        .route("/{project_id}", get(get_project).patch(update_project));
 
     Router::new().nest("/projects", inner)
 }

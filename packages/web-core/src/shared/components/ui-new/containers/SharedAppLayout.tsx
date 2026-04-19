@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DropResult } from '@hello-pangea/dnd';
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
 import { siDiscord, siGithub } from 'simple-icons';
@@ -88,6 +88,7 @@ export function SharedAppLayout() {
   const isLocalAuthBypassed =
     loginStatus?.status === 'loggedin' && !loginStatus.profile;
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Register CMD+K shortcut globally for all routes under SharedAppLayout
   useCommandBarShortcut(() => CommandBarDialog.show());
@@ -164,15 +165,24 @@ export function SharedAppLayout() {
         id: project.id,
         name: project.name,
         color: getLocalProjectColor(project.id),
+        archived: project.archived,
       })),
     [localProjects]
   );
-  const appBarProjects = isLocalAuthBypassed
+  const allAppBarProjects = isLocalAuthBypassed
     ? localAppBarProjects
     : sortedProjects;
   const isProjectsLoading = isLocalAuthBypassed
     ? isLocalProjectsLoading
     : isLoading;
+  const archivedProjects = useMemo(
+    () => allAppBarProjects.filter((project) => project.archived),
+    [allAppBarProjects]
+  );
+  const appBarProjects = useMemo(
+    () => allAppBarProjects.filter((project) => !project.archived),
+    [allAppBarProjects]
+  );
   const [orderedProjects, setOrderedProjects] =
     useState<AppBarProject[]>(appBarProjects);
   const [isSavingProjectOrder, setIsSavingProjectOrder] = useState(false);
@@ -229,12 +239,20 @@ export function SharedAppLayout() {
       return routeProjectId;
     }
 
-    if (routeProjectId && orderedProjects.some((project) => project.id === routeProjectId)) {
+    if (
+      routeProjectId &&
+      allAppBarProjects.some((project) => project.id === routeProjectId)
+    ) {
       return routeProjectId;
     }
 
     return selectedProjectId;
-  }, [isLocalAuthBypassed, orderedProjects, routeProjectId, selectedProjectId]);
+  }, [
+    allAppBarProjects,
+    isLocalAuthBypassed,
+    routeProjectId,
+    selectedProjectId,
+  ]);
   const activeHostId =
     getDestinationHostId(currentDestination) ?? routeHostId ?? null;
   const sidebarPreview = useWorkspaceSidebarPreviewController({
@@ -326,6 +344,21 @@ export function SharedAppLayout() {
     }
   }, [appNavigation, isLocalAuthBypassed, selectedOrgId]);
 
+  const handleRestoreArchivedProject = useCallback(
+    async (projectId: string) => {
+      if (!isLocalAuthBypassed) {
+        appNavigation.goToProject(projectId);
+        return;
+      }
+
+      await projectsApi.update(projectId, { archived: false });
+      await queryClient.invalidateQueries({ queryKey: ['local-projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['local-project', projectId] });
+      appNavigation.goToProject(projectId);
+    },
+    [appNavigation, isLocalAuthBypassed, queryClient]
+  );
+
   const handleSignIn = useCallback(async () => {
     try {
       await OAuthDialog.show({});
@@ -385,6 +418,7 @@ export function SharedAppLayout() {
             {/* Desktop AppBar sidebar. */}
             <AppBar
               projects={orderedProjects}
+              archivedProjects={archivedProjects}
               hosts={remoteCloudHosts}
               activeHostId={activeHostId}
               onCreateProject={handleCreateProject}
@@ -393,6 +427,7 @@ export function SharedAppLayout() {
               onHostClick={handleHostClick}
               onPairHostClick={handlePairHostClick}
               onProjectClick={handleProjectClick}
+              onArchivedProjectClick={handleRestoreArchivedProject}
               onProjectsDragEnd={handleProjectsDragEnd}
               isSavingProjectOrder={isSavingProjectOrder}
               isWorkspacesActive={isWorkspacesActive}
@@ -530,29 +565,58 @@ export function SharedAppLayout() {
             {/* Project list */}
             <div className="flex-1 overflow-y-auto p-2">
               {isSignedIn ? (
-                orderedProjects.map((project) => (
-                  <button
-                    type="button"
-                    key={project.id}
-                    onClick={() => {
-                      handleProjectClick(project.id);
-                      setIsDrawerOpen(false);
-                    }}
-                    className={cn(
-                      'flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm text-left cursor-pointer',
-                      'transition-colors',
-                      project.id === activeProjectId
-                        ? 'bg-brand/10 text-high'
-                        : 'text-normal hover:bg-secondary'
-                    )}
-                  >
-                    <span
-                      className="h-2.5 w-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: `hsl(${project.color})` }}
-                    />
-                    <span className="truncate">{project.name}</span>
-                  </button>
-                ))
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    {orderedProjects.map((project) => (
+                      <button
+                        type="button"
+                        key={project.id}
+                        onClick={() => {
+                          handleProjectClick(project.id);
+                          setIsDrawerOpen(false);
+                        }}
+                        className={cn(
+                          'flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm text-left cursor-pointer',
+                          'transition-colors',
+                          project.id === activeProjectId
+                            ? 'bg-brand/10 text-high'
+                            : 'text-normal hover:bg-secondary'
+                        )}
+                      >
+                        <span
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: `hsl(${project.color})` }}
+                        />
+                        <span className="truncate">{project.name}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {isLocalAuthBypassed && archivedProjects.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="px-3 text-xs font-medium uppercase tracking-wide text-low">
+                        Archived
+                      </p>
+                      {archivedProjects.map((project) => (
+                        <button
+                          type="button"
+                          key={project.id}
+                          onClick={() => {
+                            void handleRestoreArchivedProject(project.id);
+                            setIsDrawerOpen(false);
+                          }}
+                          className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-low transition-colors hover:bg-secondary hover:text-normal cursor-pointer"
+                        >
+                          <span
+                            className="h-2.5 w-2.5 rounded-full shrink-0 opacity-60"
+                            style={{ backgroundColor: `hsl(${project.color})` }}
+                          />
+                          <span className="truncate">{project.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="px-4 py-6 text-center">
                   <KanbanIcon

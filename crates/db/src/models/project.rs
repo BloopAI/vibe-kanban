@@ -8,6 +8,7 @@ use uuid::Uuid;
 pub struct Project {
     pub id: Uuid,
     pub name: String,
+    pub archived: bool,
     pub default_agent_working_dir: Option<String>,
     pub remote_project_id: Option<Uuid>,
     #[ts(type = "Date")]
@@ -18,16 +19,16 @@ pub struct Project {
 
 impl Project {
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Project,
-            r#"SELECT id as "id!: Uuid",
+        sqlx::query_as::<_, Project>(
+            r#"SELECT id,
                       name,
+                      archived,
                       default_agent_working_dir,
-                      remote_project_id as "remote_project_id: Uuid",
-                      created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
+                      remote_project_id,
+                      created_at,
+                      updated_at
                FROM projects
-               ORDER BY created_at DESC"#
+               ORDER BY created_at DESC"#,
         )
         .fetch_all(pool)
         .await
@@ -37,6 +38,7 @@ impl Project {
         sqlx::query_as::<_, Project>(
             r#"SELECT id,
                       name,
+                      archived,
                       default_agent_working_dir,
                       remote_project_id,
                       created_at,
@@ -65,5 +67,29 @@ impl Project {
         .await?;
 
         Ok(())
+    }
+
+    pub async fn set_archived(
+        pool: &SqlitePool,
+        id: Uuid,
+        archived: bool,
+    ) -> Result<Self, sqlx::Error> {
+        sqlx::query_as::<_, Project>(
+            r#"UPDATE projects
+               SET archived = $2,
+                   updated_at = datetime('now', 'subsec')
+               WHERE id = $1
+               RETURNING id,
+                         name,
+                         archived,
+                         default_agent_working_dir,
+                         remote_project_id,
+                         created_at,
+                         updated_at"#,
+        )
+        .bind(id)
+        .bind(archived)
+        .fetch_one(pool)
+        .await
     }
 }

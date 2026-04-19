@@ -2,63 +2,65 @@
 
 ## Stream Identifier
 
-- Branch: `staging`
-- Repo: `/home/mcp/_vibe_kanban_repo`
-- Working mode: local-only VK maintenance plus normal feature work
+- Branch: `vk/cc95-vk-archive-proje`
+- Repo: `/home/mcp/code/worktrees/cc95-vk-archive-proje/_vibe_kanban_repo`
+- Working mode: local-only VK feature branch
 
 ## Objective
 
-- Maintain a stable, local-only Vibe Kanban instance that can be restored from backup plus GitHub without guesswork.
+- Add local project archive/restore behavior so completed or inactive projects stop expanding the left-column project list forever.
 
 ## In Scope
 
 - Local-only runtime stability
 - Local issue/project/workspace behavior
-- Backup and restore reliability
-- Restoring or repairing local workspace and PR metadata when the DB is incomplete
+- Local project navigation and project settings behavior
+- Local archive/restore persistence for projects
 
 ## Out of Scope
 
 - Reviving the old cloud-backed board model
 - Depending on `api.vibekanban.com` for local board state
+- Adding remote/cloud project archiving in this branch
 
 ## Stream-Specific Decisions
 
-- `staging` is the working base branch.
+- `staging` is the base branch; this stream lands through a PR back into `staging`.
 - The local install must keep `shared_api_base` disabled.
-- The lean backup system is the default backup path; the full-state backup is the heavy fallback.
+- The archive flag is persisted in the local `projects` table rather than emulated with scratch-only UI state.
+- Archived local projects should be hidden from the primary AppBar/mobile project list but remain restorable from an archived section.
 
 ## Relevant Files / Modules
 
-- `docs/self-hosting/local-backup-recovery.mdx`
-- `scripts/vk_lean_backup.py`
-- `scripts/run_vk_lean_backup.sh`
-- `scripts/vk_restore_lean_backup.py`
-- `scripts/run_vk_restore_latest.sh`
-- `packages/ui/src/components/IssueWorkspaceCard.tsx`
+- `crates/db/src/models/project.rs`
+- `crates/db/migrations/20260418000000_add_project_archived_flag.sql`
+- `crates/server/src/routes/projects.rs`
+- `packages/ui/src/components/AppBar.tsx`
+- `packages/web-core/src/features/kanban/ui/KanbanContainer.tsx`
+- `packages/web-core/src/shared/components/ui-new/containers/SharedAppLayout.tsx`
+- `shared/types.ts`
 - local DB: `~/.local/share/vibe-kanban/db.v2.sqlite`
 
 ## Current Status
 
 - Confirmed:
-  - hourly lean backup cron is installed
-  - Desktop mirror copy is active
-  - local issue creation works
-  - local workspace creation/linking works
-  - project settings and local columns are working again
-  - restored merged PR indicators for repaired issues/workspaces
+  - local projects have a persistent `archived` flag
+  - local project settings can archive the current project
+  - archived local projects are hidden from the primary left-column project list
+  - archived local projects can be restored from an Archived section in the left-column UI
+  - shared local TypeScript types were regenerated after the model change
 - Pending:
-  - optional cleanup of project-scoped PR fallback filtering
-  - any future feature work unrelated to recovery
+  - push branch, open PR into `staging`, and land it
+  - local UI smoke test after dependencies are available in this worktree
 
 ## Risks / Regression Traps
 
-- Confusing UI regressions with actual DB loss
+- Confusing archived projects with deleted or missing projects
 - Repointing the service back to cloud/shared API config
-- Forgetting to validate issue/workspace linking after changes in the kanban UI
+- Forgetting to keep the restore affordance visible when hiding archived projects
 
 ## Next Safe Steps
 
 1. Branch new work from `staging`.
 2. Keep the local-only runtime intact.
-3. Use the lean backup before risky changes.
+3. Rebase this branch onto the latest `fork/staging` before merge if `staging` moves.
