@@ -1,15 +1,18 @@
+use std::sync::Arc;
+
 use axum::{
     Router,
     routing::{IntoMakeService, get},
 };
 use tower_http::{compression::CompressionLayer, validate_request::ValidateRequestHeaderLayer};
 
-use crate::{DeploymentImpl, middleware};
+use crate::{DeploymentImpl, middleware, p2p::PairingStore};
 
 pub mod approvals;
 pub mod config;
 pub mod containers;
 pub mod filesystem;
+pub mod p2p_hosts;
 // pub mod github;
 pub mod attachments;
 pub mod events;
@@ -34,6 +37,7 @@ pub mod webrtc;
 pub mod workspaces;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
+    let pairing_store = Arc::new(PairingStore::new());
     let relay_signed_routes = Router::new()
         .route("/health", get(health::health_check))
         .merge(config::router())
@@ -70,6 +74,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     let api_routes = Router::new()
         .merge(relay_auth::router())
         .merge(host_relay::router(&deployment))
+        .merge(p2p_hosts::router(pairing_store))
         .merge(relay_signed_routes)
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,
