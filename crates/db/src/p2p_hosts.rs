@@ -15,6 +15,11 @@ pub struct P2pHost {
     pub last_connected_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub ssh_user: Option<String>,
+    pub ssh_port: i64,
+    pub ssh_key_path: Option<String>,
+    pub connection_mode: String,
+    pub known_host_key: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -28,7 +33,8 @@ pub struct CreateP2pHostParams {
 pub async fn list_p2p_hosts(db: &DBService) -> Result<Vec<P2pHost>, sqlx::Error> {
     sqlx::query_as::<_, P2pHost>(
         "SELECT id, name, address, relay_port, machine_id, session_token, status, \
-         last_connected_at, created_at, updated_at \
+         last_connected_at, created_at, updated_at, \
+         ssh_user, ssh_port, ssh_key_path, connection_mode, known_host_key \
          FROM p2p_hosts ORDER BY created_at DESC",
     )
     .fetch_all(&db.pool)
@@ -43,7 +49,8 @@ pub async fn create_p2p_host(
         "INSERT INTO p2p_hosts (name, address, relay_port, machine_id) \
          VALUES (?, ?, ?, ?) \
          RETURNING id, name, address, relay_port, machine_id, session_token, status, \
-                   last_connected_at, created_at, updated_at",
+                   last_connected_at, created_at, updated_at, \
+                   ssh_user, ssh_port, ssh_key_path, connection_mode, known_host_key",
     )
     .bind(&p.name)
     .bind(&p.address)
@@ -81,7 +88,8 @@ pub async fn update_p2p_host_paired(
 pub async fn list_paired_hosts(db: &DBService) -> Result<Vec<P2pHost>, sqlx::Error> {
     sqlx::query_as::<_, P2pHost>(
         "SELECT id, name, address, relay_port, machine_id, session_token, status, \
-         last_connected_at, created_at, updated_at \
+         last_connected_at, created_at, updated_at, \
+         ssh_user, ssh_port, ssh_key_path, connection_mode, known_host_key \
          FROM p2p_hosts WHERE status = 'paired' AND session_token IS NOT NULL ORDER BY created_at DESC",
     )
     .fetch_all(&db.pool)
@@ -118,5 +126,44 @@ pub async fn record_pairing_attempt(
         .bind(succeeded as i64)
         .execute(&db.pool)
         .await?;
+    Ok(())
+}
+
+pub async fn update_p2p_host_ssh_config(
+    db: &DBService,
+    id: &str,
+    ssh_user: Option<&str>,
+    ssh_port: i64,
+    ssh_key_path: Option<&str>,
+    connection_mode: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"UPDATE p2p_hosts
+           SET ssh_user = ?, ssh_port = ?, ssh_key_path = ?,
+               connection_mode = ?, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?"#,
+    )
+    .bind(ssh_user)
+    .bind(ssh_port)
+    .bind(ssh_key_path)
+    .bind(connection_mode)
+    .bind(id)
+    .execute(&db.pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn update_known_host_key(
+    db: &DBService,
+    id: &str,
+    key_fingerprint: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE p2p_hosts SET known_host_key = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    )
+    .bind(key_fingerprint)
+    .bind(id)
+    .execute(&db.pool)
+    .await?;
     Ok(())
 }
