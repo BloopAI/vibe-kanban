@@ -4983,6 +4983,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "local-relay"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "dashmap",
+ "relay-tunnel-core",
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower-http 0.5.2",
+ "tracing",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
