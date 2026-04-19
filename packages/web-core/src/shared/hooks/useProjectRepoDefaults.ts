@@ -5,6 +5,14 @@ import {
   type ScratchPayload,
 } from 'shared/types';
 
+export interface ProjectStatusConfigData {
+  id: string;
+  name: string;
+  color: string;
+  hidden: boolean;
+  sort_order: number;
+}
+
 const SCRATCH_TYPE = ScratchType.PROJECT_REPO_DEFAULTS;
 
 /**

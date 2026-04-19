@@ -166,10 +166,10 @@ export function useWorkspaces(): UseWorkspacesResult {
       queryKey: workspaceSummaryKeys.byArchived(false, hostId),
       queryFn: () => fetchWorkspaceSummariesByArchived(false, hostId),
       enabled: activeIsInitialized,
-      staleTime: 1000,
-      refetchInterval: 15000,
+      staleTime: 60000,
+      refetchInterval: false,
       refetchOnWindowFocus: false,
-      refetchOnMount: 'always',
+      refetchOnMount: false,
       placeholderData: keepPreviousData,
     });
 
@@ -179,10 +179,10 @@ export function useWorkspaces(): UseWorkspacesResult {
       queryKey: workspaceSummaryKeys.byArchived(true, hostId),
       queryFn: () => fetchWorkspaceSummariesByArchived(true, hostId),
       enabled: archivedIsInitialized,
-      staleTime: 1000,
-      refetchInterval: 15000,
+      staleTime: 60000,
+      refetchInterval: false,
       refetchOnWindowFocus: false,
-      refetchOnMount: 'always',
+      refetchOnMount: false,
       placeholderData: keepPreviousData,
     });
 

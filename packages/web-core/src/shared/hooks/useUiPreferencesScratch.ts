@@ -192,6 +192,7 @@ export function useUiPreferencesScratch() {
   const hasInitializedRef = useRef(false);
   // Track whether we're currently applying server data to prevent save loops
   const isApplyingServerDataRef = useRef(false);
+  const lastSavedPayloadRef = useRef<string | null>(null);
 
   // Get current store state
   const storeState = useUiPreferencesStore((state) => ({
@@ -246,6 +247,11 @@ export function useUiPreferencesScratch() {
       kanbanProjectViewPreferences: currentState.kanbanProjectViewPreferences,
     });
 
+    const serialized = JSON.stringify(data);
+    if (serialized === lastSavedPayloadRef.current) {
+      return;
+    }
+
     try {
       await updateScratch({
         payload: {
@@ -253,6 +259,7 @@ export function useUiPreferencesScratch() {
           data,
         },
       });
+      lastSavedPayloadRef.current = serialized;
     } catch (e) {
       console.error('[useUiPreferencesScratch] Failed to save:', e);
     }
@@ -271,6 +278,7 @@ export function useUiPreferencesScratch() {
     if (scratchData) {
       // Server has data - apply it to store
       isApplyingServerDataRef.current = true;
+      lastSavedPayloadRef.current = JSON.stringify(scratchData);
       const serverState = scratchDataToStore(scratchData);
 
       // Merge server state into the store
