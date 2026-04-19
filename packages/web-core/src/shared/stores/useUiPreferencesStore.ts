@@ -24,6 +24,7 @@ export type MobileTab =
 
 export type MobileFontScale = 'default' | 'small' | 'smaller';
 export const DEFAULT_CREATE_DRAFT_WORKSPACE_BY_DEFAULT = false;
+export const DEFAULT_SHOW_LEFT_COLUMN_LINKS = false;
 
 const MOBILE_FONT_SCALE_KEY = 'vk-mobile-font-scale';
 
@@ -358,6 +359,7 @@ type State = {
   selectedOrgId: string | null;
   selectedProjectId: string | null;
   createDraftWorkspaceByDefault: boolean;
+  showLeftColumnLinks: boolean;
 
   // UI preferences actions
   setRepoAction: (repoId: string, action: RepoAction) => void;
@@ -452,6 +454,7 @@ type State = {
   clearSelectedOrgId: () => void;
   setSelectedProjectId: (projectId: string | null) => void;
   setCreateDraftWorkspaceByDefault: (value: boolean) => void;
+  setShowLeftColumnLinks: (value: boolean) => void;
 };
 
 export const useUiPreferencesStore = create<State>()((set, get) => ({
@@ -495,6 +498,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
   selectedOrgId: null,
   selectedProjectId: null,
   createDraftWorkspaceByDefault: DEFAULT_CREATE_DRAFT_WORKSPACE_BY_DEFAULT,
+  showLeftColumnLinks: DEFAULT_SHOW_LEFT_COLUMN_LINKS,
 
   // UI preferences actions
   setRepoAction: (repoId, action) =>
@@ -888,6 +892,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
   setSelectedProjectId: (projectId) => set({ selectedProjectId: projectId }),
   setCreateDraftWorkspaceByDefault: (value) =>
     set({ createDraftWorkspaceByDefault: value }),
+  setShowLeftColumnLinks: (value) => set({ showLeftColumnLinks: value }),
 }));
 
 // Hook for repo action preference
@@ -991,6 +996,12 @@ export function useMobileFontScale() {
   const scale = useUiPreferencesStore((s) => s.mobileFontScale);
   const set = useUiPreferencesStore((s) => s.setMobileFontScale);
   return [scale, set] as const;
+}
+
+export function useShowLeftColumnLinks() {
+  const value = useUiPreferencesStore((s) => s.showLeftColumnLinks);
+  const set = useUiPreferencesStore((s) => s.setShowLeftColumnLinks);
+  return [value, set] as const;
 }
 
 // Hook for workspace-specific panel state

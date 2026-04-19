@@ -32,6 +32,7 @@ import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import {
   type MobileFontScale,
   useMobileFontScale,
+  useShowLeftColumnLinks,
 } from '@/shared/stores/useUiPreferencesStore';
 import { cn, playSound } from '@/shared/lib/utils';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
@@ -60,6 +61,8 @@ export function GeneralSettingsSection() {
 
   const isMobile = useIsMobile();
   const [mobileFontScale, setMobileFontScale] = useMobileFontScale();
+  const [showLeftColumnLinks, setShowLeftColumnLinks] =
+    useShowLeftColumnLinks();
   const languageOptions = getLanguageOptions(
     t('language.browserDefault', {
       ns: 'common',
@@ -311,6 +314,14 @@ export function GeneralSettingsSection() {
             />
           </SettingsField>
         )}
+
+        <SettingsCheckbox
+          id="show-left-column-links"
+          label="Show left column links"
+          description="Show the optional Remote, Export, Profile, GitHub, and Discord buttons in the left column."
+          checked={showLeftColumnLinks}
+          onChange={setShowLeftColumnLinks}
+        />
       </SettingsCard>
 
       {/* Editor */}

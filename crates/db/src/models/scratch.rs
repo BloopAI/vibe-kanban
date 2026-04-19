@@ -144,6 +144,9 @@ pub struct UiPreferencesData {
     /// Default setting for creating a draft workspace from new issues
     #[serde(default)]
     pub create_draft_workspace_by_default: Option<bool>,
+    /// Whether to show optional links and profile controls in the left app bar
+    #[serde(default)]
+    pub show_left_column_links: Option<bool>,
     /// Kanban project view selections (active view per project)
     #[serde(default)]
     pub kanban_project_view_selections: std::collections::HashMap<String, serde_json::Value>,
