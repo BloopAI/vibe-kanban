@@ -30,6 +30,18 @@ pub struct CreateP2pHostParams {
     pub machine_id: String,
 }
 
+pub async fn get_p2p_host(db: &DBService, id: &str) -> Result<Option<P2pHost>, sqlx::Error> {
+    sqlx::query_as::<_, P2pHost>(
+        "SELECT id, name, address, relay_port, machine_id, session_token, status, \
+         last_connected_at, created_at, updated_at, \
+         ssh_user, ssh_port, ssh_key_path, connection_mode, known_host_key \
+         FROM p2p_hosts WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_optional(&db.pool)
+    .await
+}
+
 pub async fn list_p2p_hosts(db: &DBService) -> Result<Vec<P2pHost>, sqlx::Error> {
     sqlx::query_as::<_, P2pHost>(
         "SELECT id, name, address, relay_port, machine_id, session_token, status, \

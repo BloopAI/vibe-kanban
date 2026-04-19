@@ -3,9 +3,9 @@ use std::sync::Arc;
 use axum::{
     Extension, Json, Router,
     extract::{Path, State},
-    routing::{delete, get, post},
+    routing::{get, post, put},
 };
-use db::p2p_hosts::{self, CreateP2pHostParams};
+use db::p2p_hosts::{self, CreateP2pHostParams, get_p2p_host, update_p2p_host_ssh_config};
 use deployment::Deployment;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -37,7 +37,8 @@ fn generate_session_token() -> String {
 pub fn router(pairing_store: Arc<PairingStore>) -> Router<DeploymentImpl> {
     Router::new()
         .route("/p2p/hosts", get(list_hosts))
-        .route("/p2p/hosts/{id}", delete(remove_host))
+        .route("/p2p/hosts/{id}", get(get_host).delete(remove_host))
+        .route("/p2p/hosts/{id}/ssh-config", put(update_ssh_config))
         .route("/p2p/enrollment-code", post(create_enrollment_code))
         .route("/p2p/pair", post(pair_host))
         .route("/p2p/ssh-pair", post(ssh_pair))
@@ -233,6 +234,67 @@ async fn ssh_pair(
         session_token,
         host_key_fingerprint: fingerprint,
     })))
+}
+
+// ---------------------------------------------------------------------------
+// Request types (continued)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+struct UpdateSshConfigRequest {
+    pub ssh_user: Option<String>,
+    pub ssh_port: Option<u16>,
+    pub ssh_key_path: Option<String>,
+    /// Accepted values: "direct" | "ssh" | "auto"
+    pub connection_mode: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
+// New handlers
+// ---------------------------------------------------------------------------
+
+async fn get_host(
+    State(deployment): State<DeploymentImpl>,
+    Path(id): Path<String>,
+) -> Result<Json<ApiResponse<db::p2p_hosts::P2pHost>>, ApiError> {
+    match get_p2p_host(deployment.db(), &id).await? {
+        Some(host) => Ok(Json(ApiResponse::success(host))),
+        None => Err(ApiError::BadRequest(format!("Host not found: {id}"))),
+    }
+}
+
+async fn update_ssh_config(
+    State(deployment): State<DeploymentImpl>,
+    Path(id): Path<String>,
+    Json(req): Json<UpdateSshConfigRequest>,
+) -> Result<Json<ApiResponse<db::p2p_hosts::P2pHost>>, ApiError> {
+    let db = deployment.db();
+
+    let host = get_p2p_host(db, &id)
+        .await?
+        .ok_or_else(|| ApiError::BadRequest(format!("Host not found: {id}")))?;
+
+    let ssh_user = req.ssh_user.as_deref().or(host.ssh_user.as_deref());
+    let ssh_port = req.ssh_port.map(|p| p as i64).unwrap_or(host.ssh_port);
+    let ssh_key_path = req.ssh_key_path.as_deref().or(host.ssh_key_path.as_deref());
+    let connection_mode = req
+        .connection_mode
+        .as_deref()
+        .unwrap_or(&host.connection_mode);
+
+    if !matches!(connection_mode, "direct" | "ssh" | "auto") {
+        return Err(ApiError::BadRequest(
+            "connection_mode must be 'direct', 'ssh', or 'auto'".to_string(),
+        ));
+    }
+
+    update_p2p_host_ssh_config(db, &id, ssh_user, ssh_port, ssh_key_path, connection_mode).await?;
+
+    let updated = get_p2p_host(db, &id)
+        .await?
+        .ok_or_else(|| ApiError::BadRequest(format!("Host not found after update: {id}")))?;
+
+    Ok(Json(ApiResponse::success(updated)))
 }
 
 // ---------------------------------------------------------------------------
