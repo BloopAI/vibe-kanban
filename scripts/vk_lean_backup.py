@@ -4,6 +4,7 @@ import datetime
 import hashlib
 import json
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -13,17 +14,37 @@ from pathlib import Path
 DEFAULT_VK_SHARE = Path("/home/mcp/.local/share/vibe-kanban")
 DEFAULT_BACKUP_ROOT = Path("/home/mcp/backups")
 DEFAULT_EXPORT_ZIP = Path("/home/mcp/backups/vibe-kanban-export-2026-04-18.zip")
-DEFAULT_DESKTOP_TARGET = "desktop:Desktop/vk-backups/"
+DEFAULT_DESKTOP_TARGET = "desktop:Desktop/vk-backups"
+BACKUP_BASENAME = "vk-lean-restore"
+LATEST_DIR_NAME = f"{BACKUP_BASENAME}-latest"
+LATEST_TAR_NAME = f"{BACKUP_BASENAME}-latest.tar.gz"
+TIMESTAMP_RE = re.compile(rf"^{BACKUP_BASENAME}-(\d{{8}}T\d{{6}}Z)(\.tar\.gz)?$")
+UTC = datetime.timezone.utc
+MIN_RECENT_SNAPSHOTS = 3
+RETENTION_POLICY = {
+    "hourly_for_days": 1,
+    "every_6_hours_for_days": 1,
+    "every_12_hours_for_days": 1,
+    "daily_for_days": 7,
+    "weekly_for_weeks": 8,
+    "monthly_for_months": 12,
+    "always_keep_newest": MIN_RECENT_SNAPSHOTS,
+}
+
 
 def run(cmd, cwd=None, check=False):
     result = subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)
     if check and result.returncode != 0:
-        raise RuntimeError(f"command failed: {' '.join(cmd)}\n{result.stdout}\n{result.stderr}")
+        raise RuntimeError(
+            f"command failed: {' '.join(cmd)}\n{result.stdout}\n{result.stderr}"
+        )
     return result
+
 
 def write_text(path: Path, content: str):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content)
+
 
 def copy_if_exists(src: Path, dst: Path):
     if src.is_file():
@@ -32,14 +53,29 @@ def copy_if_exists(src: Path, dst: Path):
     elif src.is_dir():
         shutil.copytree(src, dst, dirs_exist_ok=True)
 
+
 def git_ok(path: Path) -> bool:
     return run(["git", "rev-parse", "--is-inside-work-tree"], cwd=str(path)).returncode == 0
+
 
 def bundle_local_only(path: Path, bundle_path: Path):
     remotes = run(["git", "remote"], cwd=str(path)).stdout.strip()
     if remotes:
-        return run(["git", "bundle", "create", str(bundle_path), "--branches", "--tags", "--not", "--remotes"], cwd=str(path))
+        return run(
+            [
+                "git",
+                "bundle",
+                "create",
+                str(bundle_path),
+                "--branches",
+                "--tags",
+                "--not",
+                "--remotes",
+            ],
+            cwd=str(path),
+        )
     return run(["git", "bundle", "create", str(bundle_path), "--all"], cwd=str(path))
+
 
 def backup_sqlite(src: Path, dst: Path):
     src_conn = sqlite3.connect(str(src))
@@ -48,6 +84,7 @@ def backup_sqlite(src: Path, dst: Path):
     dst_conn.close()
     src_conn.close()
 
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with open(path, "rb") as handle:
@@ -55,9 +92,161 @@ def sha256_file(path: Path) -> str:
             digest.update(chunk)
     return digest.hexdigest()
 
+
 def archive_dir(src_dir: Path, tar_path: Path):
     with tarfile.open(tar_path, "w:gz") as tar:
         tar.add(src_dir, arcname=src_dir.name)
+
+
+def utcnow() -> datetime.datetime:
+    return datetime.datetime.now(UTC)
+
+
+def parse_timestamp(ts: str) -> datetime.datetime:
+    return datetime.datetime.strptime(ts, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
+
+
+def extract_timestamp(name: str):
+    match = TIMESTAMP_RE.match(name)
+    return match.group(1) if match else None
+
+
+def retention_bucket(ts: datetime.datetime, now: datetime.datetime):
+    age = now - ts
+    if age < datetime.timedelta(0):
+        return ("future", ts.year, ts.month, ts.day, ts.hour, ts.minute)
+    if age < datetime.timedelta(days=RETENTION_POLICY["hourly_for_days"]):
+        return ("hourly", ts.year, ts.month, ts.day, ts.hour)
+    if age < datetime.timedelta(days=RETENTION_POLICY["hourly_for_days"] + RETENTION_POLICY["every_6_hours_for_days"]):
+        return ("six_hour", ts.year, ts.month, ts.day, ts.hour // 6)
+    if age < datetime.timedelta(days=RETENTION_POLICY["hourly_for_days"] + RETENTION_POLICY["every_6_hours_for_days"] + RETENTION_POLICY["every_12_hours_for_days"]):
+        return ("twelve_hour", ts.year, ts.month, ts.day, ts.hour // 12)
+    if age < datetime.timedelta(days=RETENTION_POLICY["hourly_for_days"] + RETENTION_POLICY["every_6_hours_for_days"] + RETENTION_POLICY["every_12_hours_for_days"] + RETENTION_POLICY["daily_for_days"]):
+        return ("daily", ts.year, ts.month, ts.day)
+    if age < datetime.timedelta(days=RETENTION_POLICY["hourly_for_days"] + RETENTION_POLICY["every_6_hours_for_days"] + RETENTION_POLICY["every_12_hours_for_days"] + RETENTION_POLICY["daily_for_days"] + (RETENTION_POLICY["weekly_for_weeks"] * 7)):
+        iso = ts.isocalendar()
+        return ("weekly", iso.year, iso.week)
+    if age < datetime.timedelta(days=RETENTION_POLICY["hourly_for_days"] + RETENTION_POLICY["every_6_hours_for_days"] + RETENTION_POLICY["every_12_hours_for_days"] + RETENTION_POLICY["daily_for_days"] + (RETENTION_POLICY["weekly_for_weeks"] * 7) + (RETENTION_POLICY["monthly_for_months"] * 31)):
+        return ("monthly", ts.year, ts.month)
+    return ("yearly", ts.year)
+
+
+def select_retained_timestamps(timestamps, now: datetime.datetime):
+    if not timestamps:
+        return set()
+    buckets = {}
+    for ts in sorted(set(timestamps)):
+        bucket = retention_bucket(parse_timestamp(ts), now)
+        current = buckets.get(bucket)
+        if current is None or ts > current:
+            buckets[bucket] = ts
+    keep = set(buckets.values())
+    keep.update(sorted(set(timestamps))[-MIN_RECENT_SNAPSHOTS:])
+    return keep
+
+
+def replace_latest_pointer(pointer: Path, target: Path):
+    if pointer.is_symlink() or pointer.exists():
+        pointer.unlink()
+    pointer.symlink_to(target)
+
+
+def collect_local_backup_sets(backup_root: Path):
+    sets = {}
+    for path in backup_root.iterdir():
+        if path.name in {LATEST_DIR_NAME, LATEST_TAR_NAME}:
+            continue
+        ts = extract_timestamp(path.name)
+        if not ts:
+            continue
+        entry = sets.setdefault(ts, {})
+        if path.name.endswith(".tar.gz"):
+            entry["tar"] = path
+        elif path.is_dir():
+            entry["dir"] = path
+    return sets
+
+
+def prune_local_backups(backup_root: Path, now: datetime.datetime):
+    sets = collect_local_backup_sets(backup_root)
+    keep = select_retained_timestamps(list(sets.keys()), now)
+    removed = []
+    for ts, parts in sorted(sets.items()):
+        if ts in keep:
+            continue
+        for kind in ("dir", "tar"):
+            path = parts.get(kind)
+            if not path:
+                continue
+            if path.is_dir() and not path.is_symlink():
+                shutil.rmtree(path)
+            elif path.exists() and not path.is_symlink():
+                path.unlink()
+            removed.append(str(path))
+    return keep, removed
+
+
+def parse_desktop_target(target: str):
+    if ":" not in target:
+        return None, None
+    host, remote_dir = target.split(":", 1)
+    remote_dir = remote_dir.rstrip("/\\")
+    return host, remote_dir
+
+
+def windows_remote_dir(remote_dir: str) -> str:
+    return remote_dir.replace("/", "\\")
+
+
+def windows_remote_full_dir(remote_dir: str) -> str:
+    remote_dir_win = windows_remote_dir(remote_dir)
+    return f"%USERPROFILE%\\{remote_dir_win}"
+
+
+def ensure_remote_desktop_dir(host: str, remote_dir: str):
+    remote_full_dir = windows_remote_full_dir(remote_dir)
+    run(["ssh", host, "cmd", "/c", f'if not exist "{remote_full_dir}" mkdir "{remote_full_dir}"'], check=True)
+
+
+def list_remote_desktop_archives(host: str, remote_dir: str):
+    remote_full_dir = windows_remote_full_dir(remote_dir)
+    result = run(
+        [
+            "ssh",
+            host,
+            "cmd",
+            "/c",
+            f'if exist "{remote_full_dir}" (dir /b "{remote_full_dir}\\{BACKUP_BASENAME}-*.tar.gz") else exit 0',
+        ]
+    )
+    if result.returncode != 0:
+        return []
+    names = []
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if not line or line == LATEST_TAR_NAME:
+            continue
+        if extract_timestamp(line):
+            names.append(line)
+    return names
+
+
+def prune_remote_desktop_archives(host: str, remote_dir: str, now: datetime.datetime):
+    names = list_remote_desktop_archives(host, remote_dir)
+    timestamps = [extract_timestamp(name) for name in names]
+    timestamps = [ts for ts in timestamps if ts]
+    keep = select_retained_timestamps(timestamps, now)
+    removed = []
+    remote_full_dir = windows_remote_full_dir(remote_dir)
+    for name in names:
+        ts = extract_timestamp(name)
+        if not ts or ts in keep:
+            continue
+        result = run(["ssh", host, "cmd", "/c", f'del /q "{remote_full_dir}\\{name}"'])
+        if result.returncode == 0:
+            removed.append(name)
+    return keep, removed
+
 
 def main():
     parser = argparse.ArgumentParser(description="Create a lean VK restore backup.")
@@ -71,9 +260,10 @@ def main():
     backup_root = Path(args.backup_root)
     vk_share = Path(args.vk_share)
     export_zip = Path(args.export_zip)
+    backup_root.mkdir(parents=True, exist_ok=True)
 
-    ts = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-    dest = backup_root / f"vk-lean-restore-{ts}"
+    ts = utcnow().strftime("%Y%m%dT%H%M%SZ")
+    dest = backup_root / f"{BACKUP_BASENAME}-{ts}"
     (dest / "meta").mkdir(parents=True, exist_ok=True)
     (dest / "share-vibe-kanban").mkdir(parents=True, exist_ok=True)
     (dest / "systemd").mkdir(parents=True, exist_ok=True)
@@ -215,14 +405,37 @@ def main():
     archive_dir(dest, tar_path)
     write_text(dest / "meta" / "archive.txt", str(tar_path) + "\n")
 
+    replace_latest_pointer(backup_root / LATEST_DIR_NAME, dest)
+    replace_latest_pointer(backup_root / LATEST_TAR_NAME, tar_path)
+
     if args.mirror_desktop:
-        run(["ssh", "desktop", "cmd", "/c", "if", "not", "exist", "C:\\Users\\mcp.ART-IN-FLIGHT-D\\Desktop\\vk-backups", "mkdir", "C:\\Users\\mcp.ART-IN-FLIGHT-D\\Desktop\\vk-backups"])
-        mirror = run(["scp", "-q", str(tar_path), args.desktop_target])
+        host, remote_dir = parse_desktop_target(args.desktop_target)
+        if not host or not remote_dir:
+            raise RuntimeError(f"invalid desktop target: {args.desktop_target}")
+        ensure_remote_desktop_dir(host, remote_dir)
+        mirror = run(["scp", "-q", str(tar_path), f"{host}:{remote_dir}/{tar_path.name}"])
         if mirror.returncode != 0:
             raise RuntimeError(f"desktop mirror failed:\n{mirror.stderr}")
+        mirror_latest = run(["scp", "-q", str(tar_path), f"{host}:{remote_dir}/{LATEST_TAR_NAME}"])
+        if mirror_latest.returncode != 0:
+            raise RuntimeError(f"desktop latest mirror failed:\n{mirror_latest.stderr}")
+        remote_keep, remote_removed = prune_remote_desktop_archives(host, remote_dir, utcnow())
+        write_text(dest / "meta" / "desktop-retention.txt", json.dumps({
+            "policy": RETENTION_POLICY,
+            "kept_timestamps": sorted(remote_keep),
+            "removed_archives": remote_removed,
+        }, indent=2) + "\n")
+
+    local_keep, local_removed = prune_local_backups(backup_root, utcnow())
+    write_text(dest / "meta" / "retention.txt", json.dumps({
+        "policy": RETENTION_POLICY,
+        "kept_timestamps": sorted(local_keep),
+        "removed_paths": local_removed,
+    }, indent=2) + "\n")
 
     print(dest)
     print(tar_path)
+
 
 if __name__ == "__main__":
     main()

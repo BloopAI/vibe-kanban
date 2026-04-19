@@ -69,3 +69,19 @@
 - Not complete / known gaps:
   - full frontend formatting/typecheck could not run in this worktree because `prettier` and `tsc` are not installed
   - full `cargo check --workspace` was started but not waited through to completion after the successful type-generation build
+
+## 2026-04-19T10:30:00Z | vk/ops-backup-retention-20260419 | canonical staging sync cleanup
+
+- Intent: repair the divergent canonical local `staging` checkout and preserve only the backup retention change as its own normal PR.
+- Completed:
+  - preserved the old divergent local `staging` tip on rescue branches
+  - reset canonical local `staging` to `fork/staging`
+  - replayed `ca67946ab` onto `vk/ops-backup-retention-20260419`
+  - opened PR `#6` for the isolated backup retention change
+  - refreshed branch-local continuity docs for the backup retention stream
+- Verified:
+  - canonical `staging` matches `fork/staging`
+  - `vk/ops-backup-retention-20260419` is one commit ahead of `staging`
+- Not complete / known gaps:
+  - PR `#6` still needs merge
+  - backup retention validation was not rerun during the sync cleanup step

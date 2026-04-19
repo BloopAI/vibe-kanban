@@ -145,11 +145,28 @@ That means:
 
 The backup script keeps:
 
-- timestamped snapshots
+- timestamped snapshot directories
 - timestamped archives
 - stable `latest` pointers
 
-The script also prunes older timestamped runs according to its `--retain` setting.
+Timestamped backups age out automatically using this retention ladder:
+
+- keep **hourly** backups for the last **1 day**
+- then keep **1 every 6 hours** for the next **1 day**
+- then keep **1 every 12 hours** for the next **1 day**
+- then keep **daily** backups for the next **7 days**
+- then keep **weekly** backups for the next **8 weeks**
+- then keep **monthly** backups for the next **12 months**
+- then keep **yearly** backups after that
+- always keep at least the newest **3** timestamped runs
+
+This pruning runs for:
+
+- local timestamped backup directories
+- local timestamped backup archives
+- Desktop mirrored timestamped archives
+
+The stable `latest` pointers are not pruned.
 
 ## One-click backup
 
