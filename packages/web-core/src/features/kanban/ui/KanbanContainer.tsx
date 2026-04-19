@@ -38,7 +38,9 @@ import {
 import {
   CaretLeftIcon,
   DotsThreeIcon,
+  HandIcon,
   PlusIcon,
+  SpinnerGapIcon,
   XIcon,
 } from '@phosphor-icons/react';
 import { Actions } from '@/shared/actions';
@@ -532,6 +534,9 @@ function LocalProjectSettingsDialog({
 type CollapsedKanbanColumnProps = {
   statusName: string;
   statusColor: string;
+  issueCount: number;
+  hasNeedsAttention: boolean;
+  hasInProgress: boolean;
   onExpand: () => void;
   isMobile: boolean;
 };
@@ -539,6 +544,9 @@ type CollapsedKanbanColumnProps = {
 function CollapsedKanbanColumn({
   statusName,
   statusColor,
+  issueCount,
+  hasNeedsAttention,
+  hasInProgress,
   onExpand,
   isMobile,
 }: CollapsedKanbanColumnProps) {
@@ -550,10 +558,11 @@ function CollapsedKanbanColumn({
       onClick={onExpand}
       className="group relative flex min-h-40 flex-1 overflow-hidden bg-secondary transition-colors hover:bg-secondary/80 focus:outline-none focus:ring-1 focus:ring-brand"
       aria-label={t('kanban.expandColumn', {
-        defaultValue: 'Expand {{statusName}} column',
+        defaultValue: 'Expand {{statusName}} column ({{count}} issues)',
         statusName,
+        count: issueCount,
       })}
-      title={statusName}
+      title={`${statusName} (${issueCount})`}
     >
       <div
         className={cn(
@@ -581,6 +590,33 @@ function CollapsedKanbanColumn({
           <span className="text-sm font-medium leading-none text-normal">
             {statusName}
           </span>
+          <span className="text-sm font-medium leading-none text-low">
+            ({issueCount})
+          </span>
+          {(hasNeedsAttention || hasInProgress) && (
+            <span className="flex items-center gap-1 text-low">
+              {hasNeedsAttention && (
+                <HandIcon
+                  className="size-icon-xs text-brand shrink-0"
+                  weight="fill"
+                  aria-label={t('workspaces.needsAttention')}
+                  title={t('workspaces.needsAttention')}
+                />
+              )}
+              {hasInProgress && (
+                <SpinnerGapIcon
+                  className="size-icon-xs shrink-0 animate-spin text-brand"
+                  weight="bold"
+                  aria-label={t('tasks:status.inProgress', {
+                    defaultValue: 'In Progress',
+                  })}
+                  title={t('tasks:status.inProgress', {
+                    defaultValue: 'In Progress',
+                  })}
+                />
+              )}
+            </span>
+          )}
         </div>
       </div>
     </button>
@@ -1544,6 +1580,18 @@ export function KanbanContainer() {
               {visibleStatuses.map((status) => {
                 const issueIds = items[status.id] ?? [];
                 const isCollapsed = collapsedStatusIdSet.has(status.id);
+                const columnWorkspaces = issueIds.flatMap(
+                  (issueId) => workspacesByIssueId.get(issueId) ?? []
+                );
+                const hasNeedsAttention = columnWorkspaces.some(
+                  (workspace) =>
+                    workspace.hasPendingApproval ||
+                    (!!workspace.hasUnseenActivity && !workspace.isRunning)
+                );
+                const hasInProgress = columnWorkspaces.some(
+                  (workspace) =>
+                    !!workspace.isRunning && !workspace.hasPendingApproval
+                );
 
                 return (
                   <KanbanBoard
@@ -1557,6 +1605,9 @@ export function KanbanContainer() {
                         <CollapsedKanbanColumn
                           statusName={status.name}
                           statusColor={status.color}
+                          issueCount={issueIds.length}
+                          hasNeedsAttention={hasNeedsAttention}
+                          hasInProgress={hasInProgress}
                           onExpand={() => toggleCollapsedStatus(status.id)}
                           isMobile={isMobile}
                         />
