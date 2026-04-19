@@ -82,7 +82,7 @@ pub async fn list_paired_hosts(db: &DBService) -> Result<Vec<P2pHost>, sqlx::Err
     sqlx::query_as::<_, P2pHost>(
         "SELECT id, name, address, relay_port, machine_id, session_token, status, \
          last_connected_at, created_at, updated_at \
-         FROM p2p_hosts WHERE status = 'paired' ORDER BY created_at DESC",
+         FROM p2p_hosts WHERE status = 'paired' AND session_token IS NOT NULL ORDER BY created_at DESC",
     )
     .fetch_all(&db.pool)
     .await
