@@ -565,3 +565,21 @@
     - restarted `vibe-kanban.service`
     - verified running PID executable sha matches deployed binary sha `4a5e3356b9c7dc4dff3b5e82d5e451ce58d789d8db48420bbe207517d2e70ba4`
     - repeated the same websocket probe after deploy and saw about `60` patch messages, `128` patch ops, and `~109.6 MB` total JSON, with `finished` in about `16.1s`
+
+## 2026-04-19T13:35:00Z | vk/3714-vk-codeblock-onl | codeblock copy PR and tailnet preview
+
+- Intent: publish the codeblock-copy branch, make it reviewable, and expose a working preview over Tailscale.
+- Completed:
+  - committed the stream changes as `d6ba4cdc2`
+  - pushed `vk/3714-vk-codeblock-onl` to `fork`
+  - opened draft PR `#3371`
+  - started a branch frontend preview on `127.0.0.1:3002` using the live local backend on `127.0.0.1:4311`
+  - exposed the branch preview at `https://mcp-server.tail744c4.ts.net:18444/`
+  - updated `STREAM.md` and `HANDOFF.md` with PR and preview continuity details
+- Verified:
+  - `curl -I http://127.0.0.1:3002` returned `200 OK`
+  - `curl -kI https://mcp-server.tail744c4.ts.net:18444/` returned `200 OK`
+  - `tailscale serve status` shows the `18444 -> 3002` proxy mapping
+- Not complete / known gaps:
+  - human UI smoke test over the tailnet preview is still needed
+  - the upstream GitHub repo did not expose `staging` remotely during PR creation, so the draft PR currently targets `main`

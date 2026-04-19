@@ -2,57 +2,62 @@
 
 ## Stream Identifier
 
-- Branch: `vk/ops-backup-retention-20260419`
-- Repo: `/home/mcp/_vibe_kanban_repo`
-- Working mode: local-only VK maintenance branch
+- Branch: `vk/3714-vk-codeblock-onl`
+- Repo: `/home/mcp/code/worktrees/3714-vk-codeblock-onl/_vibe_kanban_repo`
+- Working mode: codeblock copy UX update with local-only VK validation and tailnet preview
 
 ## Objective
 
-- Add tiered retention to lean local VK backups so backups remain sustainable without manual cleanup.
+- Ship codeblock-only copy controls in chat/markdown rendering without disturbing the local-only VK runtime.
 
 ## In Scope
 
-- Local-only runtime stability
-- Lean backup retention behavior
-- Recovery documentation for the lean backup path
+- Codeblock-only copy affordance for rendered markdown/code blocks
+- Local validation against the running VK install
+- Branch PR and a Tailscale-accessible preview for review
 
 ## Out of Scope
 
 - Reviving the old cloud-backed board model
 - Depending on `api.vibekanban.com` for local board state
-- Refactoring unrelated workspace or project UI behavior in this branch
+- Broad cleanup unrelated to codeblock copy behavior
 
 ## Stream-Specific Decisions
 
-- `staging` is the base branch; this stream lands through a PR back into `staging`.
+- `staging` remains the intended local development base, but the current stream branch is `vk/3714-vk-codeblock-onl`.
 - The local install must keep `shared_api_base` disabled.
-- The lean backup path stays the default recovery mechanism.
-- Retention should be handled in the backup tooling itself rather than by ad hoc operator cleanup.
+- The live local backend on `127.0.0.1:4311` remains the backend source for branch previewing.
+- The branch preview is served via Tailscale HTTPS at `https://mcp-server.tail744c4.ts.net:18444/`, proxied to the branch frontend on `127.0.0.1:3002`.
 
 ## Relevant Files / Modules
 
-- `scripts/vk_lean_backup.py`
-- `docs/self-hosting/local-backup-recovery.mdx`
-- local backup paths under `/home/mcp/backups/`
-- Desktop mirror under `~/Desktop/vk-backups/`
+- `packages/web-core/src/shared/components/CodeBlockCopyButton.tsx`
+- `packages/web-core/src/shared/components/ReadOnlyCodeBlockCopyPlugin.tsx`
+- `packages/web-core/src/shared/components/MarkdownPreview.tsx`
+- `packages/web-core/src/shared/components/WYSIWYGEditor.tsx`
+- PR: `#3371`
+- tailnet preview: `https://mcp-server.tail744c4.ts.net:18444/`
 
 ## Current Status
 
 - Confirmed:
-  - tiered retention logic is isolated on this branch as one commit on top of current `staging`
-  - backup docs are being aligned to the retention behavior
+  - codeblock-only copy controls are committed on this branch
+  - branch pushed to `fork/vk/3714-vk-codeblock-onl`
+  - draft PR opened as `#3371`
+  - tailnet preview responds with HTTP 200 at `https://mcp-server.tail744c4.ts.net:18444/`
+  - local VK backend remains live on `127.0.0.1:4311`
 - Pending:
-  - push doc updates into PR `#6`
-  - merge PR `#6` into `staging`
+  - human UI smoke test against the tailnet preview
+  - PR base branch follow-up if upstream `staging` is restored on GitHub
 
 ## Risks / Regression Traps
 
-- Accidentally pruning the newest valid lean restore snapshot
-- Repointing the service back to cloud/shared API config
-- Updating retention behavior without matching operator docs
+- Stopping the Vite process on `3002` will break the Tailscale preview
+- Repointing the local runtime back to cloud/shared API config is still forbidden
+- Assuming the upstream GitHub repo still exposes `staging`; at time of verification only `main` was visible remotely
 
 ## Next Safe Steps
 
-1. Branch new work from `staging`.
-2. Keep the local-only runtime intact.
-3. After this PR lands, resume landing other queued branches one at a time into the refreshed `staging`.
+1. Keep the Vite session for port `3002` running while the preview is needed.
+2. Use the Tailscale preview URL for human QA of the codeblock copy behavior.
+3. If the preview is no longer needed, remove it with `tailscale serve --https=18444 off`.
