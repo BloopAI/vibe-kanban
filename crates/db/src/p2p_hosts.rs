@@ -186,6 +186,24 @@ pub async fn rotate_session_token(db: &DBService, host_id: &str) -> Result<Strin
     Ok(new_token)
 }
 
+/// Wipe the session token and mark the host as revoked.
+/// The host record is kept so the user can re-pair later.
+/// Soft revocation: the remote machine's next reconnect attempt will be
+/// rejected because its stored token will no longer match.
+pub async fn revoke_p2p_host(db: &DBService, host_id: &str) -> Result<(), sqlx::Error> {
+    // OX Agent: SQL Injection prevented by parameterized query (SQLx `.bind()`)
+    sqlx::query(
+        r#"UPDATE p2p_hosts
+           SET session_token = NULL, status = 'revoked',
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?"#,
+    )
+    .bind(host_id)
+    .execute(&db.pool)
+    .await?;
+    Ok(())
+}
+
 pub async fn update_known_host_key(
     db: &DBService,
     id: &str,

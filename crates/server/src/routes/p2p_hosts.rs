@@ -53,6 +53,7 @@ pub fn router(pairing_store: Arc<PairingStore>) -> Router<DeploymentImpl> {
     Router::new()
         .route("/p2p/hosts", get(list_hosts))
         .route("/p2p/hosts/{id}", get(get_host).delete(remove_host))
+        .route("/p2p/hosts/{id}/revoke", post(revoke_host))
         .route("/p2p/hosts/{id}/ssh-config", put(update_ssh_config))
         .route("/p2p/hosts/{id}/rotate-token", post(rotate_token))
         .route("/p2p/enrollment-code", post(create_enrollment_code))
@@ -414,6 +415,41 @@ async fn rotate_token(
 
     Ok(Json(ApiResponse::success(
         serde_json::json!({ "session_token": new_token }),
+    )))
+}
+
+async fn revoke_host(
+    State(deployment): State<DeploymentImpl>,
+    Path(id): Path<String>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, ApiError> {
+    let db = deployment.db();
+
+    // Fetch host to confirm it exists and capture machine_id for the audit log.
+    let host = p2p_hosts::get_p2p_host(db, &id)
+        .await?
+        .ok_or_else(|| ApiError::BadRequest(format!("Host not found: {id}")))?;
+
+    // Wipe token + mark revoked in DB (soft revocation).
+    // The relay registry runs on the remote machine and is not accessible from
+    // the server crate, so we rely on token invalidation: the next reconnect
+    // attempt by the remote machine will be rejected because the stored token
+    // no longer matches.
+    // TODO: force-disconnect relay session for machine_id={host.machine_id}
+    //       once the relay registry becomes accessible from the server crate.
+    p2p_hosts::revoke_p2p_host(db, &id).await?;
+
+    log_event(
+        db,
+        event::HOST_REVOKED,
+        Some(&id),
+        None,
+        Some(&format!("revoked; machine_id={}", host.machine_id)),
+    )
+    .await
+    .ok();
+
+    Ok(Json(ApiResponse::success(
+        serde_json::json!({ "revoked": true, "host_id": id }),
     )))
 }
 
