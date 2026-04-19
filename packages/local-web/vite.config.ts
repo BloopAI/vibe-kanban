@@ -142,6 +142,7 @@ export default defineConfig({
     open: process.env.VITE_OPEN === 'true',
     allowedHosts: [
       '.trycloudflare.com', // allow all cloudflared tunnels
+      '.ts.net', // allow Tailscale Serve preview hostnames
     ],
   },
   optimizeDeps: {

@@ -1,0 +1,157 @@
+---
+title: "Tailscale Previews"
+description: "Expose a temporary Vibe Kanban development preview to your tailnet with Tailscale Serve"
+---
+
+This guide shows you how to run a temporary Vibe Kanban preview from this repository and make it reachable to other devices on your tailnet with Tailscale Serve.
+
+Use this workflow when you want to share a branch preview for QA or review without exposing it to the public internet.
+
+## What this workflow does
+
+- Runs the repo in normal development mode with `pnpm run dev`
+- Keeps the backend local and only exposes the frontend through Tailscale Serve
+- Allows browser API requests from your Tailscale preview URL with `VK_ALLOWED_ORIGINS`
+- Uses your machine's `*.ts.net` MagicDNS hostname instead of opening raw ports
+
+<Warning>
+This workflow is for temporary development previews. It is not a production deployment.
+</Warning>
+
+## Prerequisites
+
+- Tailscale installed and connected on the machine running the preview
+- `tailscale serve` enabled for your tailnet policy
+- `pnpm i` already run in the repository root
+- A branch or worktree ready to preview
+
+## Start a temporary preview
+
+<Steps>
+<Step title="Pick a stable frontend origin">
+  Choose the URL you want to use inside your tailnet.
+
+  In most cases that is your machine's MagicDNS name:
+
+  ```bash
+  tailscale status --self --json | jq -r '.Self.DNSName'
+  ```
+
+  If that returns `my-machine.example.ts.net`, your preview origin is:
+
+  ```text
+  https://my-machine.example.ts.net
+  ```
+</Step>
+
+<Step title="Start Vibe Kanban with the preview origin allowed">
+  Run the dev stack from the repository root and allow your Tailscale preview origin:
+
+  ```bash
+  export VK_ALLOWED_ORIGINS="https://my-machine.example.ts.net"
+  pnpm run dev
+  ```
+
+  The dev script allocates the frontend, backend, and preview-proxy ports automatically.
+
+  <Tip>
+  If you want repeatable ports for a longer debugging session, set `PORT` before starting the stack. The repo will use that value for the frontend and assign the backend and preview-proxy ports immediately after it.
+  </Tip>
+</Step>
+
+<Step title="Publish the frontend with Tailscale Serve">
+  In a second terminal, point Tailscale Serve at the frontend dev server.
+
+  First, read the current frontend port:
+
+  ```bash
+  node scripts/setup-dev-environment.js frontend
+  ```
+
+  Then publish that port:
+
+  ```bash
+  tailscale serve --https=443 3000
+  ```
+
+  Replace `3000` with the port printed by the previous command if it differs.
+
+  <Info>
+  Tailscale Serve terminates HTTPS on your `*.ts.net` hostname and forwards traffic to the local Vite dev server. The Vite config in this repo now explicitly allows `*.ts.net` preview hosts.
+  </Info>
+</Step>
+
+<Step title="Verify the preview">
+  Open your MagicDNS URL from another device on the same tailnet.
+
+  Confirm that:
+
+  1. the UI loads from `https://my-machine.example.ts.net`
+  2. navigation works
+  3. API-backed pages load without `403 Forbidden` errors
+
+  You can also verify the backend config locally:
+
+  ```bash
+  curl -s "http://127.0.0.1:$(node scripts/setup-dev-environment.js backend)/api/info"
+  ```
+</Step>
+</Steps>
+
+## Stop the preview
+
+When you are done, stop both the Tailscale endpoint and the local dev stack:
+
+```bash
+tailscale serve reset
+```
+
+Then stop `pnpm run dev` in its terminal.
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="The frontend does not load on the ts.net URL">
+Check that Tailscale Serve is forwarding to the same frontend port that the repo allocated:
+
+```bash
+node scripts/setup-dev-environment.js frontend
+tailscale serve status
+```
+</Accordion>
+
+<Accordion title="The UI loads but API requests fail with 403">
+Your preview origin is missing from `VK_ALLOWED_ORIGINS`, or it does not match exactly.
+
+Restart the dev stack with the full origin, including `https://`:
+
+```bash
+export VK_ALLOWED_ORIGINS="https://my-machine.example.ts.net"
+pnpm run dev
+```
+</Accordion>
+
+<Accordion title="The wrong port was published">
+Reset the Serve config and publish the current frontend port again:
+
+```bash
+tailscale serve reset
+tailscale serve --https=443 "$(node scripts/setup-dev-environment.js frontend)"
+```
+</Accordion>
+
+<Accordion title="You need to preview a different branch">
+Stop the current dev server, switch worktrees or branches, restart `pnpm run dev`, and keep the same Tailscale URL. As long as the origin stays the same, you only need to republish if the frontend port changes.
+</Accordion>
+</AccordionGroup>
+
+## Recommended workflow for branch previews
+
+For a short-lived branch preview:
+
+1. create a dedicated worktree for the branch
+2. run `export VK_ALLOWED_ORIGINS="https://<machine>.<tailnet>.ts.net"`
+3. start `pnpm run dev`
+4. publish the frontend with `tailscale serve`
+5. share the `https://...ts.net` URL with reviewers on the tailnet
+6. run `tailscale serve reset` when review is finished
