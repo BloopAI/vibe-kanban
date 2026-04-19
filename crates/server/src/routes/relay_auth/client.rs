@@ -3,10 +3,14 @@ use std::time::Duration;
 use axum::{
     Json, Router,
     extract::{Path, State},
+    http::HeaderMap,
     response::Json as ResponseJson,
     routing::{delete, get, post},
 };
-use db::p2p_hosts::{CreateP2pHostParams, create_p2p_host, update_p2p_host_paired};
+use db::{
+    p2p_audit_log::{event, log_event},
+    p2p_hosts::{CreateP2pHostParams, create_p2p_host, update_p2p_host_paired},
+};
 use deployment::Deployment;
 use relay_types::{
     ListRelayPairedHostsResponse, PairRelayHostRequest, PairRelayHostResponse,
@@ -57,6 +61,15 @@ fn is_safe_peer_address(address: &str, port: u16) -> bool {
         }
     }
     true
+}
+
+fn extract_ip(headers: &HeaderMap) -> String {
+    headers
+        .get("x-forwarded-for")
+        .or_else(|| headers.get("x-real-ip"))
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.split(',').next().unwrap_or(s).trim().to_string())
+        .unwrap_or_else(|| "127.0.0.1".to_string())
 }
 
 pub fn router() -> Router<DeploymentImpl> {
@@ -150,9 +163,11 @@ pub async fn remove_relay_paired_host(
 }
 
 pub async fn p2p_pair_host(
+    headers: HeaderMap,
     State(deployment): State<DeploymentImpl>,
     Json(req): Json<P2pPairRequest>,
 ) -> Result<Json<ApiResponse<P2pPairResponse>>, ApiError> {
+    let ip = extract_ip(&headers);
     let api_port = req.api_port.unwrap_or(3000);
     let relay_port = req.relay_port.unwrap_or(8081);
 
@@ -189,6 +204,15 @@ pub async fn p2p_pair_host(
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
+        log_event(
+            deployment.db(),
+            event::PAIRING_FAILED,
+            None,
+            Some(&ip),
+            Some(&format!("remote returned {status}")),
+        )
+        .await
+        .ok();
         return Err(ApiError::BadRequest(format!(
             "Remote host returned {status}: {body}"
         )));
@@ -215,6 +239,16 @@ pub async fn p2p_pair_host(
     .await?;
 
     update_p2p_host_paired(deployment.db(), &host.id, &pair_result.session_token).await?;
+
+    log_event(
+        deployment.db(),
+        event::PAIRING_CODE_CONSUMED,
+        Some(&host.id),
+        Some(&ip),
+        None,
+    )
+    .await
+    .ok();
 
     Ok(Json(ApiResponse::success(P2pPairResponse {
         paired: true,

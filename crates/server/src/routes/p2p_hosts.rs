@@ -3,9 +3,13 @@ use std::sync::Arc;
 use axum::{
     Extension, Json, Router,
     extract::{Path, State},
+    http::HeaderMap,
     routing::{get, post, put},
 };
-use db::p2p_hosts::{self, CreateP2pHostParams, get_p2p_host, update_p2p_host_ssh_config};
+use db::{
+    p2p_audit_log::{event, log_event},
+    p2p_hosts::{self, CreateP2pHostParams, get_p2p_host, update_p2p_host_ssh_config},
+};
 use deployment::Deployment;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -18,6 +22,8 @@ use crate::{DeploymentImpl, error::ApiError, p2p::PairingStore};
 // ---------------------------------------------------------------------------
 
 const PAIRING_CHARSET: &[u8] = b"23456789ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz";
+const MAX_ATTEMPTS: i64 = 5;
+const WINDOW_MINUTES: i64 = 15;
 
 fn generate_pairing_code() -> String {
     let mut rng = rand::thread_rng();
@@ -28,6 +34,15 @@ fn generate_pairing_code() -> String {
 
 fn generate_session_token() -> String {
     uuid::Uuid::new_v4().to_string().replace('-', "")
+}
+
+fn extract_ip(headers: &HeaderMap) -> String {
+    headers
+        .get("x-forwarded-for")
+        .or_else(|| headers.get("x-real-ip"))
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.split(',').next().unwrap_or(s).trim().to_string())
+        .unwrap_or_else(|| "127.0.0.1".to_string())
 }
 
 // ---------------------------------------------------------------------------
@@ -108,14 +123,31 @@ async fn remove_host(
     Path(id): Path<String>,
 ) -> Result<Json<ApiResponse<bool>>, ApiError> {
     let deleted = p2p_hosts::delete_p2p_host(deployment.db(), &id).await?;
+    if deleted {
+        log_event(deployment.db(), event::HOST_REVOKED, Some(&id), None, None)
+            .await
+            .ok();
+    }
     Ok(Json(ApiResponse::success(deleted)))
 }
 
 async fn create_enrollment_code(
+    headers: HeaderMap,
+    State(deployment): State<DeploymentImpl>,
     Extension(pairing_store): Extension<Arc<PairingStore>>,
 ) -> Result<Json<ApiResponse<EnrollmentCodeResponse>>, ApiError> {
+    let ip = extract_ip(&headers);
     let code = generate_pairing_code();
     pairing_store.set_pending_code(code.clone(), 5);
+    log_event(
+        deployment.db(),
+        event::PAIRING_CODE_REQUESTED,
+        None,
+        Some(&ip),
+        None,
+    )
+    .await
+    .ok();
     Ok(Json(ApiResponse::success(EnrollmentCodeResponse { code })))
 }
 
@@ -124,10 +156,21 @@ async fn pair_host(
     Extension(pairing_store): Extension<Arc<PairingStore>>,
     Json(req): Json<PairRequest>,
 ) -> Result<Json<ApiResponse<PairResponse>>, ApiError> {
+    let ip = &req.caller_address;
+
     // Rate-limit: at most 5 attempts per IP in the last 15 minutes.
     let attempts =
-        p2p_hosts::count_recent_pairing_attempts(deployment.db(), &req.caller_address, 15).await?;
-    if attempts >= 5 {
+        p2p_hosts::count_recent_pairing_attempts(deployment.db(), ip, WINDOW_MINUTES).await?;
+    if attempts >= MAX_ATTEMPTS {
+        log_event(
+            deployment.db(),
+            event::PAIRING_FAILED,
+            None,
+            Some(ip),
+            Some("rate limit exceeded"),
+        )
+        .await
+        .ok();
         return Err(ApiError::TooManyRequests(
             "Too many pairing attempts. Please wait before trying again.".to_string(),
         ));
@@ -135,7 +178,16 @@ async fn pair_host(
 
     // Validate and consume the single-use pairing code.
     if !pairing_store.consume_code(&req.code) {
-        p2p_hosts::record_pairing_attempt(deployment.db(), &req.caller_address, false).await?;
+        p2p_hosts::record_pairing_attempt(deployment.db(), ip, false).await?;
+        log_event(
+            deployment.db(),
+            event::PAIRING_FAILED,
+            None,
+            Some(ip),
+            Some("invalid code"),
+        )
+        .await
+        .ok();
         return Err(ApiError::Unauthorized);
     }
 
@@ -156,7 +208,17 @@ async fn pair_host(
     p2p_hosts::update_p2p_host_paired(deployment.db(), &host.id, &session_token).await?;
 
     // Record successful attempt for audit purposes.
-    p2p_hosts::record_pairing_attempt(deployment.db(), &req.caller_address, true).await?;
+    p2p_hosts::record_pairing_attempt(deployment.db(), ip, true).await?;
+
+    log_event(
+        deployment.db(),
+        event::PAIRING_CODE_CONSUMED,
+        Some(&host.id),
+        Some(ip),
+        None,
+    )
+    .await
+    .ok();
 
     Ok(Json(ApiResponse::success(PairResponse { session_token })))
 }
@@ -171,6 +233,7 @@ async fn pair_host(
 /// No pairing code is required — possession of the SSH private key proves
 /// identity.
 async fn ssh_pair(
+    headers: HeaderMap,
     State(deployment): State<DeploymentImpl>,
     Json(req): Json<SshPairRequest>,
 ) -> Result<Json<ApiResponse<SshPairResponse>>, ApiError> {
@@ -179,12 +242,30 @@ async fn ssh_pair(
     };
     use ssh_tunnel::{SshConfig, SshTunnel};
 
+    let ip = extract_ip(&headers);
     let relay_port = req.relay_port.unwrap_or(8081) as i64;
     let db = deployment.db();
 
+    // Rate-limit: at most 5 SSH pairing attempts per IP in the last 15 minutes.
+    let attempts = p2p_hosts::count_recent_pairing_attempts(db, &ip, WINDOW_MINUTES).await?;
+    if attempts >= MAX_ATTEMPTS {
+        log_event(
+            db,
+            event::SSH_PAIR_FAILED,
+            None,
+            Some(&ip),
+            Some("rate limit exceeded"),
+        )
+        .await
+        .ok();
+        return Err(ApiError::TooManyRequests(
+            "Too many SSH pairing attempts. Please wait before trying again.".to_string(),
+        ));
+    }
+
     // Open a temporary SSH tunnel to verify credentials and capture the host key.
     // The tunnel is dropped immediately after — we only need it for the handshake.
-    let tunnel = SshTunnel::start(SshConfig {
+    let tunnel = match SshTunnel::start(SshConfig {
         ssh_host: req.address.clone(),
         ssh_port: req.ssh_port,
         ssh_user: req.ssh_user.clone(),
@@ -194,7 +275,22 @@ async fn ssh_pair(
         expected_fingerprint: None, // TOFU on first pairing
     })
     .await
-    .map_err(|e| ApiError::BadRequest(format!("SSH connection failed: {e}")))?;
+    {
+        Ok(t) => t,
+        Err(e) => {
+            p2p_hosts::record_pairing_attempt(db, &ip, false).await?;
+            log_event(
+                db,
+                event::SSH_PAIR_FAILED,
+                None,
+                Some(&ip),
+                Some(&format!("SSH connection failed: {e}")),
+            )
+            .await
+            .ok();
+            return Err(ApiError::BadRequest(format!("SSH connection failed: {e}")));
+        }
+    };
 
     let fingerprint = tunnel.captured_fingerprint.clone().unwrap_or_default();
     drop(tunnel);
@@ -228,6 +324,12 @@ async fn ssh_pair(
     // Mark the host as paired with a fresh session token.
     let session_token = generate_session_token();
     update_p2p_host_paired(db, &host.id, &session_token).await?;
+
+    // Record successful SSH pairing attempt and emit audit event.
+    p2p_hosts::record_pairing_attempt(db, &ip, true).await?;
+    log_event(db, event::SSH_PAIR_SUCCESS, Some(&host.id), Some(&ip), None)
+        .await
+        .ok();
 
     Ok(Json(ApiResponse::success(SshPairResponse {
         host_id: host.id,
@@ -350,5 +452,25 @@ mod tests {
             !token.contains('-'),
             "session token must not contain dashes"
         );
+    }
+
+    #[test]
+    fn test_extract_ip_x_forwarded_for() {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-forwarded-for", "203.0.113.5, 10.0.0.1".parse().unwrap());
+        assert_eq!(extract_ip(&headers), "203.0.113.5");
+    }
+
+    #[test]
+    fn test_extract_ip_x_real_ip() {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-real-ip", "203.0.113.5".parse().unwrap());
+        assert_eq!(extract_ip(&headers), "203.0.113.5");
+    }
+
+    #[test]
+    fn test_extract_ip_fallback() {
+        let headers = HeaderMap::new();
+        assert_eq!(extract_ip(&headers), "127.0.0.1");
     }
 }
