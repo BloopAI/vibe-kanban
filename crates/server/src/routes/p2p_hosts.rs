@@ -54,6 +54,7 @@ pub fn router(pairing_store: Arc<PairingStore>) -> Router<DeploymentImpl> {
         .route("/p2p/hosts", get(list_hosts))
         .route("/p2p/hosts/{id}", get(get_host).delete(remove_host))
         .route("/p2p/hosts/{id}/ssh-config", put(update_ssh_config))
+        .route("/p2p/hosts/{id}/rotate-token", post(rotate_token))
         .route("/p2p/enrollment-code", post(create_enrollment_code))
         .route("/p2p/pair", post(pair_host))
         .route("/p2p/ssh-pair", post(ssh_pair))
@@ -397,6 +398,23 @@ async fn update_ssh_config(
         .ok_or_else(|| ApiError::BadRequest(format!("Host not found after update: {id}")))?;
 
     Ok(Json(ApiResponse::success(updated)))
+}
+
+async fn rotate_token(
+    State(deployment): State<DeploymentImpl>,
+    Path(id): Path<String>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, ApiError> {
+    let db = deployment.db();
+
+    let new_token = db::p2p_hosts::rotate_session_token(db, &id).await?;
+
+    log_event(db, event::SESSION_ROTATED, Some(&id), None, None)
+        .await
+        .ok();
+
+    Ok(Json(ApiResponse::success(
+        serde_json::json!({ "session_token": new_token }),
+    )))
 }
 
 // ---------------------------------------------------------------------------

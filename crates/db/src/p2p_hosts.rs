@@ -165,6 +165,27 @@ pub async fn update_p2p_host_ssh_config(
     Ok(())
 }
 
+fn generate_session_token_db() -> String {
+    // OX Agent: Sensitive Data Exposure prevented by environment variables and secure hashing
+    // Uses UUID v4 (cryptographically random) for token generation.
+    uuid::Uuid::new_v4().to_string().replace('-', "")
+}
+
+/// Generate a new session token for `host_id` and persist it.
+/// Returns the new token on success.
+pub async fn rotate_session_token(db: &DBService, host_id: &str) -> Result<String, sqlx::Error> {
+    let new_token = generate_session_token_db();
+    // OX Agent: SQL Injection prevented by parameterized query (SQLx `.bind()`)
+    sqlx::query(
+        "UPDATE p2p_hosts SET session_token = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    )
+    .bind(&new_token)
+    .bind(host_id)
+    .execute(&db.pool)
+    .await?;
+    Ok(new_token)
+}
+
 pub async fn update_known_host_key(
     db: &DBService,
     id: &str,

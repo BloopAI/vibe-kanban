@@ -10,7 +10,10 @@
 
 use std::{collections::HashSet, net::SocketAddr, time::Duration};
 
-use db::p2p_hosts::{P2pHost, list_paired_hosts};
+use db::{
+    self,
+    p2p_hosts::{P2pHost, list_paired_hosts},
+};
 use deployment::Deployment as _;
 use relay_tunnel_core::client::{RelayClientConfig, start_relay_client};
 use ssh_tunnel::{SshConfig, SshTunnel};
@@ -21,6 +24,7 @@ use crate::DeploymentImpl;
 const P2P_RECONNECT_INITIAL_DELAY_SECS: u64 = 2;
 const P2P_RECONNECT_MAX_DELAY_SECS: u64 = 60;
 const P2P_POLL_INTERVAL_SECS: u64 = 30;
+const TOKEN_ROTATION_INTERVAL: Duration = Duration::from_secs(24 * 60 * 60);
 
 pub struct P2pConnectionManager {
     deployment: DeploymentImpl,
@@ -37,6 +41,48 @@ impl P2pConnectionManager {
 
     pub async fn run(self) {
         tracing::debug!("P2P connection manager started");
+
+        // Spawn a background task that rotates all paired hosts' session tokens
+        // every 24 hours, bounding the useful lifetime of any leaked token.
+        let rotation_deployment = self.deployment.clone();
+        let rotation_shutdown = self.shutdown.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    _ = rotation_shutdown.cancelled() => break,
+                    _ = tokio::time::sleep(TOKEN_ROTATION_INTERVAL) => {}
+                }
+                match db::p2p_hosts::list_paired_hosts(rotation_deployment.db()).await {
+                    Ok(hosts) => {
+                        for host in hosts {
+                            match db::p2p_hosts::rotate_session_token(
+                                rotation_deployment.db(),
+                                &host.id,
+                            )
+                            .await
+                            {
+                                Ok(_) => {
+                                    tracing::info!(host_id = %host.id, "Auto-rotated session token");
+                                    db::p2p_audit_log::log_event(
+                                        rotation_deployment.db(),
+                                        db::p2p_audit_log::event::SESSION_ROTATED,
+                                        Some(&host.id),
+                                        None,
+                                        Some("auto-rotation at 24h interval"),
+                                    )
+                                    .await
+                                    .ok();
+                                }
+                                Err(e) => {
+                                    tracing::warn!(host_id = %host.id, error = %e, "Failed to rotate session token");
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => tracing::warn!("Session rotation: failed to list hosts: {e}"),
+                }
+            }
+        });
 
         let mut active_machine_ids: HashSet<String> = HashSet::new();
 
