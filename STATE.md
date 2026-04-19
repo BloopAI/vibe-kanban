@@ -8,6 +8,11 @@
 
 - Local runtime is active and serving from the rebuilt local binary.
 - `/api/info` reports `shared_api_base: null`.
+- The kanban/workspace hang regression that was driving VK to `9+ GB` RSS is fixed in the current local runtime and in `staging`.
+- Verified after the fix:
+  - repeated mixed board/workspace bursts passed with `0` failures
+  - a 2-minute mixed soak (`21,070` requests) passed with `0` failures
+  - live service stayed around `90 MB RSS` with `0` swap instead of re-bloating into the multi-GB range
 - The imported cloud project/issue data has been brought into the local DB.
 - The `vibe-kanban` project can currently create issues and create/link workspaces successfully.
 - Local projects now support archive/restore behavior in the left-column project navigation.
@@ -32,6 +37,7 @@
 - The local fallback pull-request endpoint still returns project-wide PR data and should be narrowed by `issue_id` in a future cleanup pass.
 - The archive/restore flow is currently implemented for local projects; remote/cloud project archiving remains out of scope.
 - The branch-local backup retention change needs to be merged from its dedicated PR before treating it as landed in `staging`.
+- The recent memory spiral was traced to a repo-side regression in frontend request/write behavior, not to the local-only install mode itself.
 
 ## Relevant Files / Modules
 
@@ -50,6 +56,8 @@
 - `packages/ui/src/components/AppBar.tsx`
 - `packages/web-core/src/features/kanban/ui/KanbanContainer.tsx`
 - `packages/web-core/src/shared/components/ui-new/containers/SharedAppLayout.tsx`
+- `packages/web-core/src/shared/hooks/useWorkspaces.ts`
+- `packages/web-core/src/shared/hooks/useUiPreferencesScratch.ts`
 
 ## Decisions Currently In Force
 
@@ -73,4 +81,9 @@
 
 1. Continue feature work from `staging`.
 2. Let the hourly lean backup cron keep running, or trigger a manual backup before risky work.
-3. If a future agent touches project/workspace linking or project-list visibility, verify through the live API and the UI before merging.
+3. If a future agent touches board/workspace loading again, rerun a burst + soak check against:
+   - `/api/workspaces/summaries`
+   - `/v1/fallback/issues?project_id=...`
+   - `/v1/fallback/project_workspaces?project_id=...`
+   - `/api/workspaces/:id/git/status`
+4. If a future agent touches project/workspace linking or project-list visibility, verify through the live API and the UI before merging.

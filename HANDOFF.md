@@ -2,6 +2,11 @@
 
 ## What Changed This Session
 
+- Fixed a kanban/workspace loading regression that was driving the local VK server back to multi-GB RSS and eventual hangs.
+- The concrete hotfix was:
+  - stop aggressive workspace-summary refetching in `packages/web-core/src/shared/hooks/useWorkspaces.ts`
+  - stop redundant no-op `UI_PREFERENCES` scratch upserts in `packages/web-core/src/shared/hooks/useUiPreferencesScratch.ts`
+- Rebuilt and redeployed the local server binary after the fix, then stress-tested the live service with repeated kanban/workspace traffic.
 - Preserved the old divergent canonical `staging` tip on rescue branches.
 - Reset the canonical local `staging` checkout to match `fork/staging`.
 - Split `ca67946ab` into a clean branch, `vk/ops-backup-retention-20260419`.
@@ -15,6 +20,11 @@
 
 - The live local install is the source of truth.
 - `/api/info` reports `shared_api_base: null`.
+- The kanban/workspace regression is currently fixed in the live service and in `staging`.
+- Current verification after the hotfix:
+  - repeated mixed kanban/workspace bursts passed with `0` failures
+  - a 2-minute mixed soak (`21,070` requests) passed with `0` failures
+  - live service stayed under roughly `90 MB RSS` with `0` swap
 - The board/issue data now lives locally in `~/.local/share/vibe-kanban/db.v2.sqlite`.
 - The canonical local checkout is back on a clean `staging` that matches `fork/staging`.
 - The active branch for this stream is `vk/ops-backup-retention-20260419`.
@@ -33,6 +43,8 @@
 
 ## What The Next Agent Should Do
 
+- Treat `c6a5dd7d9 fix: stop kanban polling and scratch churn` as the baseline fix for the recent kanban/workspace hang regression.
+- If VK starts re-bloating again, compare the current behavior against this session’s stress results before assuming it is the same bug.
 - Merge PR `#6`.
 - Keep the rescue branches until there is no more need to recover anything from the old divergent `staging`.
 - After PR `#6` lands, bring the remaining queued PRs to `staging` one at a time.
