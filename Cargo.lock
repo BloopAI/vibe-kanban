@@ -8900,6 +8900,7 @@ dependencies = [
  "shlex",
  "spake2",
  "sqlx",
+ "ssh-tunnel",
  "strip-ansi-escapes",
  "tempfile",
  "thiserror 2.0.18",
@@ -9531,6 +9532,18 @@ dependencies = [
  "ssh-encoding",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "ssh-tunnel"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "russh",
+ "russh-keys",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
