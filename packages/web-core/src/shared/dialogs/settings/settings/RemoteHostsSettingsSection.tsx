@@ -88,7 +88,12 @@ export function RemoteHostsSettingsSection() {
         ) : (
           <div className="space-y-2">
             {hosts.map((host) => (
-              <HostRow key={host.id} host={host} onRemove={handleRemove} />
+              <HostRow
+                key={host.id}
+                host={host}
+                onRemove={handleRemove}
+                onUpdated={loadHosts}
+              />
             ))}
           </div>
         )}
@@ -120,11 +125,14 @@ export function RemoteHostsSettingsSection() {
 function HostRow({
   host,
   onRemove,
+  onUpdated,
 }: {
   host: P2pHost;
   onRemove: (id: string) => void;
+  onUpdated: () => void;
 }) {
   const [removing, setRemoving] = useState(false);
+  const [editing, setEditing] = useState(false);
   const statusColor = host.status === 'paired' ? 'text-success' : 'text-low';
 
   const modeLabel =
@@ -144,26 +152,165 @@ function HostRow({
   };
 
   return (
-    <div className="rounded-sm border border-border bg-secondary/30 p-3 flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-high truncate">{host.name}</p>
-        <p className="text-xs text-low">
-          {host.address}:{host.relay_port} · {modeLabel}
-        </p>
+    <div className="rounded-sm border border-border bg-secondary/30">
+      <div className="p-3 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-high truncate">{host.name}</p>
+          <p className="text-xs text-low">
+            {host.address}:{host.relay_port} · {modeLabel}
+          </p>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <span className={`text-xs font-medium ${statusColor}`}>
+            {host.status}
+          </span>
+          <button
+            className="text-xs text-low hover:text-normal"
+            onClick={() => setEditing((v) => !v)}
+          >
+            {editing ? 'Cancel' : 'Edit'}
+          </button>
+          <PrimaryButton
+            variant="tertiary"
+            value="Remove"
+            onClick={() => void handleRemove()}
+            disabled={removing}
+            actionIcon={removing ? 'spinner' : undefined}
+          />
+        </div>
       </div>
-      <div className="flex items-center gap-3 shrink-0">
-        <span className={`text-xs font-medium ${statusColor}`}>
-          {host.status}
-        </span>
-        <PrimaryButton
-          variant="tertiary"
-          value="Remove"
-          onClick={() => void handleRemove()}
-          disabled={removing}
-          actionIcon={removing ? 'spinner' : undefined}
+      {editing && (
+        <SshConfigEditForm
+          host={host}
+          onSuccess={() => {
+            setEditing(false);
+            onUpdated();
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function SshConfigEditForm({
+  host,
+  onSuccess,
+  onCancel,
+}: {
+  host: P2pHost;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const [sshUser, setSshUser] = useState(host.ssh_user ?? '');
+  const [sshPort, setSshPort] = useState(host.ssh_port ?? 22);
+  const [sshKeyPath, setSshKeyPath] = useState(host.ssh_key_path ?? '');
+  const [connectionMode, setConnectionMode] = useState<'auto' | 'direct' | 'ssh'>(
+    (host.connection_mode as 'auto' | 'direct' | 'ssh') ?? 'auto',
+  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      // OX Agent: ssh_key_path is JSON-encoded and sent to the local backend only.
+      // Path-traversal prevention is enforced server-side in the Rust handler;
+      // the frontend never opens this value as a local file path.
+      await p2pHostsApi.updateSshConfig(host.id, {
+        ssh_user: sshUser || undefined,
+        ssh_port: sshPort,
+        ssh_key_path: sshKeyPath || undefined,
+        connection_mode: connectionMode,
+      });
+      onSuccess();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Update failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form
+      onSubmit={(e) => void handleSubmit(e)}
+      className="space-y-4 px-3 pb-3 border-t border-border pt-3"
+    >
+      <h4 className="text-sm font-medium text-high">Edit SSH configuration</h4>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-normal">SSH user</label>
+          <SettingsInput
+            value={sshUser}
+            onChange={setSshUser}
+            placeholder="root"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-normal">SSH port</label>
+          <input
+            type="number"
+            value={sshPort}
+            onChange={(e) => setSshPort(Number(e.target.value))}
+            min={1}
+            max={65535}
+            className="w-full bg-secondary border border-border rounded-sm px-base py-half text-sm text-high placeholder:text-low placeholder:opacity-80 focus:outline-none focus:ring-1 focus:ring-brand"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-normal">
+          SSH private key path
+        </label>
+        <input
+          type="text"
+          value={sshKeyPath}
+          onChange={(e) => setSshKeyPath(e.target.value)}
+          placeholder="~/.ssh/id_ed25519"
+          className="w-full bg-secondary border border-border rounded-sm px-base py-half text-sm text-high font-mono placeholder:text-low placeholder:opacity-80 focus:outline-none focus:ring-1 focus:ring-brand"
         />
       </div>
-    </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-normal">
+          Connection mode
+        </label>
+        <select
+          value={connectionMode}
+          onChange={(e) =>
+            setConnectionMode(e.target.value as 'auto' | 'direct' | 'ssh')
+          }
+          className="w-full bg-secondary border border-border rounded-sm px-base py-half text-sm text-high focus:outline-none focus:ring-1 focus:ring-brand"
+        >
+          <option value="auto">Auto (try direct, fall back to SSH)</option>
+          <option value="direct">Direct WebSocket only</option>
+          <option value="ssh">SSH tunnel only</option>
+        </select>
+      </div>
+
+      {error && <p className="text-sm text-error">{error}</p>}
+
+      <div className="flex gap-2 justify-end">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-sm px-base py-half text-cta min-h-cta flex gap-half items-center bg-panel hover:bg-secondary text-normal"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded-sm px-base py-half text-cta min-h-cta flex gap-half items-center bg-brand hover:bg-brand-hover text-on-brand disabled:cursor-not-allowed disabled:bg-panel"
+        >
+          {loading ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </form>
   );
 }
 
