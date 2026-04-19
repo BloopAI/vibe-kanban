@@ -54,6 +54,7 @@ import { AppBarNotificationBellContainer } from '@/pages/workspaces/AppBarNotifi
 import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebarContainer';
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
 import { useRemoteCloudHostsAppBarModel } from '@/shared/hooks/useRemoteCloudHosts';
+import { useP2pHosts } from '@/shared/hooks/use-p2p-hosts';
 import { CloudShutdownExportBanner } from '@/shared/components/CloudShutdownExportBanner';
 
 export function SharedAppLayout() {
@@ -73,6 +74,18 @@ export function SharedAppLayout() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isAppBarHovered, setIsAppBarHovered] = useState(false);
   const { hosts: remoteCloudHosts } = useRemoteCloudHostsAppBarModel();
+  const { pairedHosts: p2pHosts } = useP2pHosts();
+  const allHosts = useMemo(
+    () => [
+      ...remoteCloudHosts,
+      ...p2pHosts.map((h) => ({
+        id: h.machine_id,
+        name: h.name,
+        status: 'online' as const,
+      })),
+    ],
+    [remoteCloudHosts, p2pHosts]
+  );
   const { hostId: routeHostId } = useParams({ strict: false });
   const navigate = useNavigate();
 
@@ -271,13 +284,6 @@ export function SharedAppLayout() {
     }
   }, []);
 
-  const openRelaySettings = useCallback((hostId?: string) => {
-    void SettingsDialog.show({
-      initialSection: 'relay',
-      ...(hostId ? { initialState: { hostId } } : {}),
-    });
-  }, []);
-
   const handleHostClick = useCallback(
     (hostId: string, status: AppBarHostStatus) => {
       if (status === 'offline') {
@@ -293,8 +299,8 @@ export function SharedAppLayout() {
   );
 
   const handlePairHostClick = useCallback(() => {
-    openRelaySettings();
-  }, [openRelaySettings]);
+    void SettingsDialog.show({ initialSection: 'remote-hosts' });
+  }, []);
 
   return (
     <SyncErrorProvider>
@@ -332,7 +338,7 @@ export function SharedAppLayout() {
             {/* Desktop AppBar sidebar. */}
             <AppBar
               projects={orderedProjects}
-              hosts={remoteCloudHosts}
+              hosts={allHosts}
               activeHostId={activeHostId}
               onCreateProject={handleCreateProject}
               onExportClick={handleExportClick}
