@@ -8,6 +8,7 @@ use sqlx::{
 use utils::assets::asset_dir;
 
 pub mod models;
+pub mod p2p_audit_log;
 pub mod p2p_hosts;
 
 async fn run_migrations(pool: &Pool<Sqlite>) -> Result<(), Error> {
