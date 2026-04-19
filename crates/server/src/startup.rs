@@ -11,10 +11,8 @@ use tower_http::validate_request::ValidateRequestHeaderLayer;
 use utils::assets::asset_dir;
 
 use crate::{
-    DeploymentImpl,
-    middleware::origin::validate_origin,
-    routes,
-    runtime::{p2p_connection::P2pConnectionManager, relay_registration},
+    DeploymentImpl, middleware::origin::validate_origin, routes,
+    runtime::p2p_connection::P2pConnectionManager,
 };
 
 /// A running server instance. Callers can read the port, then call `serve()`
@@ -52,8 +50,6 @@ impl ServerHandle {
             .client_info()
             .set_preview_proxy_port(self.proxy_port)
             .expect("client preview proxy port already set");
-        relay_registration::spawn_relay(&self.deployment).await;
-
         let p2p_manager =
             P2pConnectionManager::new(self.deployment.clone(), self.shutdown_token.child_token());
         tokio::spawn(async move { p2p_manager.run().await });

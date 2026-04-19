@@ -16,7 +16,6 @@ use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
     file::{FileError, FileService},
-    remote_client::RemoteClient,
 };
 use tokio::fs::File as TokioFile;
 use tokio_util::io::ReaderStream;
@@ -114,29 +113,13 @@ pub async fn associate_workspace_attachments(
 }
 
 pub async fn import_issue_attachments(
-    Extension(workspace): Extension<Workspace>,
-    State(deployment): State<DeploymentImpl>,
-    axum::Json(payload): axum::Json<ImportIssueAttachmentsRequest>,
+    _: Extension<Workspace>,
+    _: State<DeploymentImpl>,
+    _: axum::Json<ImportIssueAttachmentsRequest>,
 ) -> Result<ResponseJson<ApiResponse<ImportIssueAttachmentsResponse>>, ApiError> {
-    let client = deployment.remote_client()?;
-    let imported_attachments =
-        import_issue_attachments_from_remote(&client, deployment.file(), payload.issue_id).await?;
-    let attachment_ids = imported_attachments
-        .iter()
-        .map(|imported| imported.file.id)
-        .collect::<Vec<_>>();
-
-    let managed_workspace = deployment
-        .workspace_manager()
-        .load_managed_workspace(workspace)
-        .await?;
-    managed_workspace
-        .associate_attachments(&attachment_ids)
-        .await?;
-
-    Ok(ResponseJson(ApiResponse::success(
-        ImportIssueAttachmentsResponse { attachment_ids },
-    )))
+    Err(ApiError::BadRequest(
+        "Importing attachments from cloud is not supported in local-first mode.".to_string(),
+    ))
 }
 
 pub async fn get_attachment_metadata(
@@ -336,63 +319,6 @@ async fn load_workspace_with_wildcard(
     };
     request.extensions_mut().insert(attempt);
     Ok(next.run(request).await)
-}
-
-pub(crate) async fn import_issue_attachments_from_remote(
-    client: &RemoteClient,
-    file_service: &FileService,
-    issue_id: Uuid,
-) -> Result<Vec<ImportedIssueAttachment>, ApiError> {
-    let response = client
-        .list_issue_attachments(issue_id)
-        .await
-        .map_err(ApiError::from)?;
-
-    let mut imported_attachments = Vec::new();
-
-    for entry in response.attachments {
-        let Some(file_url) = entry.file_url.as_deref() else {
-            tracing::warn!(
-                "No file_url for attachment {}, skipping",
-                entry.attachment.id
-            );
-            continue;
-        };
-
-        let bytes = match client.download_from_url(file_url).await {
-            Ok(bytes) => bytes,
-            Err(error) => {
-                tracing::warn!(
-                    "Failed to download attachment {}: {}",
-                    entry.attachment.id,
-                    error
-                );
-                continue;
-            }
-        };
-
-        let file = match file_service
-            .store_file(&bytes, &entry.attachment.original_name)
-            .await
-        {
-            Ok(file) => file,
-            Err(error) => {
-                tracing::warn!(
-                    "Failed to store imported file '{}': {}",
-                    entry.attachment.original_name,
-                    error
-                );
-                continue;
-            }
-        };
-
-        imported_attachments.push(ImportedIssueAttachment {
-            attachment_id: entry.attachment.id,
-            file,
-        });
-    }
-
-    Ok(imported_attachments)
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {

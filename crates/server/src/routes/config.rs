@@ -26,7 +26,6 @@ use services::services::{
         save_config_to_file,
     },
     container::ContainerService,
-    remote_client::RemoteClientError,
 };
 use tokio::fs;
 use ts_rs::TS;
@@ -37,7 +36,6 @@ use crate::{
     DeploymentImpl,
     error::ApiError,
     middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
-    runtime::relay_registration,
 };
 
 pub fn router() -> Router<DeploymentImpl> {
@@ -107,50 +105,7 @@ async fn get_user_system_info(
     State(deployment): State<DeploymentImpl>,
 ) -> ResponseJson<ApiResponse<UserSystemInfo>> {
     let config = deployment.config().read().await.clone();
-    let login_status = match tokio::time::timeout(
-        std::time::Duration::from_secs(2),
-        deployment.get_login_status(),
-    )
-    .await
-    {
-        Ok(status) => status,
-        Err(_) => {
-            tracing::warn!("timed out determining login status for /api/info");
-
-            let auth_context = deployment.auth_context();
-            let cached_profile = auth_context.cached_profile().await;
-
-            match auth_context.get_credentials().await {
-                Some(_) => {
-                    if auth_context.remote_auth_degraded_slug().await.is_none() {
-                        auth_context
-                            .set_remote_auth_degraded_slug(
-                                RemoteClientError::generic_degraded_slug(),
-                            )
-                            .await;
-                    }
-
-                    deployment
-                        .track_if_analytics_allowed(
-                            "login_status_timeout",
-                            serde_json::json!({
-                                "has_cached_profile": cached_profile.is_some(),
-                            }),
-                        )
-                        .await;
-
-                    LoginStatus::LoggedIn {
-                        profile: cached_profile,
-                    }
-                }
-                None => {
-                    auth_context.clear_profile().await;
-                    auth_context.clear_remote_auth_degraded_slug().await;
-                    LoginStatus::LoggedOut
-                }
-            }
-        }
-    };
+    let login_status = deployment.get_login_status().await;
 
     let user_system_info = UserSystemInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
@@ -170,7 +125,7 @@ async fn get_user_system_info(
             }
             caps
         },
-        shared_api_base: deployment.remote_info().get_api_base(),
+        shared_api_base: None,
         preview_proxy_port: deployment.client_info().get_preview_proxy_port(),
     };
 
@@ -242,20 +197,6 @@ async fn track_config_events(deployment: &DeploymentImpl, old: &Config, new: &Co
 
 async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &Config) {
     track_config_events(deployment, old, new).await;
-
-    let old_host_nickname = relay_registration::clean_host_nickname(old, deployment.user_id());
-    let new_host_nickname = relay_registration::clean_host_nickname(new, deployment.user_id());
-
-    match (old.relay_enabled, new.relay_enabled) {
-        (false, true) => relay_registration::spawn_relay(deployment).await,
-        (true, false) => relay_registration::stop_relay(deployment).await,
-        (true, true) => {
-            if old_host_nickname != new_host_nickname {
-                relay_registration::spawn_relay(deployment).await;
-            }
-        }
-        (false, false) => (),
-    }
 }
 
 async fn get_sound(Path(sound): Path<SoundFile>) -> Result<Response, ApiError> {

@@ -6,7 +6,7 @@ use axum::{
     http::{StatusCode, header},
     response::Response,
 };
-use relay_client::RELAY_HEADER;
+use relay_control::RELAY_HEADER;
 use url::Url;
 
 #[derive(Clone, Debug, Eq, PartialEq)]

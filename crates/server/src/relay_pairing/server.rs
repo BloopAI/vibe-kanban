@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use http::HeaderMap;
-use relay_control::signing::RelaySigningService;
+use relay_control::{RELAY_HEADER, signing::RelaySigningService};
 use relay_types::{
     FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse,
     RefreshRelaySigningSessionRequest, RefreshRelaySigningSessionResponse, RelayPairedClient,
@@ -271,7 +271,7 @@ impl RelayPairingServer {
 
 pub fn is_relay_request(headers: &HeaderMap) -> bool {
     headers
-        .get(relay_client::RELAY_HEADER)
+        .get(RELAY_HEADER)
         .and_then(|value| value.to_str().ok())
         .is_some_and(|value| value.trim() == "1")
 }

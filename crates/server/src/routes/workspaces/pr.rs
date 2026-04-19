@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use api_types::{PullRequestStatus, UpsertPullRequestRequest};
 use axum::{
     Extension, Json, Router,
     extract::{Query, State},
@@ -28,9 +27,7 @@ use git_host::{
     github::GhCli,
 };
 use serde::{Deserialize, Serialize};
-use services::services::{
-    config::DEFAULT_PR_DESCRIPTION_PROMPT, container::ContainerService, remote_sync,
-};
+use services::services::{config::DEFAULT_PR_DESCRIPTION_PROMPT, container::ContainerService};
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -316,21 +313,6 @@ pub async fn create_pr(
                 tracing::error!("Failed to create local PR record: {}", e);
             }
 
-            if let Ok(client) = deployment.remote_client() {
-                let request = UpsertPullRequestRequest {
-                    url: pr_info.url.clone(),
-                    number: pr_info.number as i32,
-                    status: PullRequestStatus::Open,
-                    merged_at: None,
-                    merge_commit_sha: None,
-                    target_branch_name: base_branch.clone(),
-                    local_workspace_id: workspace.id,
-                };
-                tokio::spawn(async move {
-                    remote_sync::sync_pr_to_remote(&client, request).await;
-                });
-            }
-
             // Auto-open PR in browser
             if let Err(e) = utils::browser::open_browser(&pr_info.url).await {
                 tracing::warn!("Failed to open PR in browser: {}", e);
@@ -481,27 +463,6 @@ pub async fn attach_existing_pr(
                 pr_info.merge_commit_sha.clone(),
             )
             .await?;
-        }
-
-        if let Ok(client) = deployment.remote_client() {
-            let pr_status = match pr_info.status {
-                MergeStatus::Open => PullRequestStatus::Open,
-                MergeStatus::Merged => PullRequestStatus::Merged,
-                MergeStatus::Closed => PullRequestStatus::Closed,
-                MergeStatus::Unknown => PullRequestStatus::Open,
-            };
-            let request = UpsertPullRequestRequest {
-                url: pr_info.url.clone(),
-                number: pr_info.number as i32,
-                status: pr_status,
-                merged_at: None,
-                merge_commit_sha: pr_info.merge_commit_sha.clone(),
-                target_branch_name: workspace_repo.target_branch.clone(),
-                local_workspace_id: workspace.id,
-            };
-            tokio::spawn(async move {
-                remote_sync::sync_pr_to_remote(&client, request).await;
-            });
         }
 
         // If PR is merged, archive workspace

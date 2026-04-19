@@ -13,11 +13,7 @@ use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{
-    DeploymentImpl,
-    error::ApiError,
-    routes::workspaces::attachments::{
-        ImportedIssueAttachment, import_issue_attachments_from_remote,
-    },
+    DeploymentImpl, error::ApiError, routes::workspaces::attachments::ImportedIssueAttachment,
 };
 
 pub(crate) async fn create_workspace_record(
@@ -248,48 +244,6 @@ pub async fn create_and_start_workspace(
 
     if let Some(ids) = &attachment_ids {
         managed_workspace.associate_attachments(ids).await?;
-    }
-
-    if let Some(linked_issue) = &linked_issue
-        && let Ok(client) = deployment.remote_client()
-    {
-        match import_issue_attachments_from_remote(
-            &client,
-            deployment.file(),
-            linked_issue.issue_id,
-        )
-        .await
-        {
-            Ok(imported_attachments) if !imported_attachments.is_empty() => {
-                let imported_ids = imported_attachments
-                    .iter()
-                    .map(|imported| imported.file.id)
-                    .collect::<Vec<_>>();
-
-                if let Err(e) = managed_workspace.associate_attachments(&imported_ids).await {
-                    tracing::warn!("Failed to associate imported files with workspace: {}", e);
-                }
-
-                workspace_prompt = rewrite_imported_issue_attachments_markdown(
-                    &workspace_prompt,
-                    &imported_attachments,
-                );
-
-                tracing::info!(
-                    "Imported {} files from issue {}",
-                    imported_ids.len(),
-                    linked_issue.issue_id
-                );
-            }
-            Ok(_) => {}
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to import issue attachments for issue {}: {}",
-                    linked_issue.issue_id,
-                    e
-                );
-            }
-        }
     }
 
     let workspace = managed_workspace.workspace.clone();

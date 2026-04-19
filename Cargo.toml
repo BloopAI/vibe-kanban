@@ -2,7 +2,6 @@
 resolver = "3"
 members = [
     "crates/api-types",
-    "crates/relay-client",
     "crates/server",
     "crates/relay-types",
     "crates/trusted-key-auth",
@@ -16,9 +15,7 @@ members = [
     "crates/relay-protocol",
     "crates/relay-ws",
     "crates/ws-bridge",
-    "crates/relay-hosts",
     "crates/client-info",
-    "crates/remote-info",
     "crates/utils",
     "crates/git",
     "crates/git-host",
@@ -30,11 +27,17 @@ members = [
     "crates/tauri-app",
     "crates/preview-proxy",
     "crates/relay-tunnel-core",
-    "crates/relay-webrtc",
     "crates/local-relay",
     "crates/ssh-tunnel",
 ]
-exclude = ["crates/remote", "crates/relay-tunnel"]
+exclude = [
+    "crates/remote",
+    "crates/relay-tunnel",
+    "crates/relay-hosts",
+    "crates/relay-client",
+    "crates/relay-webrtc",
+    "crates/remote-info",
+]
 
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }

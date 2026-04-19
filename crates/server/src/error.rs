@@ -8,20 +8,15 @@ use db::models::{
     execution_process::ExecutionProcessError, repo::RepoError, scratch::ScratchError,
     session::SessionError, workspace::WorkspaceError,
 };
-use deployment::{DeploymentError, RelayHostsNotConfigured, RemoteClientNotConfigured};
+use deployment::DeploymentError;
 use executors::{command::CommandBuildError, executors::ExecutorError};
 use git::GitServiceError;
 use git_host::GitHostError;
 use local_deployment::pty::PtyError;
-use relay_hosts::{
-    RelayApiError, RelayConnectionError, RelayHostLookupError, RelayPairingClientError,
-};
-use relay_webrtc::WebRtcError;
 use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
     file::FileError,
-    remote_client::RemoteClientError,
     repo::RepoError as RepoServiceError,
 };
 use thiserror::Error;
@@ -67,8 +62,6 @@ pub enum ApiError {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     EditorOpen(#[from] EditorOpenError),
-    #[error(transparent)]
-    RemoteClient(#[from] RemoteClientError),
     #[error("Unauthorized")]
     Unauthorized,
     #[error("Bad request: {0}")]
@@ -87,25 +80,11 @@ pub enum ApiError {
     CommandBuilder(#[from] CommandBuildError),
     #[error(transparent)]
     Pty(#[from] PtyError),
-    #[error(transparent)]
-    WebRtc(#[from] WebRtcError),
 }
 
 impl From<&'static str> for ApiError {
     fn from(msg: &'static str) -> Self {
         ApiError::BadRequest(msg.to_string())
-    }
-}
-
-impl From<RemoteClientNotConfigured> for ApiError {
-    fn from(_: RemoteClientNotConfigured) -> Self {
-        ApiError::BadRequest("Remote client not configured".to_string())
-    }
-}
-
-impl From<RelayHostsNotConfigured> for ApiError {
-    fn from(_: RelayHostsNotConfigured) -> Self {
-        ApiError::BadRequest("Remote relay API is not configured".to_string())
     }
 }
 
@@ -204,111 +183,6 @@ impl ErrorInfo {
             status,
             error_type,
             message: Some(msg.into()),
-        }
-    }
-}
-
-fn remote_client_error(err: &RemoteClientError) -> ErrorInfo {
-    use services::services::remote_client::HandoffErrorCode;
-    match err {
-        RemoteClientError::Auth => ErrorInfo::with_status(
-            StatusCode::UNAUTHORIZED,
-            "RemoteClientError",
-            "Unauthorized. Please sign in again.",
-        ),
-        RemoteClientError::Timeout => ErrorInfo::with_status(
-            StatusCode::GATEWAY_TIMEOUT,
-            "RemoteClientError",
-            "Remote service timeout. Please try again.",
-        ),
-        RemoteClientError::Transport(_) => ErrorInfo::with_status(
-            StatusCode::BAD_GATEWAY,
-            "RemoteClientError",
-            "Remote service unavailable. Please try again.",
-        ),
-        RemoteClientError::Http { status, body } => {
-            let msg = if body.is_empty() {
-                "Remote service error. Please try again.".into()
-            } else {
-                serde_json::from_str::<serde_json::Value>(body)
-                    .ok()
-                    .and_then(|v| v.get("error")?.as_str().map(String::from))
-                    .unwrap_or_else(|| body.clone())
-            };
-            ErrorInfo::with_status(
-                StatusCode::from_u16(*status).unwrap_or(StatusCode::BAD_GATEWAY),
-                "RemoteClientError",
-                msg,
-            )
-        }
-        RemoteClientError::Token(_) => ErrorInfo::with_status(
-            StatusCode::BAD_GATEWAY,
-            "RemoteClientError",
-            "Remote service returned an invalid access token. Please sign in again.",
-        ),
-        RemoteClientError::Storage(_) => ErrorInfo {
-            status: StatusCode::INTERNAL_SERVER_ERROR,
-            error_type: "RemoteClientError",
-            message: Some("Failed to persist credentials locally. Please retry.".into()),
-        },
-        RemoteClientError::Api(code) => {
-            let (status, msg) = match code {
-                HandoffErrorCode::NotFound => (
-                    StatusCode::NOT_FOUND,
-                    "The requested resource was not found.",
-                ),
-                HandoffErrorCode::Expired => {
-                    (StatusCode::UNAUTHORIZED, "The link or token has expired.")
-                }
-                HandoffErrorCode::AccessDenied => (StatusCode::FORBIDDEN, "Access denied."),
-                HandoffErrorCode::UnsupportedProvider => (
-                    StatusCode::BAD_REQUEST,
-                    "Unsupported authentication provider.",
-                ),
-                HandoffErrorCode::InvalidReturnUrl => {
-                    (StatusCode::BAD_REQUEST, "Invalid return URL.")
-                }
-                HandoffErrorCode::InvalidChallenge => {
-                    (StatusCode::BAD_REQUEST, "Invalid authentication challenge.")
-                }
-                HandoffErrorCode::ProviderError => (
-                    StatusCode::BAD_GATEWAY,
-                    "Authentication provider error. Please try again.",
-                ),
-                HandoffErrorCode::InternalError => (
-                    StatusCode::BAD_GATEWAY,
-                    "Internal remote service error. Please try again.",
-                ),
-                HandoffErrorCode::Other(m) => {
-                    if matches!(
-                        m.as_str(),
-                        "invalid_token"
-                            | "expired_token"
-                            | "session_revoked"
-                            | "token_reuse_detected"
-                            | "provider_token_revoked"
-                            | "identity_error"
-                    ) {
-                        return ErrorInfo::with_status(
-                            StatusCode::UNAUTHORIZED,
-                            "RemoteClientError",
-                            "Unauthorized. Please sign in again.",
-                        );
-                    }
-                    return ErrorInfo::bad_request(
-                        "RemoteClientError",
-                        format!("Authentication error: {}", m),
-                    );
-                }
-            };
-            ErrorInfo::with_status(status, "RemoteClientError", msg)
-        }
-        RemoteClientError::Serde(_) => ErrorInfo::bad_request(
-            "RemoteClientError",
-            "Unexpected response from remote service.",
-        ),
-        RemoteClientError::Url(_) => {
-            ErrorInfo::bad_request("RemoteClientError", "Remote service URL is invalid.")
         }
     }
 }
@@ -444,8 +318,6 @@ impl IntoResponse for ApiError {
                 ErrorInfo::bad_request("EditorOpenError", format!("{}", self))
             }
 
-            ApiError::RemoteClient(err) => remote_client_error(err),
-
             ApiError::Pty(PtyError::SessionNotFound(_)) => {
                 ErrorInfo::not_found("PtyError", "PTY session not found.")
             }
@@ -494,21 +366,6 @@ impl IntoResponse for ApiError {
             ),
             ApiError::Config(_) => ErrorInfo::internal("ConfigError"),
             ApiError::Io(_) => ErrorInfo::internal("IoError"),
-            ApiError::WebRtc(err) => match err {
-                WebRtcError::SessionNotFound { .. } => {
-                    ErrorInfo::not_found("WebRtcError", err.to_string())
-                }
-                WebRtcError::IceGatheringTimedOut
-                | WebRtcError::IceGatheringChannelDropped
-                | WebRtcError::NoLocalDescription
-                | WebRtcError::WebRtc(_) => ErrorInfo::bad_request("WebRtcError", err.to_string()),
-                WebRtcError::ConnectUpstreamWs(_)
-                | WebRtcError::DataChannelSendQueueClosed
-                | WebRtcError::WsBridge(_) => {
-                    ErrorInfo::with_status(StatusCode::BAD_GATEWAY, "WebRtcError", err.to_string())
-                }
-                WebRtcError::SerializeMessage(_) => ErrorInfo::internal("WebRtcError"),
-            },
         };
 
         // Log internal errors so they are visible in server output.
@@ -564,56 +421,6 @@ impl From<RepoServiceError> for ApiError {
             }
             RepoServiceError::InvalidFolderName(name) => {
                 ApiError::BadRequest(format!("Invalid folder name: {}", name))
-            }
-        }
-    }
-}
-
-impl From<RelayHostLookupError> for ApiError {
-    fn from(err: RelayHostLookupError) -> Self {
-        ApiError::BadRequest(err.to_string())
-    }
-}
-
-impl From<RelayConnectionError> for ApiError {
-    fn from(err: RelayConnectionError) -> Self {
-        match err {
-            RelayConnectionError::NotConfigured => ApiError::BadRequest(err.to_string()),
-            RelayConnectionError::RemoteClient(ref inner) => {
-                tracing::warn!(%inner, "Relay connection authentication failed");
-                ApiError::Unauthorized
-            }
-            RelayConnectionError::Relay(err) => err.into(),
-        }
-    }
-}
-
-impl From<RelayApiError> for ApiError {
-    fn from(err: RelayApiError) -> Self {
-        tracing::warn!(%err, "Relay transport failed");
-        ApiError::BadGateway(err.to_string())
-    }
-}
-
-impl From<RelayPairingClientError> for ApiError {
-    fn from(err: RelayPairingClientError) -> Self {
-        match err {
-            RelayPairingClientError::NotConfigured => ApiError::BadRequest(err.to_string()),
-            RelayPairingClientError::RemoteClient(ref inner) => {
-                tracing::warn!(%inner, "Relay host pairing authentication failed");
-                ApiError::Unauthorized
-            }
-            RelayPairingClientError::Pairing(ref detail) => {
-                tracing::warn!(%detail, "Relay host pairing failed");
-                ApiError::BadRequest(err.to_string())
-            }
-            RelayPairingClientError::StoreSerialization(ref detail) => {
-                tracing::error!(%detail, "Failed to serialize relay host credentials");
-                ApiError::BadGateway(err.to_string())
-            }
-            RelayPairingClientError::Store(ref detail) => {
-                tracing::error!(%detail, "Failed to persist paired relay host credentials");
-                ApiError::BadGateway(err.to_string())
             }
         }
     }
