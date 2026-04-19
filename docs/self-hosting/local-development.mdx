@@ -1,18 +1,17 @@
 ---
 title: "Local Development"
-description: "Run Vibe Kanban Cloud locally"
+description: "Run Vibe Kanban in development mode"
 ---
 
-This guide walks you through setting up a local Vibe Kanban Cloud instance for development and testing.
+This guide walks you through running Vibe Kanban locally for development and testing.
 
 ## Prerequisites
 
 Before you begin, ensure you have:
 
-- **Docker** and **Docker Compose** installed
-- **Git** to clone the repository
-- **Node.js 20+** and **pnpm** (for running the desktop client)
-- A **GitHub** or **Google** OAuth application
+- **Rust** (stable toolchain via [rustup](https://rustup.rs/))
+- **Node.js 20+** and **pnpm** (`npm install -g pnpm`)
+- **cargo-watch** for backend hot-reloading (`cargo install cargo-watch`)
 
 ## Step 1: Clone the Repository
 
@@ -21,308 +20,124 @@ git clone https://github.com/BloopAI/vibe-kanban.git
 cd vibe-kanban
 ```
 
-## Step 2: Create OAuth Application
-
-You need at least one OAuth provider. Choose GitHub, Google, or both.
-
-<Tabs>
-<Tab title="GitHub OAuth">
-
-1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
-2. Click **New OAuth App**
-3. Fill in the details:
-   - **Application name**: Vibe Kanban Local
-   - **Homepage URL**: `http://localhost:3000`
-   - **Authorization callback URL**: `http://localhost:3000/v1/oauth/github/callback`
-4. Click **Register application**
-5. Copy the **Client ID**
-6. Click **Generate a new client secret** and copy it
-
-</Tab>
-
-<Tab title="Google OAuth">
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
-2. Create a new project or select an existing one
-3. Click **Create Credentials** → **OAuth client ID**
-4. Select **Web application**
-5. Add authorized redirect URI: `http://localhost:3000/v1/oauth/google/callback`
-6. Click **Create**
-7. Copy the **Client ID** and **Client Secret**
-
-</Tab>
-</Tabs>
-
-## Step 3: Configure Environment
-
-Create a `.env.remote` file in `crates/remote/`:
+## Step 2: Install Dependencies
 
 ```bash
-# Generate a secure JWT secret
-openssl rand -base64 48
+pnpm i
 ```
 
-Copy the output and create your `.env.remote`:
+## Step 3: Run in Development Mode
 
-```env .env.remote
-# Required - JWT secret for authentication
-VIBEKANBAN_REMOTE_JWT_SECRET=<paste_your_generated_secret_here>
-
-# Optional - Password for ElectricSQL database role (electric_sync user)
-ELECTRIC_ROLE_PASSWORD=
-
-# OAuth — configure at least one provider. Leave the other empty or remove it.
-GITHUB_OAUTH_CLIENT_ID=your_github_client_id
-GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
-
-# Google OAuth (leave empty if not using Google login)
-GOOGLE_OAUTH_CLIENT_ID=
-GOOGLE_OAUTH_CLIENT_SECRET=
-
-# Relay (required for relay/tunnel features)
-# For plain HTTP local dev:
-VITE_RELAY_API_BASE_URL=http://localhost:8082
-
-# Email invitations (optional — leave empty to disable)
-LOOPS_EMAIL_API_KEY=
-
-# Loops transactional email template IDs (optional — defaults are the upstream templates).
-# Override these with your own Loops account template IDs if using a custom Loops account.
-LOOPS_INVITE_TEMPLATE_ID=cmhvy2wgs3s13z70i1pxakij9
-LOOPS_REVIEW_READY_TEMPLATE_ID=cmj47k5ge16990iylued9by17
-LOOPS_REVIEW_FAILED_TEMPLATE_ID=cmj49ougk1c8s0iznavijdqpo
-```
-
-For production or self-hosting on a server, add `PUBLIC_BASE_URL` (your public URL, e.g. `https://kanban.example.com`) and `REMOTE_SERVER_PORTS=0.0.0.0:3000:8081` so the server is reachable from other hosts. Defaults keep local dev unchanged.
-
-<Warning>
-Never commit `.env.remote` to version control. It's already in `.gitignore`.
-</Warning>
-
-## Step 4: Start the Stack
-
-From the `crates/remote` directory, start all services:
+A single command starts both the backend server and the frontend dev server with port auto-assignment:
 
 ```bash
-cd crates/remote
-docker compose --env-file .env.remote -f docker-compose.yml up --build
-```
-
-Or from the repo root:
-
-```bash
-pnpm run remote:dev
-```
-
-This starts:
-- **PostgreSQL** on port 5433 (external) / 5432 (internal)
-- **ElectricSQL** on port 3000 (internal only, used by Remote Server for real-time sync)
-- **Remote Server** on port 3000 (external) / 8081 (internal)
-- **Relay Server** on port 8082 (external and internal)
-
-<Warning>
-The remote server binds to `127.0.0.1:3000` only - it's not accessible from other machines. For production, use a reverse proxy.
-</Warning>
-Wait until you see health checks passing:
-
-```
-remote-server-1  | INFO remote: Server listening on 0.0.0.0:8081
-```
-
-## Step 5: Access the Web Interface
-
-Open [http://localhost:3000](http://localhost:3000) in your browser. You should see the Vibe Kanban Cloud login page.
-
-Sign in with your configured OAuth provider (GitHub or Google).
-
-## Step 6: Connect the Desktop Client (Optional)
-
-Instead of exporting environment variables every time you open a terminal, create a `.env` file in the **repository root**. The `pnpm run dev` script automatically reads it.
-
-### Using `.env` (recommended)
-
-```bash
-cp .env.example .env   # if an example exists, otherwise create it fresh
-```
-
-Create `.env` in the repo root:
-
-```env .env
-# ── Ports ────────────────────────────────────────────────────────────
-# Ports are auto-assigned by the dev script. Override only if needed.
-FRONTEND_PORT=3002
-BACKEND_PORT=3003
-HOST=127.0.0.1
-
-# ── Cloud integration (optional) ─────────────────────────────────────
-# Point the desktop client at your local Cloud stack (Step 4 above).
-# Remove or leave empty to run fully offline.
-VK_SHARED_API_BASE=http://localhost:3000
-VK_SHARED_RELAY_API_BASE=http://localhost:8082
-
-# ── Self-hosted remote access (P2P) ──────────────────────────────────
-# All values below are optional — defaults shown.
-P2P_PAIRING_PORT=9876          # Port the pairing server listens on
-P2P_RATE_LIMIT_MAX=5           # Max failed pairing attempts per window
-P2P_RATE_LIMIT_WINDOW_MINUTES=15   # Rolling window length for rate limiting
-P2P_TOKEN_ROTATION_HOURS=24    # How often session tokens auto-rotate
-P2P_RECONNECT_INITIAL_DELAY_SECS=5  # First reconnect backoff (seconds)
-P2P_RECONNECT_MAX_DELAY_SECS=300    # Maximum reconnect backoff (seconds)
-P2P_POLL_INTERVAL_SECS=30          # How often to poll DB for new paired hosts
-
-# ── Miscellaneous ─────────────────────────────────────────────────────
-# Disable automatic worktree cleanup (useful during dev)
-# DISABLE_WORKTREE_CLEANUP=1
-```
-
-Then start the desktop app normally:
-
-```bash
-pnpm install
 pnpm run dev
 ```
 
-### Using dotenvx (encrypted `.env`)
+This runs:
+- **Backend** (`cargo watch`): Rust API server with hot-reload on file changes
+- **Frontend** (Vite): React web app at the auto-assigned port
 
-[dotenvx](https://dotenvx.com) lets you encrypt your `.env` file and commit it safely — useful when you have secrets (API keys, P2P pre-shared keys) that you want to share across machines.
+The terminal output will show the URLs for both services. Open the frontend URL in your browser.
+
+## Running Backend and Frontend Separately
+
+You can also run each part independently:
 
 ```bash
-# Install
-npm install -g @dotenvx/dotenvx
+# Backend only (with hot-reload)
+pnpm run backend:dev:watch
 
-# Encrypt your existing .env
-dotenvx encrypt
-
-# Run dev with dotenvx loading the decrypted values
-dotenvx run -- pnpm run dev
+# Frontend only (Vite dev server)
+pnpm run local-web:dev
 ```
 
-The encrypted `.env` and the `.env.keys` file (containing the decryption key) are created automatically. Commit the encrypted `.env` and keep `.env.keys` out of version control (it's already in `.gitignore` after `dotenvx encrypt`).
+Set ports manually via environment variables if needed:
 
-<Warning>
-Never commit `.env`, `.env.keys`, or any file containing plaintext secrets. The `.gitignore` already excludes `.env*` except `.env.example`.
-</Warning>
+```bash
+FRONTEND_PORT=3000 BACKEND_PORT=8080 pnpm run dev
+```
 
-### Key Environment Variable Reference
+## Environment Configuration
 
-| Variable | Default | Description |
-|---|---|---|
-| `FRONTEND_PORT` | auto | Vite dev server port |
-| `BACKEND_PORT` | auto | Rust backend port |
-| `HOST` | `127.0.0.1` | Bind address for the backend |
-| `VK_SHARED_API_BASE` | _(none)_ | URL of a Vibe Kanban Cloud instance |
-| `VK_SHARED_RELAY_API_BASE` | _(none)_ | URL of the relay server |
-| `P2P_PAIRING_PORT` | `9876` | Self-hosted pairing server port |
-| `P2P_RATE_LIMIT_MAX` | `5` | Max pairing attempts per window |
-| `P2P_RATE_LIMIT_WINDOW_MINUTES` | `15` | Rate-limit rolling window (minutes) |
-| `P2P_TOKEN_ROTATION_HOURS` | `24` | Session token auto-rotation interval |
-| `P2P_RECONNECT_INITIAL_DELAY_SECS` | `5` | Initial reconnect backoff |
-| `P2P_RECONNECT_MAX_DELAY_SECS` | `300` | Maximum reconnect backoff |
-| `P2P_POLL_INTERVAL_SECS` | `30` | Interval to poll DB for paired hosts |
-| `DISABLE_WORKTREE_CLEANUP` | _(unset)_ | Set to `1` to skip worktree cleanup |
-
-To test relay/tunnel mode end-to-end, set:
+Create a `.env` file at the workspace root for local overrides:
 
 ```env .env
-VK_SHARED_API_BASE=https://localhost:3001
-VK_SHARED_RELAY_API_BASE=https://relay.localhost:3001
-VK_TUNNEL=1
+# Override the backend port (default: auto-assigned)
+BACKEND_PORT=8080
+
+# Override the frontend port (default: auto-assigned)
+FRONTEND_PORT=3000
 ```
 
-This mode requires local HTTPS + Caddy routing (next step).
+No OAuth credentials, database setup, or external services are required. Vibe Kanban stores all data in a local SQLite database.
 
-## Step 7: Optional Local HTTPS + Caddy (required for tunnel-mode testing)
+## Type Checking
 
-Use the checked-in `Caddyfile.example` in the repository root. It routes:
-- `localhost:3001` -> remote server (`127.0.0.1:3000`)
-- `relay.localhost:3001` and `*.relay.localhost:3001` -> relay server (`127.0.0.1:8082`)
+Run TypeScript and Rust type checks together:
 
 ```bash
-caddy run --config Caddyfile.example
+pnpm run check
 ```
 
-If you use this HTTPS setup, update OAuth callback URLs to:
-- GitHub: `https://localhost:3001/v1/oauth/github/callback`
-- Google: `https://localhost:3001/v1/oauth/google/callback`
-
-## Stopping the Stack
-
-To stop all services:
+Or run them separately:
 
 ```bash
-docker compose down
+# Frontend TypeScript
+pnpm --filter @vibe/local-web run check
+pnpm --filter @vibe/web-core run check
+
+# Backend Rust
+cargo check --workspace
 ```
 
-To stop and remove all data (fresh start):
+## Testing
 
 ```bash
-docker compose down -v
+# Rust unit and integration tests
+cargo test --workspace
+
+# Frontend linting
+pnpm run lint
 ```
 
-## Troubleshooting
-
-<AccordionGroup>
-<Accordion title="Database connection errors">
-Ensure the database is healthy before the server starts:
+## Formatting
 
 ```bash
-# Check database status
-docker compose ps
-
-# View database logs
-docker compose logs remote-db
+# Format all code (Rust + TypeScript)
+pnpm run format
 ```
-</Accordion>
 
-<Accordion title="OAuth callback errors">
-Verify your OAuth callback URLs match exactly for your setup:
-- HTTP local stack:
-  - GitHub: `http://localhost:3000/v1/oauth/github/callback`
-  - Google: `http://localhost:3000/v1/oauth/google/callback`
-- HTTPS + Caddy:
-  - GitHub: `https://localhost:3001/v1/oauth/github/callback`
-  - Google: `https://localhost:3001/v1/oauth/google/callback`
-</Accordion>
+## Database
 
-<Accordion title="ElectricSQL fails to connect">
-ElectricSQL requires the `electric_sync` database user, which is created automatically by the Remote Server on first startup. If ElectricSQL fails to connect:
-
-1. Ensure the Remote Server has started successfully and run its migrations
-2. Check that `ELECTRIC_ROLE_PASSWORD` is set in your `.env.remote`
-3. Restart the stack — ElectricSQL will retry the connection
+Vibe Kanban uses SQLite via SQLx. Migrations run automatically on server startup. If you need to regenerate the SQLx offline query cache after changing queries:
 
 ```bash
-docker compose --env-file .env.remote -f docker-compose.yml restart electric
-```
-</Accordion>
-
-<Accordion title="Port already in use">
-If port 3000 is in use, you can change it in `docker-compose.yml`:
-
-```yaml
-ports:
-  - "127.0.0.1:3001:8081"  # Change 3001 to your preferred port
+pnpm run prepare-db
 ```
 
-Update your OAuth callback URLs accordingly.
-</Accordion>
+## Generating TypeScript Types
 
-<Accordion title="Relay health endpoint returns HTML instead of JSON">
-**Problem:** `curl -sk https://relay.localhost:3001/health` returns HTML, and relay/tunnel fails.
+Shared types are generated from Rust structs using `ts-rs`. After changing any Rust structs annotated with `#[derive(TS)]`:
 
-**Cause:** Caddy routed relay hostnames to the remote app (`:3000`) instead of relay server (`:8082`).
+```bash
+pnpm run generate-types
+```
 
-**Solution:**
-1. Use host-specific routing for `relay.localhost` and `*.relay.localhost`
-2. Verify:
-   - `curl -sk https://relay.localhost:3001/health` returns `{"status":"ok"}`
-   - `curl -sk https://localhost:3001/v1/health` returns remote server health JSON
-</Accordion>
-</AccordionGroup>
+Do not edit `shared/types.ts` directly — it is auto-generated.
 
-## Next Steps
+## Building the NPX Package
 
-Once you have local development working, you can:
+To test the distributable CLI package locally:
 
-- Deploy to Fly.io for production (coming soon)
-- Deploy with Docker Compose on your own server (coming soon)
+```bash
+pnpm run build:npx
+cd npx-cli
+pnpm pack
+```
+
+Then test with:
+
+```bash
+npx ./npx-cli/vibe-kanban-<version>.tgz
+```
