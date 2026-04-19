@@ -61,20 +61,11 @@ struct BulkItem<T> {
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         // Fallback GETs (Electric `useShape` -> REST polling)
-        .route(
-            "/fallback/projects",
-            get(fallback_projects),
-        )
-        .route(
-            "/fallback/project_statuses",
-            get(fallback_project_statuses),
-        )
+        .route("/fallback/projects", get(fallback_projects))
+        .route("/fallback/project_statuses", get(fallback_project_statuses))
         .route("/fallback/tags", get(fallback_tags))
         .route("/fallback/issues", get(fallback_issues))
-        .route(
-            "/fallback/issue_assignees",
-            get(fallback_issue_assignees),
-        )
+        .route("/fallback/issue_assignees", get(fallback_issue_assignees))
         .route("/fallback/issue_tags", get(fallback_issue_tags))
         .route(
             "/fallback/issue_relationships",
@@ -85,10 +76,7 @@ pub fn router() -> Router<DeploymentImpl> {
             get(fallback_organization_members),
         )
         .route("/fallback/users", get(fallback_users))
-        .route(
-            "/fallback/user_workspaces",
-            get(fallback_user_workspaces),
-        )
+        .route("/fallback/user_workspaces", get(fallback_user_workspaces))
         .route(
             "/fallback/project_workspaces",
             get(fallback_project_workspaces),
@@ -132,10 +120,7 @@ pub fn router() -> Router<DeploymentImpl> {
         )
         // Project status mutations
         .route("/project_statuses", post(create_project_status))
-        .route(
-            "/project_statuses/bulk",
-            post(bulk_update_project_statuses),
-        )
+        .route("/project_statuses/bulk", post(bulk_update_project_statuses))
         .route(
             "/project_statuses/{id}",
             patch(update_project_status).delete(delete_project_status),
@@ -154,10 +139,7 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/issue_tags", post(create_issue_tag))
         .route("/issue_tags/{id}", delete(delete_issue_tag))
         // Issue relationship mutations
-        .route(
-            "/issue_relationships",
-            post(create_issue_relationship),
-        )
+        .route("/issue_relationships", post(create_issue_relationship))
         .route(
             "/issue_relationships/{id}",
             delete(delete_issue_relationship),
@@ -397,12 +379,11 @@ async fn fallback_users(
     Query(_q): Query<OrgIdQuery>,
 ) -> Result<ResponseJson<Value>, ApiError> {
     let pool = deployment.db().pool.clone();
-    let rows = sqlx::query(
-        r#"SELECT id, email, display_name, avatar_url, created_at FROM remote_users"#,
-    )
-    .fetch_all(&pool)
-    .await
-    .map_err(ApiError::Database)?;
+    let rows =
+        sqlx::query(r#"SELECT id, email, display_name, avatar_url, created_at FROM remote_users"#)
+            .fetch_all(&pool)
+            .await
+            .map_err(ApiError::Database)?;
     let users: Vec<Value> = rows
         .into_iter()
         .map(|r| {
@@ -725,7 +706,10 @@ async fn bulk_update_project_statuses(
     Ok(ResponseJson(json!({ "txid": 0 })))
 }
 
-async fn fetch_project_status(pool: &sqlx::SqlitePool, id: Uuid) -> Result<ProjectStatus, ApiError> {
+async fn fetch_project_status(
+    pool: &sqlx::SqlitePool,
+    id: Uuid,
+) -> Result<ProjectStatus, ApiError> {
     let row = sqlx::query(
         r#"SELECT id, project_id, name, color, sort_order, hidden, created_at
            FROM remote_project_statuses WHERE id = ?1"#,
@@ -757,16 +741,14 @@ async fn create_tag(
 ) -> Result<ResponseJson<Value>, ApiError> {
     let pool = deployment.db().pool.clone();
     let id = req.id.unwrap_or_else(Uuid::new_v4);
-    sqlx::query(
-        r#"INSERT INTO remote_tags (id, project_id, name, color) VALUES (?1, ?2, ?3, ?4)"#,
-    )
-    .bind(id)
-    .bind(req.project_id)
-    .bind(&req.name)
-    .bind(&req.color)
-    .execute(&pool)
-    .await
-    .map_err(ApiError::Database)?;
+    sqlx::query(r#"INSERT INTO remote_tags (id, project_id, name, color) VALUES (?1, ?2, ?3, ?4)"#)
+        .bind(id)
+        .bind(req.project_id)
+        .bind(&req.name)
+        .bind(&req.color)
+        .execute(&pool)
+        .await
+        .map_err(ApiError::Database)?;
     let tag = local_remote(&deployment).get_tag(id).await?;
     Ok(ResponseJson(mutation_response(tag)))
 }

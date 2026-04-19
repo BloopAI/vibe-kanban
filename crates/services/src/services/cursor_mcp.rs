@@ -55,6 +55,7 @@ struct PendingWait {
     /// Optional hint shown above the input box.
     prompt: Option<String>,
     /// Optional title hint for the session tab.
+    #[allow(dead_code)]
     title: Option<String>,
     /// When the wait was enqueued.
     enqueued_at: DateTime<Utc>,

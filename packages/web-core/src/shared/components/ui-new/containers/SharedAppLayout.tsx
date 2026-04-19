@@ -176,7 +176,8 @@ export function SharedAppLayout() {
   const isExportActive = currentDestination?.kind === 'export';
   const showCloudShutdownBanner =
     !isLocalOnlyMode() &&
-    (isExportActive || (isSignedIn && isProjectDestination(currentDestination)));
+    (isExportActive ||
+      (isSignedIn && isProjectDestination(currentDestination)));
   const isWorkspaceSidebarPreviewEnabled =
     !isMobile && isWorkspacesActive && !isLeftSidebarVisible;
   const activeProjectId = projectDestination?.projectId ?? null;

@@ -405,9 +405,9 @@ export const cursorMcpApi = {
     const response = await makeRequest(
       `/api/cursor-mcp/sessions/${sessionId}/state`
     );
-    return handleApiResponse<
-      import('shared/types').CursorMcpSessionSnapshot
-    >(response);
+    return handleApiResponse<import('shared/types').CursorMcpSessionSnapshot>(
+      response
+    );
   },
 
   /** Cancel a queued wait (sends `__USER_DISMISSED_QUEUE__` back to Cursor). */

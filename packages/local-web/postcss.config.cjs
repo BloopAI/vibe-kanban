@@ -1,7 +1,10 @@
+const path = require('path');
+
 module.exports = {
   plugins: {
-    // No config specified - @config directives in CSS files take precedence
-    tailwindcss: {},
+    tailwindcss: {
+      config: path.resolve(__dirname, 'tailwind.new.config.js'),
+    },
     autoprefixer: {},
   },
 };

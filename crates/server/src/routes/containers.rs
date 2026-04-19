@@ -6,7 +6,7 @@ use axum::{
 };
 use db::models::{
     requests::ContainerQuery,
-    workspace::{Workspace, WorkspaceContext},
+    workspace::{Workspace, WorkspaceContext, WorkspaceError},
 };
 use deployment::Deployment;
 use serde::Serialize;
@@ -20,6 +20,13 @@ struct ContainerInfo {
     pub attempt_id: Uuid,
 }
 
+fn map_resolve_error(err: sqlx::Error) -> ApiError {
+    match err {
+        sqlx::Error::RowNotFound => ApiError::Workspace(WorkspaceError::WorkspaceNotFound),
+        other => ApiError::Database(other),
+    }
+}
+
 async fn get_container_info(
     Query(query): Query<ContainerQuery>,
     State(deployment): State<DeploymentImpl>,
@@ -27,7 +34,7 @@ async fn get_container_info(
     let info =
         Workspace::resolve_container_ref_by_prefix(&deployment.db().pool, &query.container_ref)
             .await
-            .map_err(ApiError::Database)?;
+            .map_err(map_resolve_error)?;
 
     Ok(ResponseJson(ApiResponse::success(ContainerInfo {
         attempt_id: info.workspace_id,
@@ -41,7 +48,7 @@ async fn get_context(
     let info =
         Workspace::resolve_container_ref_by_prefix(&deployment.db().pool, &payload.container_ref)
             .await
-            .map_err(ApiError::Database)?;
+            .map_err(map_resolve_error)?;
 
     let ctx = Workspace::load_context(&deployment.db().pool, info.workspace_id).await?;
     Ok(ResponseJson(ApiResponse::success(ctx)))

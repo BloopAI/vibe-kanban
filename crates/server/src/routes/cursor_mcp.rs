@@ -16,6 +16,7 @@
 //!    [`super::sessions::follow_up`] when the session's executor is
 //!    `CURSOR_MCP`.
 
+use std::path::{Path as StdPath, PathBuf};
 use std::time::Duration;
 
 use axum::{
@@ -181,11 +182,11 @@ async fn launch_config(
     Path(session_id): Path<Uuid>,
 ) -> ResponseJson<ApiResponse<LaunchConfig>> {
     let server_name = format!("vibe-kanban-cursor-mcp-{}", short_id(session_id));
-    let binary_path = std::env::var("VK_MCP_BINARY").ok().or_else(|| {
-        std::env::current_exe()
-            .ok()
-            .map(|p| p.display().to_string())
-    });
+    let binary_path = resolve_cursor_bridge_binary_path(
+        std::env::var("VK_MCP_BINARY").ok().as_deref(),
+        std::env::current_exe().ok().as_deref(),
+    )
+    .map(|p| p.display().to_string());
 
     let snippet = serde_json::json!({
         server_name.clone(): {
@@ -210,6 +211,29 @@ async fn launch_config(
 
 fn short_id(id: Uuid) -> String {
     id.simple().to_string().chars().take(8).collect()
+}
+
+fn resolve_cursor_bridge_binary_path(
+    env_path: Option<&str>,
+    current_exe: Option<&StdPath>,
+) -> Option<PathBuf> {
+    if let Some(path) = env_path.map(str::trim).filter(|path| !path.is_empty()) {
+        return Some(PathBuf::from(path));
+    }
+
+    let exe_name = if cfg!(windows) {
+        "vibe-kanban-mcp.exe"
+    } else {
+        "vibe-kanban-mcp"
+    };
+
+    let current_dir = current_exe.and_then(StdPath::parent)?;
+    let sibling = current_dir.join(exe_name);
+    if sibling.exists() {
+        return Some(sibling);
+    }
+
+    None
 }
 
 // --------------------------------------------------------------------------
@@ -306,4 +330,56 @@ pub fn router() -> Router<DeploymentImpl> {
         )
         // Live patches (frontend).
         .route("/cursor-mcp/sessions/stream/ws", get(stream_session_ws))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use tempfile::tempdir;
+
+    use super::resolve_cursor_bridge_binary_path;
+
+    #[test]
+    fn resolves_cursor_bridge_binary_from_env_when_present() {
+        let path = resolve_cursor_bridge_binary_path(Some("/tmp/custom-mcp"), None);
+        assert_eq!(
+            path.as_deref(),
+            Some(std::path::Path::new("/tmp/custom-mcp"))
+        );
+    }
+
+    #[test]
+    fn resolves_sibling_mcp_binary_instead_of_server_exe() {
+        let temp = tempdir().expect("create temp dir");
+        let server_path = temp.path().join(if cfg!(windows) {
+            "server.exe"
+        } else {
+            "server"
+        });
+        let mcp_path = temp.path().join(if cfg!(windows) {
+            "vibe-kanban-mcp.exe"
+        } else {
+            "vibe-kanban-mcp"
+        });
+        fs::write(&server_path, b"server").expect("write fake server");
+        fs::write(&mcp_path, b"mcp").expect("write fake mcp");
+
+        let path = resolve_cursor_bridge_binary_path(None, Some(&server_path));
+        assert_eq!(path.as_deref(), Some(mcp_path.as_path()));
+    }
+
+    #[test]
+    fn leaves_binary_path_empty_without_env_or_sibling_binary() {
+        let temp = tempdir().expect("create temp dir");
+        let server_path = temp.path().join(if cfg!(windows) {
+            "server.exe"
+        } else {
+            "server"
+        });
+        fs::write(&server_path, b"server").expect("write fake server");
+
+        let path = resolve_cursor_bridge_binary_path(None, Some(&server_path));
+        assert!(path.is_none());
+    }
 }

@@ -132,46 +132,52 @@ export function CursorMcpStatusBanner({ sessionId }: Props) {
   }, []);
 
   // Best-effort copy with multiple fallbacks. Returns true if any succeeded.
-  const copyToClipboard = useCallback(async (text: string): Promise<boolean> => {
-    // Modern Clipboard API. Requires a secure context (https / localhost),
-    // user permission, and a non-restricted webview.
-    if (
-      typeof navigator !== 'undefined' &&
-      navigator.clipboard &&
-      typeof navigator.clipboard.writeText === 'function'
-    ) {
-      try {
-        await navigator.clipboard.writeText(text);
-        return true;
-      } catch (err) {
-        console.warn('[cursor-mcp] navigator.clipboard.writeText failed', err);
+  const copyToClipboard = useCallback(
+    async (text: string): Promise<boolean> => {
+      // Modern Clipboard API. Requires a secure context (https / localhost),
+      // user permission, and a non-restricted webview.
+      if (
+        typeof navigator !== 'undefined' &&
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === 'function'
+      ) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (err) {
+          console.warn(
+            '[cursor-mcp] navigator.clipboard.writeText failed',
+            err
+          );
+        }
       }
-    }
 
-    // Legacy fallback: temporary textarea + execCommand('copy'). Works in
-    // most browsers and many restricted webviews where the modern API does
-    // not. Deprecated but still very widely supported.
-    try {
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.setAttribute('readonly', '');
-      textarea.style.position = 'fixed';
-      textarea.style.top = '0';
-      textarea.style.left = '0';
-      textarea.style.opacity = '0';
-      textarea.style.pointerEvents = 'none';
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-      textarea.setSelectionRange(0, text.length);
-      const ok = document.execCommand('copy');
-      document.body.removeChild(textarea);
-      return ok;
-    } catch (err) {
-      console.warn('[cursor-mcp] execCommand copy fallback failed', err);
-      return false;
-    }
-  }, []);
+      // Legacy fallback: temporary textarea + execCommand('copy'). Works in
+      // most browsers and many restricted webviews where the modern API does
+      // not. Deprecated but still very widely supported.
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.top = '0';
+        textarea.style.left = '0';
+        textarea.style.opacity = '0';
+        textarea.style.pointerEvents = 'none';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        textarea.setSelectionRange(0, text.length);
+        const ok = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return ok;
+      } catch (err) {
+        console.warn('[cursor-mcp] execCommand copy fallback failed', err);
+        return false;
+      }
+    },
+    []
+  );
 
   const handleCopy = useCallback(async () => {
     let text = snippet;
@@ -265,11 +271,7 @@ export function CursorMcpStatusBanner({ sessionId }: Props) {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleCopy}
-            className={buttonClass}
-          >
+          <button type="button" onClick={handleCopy} className={buttonClass}>
             {buttonLabel}
           </button>
           <button
@@ -311,12 +313,18 @@ export function CursorMcpStatusBanner({ sessionId }: Props) {
             <kbd className="rounded border border-amber-400 bg-white px-1">
               {navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl'}
             </kbd>
-            +<kbd className="rounded border border-amber-400 bg-white px-1">A</kbd>
+            +
+            <kbd className="rounded border border-amber-400 bg-white px-1">
+              A
+            </kbd>
             ) and copy (
             <kbd className="rounded border border-amber-400 bg-white px-1">
               {navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl'}
             </kbd>
-            +<kbd className="rounded border border-amber-400 bg-white px-1">C</kbd>
+            +
+            <kbd className="rounded border border-amber-400 bg-white px-1">
+              C
+            </kbd>
             ), then paste under <code>mcpServers</code> in{' '}
             <code>~/.cursor/mcp.json</code>.
           </div>
@@ -326,7 +334,7 @@ export function CursorMcpStatusBanner({ sessionId }: Props) {
             value={snippet ?? '// loading…'}
             spellCheck={false}
             className="w-full rounded border border-amber-300 bg-white p-2 font-mono text-[11px] text-amber-900"
-            rows={Math.min(12, Math.max(4, (snippet?.split('\n').length ?? 4)))}
+            rows={Math.min(12, Math.max(4, snippet?.split('\n').length ?? 4))}
             onFocus={(e) => e.currentTarget.select()}
           />
         </div>
