@@ -95,3 +95,6 @@ vibe-kanban-cloud/
 *.ts.net.key
 Caddyfile
 Caddyfile.dev
+
+# Git worktrees
+.worktrees/
