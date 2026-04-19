@@ -1,0 +1,292 @@
+---
+title: "Self-Hosted Remote Access"
+description: "Connect two Vibe Kanban instances directly, without Vibe Kanban Cloud, using a self-hosted relay or SSH tunnel"
+---
+
+Self-Hosted Remote Access lets one Vibe Kanban instance control another over the network — no Vibe Kanban Cloud account required. Both instances communicate through a lightweight relay server that you run yourself, or through an SSH tunnel you already operate.
+
+<Info>
+If you do have a Vibe Kanban Cloud account and prefer the managed experience, see [Remote Access](/remote-access) instead.
+</Info>
+
+## How it works
+
+```
+Local machine                     VPS / remote machine
+─────────────────                 ──────────────────────────────────
+Vibe Kanban  ──── WebSocket ────► local-relay (port 8081)
+  client               or         Vibe Kanban server (port 8080)
+             ──── SSH tunnel ───►
+```
+
+The **local relay** (`crates/local-relay`) is a small Axum server that runs on the remote machine alongside Vibe Kanban. It keeps a persistent WebSocket connection from the local machine and proxies API requests through it using Yamux multiplexing.
+
+If a direct WebSocket connection is not reachable (e.g. the remote is behind a firewall), the local machine can open an **SSH tunnel** to the VPS first and connect through that.
+
+## Architecture summary
+
+| Component | Where it runs | Purpose |
+|---|---|---|
+| `local-relay` | Remote machine | Accepts incoming WebSocket connections from paired clients; proxies requests to local Vibe Kanban |
+| `P2pConnectionManager` | Local machine | Maintains a persistent outbound connection to each paired relay; auto-reconnects with backoff |
+| `ssh-tunnel` crate | Local machine | Opens an SSH port-forward when direct WS is blocked |
+| `p2p_hosts` table | Local machine (SQLite) | Stores configuration and session tokens for all paired hosts |
+| `p2p_audit_log` table | Local machine (SQLite) | Immutable log of all security-relevant events |
+
+## Prerequisites
+
+- **Remote machine**: a server with a public IP or reachable hostname (e.g. a VPS, home server with port-forwarding, or any machine on the same network)
+- **Port 8081** open on the remote machine (or whichever relay port you choose)
+- **Vibe Kanban** running on the remote machine
+- For SSH pairing: an SSH private key on the local machine with access to the remote machine
+
+## Setting up the remote machine
+
+The relay server is embedded in Vibe Kanban and starts automatically on port `8081` alongside the main server. No separate installation is needed.
+
+<Steps>
+<Step title="Start Vibe Kanban on the remote machine">
+  Run Vibe Kanban as normal. The relay server starts on port `8081` automatically.
+
+  <Check>
+  Verify the relay is listening: `curl http://<remote-ip>:8081/health`
+  </Check>
+</Step>
+
+<Step title="Open the relay port in your firewall">
+  Allow inbound TCP on port `8081` (or your chosen relay port):
+
+  ```bash
+  # ufw (Ubuntu)
+  sudo ufw allow 8081/tcp
+
+  # firewalld (Fedora/RHEL)
+  sudo firewall-cmd --permanent --add-port=8081/tcp && sudo firewall-cmd --reload
+  ```
+</Step>
+</Steps>
+
+<Note>
+If you use SSH tunnelling, you do **not** need to open port 8081 in your firewall — the relay connection travels over the SSH tunnel instead.
+</Note>
+
+## Pairing methods
+
+There are two ways to pair a local Vibe Kanban instance with a remote one.
+
+<Tabs>
+<Tab title="Pairing code (recommended for first-time setup)">
+
+Use a short-lived, single-use pairing code when you can reach both instances simultaneously.
+
+**On the remote machine:**
+
+<Steps>
+<Step title="Generate a pairing code">
+  Open Settings → **Remote Hosts** and click **Show pairing code**.
+
+  The code is 8 characters and expires after 10 minutes. It can only be used once.
+</Step>
+</Steps>
+
+**On the local machine:**
+
+<Steps>
+<Step title="Open Remote Hosts settings">
+  Open Settings → **Remote Hosts** and click **Add via pairing code**.
+</Step>
+
+<Step title="Enter the connection details">
+  Fill in:
+
+  | Field | Description |
+  |---|---|
+  | Name | A friendly label for this host (e.g. "My VPS") |
+  | Address | Hostname or IP of the remote machine |
+  | Pairing code | The 8-character code from the remote machine |
+</Step>
+
+<Step title="Confirm the pairing">
+  Click **Pair**. Vibe Kanban validates the code with the remote instance, generates a session token, and stores the host configuration locally.
+
+  <Check>
+  The host appears in the Remote Hosts list with status **paired**.
+  </Check>
+</Step>
+</Steps>
+
+</Tab>
+
+<Tab title="SSH key (no pairing code needed)">
+
+Use SSH key pairing when you already have SSH access to the remote machine. No pairing code is needed — the SSH private key authenticates the connection directly.
+
+<Steps>
+<Step title="Open Remote Hosts settings">
+  On the local machine, open Settings → **Remote Hosts** and click **Add via SSH key**.
+</Step>
+
+<Step title="Enter SSH connection details">
+  Fill in:
+
+  | Field | Description | Default |
+  |---|---|---|
+  | Name | Friendly label for this host | — |
+  | Host address | Hostname or IP of the remote machine | — |
+  | SSH port | Port the remote SSH daemon listens on | `22` |
+  | SSH username | User to log in as | — |
+  | SSH key path | Path to your **private** key file on this machine | — |
+  | Relay port | Port the remote relay listens on | `8081` |
+</Step>
+
+<Step title="Verify the host key fingerprint">
+  Vibe Kanban connects via SSH and displays the remote server's **SHA-256 host key fingerprint**:
+
+  ```
+  SHA256:AbCdEf1234567890...
+  ```
+
+  Compare this with the output of `ssh-keyscan <remote-host>` on the remote machine or your `~/.ssh/known_hosts` entry. Click **Done** to trust and store it.
+
+  <Warning>
+  Always verify the fingerprint before clicking Done. Future connections will reject any different key, protecting you against man-in-the-middle attacks.
+  </Warning>
+</Step>
+</Steps>
+
+</Tab>
+</Tabs>
+
+## Switching between hosts
+
+Once paired, your remote hosts appear in the **AppBar host switcher** alongside any cloud-connected hosts. Click a host name to switch — all projects and workspaces shown in the main view are fetched from the selected host's Vibe Kanban instance.
+
+Click the local device entry to return to your own workspaces.
+
+## Connection modes
+
+Each paired host has a **connection mode** that controls how the local machine connects to it. You can change the mode at any time in Settings → Remote Hosts → **Edit**.
+
+| Mode | Behaviour |
+|---|---|
+| **Auto** (default) | Tries a direct WebSocket connection first. If it fails (e.g. firewall, NAT), falls back to an SSH tunnel automatically. |
+| **Direct** | WebSocket only. Fails immediately if the relay port is unreachable. Use when you know the port is open. |
+| **SSH** | Always uses an SSH tunnel, even if direct access would work. Use for maximum privacy or when you want no relay port exposed. |
+
+<Tip>
+Start with **Auto**. Switch to **SSH** if you prefer the relay port not to be publicly reachable, or to **Direct** if you want to avoid the SSH overhead on a trusted local network.
+</Tip>
+
+## Managing paired hosts
+
+Open Settings → **Remote Hosts** to view all paired hosts and perform the following actions.
+
+### Editing SSH configuration
+
+Click **Edit** on any host row to update:
+
+- SSH username, port, and key path
+- Connection mode
+
+Changes take effect on the next reconnection attempt.
+
+### Rotating a session token
+
+Session tokens are rotated automatically every 24 hours. To rotate a token immediately (e.g. after a suspected leak):
+
+1. Open Settings → **Remote Hosts**
+2. Click **Edit** on the host
+3. Click **Rotate token**
+
+The old token is invalidated instantly. The connection manager reconnects with the new token within seconds.
+
+### Revoking a host
+
+Revoking a host immediately invalidates its session token without deleting the host configuration. The remote machine loses access on its next reconnect attempt (within the reconnect interval).
+
+To revoke:
+
+1. Open Settings → **Remote Hosts**
+2. Click **Edit** on the host
+3. Click **Revoke access**
+
+The host status changes to **revoked**. You can re-pair using a new pairing code or SSH key at any time.
+
+### Removing a host
+
+Click **Remove** on a host row to delete it entirely, including all configuration and history. The remote machine loses access immediately.
+
+## Security
+
+### Rate limiting
+
+The pairing endpoints enforce a sliding-window limit of **5 attempts per 15 minutes** per IP address. Exceeded attempts are logged and rejected with a `429 Too Many Requests` response.
+
+### Audit log
+
+Every security-relevant event is recorded permanently in the local `p2p_audit_log` table:
+
+| Event | When |
+|---|---|
+| `pairing_code_requested` | A pairing code is generated |
+| `pairing_code_consumed` | A valid pairing code is used |
+| `pairing_failed` | An invalid code or rate-limited attempt |
+| `ssh_pair_success` | An SSH pairing completes successfully |
+| `ssh_pair_failed` | An SSH pairing fails (bad key, wrong host, rate limit) |
+| `host_connected` | A paired host establishes a relay connection |
+| `host_disconnected` | A relay connection closes |
+| `session_rotated` | A session token is replaced (manual or automatic) |
+| `host_revoked` | A host's token is wiped via revocation |
+| `auth_failed` | A relay connection presents an invalid session token |
+
+### Host key verification (TOFU)
+
+When pairing via SSH, the remote server's host key fingerprint is captured on first connection (Trust On First Use) and stored alongside the host configuration. All future SSH connections verify the fingerprint and reject connections where the key has changed, protecting against man-in-the-middle attacks.
+
+### Session token rotation
+
+Session tokens rotate automatically every 24 hours. Each token is a 256-bit random value. Tokens are never transmitted in plaintext over the network — connections are WebSocket (upgrade from HTTP) or SSH-tunnelled.
+
+## Troubleshooting
+
+<AccordionGroup>
+
+<Accordion title="Host shows as offline after pairing">
+  1. Verify the relay is running on the remote machine: `curl http://<remote-ip>:8081/health`
+  2. Confirm port `8081` is open in the firewall on the remote machine
+  3. Try switching the host's connection mode to **SSH** if the port is behind NAT
+  4. Check the Vibe Kanban server logs on the remote machine for relay errors
+</Accordion>
+
+<Accordion title="SSH pairing fails with 'Authentication failed'">
+  - Confirm the private key path is correct and the file is readable by Vibe Kanban
+  - Verify the key is authorised on the remote machine: `~/.ssh/authorized_keys` should contain the matching public key
+  - Check that the SSH user exists on the remote machine and has login access
+  - Try `ssh -i <key-path> <user>@<host> -p <port>` from your terminal to confirm the key works independently
+</Accordion>
+
+<Accordion title="SSH pairing fails with 'Connection refused'">
+  - Verify the SSH port is correct (default `22`)
+  - Confirm the SSH daemon is running on the remote machine: `sudo systemctl status sshd`
+  - Check the SSH port is allowed in the remote machine's firewall
+</Accordion>
+
+<Accordion title="Host key fingerprint mismatch on reconnect">
+  If the remote server's SSH host key has changed (e.g. after an OS reinstall), the connection is rejected to prevent MITM attacks. To re-trust the new key:
+
+  1. Remove the host from Settings → Remote Hosts
+  2. Re-pair using SSH key pairing — the new fingerprint will be captured and stored
+</Accordion>
+
+<Accordion title="Pairing code says 'rate limit exceeded'">
+  More than 5 pairing attempts were made from the same IP in 15 minutes. Wait 15 minutes and try again, or use SSH key pairing instead (it shares the same rate-limit window).
+</Accordion>
+
+<Accordion title="Projects from remote host are not loading">
+  - Confirm the host switcher in the AppBar shows the remote host as selected
+  - Check the remote host's Vibe Kanban instance is running and healthy
+  - Open Settings → Remote Hosts and verify the host status is **paired** (not **revoked**)
+  - Try rotating the session token to force a fresh connection
+</Accordion>
+
+</AccordionGroup>

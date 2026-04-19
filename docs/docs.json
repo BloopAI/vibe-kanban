@@ -104,7 +104,8 @@
         "group": "Self-Hosting",
         "pages": [
           "self-hosting/local-development",
-          "self-hosting/deploy-docker"
+          "self-hosting/deploy-docker",
+          "self-hosting/self-hosted-remote-access"
         ]
       },
       {
