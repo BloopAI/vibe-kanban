@@ -2,56 +2,43 @@
 
 ## What Changed This Session
 
-- Investigated the codeblock-only copy regression after the staged change did not expose usable copy controls.
-- Replaced the brittle read-only Lexical DOM selector path with CodeNode mutation/update tracking.
-- Made codeblock copy buttons visible by default in both read-only Lexical content and markdown preview rendering.
+- Rebasing `vk/53b2-vk-needs-review` onto current `fork/staging` required manual conflict resolution in the app bar and shared layout/API files because `staging` added local project archive/order behavior since this branch was cut.
+- The rebased feature commit preserves the project-level `Needs Review` bubble on top of that newer `staging` app bar structure.
+- Branch-local continuity docs were refreshed after the rebase conflicts.
 
 ## What Is True Right Now
 
-- This worktree is on `staging`, tracking `fork/staging`.
-- The previous PR `#3371` was closed after the work was merged to `staging`.
-- The regression fix is currently local and must still be committed and pushed.
-- Formatter, focused lint, and focused web-core typecheck pass:
-  - `pnpm run format`
-  - `NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter @vibe/web-core run check`
-  - `pnpm --filter @vibe/ui run lint`
-- The fixed preview is running on `127.0.0.1:3002` and responds through Tailscale.
-
-## Known Good Access Points
-
-- Local VK server:
-  - `http://127.0.0.1:4311`
-- Tailnet preview route:
-  - `https://mcp-server.tail744c4.ts.net:18444/`
-- Worktree:
-  - `/home/mcp/code/worktrees/3714-vk-codeblock-onl/_vibe_kanban_repo`
+- The branch is in the middle of a rebase onto `fork/staging`, with only the branch-local docs commit left to finalize.
+- The rebased feature commit is now `c28fa269f` during the in-progress rebase.
+- Remaining work after the rebase completes is to force-push the branch and merge PR `#5`.
 
 ## What The Next Agent Should Do
 
-- Commit and push the regression fix to `fork/staging`.
-- Human-smoke a rendered codeblock through the tailnet preview.
+- Finish `git rebase --continue`.
+- Force-push `vk/53b2-vk-needs-review`.
+- Merge PR `#5` into `staging`.
 
 ## What The Next Agent Must Not Do
 
-- Do not assume the old `code.block` DOM selector path works for read-only Lexical content.
-- Do not reopen PR `#3371`; it was intentionally closed after merging the earlier staged change.
-- Do not repoint the local runtime to cloud/shared API config.
+- Do not drop the archive/order behavior that already exists on `staging` while preserving the `Needs Review` bubble.
+- Do not claim full formatter/typecheck success unless those commands are rerun in an environment with the missing frontend tools installed.
 
 ## Verification Required Before Further Changes
 
 - `git status --short --branch`
-- `pnpm run format`
-- `NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter @vibe/web-core run check`
-- `pnpm --filter @vibe/ui run lint`
-- Human UI smoke test against a codeblock in the tailnet preview or local VK runtime
+- `git log --oneline --decorate -3`
+- task-specific remote checks for push and PR merge state
 
 ## Verification Status From This Session
 
-- Formatter, focused web-core check, and UI package lint passed.
-- Full repo validation was not rerun for this targeted regression step.
+- The rebase conflict markers were resolved in:
+  - `packages/ui/src/components/AppBar.tsx`
+  - `packages/web-core/src/shared/components/ui-new/containers/SharedAppLayout.tsx`
+  - `packages/web-core/src/shared/lib/api.ts`
+- Full repo validation was not rerun during the rebase step.
 
 ## Session Metadata
 
-- Branch: `staging`
-- Repo: `/home/mcp/code/worktrees/3714-vk-codeblock-onl/_vibe_kanban_repo`
-- Focus: codeblock-only copy regression fix
+- Branch: `vk/53b2-vk-needs-review`
+- Repo: `/home/mcp/code/worktrees/53b2-vk-needs-review/_vibe_kanban_repo`
+- Focus: rebase onto `fork/staging` and merge PR `#5`
