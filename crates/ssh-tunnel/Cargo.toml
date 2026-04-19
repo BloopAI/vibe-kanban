@@ -1,0 +1,12 @@
+[package]
+name = "ssh-tunnel"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+russh = "0.48"
+russh-keys = "0.48"
+tokio = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }

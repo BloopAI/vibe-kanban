@@ -32,6 +32,7 @@ members = [
     "crates/relay-tunnel-core",
     "crates/relay-webrtc",
     "crates/local-relay",
+    "crates/ssh-tunnel",
 ]
 exclude = ["crates/remote", "crates/relay-tunnel"]
 
