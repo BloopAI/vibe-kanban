@@ -13,6 +13,8 @@
 - Local projects now support archive/restore behavior in the left-column project navigation.
 - Lean local backups now have tiered retention instead of unbounded growth.
 - `staging` is the correct repo base for new VK development.
+- VK now uses an isolated Codex home at `/home/mcp/.local/share/vibe-kanban/codex-home`.
+- That isolation exists specifically to stop VK coding agents from sharing refresh-token rotation with tmux/interactive Codex sessions.
 
 ## In Progress
 
@@ -64,6 +66,8 @@
 - Deleting or replacing the local DB without a fresh backup will break the current restore guarantee.
 - UI changes that hide PR badges or issue/workspace links can look like data loss even when the DB is correct.
 - UI changes that hide archived local projects must still provide a clear restore path or they will look like missing data.
+- Replacing VK `CODEX_HOME` with a fresh directory and copying only `auth.json` will break old workspace thread fork/resume with `no rollout found for thread id ...`.
+- VK Codex isolation requires both auth and Codex session/rollout state if you want existing workspace threads to continue cleanly after the switch.
 
 ## Next Safe Steps
 

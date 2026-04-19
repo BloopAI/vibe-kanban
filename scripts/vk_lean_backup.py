@@ -12,6 +12,7 @@ import tarfile
 from pathlib import Path
 
 DEFAULT_VK_SHARE = Path("/home/mcp/.local/share/vibe-kanban")
+DEFAULT_VK_CODEX_HOME = DEFAULT_VK_SHARE / "codex-home"
 DEFAULT_BACKUP_ROOT = Path("/home/mcp/backups")
 DEFAULT_EXPORT_ZIP = Path("/home/mcp/backups/vibe-kanban-export-2026-04-18.zip")
 DEFAULT_DESKTOP_TARGET = "desktop:Desktop/vk-backups"
@@ -52,6 +53,72 @@ def copy_if_exists(src: Path, dst: Path):
         shutil.copy2(src, dst)
     elif src.is_dir():
         shutil.copytree(src, dst, dirs_exist_ok=True)
+
+
+def collect_vk_thread_ids(vk_share: Path):
+    thread_ids = set()
+    sessions_root = vk_share / "sessions"
+    if not sessions_root.exists():
+        return thread_ids
+    for path in sessions_root.rglob("processes/*.jsonl"):
+        try:
+            lines = path.read_text(errors="replace").splitlines()
+        except Exception:
+            continue
+        for line in lines:
+            try:
+                outer = json.loads(line)
+            except Exception:
+                continue
+            if not isinstance(outer, dict):
+                continue
+            for key in ("Stdout", "Stderr"):
+                payload = outer.get(key)
+                if not payload:
+                    continue
+                for inner_line in str(payload).splitlines():
+                    try:
+                        inner = json.loads(inner_line)
+                    except Exception:
+                        continue
+                    if not isinstance(inner, dict):
+                        continue
+                    params = inner.get("params")
+                    if not isinstance(params, dict):
+                        continue
+                    thread_id = params.get("threadId")
+                    if thread_id:
+                        thread_ids.add(thread_id)
+    return thread_ids
+
+
+def copy_vk_codex_state(vk_share: Path, vk_codex_home: Path, dest: Path):
+    thread_ids = collect_vk_thread_ids(vk_share)
+    for name in (
+        "auth.json",
+        "config.toml",
+        "version.json",
+        "history.jsonl",
+        "session_index.jsonl",
+        "state_5.sqlite",
+        "state_5.sqlite-shm",
+        "state_5.sqlite-wal",
+        "logs_2.sqlite",
+        "logs_2.sqlite-shm",
+        "logs_2.sqlite-wal",
+    ):
+        copy_if_exists(vk_codex_home / name, dest / name)
+    if thread_ids:
+        session_files = []
+        for thread_id in sorted(thread_ids):
+            session_files.extend(vk_codex_home.joinpath("sessions").rglob(f"*{thread_id}*.jsonl"))
+            session_files.extend(vk_codex_home.joinpath("shell_snapshots").glob(f"{thread_id}.*.sh"))
+        for src in sorted({p for p in session_files if p.exists()}):
+            rel = src.relative_to(vk_codex_home)
+            dst = dest / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+    write_text(dest / "thread_ids.json", json.dumps(sorted(thread_ids), indent=2) + "\n")
 
 
 def git_ok(path: Path) -> bool:
@@ -252,6 +319,7 @@ def main():
     parser = argparse.ArgumentParser(description="Create a lean VK restore backup.")
     parser.add_argument("--backup-root", default=str(DEFAULT_BACKUP_ROOT))
     parser.add_argument("--vk-share", default=str(DEFAULT_VK_SHARE))
+    parser.add_argument("--vk-codex-home", default=str(DEFAULT_VK_CODEX_HOME))
     parser.add_argument("--export-zip", default=str(DEFAULT_EXPORT_ZIP))
     parser.add_argument("--desktop-target", default=DEFAULT_DESKTOP_TARGET)
     parser.add_argument("--mirror-desktop", action="store_true")
@@ -259,6 +327,7 @@ def main():
 
     backup_root = Path(args.backup_root)
     vk_share = Path(args.vk_share)
+    vk_codex_home = Path(args.vk_codex_home)
     export_zip = Path(args.export_zip)
     backup_root.mkdir(parents=True, exist_ok=True)
 
@@ -268,6 +337,7 @@ def main():
     (dest / "share-vibe-kanban").mkdir(parents=True, exist_ok=True)
     (dest / "systemd").mkdir(parents=True, exist_ok=True)
     (dest / "bin").mkdir(parents=True, exist_ok=True)
+    (dest / "codex-home").mkdir(parents=True, exist_ok=True)
     (dest / "exports").mkdir(parents=True, exist_ok=True)
     (dest / "git").mkdir(parents=True, exist_ok=True)
 
@@ -275,6 +345,8 @@ def main():
     copy_if_exists(vk_share / "config.json", dest / "share-vibe-kanban" / "config.json")
     copy_if_exists(vk_share / "server_ed25519_signing_key", dest / "share-vibe-kanban" / "server_ed25519_signing_key")
     copy_if_exists(vk_share / "sessions", dest / "share-vibe-kanban" / "sessions")
+
+    copy_vk_codex_state(vk_share, vk_codex_home, dest / "codex-home")
 
     copy_if_exists(Path("/home/mcp/.config/systemd/user/vibe-kanban.service"), dest / "systemd" / "vibe-kanban.service")
     copy_if_exists(Path("/home/mcp/.config/systemd/user/vibe-kanban.service.d"), dest / "systemd" / "vibe-kanban.service.d")
@@ -387,7 +459,7 @@ def main():
     write_text(dest / "meta" / "manifest.txt", "\n".join([
         "backup_type=vk-lean-restore",
         f"created_utc={ts}",
-        "description=Local VK state plus local-only git/workspace recovery data; excludes full repo copies and build caches assumed recoverable from GitHub",
+        "description=Local VK state, isolated VK Codex continuity state, plus local-only git/workspace recovery data; excludes full repo copies and build caches assumed recoverable from GitHub",
     ]) + "\n")
 
     files = []

@@ -7,6 +7,9 @@
 - Split `ca67946ab` into a clean branch, `vk/ops-backup-retention-20260419`.
 - Opened PR `#6` for the backup retention change.
 - Updated the branch-local continuity docs so they match the backup retention stream.
+- Isolated VK from tmux/interactive Codex auth by moving the service onto its own `CODEX_HOME`:
+  - `/home/mcp/.local/share/vibe-kanban/codex-home`
+- Copied the existing Codex rollout/session state into that VK-only `CODEX_HOME` after confirming that old workspace threads were failing to fork without the old rollout files.
 
 ## What Is True Right Now
 
@@ -16,6 +19,9 @@
 - The canonical local checkout is back on a clean `staging` that matches `fork/staging`.
 - The active branch for this stream is `vk/ops-backup-retention-20260419`.
 - PR `#6` is the isolated path for `ops(backups): add tiered lean backup retention`.
+- The VK service wrapper exports:
+  - `CODEX_HOME=/home/mcp/.local/share/vibe-kanban/codex-home`
+- VK must not share `~/.codex/auth.json` with tmux Codex sessions anymore.
 
 ## Known Good Validation
 
@@ -37,12 +43,16 @@
 - Do not delete the rescue branches before confirming the divergence cleanup is complete.
 - Do not reintroduce direct local-only commits onto the canonical `staging` checkout.
 - Do not assume PR `#6` has fresh validation beyond the preserved commit history unless it is rerun explicitly.
+- Do not point VK back at `~/.codex` unless you intentionally want VK and tmux Codex sessions to share refresh-token rotation again.
+- Do not copy only `auth.json` into a fresh VK `CODEX_HOME`; old workspace thread fork/resume needs the Codex rollout/session state too.
 
 ## Verification Required Before Further Changes
 
 - `curl -s http://127.0.0.1:4311/api/info` and confirm `shared_api_base` is `null`
 - `git status --short --branch`
 - Task-specific validation for backup retention behavior if the change is modified further
+- `systemctl --user show vibe-kanban.service -p ExecStart -p Environment`
+- `tr '\\0' '\\n' < /proc/$(systemctl --user show -p MainPID --value vibe-kanban.service)/environ | rg '^CODEX_HOME='`
 
 ## Verification Status From This Session
 

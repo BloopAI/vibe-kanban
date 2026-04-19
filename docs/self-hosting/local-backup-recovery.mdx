@@ -92,6 +92,17 @@ This is the system currently implemented in the repo.
    - staged diffs
    - untracked files
    - stash patches
+6. **VK Codex continuity state**
+   - the dedicated VK Codex home if the service is isolated with `CODEX_HOME`
+   - at minimum:
+     - `auth.json`
+     - `config.toml`
+     - `version.json`
+     - `sessions/`
+     - `shell_snapshots/`
+     - `history.jsonl`
+     - `session_index.jsonl`
+     - `state_5.sqlite*`
 
 ### What the lean backup intentionally excludes
 
@@ -224,6 +235,34 @@ It will:
 7. reload and restart `vibe-kanban.service`
 
 The goal is that an agent can restore the backup plus GitHub state and get back to what should appear to be the captured VK snapshot, without inventing missing steps.
+
+## Codex auth isolation
+
+The local VK service is expected to use its own Codex home instead of sharing `~/.codex` with tmux or other interactive Codex sessions.
+
+Current expected value:
+
+```bash
+CODEX_HOME=/home/mcp/.local/share/vibe-kanban/codex-home
+```
+
+Why:
+
+- sharing `~/.codex/auth.json` between VK and interactive Codex sessions can cause refresh-token rotation races
+- the symptom is repeated `refresh_token_reused` failures inside VK coding-agent runs
+
+<Warning>
+If you isolate VK onto a dedicated `CODEX_HOME`, do **not** copy only `auth.json`.
+
+Old workspace thread fork/resume depends on the Codex rollout/session state too. If you move VK to a fresh `CODEX_HOME` without copying the old Codex `sessions/` and related state, existing workspace threads can fail with:
+
+`thread/fork request failed: no rollout found for thread id ...`
+</Warning>
+
+When creating or restoring a dedicated VK `CODEX_HOME`, carry forward both:
+
+- authentication/config files
+- Codex session/rollout state
 
 ## Required assumptions for successful restore
 

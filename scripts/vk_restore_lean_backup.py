@@ -52,6 +52,7 @@ def main():
     backup_dir = extract_if_needed(backup_src, work_root)
 
     share_dir = Path("/home/mcp/.local/share/vibe-kanban")
+    vk_codex_home = share_dir / "codex-home"
     systemd_dir = Path("/home/mcp/.config/systemd/user")
     bin_dir = Path("/home/mcp/.local/bin")
 
@@ -67,6 +68,36 @@ def main():
         if (share_dir / "sessions").exists():
             shutil.rmtree(share_dir / "sessions")
         shutil.copytree(sessions, share_dir / "sessions")
+
+    codex_backup = backup_dir / "codex-home"
+    if codex_backup.exists():
+        vk_codex_home.mkdir(parents=True, exist_ok=True)
+        for name in (
+            "auth.json",
+            "config.toml",
+            "version.json",
+            "history.jsonl",
+            "session_index.jsonl",
+            "state_5.sqlite",
+            "state_5.sqlite-shm",
+            "state_5.sqlite-wal",
+            "logs_2.sqlite",
+            "logs_2.sqlite-shm",
+            "logs_2.sqlite-wal",
+        ):
+            src = codex_backup / name
+            dst = vk_codex_home / name
+            if dst.exists():
+                dst.unlink()
+            if src.exists():
+                shutil.copy2(src, dst)
+        for dirname in ("sessions", "shell_snapshots"):
+            src = codex_backup / dirname
+            dst = vk_codex_home / dirname
+            if dst.exists():
+                shutil.rmtree(dst)
+            if src.exists():
+                shutil.copytree(src, dst)
 
     service_file = backup_dir / "systemd" / "vibe-kanban.service"
     if service_file.exists():
