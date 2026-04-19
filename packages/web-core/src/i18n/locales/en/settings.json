@@ -32,7 +32,9 @@
         "remote-projects": "Projects",
         "remote-projectsDesc": "Manage projects",
         "relay": "Remote Access",
-        "relayDesc": "Relay tunnel and enrollment"
+        "relayDesc": "Relay tunnel and enrollment",
+        "remote-hosts": "Remote Hosts",
+        "remote-hostsDesc": "Paired self-hosted P2P instances"
       }
     },
     "hostPicker": {

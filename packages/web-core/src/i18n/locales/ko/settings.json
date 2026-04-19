@@ -28,6 +28,8 @@
         "remote-projects": "프로젝트",
         "remote-projectsDesc": "프로젝트 관리",
         "relay": "Remote Access",
+        "remote-hosts": "Remote Hosts",
+        "remote-hostsDesc": "Paired self-hosted P2P instances",
         "relayDesc": "Relay tunnel and enrollment",
         "machineSettings": "Machine Settings",
         "accountSettings": "Account Settings",

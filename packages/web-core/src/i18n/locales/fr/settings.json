@@ -28,6 +28,8 @@
         "remote-projects": "Projets",
         "remote-projectsDesc": "Gérer les projets",
         "relay": "Remote Access",
+        "remote-hosts": "Remote Hosts",
+        "remote-hostsDesc": "Paired self-hosted P2P instances",
         "relayDesc": "Relay tunnel and enrollment",
         "machineSettings": "Machine Settings",
         "accountSettings": "Account Settings",

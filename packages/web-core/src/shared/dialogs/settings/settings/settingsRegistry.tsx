@@ -6,6 +6,7 @@ import {
   CpuIcon,
   PlugIcon,
   BroadcastIcon,
+  HardDrivesIcon,
 } from '@phosphor-icons/react';
 import type { Icon } from '@phosphor-icons/react';
 import { GeneralSettingsSection } from './GeneralSettingsSection';
@@ -15,6 +16,7 @@ import { RemoteProjectsSettingsSection } from './RemoteProjectsSettingsSection';
 import { AgentsSettingsSection } from './AgentsSettingsSection';
 import { McpSettingsSection } from './McpSettingsSection';
 import { RelaySettingsSectionContent } from './RelaySettingsSection';
+import { RemoteHostsSettingsSection } from './RemoteHostsSettingsSection';
 
 export type SettingsSectionType =
   | 'general'
@@ -23,7 +25,8 @@ export type SettingsSectionType =
   | 'remote-projects'
   | 'agents'
   | 'mcp'
-  | 'relay';
+  | 'relay'
+  | 'remote-hosts';
 
 export type SettingsSectionGroup = 'host' | 'universal';
 
@@ -37,6 +40,7 @@ export type SettingsSectionInitialState = {
   agents: { executor?: string; variant?: string } | undefined;
   mcp: undefined;
   relay: { hostId?: string } | undefined;
+  'remote-hosts': undefined;
 };
 
 export interface SettingsSectionDefinition {
@@ -53,6 +57,7 @@ export const SETTINGS_SECTION_DEFINITIONS: SettingsSectionDefinition[] = [
   { id: 'organizations', icon: BuildingsIcon, group: 'universal' },
   { id: 'remote-projects', icon: CloudIcon, group: 'universal' },
   { id: 'relay', icon: BroadcastIcon, group: 'universal' },
+  { id: 'remote-hosts', icon: HardDrivesIcon, group: 'universal' },
 ];
 
 export function isHostSpecificSettingsSection(
@@ -99,6 +104,8 @@ export function renderSettingsSection(
           onClose={onClose}
         />
       );
+    case 'remote-hosts':
+      return <RemoteHostsSettingsSection />;
     default:
       return <GeneralSettingsSection />;
   }
