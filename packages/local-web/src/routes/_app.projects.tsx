@@ -1,4 +1,8 @@
-import { createFileRoute, Outlet, useChildMatches } from '@tanstack/react-router';
+import {
+  createFileRoute,
+  Outlet,
+  useChildMatches,
+} from '@tanstack/react-router';
 import { ProjectsLanding } from '@/pages/kanban/ProjectsLanding';
 
 function ProjectsRoute() {

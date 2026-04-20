@@ -73,6 +73,8 @@ import type { IssuePriority } from 'shared/remote-types';
 import { useIssueMultiSelect } from '@/shared/hooks/useIssueMultiSelect';
 import { useIssueSelectionStore } from '@/shared/stores/useIssueSelectionStore';
 import { BulkActionBarContainer } from './BulkActionBarContainer';
+import { KanbanDisplaySettingsContainer } from './KanbanDisplaySettingsContainer';
+import { ProjectSettingsDialog } from './ProjectSettingsDialog';
 
 const areStringSetsEqual = (left: string[], right: string[]): boolean => {
   if (left.length !== right.length) {
@@ -147,6 +149,9 @@ export function KanbanContainer() {
     removeIssueTag,
     insertTag,
     pullRequests,
+    insertStatus,
+    updateStatus,
+    removeStatus,
     isLoading: projectLoading,
   } = useProjectContext();
 
@@ -158,8 +163,10 @@ export function KanbanContainer() {
   const { activeWorkspaces } = useWorkspaceContext();
   const { userId } = useAuth();
 
-  // Get project name by finding the project matching current projectId
-  const projectName = projects.find((p) => p.id === projectId)?.name ?? '';
+  // Get project name/color by finding the project matching current projectId
+  const currentProject = projects.find((p) => p.id === projectId);
+  const projectName = currentProject?.name ?? '';
+  const projectColor = currentProject?.color ?? '';
 
   const selectedKanbanIssueId = routeState.issueId;
   const issueComposerKey = useMemo(
@@ -479,6 +486,12 @@ export function KanbanContainer() {
   // Track items as arrays of IDs grouped by status
   const [items, setItems] = useState<Record<string, string[]>>({});
   const [isFiltersDialogOpen, setIsFiltersDialogOpen] = useState(false);
+
+  const issueCountByStatus = useMemo(
+    () =>
+      Object.fromEntries(Object.entries(items).map(([k, v]) => [k, v.length])),
+    [items]
+  );
 
   // Sync items from filtered issues when they change
   useEffect(() => {
@@ -921,7 +934,13 @@ export function KanbanContainer() {
                 {t('kanban.openProjectsGuide', 'Projects guide')}
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => executeAction(Actions.ProjectSettings)}
+                onClick={() =>
+                  void ProjectSettingsDialog.show({
+                    projectId,
+                    projectName,
+                    projectColor,
+                  })
+                }
               >
                 {t('kanban.editProjectSettings', 'Edit project settings')}
               </DropdownMenuItem>
@@ -970,6 +989,14 @@ export function KanbanContainer() {
             shouldAnimateCreateButton={shouldAnimateCreateButton}
             renderFiltersDialog={(props) => <KanbanFiltersDialog {...props} />}
             isMobile={isMobile}
+          />
+          <KanbanDisplaySettingsContainer
+            statuses={statuses}
+            projectId={projectId}
+            issueCountByStatus={issueCountByStatus}
+            onInsertStatus={insertStatus}
+            onUpdateStatus={updateStatus}
+            onRemoveStatus={removeStatus}
           />
         </div>
       </div>
