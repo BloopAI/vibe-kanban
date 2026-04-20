@@ -2,78 +2,57 @@
 
 ## What Changed This Session
 
-- Fixed a kanban/workspace loading regression that was driving the local VK server back to multi-GB RSS and eventual hangs.
-- The concrete hotfix was:
-  - stop aggressive workspace-summary refetching in `packages/web-core/src/shared/hooks/useWorkspaces.ts`
-  - stop redundant no-op `UI_PREFERENCES` scratch upserts in `packages/web-core/src/shared/hooks/useUiPreferencesScratch.ts`
-- Rebuilt and redeployed the local server binary after the fix, then stress-tested the live service with repeated kanban/workspace traffic.
-- Preserved the old divergent canonical `staging` tip on rescue branches.
-- Reset the canonical local `staging` checkout to match `fork/staging`.
-- Split `ca67946ab` into a clean branch, `vk/ops-backup-retention-20260419`.
-- Opened PR `#6` for the backup retention change.
-- Updated the branch-local continuity docs so they match the backup retention stream.
-- Isolated VK from tmux/interactive Codex auth by moving the service onto its own `CODEX_HOME`:
-  - `/home/mcp/.local/share/vibe-kanban/codex-home`
-- Copied the existing Codex rollout/session state into that VK-only `CODEX_HOME` after confirming that old workspace threads were failing to fork without the old rollout files.
+- Resumed from the existing workspace state instead of replaying old branch history.
+- Verified that the checked-out branch is `vk/ea3c-vk-auto-archive`, not the older backup-retention stream described by the stale continuity docs.
+- Verified that this worktree is clean and currently identical to `staging` at `88c0ebd59`.
+- Refreshed the branch-local continuity docs so they describe the actual checked-out worktree state.
 
 ## What Is True Right Now
 
-- The live local install is the source of truth.
-- `/api/info` reports `shared_api_base: null`.
-- The kanban/workspace regression is currently fixed in the live service and in `staging`.
-- Current verification after the hotfix:
-  - repeated mixed kanban/workspace bursts passed with `0` failures
-  - a 2-minute mixed soak (`21,070` requests) passed with `0` failures
-  - live service stayed under roughly `90 MB RSS` with `0` swap
-- The board/issue data now lives locally in `~/.local/share/vibe-kanban/db.v2.sqlite`.
-- The canonical local checkout is back on a clean `staging` that matches `fork/staging`.
-- The active branch for this stream is `vk/ops-backup-retention-20260419`.
-- PR `#6` is the isolated path for `ops(backups): add tiered lean backup retention`.
-- The VK service wrapper exports:
-  - `CODEX_HOME=/home/mcp/.local/share/vibe-kanban/codex-home`
-- VK must not share `~/.codex/auth.json` with tmux Codex sessions anymore.
+- The live local install remains the source of truth.
+- The checked-out branch in this worktree is `vk/ea3c-vk-auto-archive`.
+- `git status --short --branch` shows a clean worktree.
+- `git log --oneline staging..HEAD` is empty in this worktree.
+- The checked-out tip is `88c0ebd59 fix: stop workspace status polling churn`.
+- The prior `STREAM.md` and `HANDOFF.md` content for `vk/ops-backup-retention-20260419` was stale for this worktree and has been replaced.
 
 ## Known Good Validation
 
-- Git history sync checks passed:
-  - canonical `staging` now matches `fork/staging`
-  - `vk/ops-backup-retention-20260419` is exactly one commit ahead of `staging`
-- Not rerun in this cleanup stream:
-  - repo build/test validation for the backup retention change itself
+- Verified in this session:
+  - `git status --short --branch`
+  - `git diff --stat`
+  - `git diff --name-only staging...HEAD`
+  - `git log --oneline staging..HEAD`
+  - `curl -s http://127.0.0.1:4311/api/info` confirmed `shared_api_base: null`
+- Could not complete in this session:
+  - `pnpm run format` because `packages/web-core` could not resolve `prettier`
 
 ## What The Next Agent Should Do
 
-- Treat `c6a5dd7d9 fix: stop kanban polling and scratch churn` as the baseline fix for the recent kanban/workspace hang regression.
-- If VK starts re-bloating again, compare the current behavior against this session’s stress results before assuming it is the same bug.
-- Merge PR `#6`.
-- Keep the rescue branches until there is no more need to recover anything from the old divergent `staging`.
-- After PR `#6` lands, bring the remaining queued PRs to `staging` one at a time.
+- Use this worktree as a clean staging-equivalent baseline.
+- Verify the local runtime before making further changes.
+- If the intended task is truly a new `vk/ea3c-vk-auto-archive` implementation, define that scope explicitly in `STREAM.md` before editing code.
 
 ## What The Next Agent Must Not Do
 
-- Do not re-enable `VK_SHARED_API_BASE` or `VK_SHARED_RELAY_API_BASE` for the local install.
-- Do not delete the rescue branches before confirming the divergence cleanup is complete.
-- Do not reintroduce direct local-only commits onto the canonical `staging` checkout.
-- Do not assume PR `#6` has fresh validation beyond the preserved commit history unless it is rerun explicitly.
-- Do not point VK back at `~/.codex` unless you intentionally want VK and tmux Codex sessions to share refresh-token rotation again.
-- Do not copy only `auth.json` into a fresh VK `CODEX_HOME`; old workspace thread fork/resume needs the Codex rollout/session state too.
+- Do not assume the backup-retention stream is still the active branch here.
+- Do not treat stale continuity notes as more authoritative than the checked-out code and branch state.
+- Do not re-enable shared API configuration for the local install.
 
 ## Verification Required Before Further Changes
 
-- `curl -s http://127.0.0.1:4311/api/info` and confirm `shared_api_base` is `null`
+- `curl -s http://127.0.0.1:4311/api/info`
 - `git status --short --branch`
-- Task-specific validation for backup retention behavior if the change is modified further
-- `systemctl --user show vibe-kanban.service -p ExecStart -p Environment`
-- `tr '\\0' '\\n' < /proc/$(systemctl --user show -p MainPID --value vibe-kanban.service)/environ | rg '^CODEX_HOME='`
+- Task-specific validation for any new code changes
 
 ## Verification Status From This Session
 
-- canonical `staging` sync cleanup completed
-- PR `#6` exists for the isolated backup retention commit
-- branch-local docs now match the backup retention stream
+- Continuity docs now match the actual checked-out branch and code state.
+- Local-only runtime verification is complete for this session.
+- Full repo formatting still requires frontend dependencies that provide `prettier`.
 
 ## Session Metadata
 
-- Branch: `vk/ops-backup-retention-20260419`
-- Repo: `/home/mcp/_vibe_kanban_repo`
-- Focus: canonical staging sync cleanup plus isolated backup retention PR
+- Branch: `vk/ea3c-vk-auto-archive`
+- Repo: `/home/mcp/code/worktrees/ea3c-vk-auto-archive/_vibe_kanban_repo`
+- Focus: restore truthful branch-local continuity and resume from the real workspace state

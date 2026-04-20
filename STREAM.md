@@ -2,57 +2,60 @@
 
 ## Stream Identifier
 
-- Branch: `vk/ops-backup-retention-20260419`
-- Repo: `/home/mcp/_vibe_kanban_repo`
-- Working mode: local-only VK maintenance branch
+- Branch: `vk/ea3c-vk-auto-archive`
+- Repo: `/home/mcp/code/worktrees/ea3c-vk-auto-archive/_vibe_kanban_repo`
+- Working mode: local-only VK maintenance worktree
 
 ## Objective
 
-- Add tiered retention to lean local VK backups so backups remain sustainable without manual cleanup.
+- Keep this worktree aligned with the current local-only VK stability baseline while the next branch-specific task is established.
 
 ## In Scope
 
-- Local-only runtime stability
-- Lean backup retention behavior
-- Recovery documentation for the lean backup path
+- Truthful branch-local continuity for this worktree
+- Verifying the checked-out branch state against `staging`
+- Preserving the local-only runtime baseline
 
 ## Out of Scope
 
-- Reviving the old cloud-backed board model
-- Depending on `api.vibekanban.com` for local board state
-- Refactoring unrelated workspace or project UI behavior in this branch
+- Reconstructing the old backup-retention branch context as if it were still checked out here
+- Inventing new branch-local feature scope without explicit task direction
+- Re-enabling shared/cloud API behavior
 
 ## Stream-Specific Decisions
 
-- `staging` is the base branch; this stream lands through a PR back into `staging`.
-- The local install must keep `shared_api_base` disabled.
-- The lean backup path stays the default recovery mechanism.
-- Retention should be handled in the backup tooling itself rather than by ad hoc operator cleanup.
+- This worktree currently has no branch-local code delta relative to `staging`.
+- The checked-out tip is `88c0ebd59` (`fix: stop workspace status polling churn`).
+- Local runtime expectations from `STATE.md` remain in force, including `shared_api_base: null`.
+- Any new implementation work should either start from this clean baseline or move to a fresh task branch with updated continuity notes.
 
 ## Relevant Files / Modules
 
-- `scripts/vk_lean_backup.py`
-- `docs/self-hosting/local-backup-recovery.mdx`
-- local backup paths under `/home/mcp/backups/`
-- Desktop mirror under `~/Desktop/vk-backups/`
+- `STREAM.md`
+- `HANDOFF.md`
+- `DELTA.md`
+- `STATE.md`
+- `packages/web-core/src/shared/hooks/useBranchStatus.ts`
+- `packages/web-core/src/shared/hooks/useTaskWorkspaces.ts`
 
 ## Current Status
 
 - Confirmed:
-  - tiered retention logic is isolated on this branch as one commit on top of current `staging`
-  - backup docs are being aligned to the retention behavior
+  - the worktree is clean
+  - `vk/ea3c-vk-auto-archive` currently matches `staging`
+  - the latest landed stability hotfix in this checkout is `88c0ebd59`
+  - the live local VK service currently reports `shared_api_base: null`
 - Pending:
-  - push doc updates into PR `#6`
-  - merge PR `#6` into `staging`
+  - explicit direction for the next branch-local change, if any
 
 ## Risks / Regression Traps
 
-- Accidentally pruning the newest valid lean restore snapshot
-- Repointing the service back to cloud/shared API config
-- Updating retention behavior without matching operator docs
+- Trusting stale continuity docs instead of the checked-out branch and code
+- Assuming this worktree still contains the backup-retention PR scope
+- Starting new edits without first recording the real branch intent in `STREAM.md`
 
 ## Next Safe Steps
 
-1. Branch new work from `staging`.
-2. Keep the local-only runtime intact.
-3. After this PR lands, resume landing other queued branches one at a time into the refreshed `staging`.
+1. Verify the local runtime still reports `shared_api_base: null`.
+2. Treat this worktree as a clean staging-equivalent baseline until a new scoped task is defined.
+3. If new work starts here, update `STREAM.md` and `HANDOFF.md` before handing off again.

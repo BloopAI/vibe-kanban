@@ -106,3 +106,19 @@
   - combined polling plus summaries POST load
   - no endpoint failures
   - RSS stayed roughly in the `32–51 MB` range instead of climbing into GB territory
+
+## 2026-04-20T00:00:00Z | vk/ea3c-vk-auto-archive | continuity refresh for staging-equivalent worktree
+
+- Intent: resume from the real checked-out workspace state and correct stale branch-local continuity notes.
+- Completed:
+  - confirmed the checked-out branch is `vk/ea3c-vk-auto-archive`
+  - confirmed the worktree is clean and matches `staging` at `88c0ebd59`
+  - replaced stale backup-retention stream notes in `STREAM.md` and `HANDOFF.md`
+- Verified:
+  - `git status --short --branch`
+  - `git diff --stat`
+  - `git diff --name-only staging...HEAD`
+  - `git log --oneline staging..HEAD`
+  - `curl -s http://127.0.0.1:4311/api/info` confirmed `shared_api_base: null`
+- Not complete / known gaps:
+  - `pnpm run format` did not complete because `packages/web-core` could not resolve `prettier`
