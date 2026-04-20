@@ -27,7 +27,7 @@ use services::services::{
 };
 use thiserror::Error;
 use trusted_key_auth::error::TrustedKeyAuthError;
-use utils::response::ApiResponse;
+use utils::response::{ApiErrorEnvelope, ApiResponse};
 use workspace_manager::WorkspaceError as WorkspaceManagerError;
 use worktree_manager::WorktreeError;
 
@@ -216,6 +216,38 @@ impl ErrorInfo {
             error_type,
             message: Some(msg.into()),
         }
+    }
+}
+
+/// Classify an `ExecutorError` into the stable 5-kind envelope surfaced to clients.
+/// - `executor_not_found`: missing binary
+/// - `auth_required`: user must re-authenticate
+/// - `follow_up_not_supported`: chosen executor does not support follow-up
+/// - `spawn_failed`: retryable IO / spawn failure
+/// - `internal`: fallback for everything else
+pub fn executor_error_envelope(
+    err: &executors::executors::ExecutorError,
+    stderr_tail: Option<String>,
+    program: Option<String>,
+) -> ApiErrorEnvelope {
+    use executors::executors::ExecutorError::*;
+    let (kind, retryable, human) = match err {
+        ExecutableNotFound { .. } => ("executor_not_found", false, true),
+        AuthRequired(_) => ("auth_required", false, true),
+        FollowUpNotSupported(_) => ("follow_up_not_supported", false, false),
+        SpawnError(_) | Io(_) => ("spawn_failed", true, false),
+        _ => ("internal", true, false),
+    };
+    let program = program.or_else(|| match err {
+        ExecutableNotFound { program } => Some(program.clone()),
+        _ => None,
+    });
+    ApiErrorEnvelope {
+        kind: kind.to_string(),
+        retryable,
+        human_intervention_required: human,
+        stderr_tail,
+        program,
     }
 }
 
@@ -627,5 +659,71 @@ impl From<RelayPairingClientError> for ApiError {
                 ApiError::BadGateway(err.to_string())
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use executors::executors::ExecutorError;
+
+    use super::*;
+
+    #[test]
+    fn classifies_executable_not_found() {
+        let err = ExecutorError::ExecutableNotFound {
+            program: "claude".to_string(),
+        };
+        let env = executor_error_envelope(&err, None, None);
+        assert_eq!(env.kind, "executor_not_found");
+        assert!(!env.retryable);
+        assert!(env.human_intervention_required);
+        assert_eq!(env.program.as_deref(), Some("claude"));
+    }
+
+    #[test]
+    fn classifies_auth_required() {
+        let err = ExecutorError::AuthRequired("token expired".into());
+        let env = executor_error_envelope(&err, None, None);
+        assert_eq!(env.kind, "auth_required");
+        assert!(!env.retryable);
+        assert!(env.human_intervention_required);
+    }
+
+    #[test]
+    fn classifies_follow_up_not_supported() {
+        let err = ExecutorError::FollowUpNotSupported("gemini".into());
+        let env = executor_error_envelope(&err, None, None);
+        assert_eq!(env.kind, "follow_up_not_supported");
+        assert!(!env.retryable);
+        assert!(!env.human_intervention_required);
+    }
+
+    #[test]
+    fn classifies_spawn_error_as_retryable() {
+        let err = ExecutorError::Io(std::io::Error::other("boom"));
+        let env = executor_error_envelope(&err, None, None);
+        assert_eq!(env.kind, "spawn_failed");
+        assert!(env.retryable);
+        assert!(!env.human_intervention_required);
+    }
+
+    #[test]
+    fn unknown_variants_fall_through_to_internal() {
+        let err = ExecutorError::UnknownExecutorType("foo".into());
+        let env = executor_error_envelope(&err, None, None);
+        assert_eq!(env.kind, "internal");
+        assert!(env.retryable);
+    }
+
+    #[test]
+    fn envelope_carries_stderr_tail_and_program() {
+        let err = ExecutorError::AuthRequired("expired".into());
+        let env = executor_error_envelope(
+            &err,
+            Some("last stderr line".to_string()),
+            Some("claude".to_string()),
+        );
+        assert_eq!(env.stderr_tail.as_deref(), Some("last stderr line"));
+        assert_eq!(env.program.as_deref(), Some("claude"));
     }
 }
