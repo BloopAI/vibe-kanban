@@ -1,6 +1,6 @@
 # VK MCP 编排能力扩展 — 主设计文档
 
-**状态:** Draft v3(中文版,修正了 v2 的 5 个技术 claim 错误 + 新增 1 个阻塞性问题处理)
+**状态:** Draft v4(round 3 整体检查后:对齐 VK 已有的 `NormalizedEntry` 体系、补 task 删除一致性方案、明确 D12 实现路径、补事务化 helper)
 **日期:** 2026-04-20
 **作者:** Claude(协作:phuongmumma35@hotmail.com)
 **前置 PR:** `0095e565` "MCP error transparency"(PR1 — 在 MCP 反序列化侧扩展了 `ApiResponseEnvelope.error_kind` + 分类器)
@@ -195,6 +195,8 @@ manager 通过 `start_workspace` 派生 child,轮询直到 `status == Completed`
 
 ### 5.2 设计
 
+> ⚠️ **v4 修正(round 3):** 此前草案以为消息存在 `CodingAgentTurn` 中,但代码核查发现 `CodingAgentTurn`(`crates/db/src/models/coding_agent_turn.rs:7-18`)只持久化 `prompt` / `summary` / `agent_session_id`,**不存对话消息**。VK 真正的消息持久化路径是:executor 输出 → `MsgStore`(内存环缓冲)→ `ExecutionProcessLogs.logs`(`crates/db/src/models/execution_process_logs.rs:8-14`,JSONL,持久化)→ 通过 `ContainerService::stream_normalized_logs` 还原为 `NormalizedEntry` 流。前端通过 WebSocket 消费同样的 `NormalizedEntry`。本 PR **必须复用 `NormalizedEntry`** 体系,而不是引入第二条平行的消息表面。
+
 新 MCP tool `read_session_messages`:
 
 ```rust
@@ -206,29 +208,39 @@ struct ReadSessionMessagesRequest {
     last_n: Option<u32>,
     #[schemars(description = "从第几条开始读(0-based)。设了之后覆盖 last_n。")]
     from_index: Option<u32>,
-    #[schemars(description = "是否包含 reasoning / thinking 内容。默认 false 以降低 token 成本。")]
-    include_reasoning: Option<bool>,
+    #[schemars(description = "是否包含 thinking 内容(对应 NormalizedEntryType::Thinking)。默认 false 以降低 token 成本。")]
+    include_thinking: Option<bool>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 struct ReadSessionMessagesResponse {
     messages: Vec<SessionMessage>,
-    /// 该会话的总消息数(不只是返回的窗口)。
+    /// 过滤后该会话的总消息数(不只是返回的窗口)。
     total_count: u32,
     /// 是否还有比返回窗口更早的消息。
     has_more: bool,
     /// 便利字段:会话最后一条 assistant 消息的完整文本(不截断)。
+    /// 由服务端从 NormalizedEntryType::AssistantMessage 中提取。
     /// 大多数 manager 查询只需要这个 — 不必扫描整个 messages 数组。
     final_assistant_message: Option<String>,
 }
 
+/// 单条消息。形状直接对齐 VK 已有的 NormalizedEntry,
+/// 避免引入第二个不一致的消息模型。
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 struct SessionMessage {
+    /// 在过滤后流中的 0-based 索引。
     index: u32,
-    role: String,                          // "user" | "assistant" | "tool" | "system"
+    /// 序列化后的 NormalizedEntryType discriminant,例如:
+    /// "user_message" | "assistant_message" | "tool_use" | "system_message"
+    /// | "error_message" | "thinking"。manager 根据这个 switch。
+    entry_type: String,
+    /// 完整内容文本。
     content: String,
-    tool_calls: Option<serde_json::Value>, // 有则结构化
-    timestamp: String,                     // RFC3339
+    /// RFC3339,可能为 None(取决于 executor)。
+    timestamp: Option<String>,
+    /// NormalizedEntry.metadata 透传,供 manager 解析 tool_use 详情等。
+    metadata: Option<serde_json::Value>,
 }
 ```
 
@@ -236,23 +248,45 @@ struct SessionMessage {
 
 **D4 — `final_assistant_message` 单独是顶层字段。** 99% 的 manager 查询只想要"child 最终说了什么"。直接 surface 它,不强迫每个 manager 解析 `messages` 数组。完整文本,不截断 — manager 在这里依赖完整性。
 
-**D5 — `include_reasoning = false` 默认关闭。** reasoning 块(Claude 的 thinking 等)能让 token 成本翻 3-10 倍。默认关;manager 深度调试时再打开。
+**D5 — `include_thinking = false` 默认关闭。** Thinking 块(`NormalizedEntryType::Thinking`,对应 Claude 的 reasoning 等)能让 token 成本翻 3-10 倍。默认关;manager 深度调试时再打开。**注意命名:** VK 内部统一用 "thinking"(见 `crates/executors/src/logs/mod.rs:121`),所以参数名也用 `include_thinking`,而不是更一般的 "reasoning"。
 
-**D11(新增)— `final_message` 字段策略:** PR-X1 升级后的 `GetExecutionResponse.final_message` 保持 `None`。manager 必须改用 `read_session_messages` 来读消息。理由:避免双数据源(get_execution 是元数据 + 状态,read_session_messages 是内容)同时维护。
+**D5a — 永久过滤的 entry types。** 以下 `NormalizedEntryType` 永远不返回给 manager,因为它们是 UI 流式状态、不属于"对话历史":
+- `Loading` — 流式加载占位
+- `TokenUsageInfo` — token 计数事件
+- `NextAction` — UI hint
+- `UserAnsweredQuestions` — 内部回调
 
-**实现:** 持久化的消息模型是 `CodingAgentTurn`(`crates/db/src/models/coding_agent_turn.rs:8`),已有 `find_by_execution_process_id`。新增服务端路由 `GET /api/sessions/{session_id}/messages?last_n=&from_index=&include_reasoning=`,通过 join 最新 execution 的 turns 返回上面的分页 payload。MCP tool 是薄包装。
+manager 拿到的 `total_count` 也是 *过滤后* 的计数(否则 `last_n` 窗口会被噪声塞满)。
+
+**D11 — `final_message` 字段策略:** PR-X1 升级后的 `GetExecutionResponse.final_message` 保持 `None`。manager 必须改用 `read_session_messages` 来读消息。理由:避免双数据源(get_execution 是元数据 + 状态,read_session_messages 是内容)同时维护。
+
+**实现路径:**
+
+1. **服务端新路由** `GET /api/sessions/{session_id}/messages?last_n=&from_index=&include_thinking=`
+   - 通过 `session_id` 找到最新 `ExecutionProcess`
+   - 调用 `ContainerService::stream_normalized_logs(execution_id)` 拿到完整的 `NormalizedEntry` 流(底层从 `ExecutionProcessLogs.logs` JSONL 重建)
+   - 过滤掉 D5a 永久剔除的 entry types;若 `include_thinking == false`,再剔除 `Thinking`
+   - 在过滤后的列表上应用分页(`from_index` 优先于 `last_n`)
+   - 提取最后一条 `entry_type == AssistantMessage` 作为 `final_assistant_message`
+
+2. **MCP tool 是薄包装** — 把 workspace_id 解析到 latest session_id,然后调上面的路由。
+
+3. **复用现成基础设施** — 该路径已有 WebSocket 端点 `/api/execution-processes/{id}/normalized-logs/ws`(`crates/server/src/routes/execution_processes.rs:138-165`)在为前端服务,本 PR 提供的是同一数据源的 REST + 分页快照视图,不引入新的存储或解析层。
 
 ### 5.3 PR 边界
 
 - `crates/mcp/src/task_server/tools/sessions.rs` — 新 tool `read_session_messages`
-- `crates/server/src/routes/sessions/mod.rs` — 新路由 `GET /api/sessions/{id}/messages?last_n=&from_index=&include_reasoning=`
+- `crates/server/src/routes/sessions/mod.rs` — 新路由 `GET /api/sessions/{id}/messages?last_n=&from_index=&include_thinking=`;handler 内部调 `ContainerService::stream_normalized_logs`
+- `crates/executors/src/logs/mod.rs` — 为 `NormalizedEntryType` 增加稳定的 discriminant 序列化(如果现有 serde tag 不满足 manager 用的 snake_case 契约)
 - `shared/types.ts` 重新生成
 - 测试:
+  - 单元:D5a 过滤(`Loading` / `TokenUsageInfo` / `NextAction` 不出现在输出中)
+  - 单元:`include_thinking` toggle(on → Thinking 出现;off → 不出现)
   - 单元:分页计算(`last_n` 窗口、`from_index` 覆盖、`has_more` flag)
-  - 单元:`final_assistant_message` 提取(空会话、最后是 tool call、最后是 user 三种 case)
-  - 集成:派生小 child → 等待 → 读 → 断言 `final_assistant_message` 匹配
+  - 单元:`final_assistant_message` 提取(空会话、最后是 tool_use、最后是 user_message 三种 case)
+  - 集成:派生小 child → 等待 → 读 → 断言 `final_assistant_message` 匹配 executor 最后一条 assistant 输出
 
-预估 diff:~300 LOC。
+预估 diff:~350 LOC(含 NormalizedEntry 映射层)。
 
 ---
 
@@ -275,11 +309,66 @@ struct SessionMessage {
 POST   /api/tasks                          — 创建
 GET    /api/tasks/{id}                     — 获取
 PUT    /api/tasks/{id}                     — 更新(title、description、status)
-DELETE /api/tasks/{id}                     — 删除(级联清空 workspace.task_id)
+DELETE /api/tasks/{id}                     — 删除(按 D13 事务级联清空 workspace.task_id)
 GET    /api/tasks?parent_workspace_id=...  — 列表(按 parent 过滤)
 ```
 
 `Task::create`、`update`、`delete` 在 `crates/db/src/models/task.rs` 中按 `workspace.rs` 现有模式新增。
+
+**D13(新增)— `delete_task` 级联一致性方案:应用层事务 UPDATE-then-DELETE。**
+
+代码核查发现:当前 schema 中 `workspace.task_id` **没有** `ON DELETE` 外键约束(FK 在早期迁移中被移除,用应用层关系替代)。这意味着 `DELETE FROM tasks WHERE id = ?` 会留下 dangling `workspace.task_id`,后续 `list_workspaces(task_id=X)` 行为不定义。
+
+选三条路径之一:
+
+| 方案 | 优点 | 缺点 |
+|-----|------|------|
+| (a) 加回 `ON DELETE SET NULL` FK 迁移 | DB 层强一致 | 需要 schema 迁移 + 对已存 dangling 数据做清洗;与当前"应用层关系"架构走向相反 |
+| **(b) 应用层事务 UPDATE-then-DELETE** | 不改 schema;语义清晰;可读性高 | 依赖代码纪律(必须走 `Task::delete` 而非裸 SQL) |
+| (c) 拒绝删除有关联 workspace 的 task | 最简单 | 把清理负担推给 manager,违反 D9 的"用户主动路径由用户决定"原则 |
+
+**选 (b)**。理由:与 VK 当前"关系交给应用层管理"的设计一致;迁移风险为零;`Task::delete` 是唯一入口(MCP 与 REST 都走它),代码纪律成本可控。
+
+```rust
+// crates/db/src/models/task.rs
+impl Task {
+    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
+        let mut tx = pool.begin().await?;
+        sqlx::query!("UPDATE workspaces SET task_id = NULL WHERE task_id = ?", id)
+            .execute(&mut *tx).await?;
+        sqlx::query!("DELETE FROM tasks WHERE id = ?", id)
+            .execute(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+}
+```
+
+副作用:子 workspace 在 task 删除后变成 standalone(不再出现在 manager `list_tasks` 下),其自身历史保留。manager 应在 `delete_task` 前自行决定是否也 archive workspace。
+
+**事务化 helper 抽取(为 `/api/tasks/start` 服务)**
+
+当前 workspace 创建流程是 handler 层顺序调用多个服务方法,**不在** 单一 DB 事务中(见 `crates/server/src/routes/workspaces/create.rs`)。D6 规定只在新的 `/api/tasks/start` 提供原子性,因此新增一个纯 DB 层 helper:
+
+```rust
+// crates/services/src/services/workspace.rs(新函数)
+pub async fn create_in_tx(
+    tx: &mut Transaction<'_, Sqlite>,
+    params: WorkspaceCreateParams,
+) -> Result<Workspace, ServiceError>
+```
+
+`create_in_tx` 只做 DB 写(Workspace row + repo attaches + `task_id` 关联),**不** spawn agent 进程。`/api/tasks/start` handler:
+
+```
+1. tx = pool.begin()
+2. Task::create_in_tx(&mut tx, task_params)
+3. Workspace::create_in_tx(&mut tx, workspace_params, task_id = Some(t.id))
+4. tx.commit()            ← 此前任何一步失败都干净回滚
+5. ContainerService::start_execution(workspace.id)   ← 只有 commit 后才 spawn
+```
+
+旧的 `/api/workspaces/start` 保持现状(D6 明确 out-of-scope),但 `create_in_tx` 会作为新的权威 DB 层入口,后续若补齐旧路径也有基础。
 
 **服务端:复合 endpoint — 原子的 create-and-start**
 
@@ -329,43 +418,72 @@ list_workspaces(..., task_id?)      // 加 task_id filter(`crates/mcp/src/task_s
 
 **D9 — `create_and_start_task` 不需要 manager 端补偿**(由 D6 的服务端事务覆盖)。两步路径(`create_task` 然后 `start_workspace(task_id=...)`)如果 `start_workspace` 失败,manager 可以选择重试或调用 `update_task_status(task_id, Cancelled)` — 不自动清理。可接受:用户主动选了两步路径,恢复语义由用户决定。
 
-**D12(新增,阻塞性)— Orchestrator 模式 scope 放宽:允许访问自己派生的 children。**
+**D12(阻塞性)— Orchestrator 模式 scope 放宽:允许访问自己派生的 children。**
 
-`scope_allows_workspace`(`crates/mcp/src/task_server/tools/mod.rs:322`)目前在 Orchestrator 模式下严格拒绝任何 scope 外 workspace。这会挡住 manager 调用 `get_execution(child_execution_id)`、`read_session_messages(child_workspace_id)` 等所有跨 workspace 的操作。
+`scope_allows_workspace`(`crates/mcp/src/task_server/tools/mod.rs:322-337`)目前在 Orchestrator 模式下严格拒绝任何 scope 外 workspace。这会挡住 manager 调用 `get_execution(child_execution_id)`、`read_session_messages(child_workspace_id)` 等所有跨 workspace 的操作。
 
 放宽规则:在 Orchestrator 模式下,如果 target workspace `t` 满足以下任一条件,允许通过:
 
 1. `t.id == scoped_workspace_id`(原有规则)
 2. `t.task_id IS NOT NULL` AND `Task[t.task_id].parent_workspace_id == scoped_workspace_id`(新规则:t 是 scoped workspace 派生的 child)
 
-实现需要在 MCP server 的 context 中持有 db 句柄(已经有,通过 `client.get(/api/tasks/...)` 访问)。检查变成异步 — 重命名 `scope_allows_workspace` → `check_scope_allows_workspace`(异步)。
+**实现路径 — 走 HTTP,不在 MCP crate 引入 db 句柄。**
 
-调用方影响:所有现有 `scope_allows_workspace` 调用点(7 处,在 `workspaces.rs` 和 `sessions.rs`)改为 `.await`。
+代码核查发现:`McpServer`(`crates/mcp/`)没有持有 `SqlitePool`;它通过 HTTP client 向 server 发请求。把 db 句柄塞进 MCP crate 会破坏现有的 MCP→server 单向依赖契约,且 MCP 目前依赖 `db` 只是为了模型类型,而不是连接池。
 
-**安全语义**:manager A 不能访问 manager B 派生的 children。manager A 能访问 A 自己派生的所有层级(目前只支持一层,不需要递归)。Standalone(非 Orchestrator)模式行为不变。
+因此 scope 检查通过 HTTP 两次查询完成:
+
+```rust
+// crates/mcp/src/task_server/tools/mod.rs(改造后)
+pub async fn check_scope_allows_workspace(
+    ctx: &ServerContext,
+    target: Uuid,
+) -> bool {
+    let Some(scoped) = ctx.scoped_workspace_id else { return true; };
+    if target == scoped { return true; }
+    // 放宽规则 2:target 是 scoped 的 child?
+    let Ok(ws) = ctx.client.get_workspace(target).await else { return false; };
+    let Some(task_id) = ws.task_id else { return false; };
+    let Ok(task) = ctx.client.get_task(task_id).await else { return false; };
+    task.parent_workspace_id == Some(scoped)
+}
+```
+
+两次 HTTP RTT(workspace + task)在 LLM tool-loop 节奏下约 10 ms,可忽略。**缓存:** 单次 tool call 生命周期内用 `HashMap<Uuid, bool>` memoize(例如 `get_execution(w)` → 在跨 workspace 检查后,`workspace_id` 已经解析过一次,不再重复查)。**不做** 进程级全局缓存:避免 task 删除/重父后 TTL 问题,本 PR 保守。
+
+**调用方影响:** 所有现有 `scope_allows_workspace` 调用点改为 `.await`。代码核查实际共 **8 处生产调用 + 1 处测试调用**(`workspaces.rs` 与 `sessions.rs` 中),全部改为异步。函数重命名 `scope_allows_workspace` → `check_scope_allows_workspace` 以反映语义(网络调用不再是纯函数)。
+
+**安全语义:** manager A 不能访问 manager B 派生的 children。manager A 能访问 A 自己直接派生的 child(目前只支持一层,不支持 manager → child → grandchild 递归;见 §10 D12 翻转条目)。Standalone(非 Orchestrator)模式行为不变。
 
 ### 6.3 PR 边界
 
-- `crates/db/src/models/task.rs` — `create`、`update`、`delete` 方法
+- `crates/db/src/models/task.rs` — `create`、`update`、`delete`(D13 事务实现)、`create_in_tx` 方法
+- `crates/db/src/models/workspace.rs` — `create_in_tx` 方法(从现有 `create` 抽取 DB 部分)
+- `crates/services/src/services/workspace.rs` — `create_in_tx(tx, params)` 纯 DB helper;`start_execution` 不变,保留给 handler 在 commit 后调用
 - `crates/server/src/routes/tasks/`(新模块)— CRUD 路由 + `/start` 复合 + 并发检查
 - `crates/server/src/routes/mod.rs` — wire `tasks::router()`
 - `crates/services/src/services/task_concurrency.rs`(新)— 计数器 + 上限检查(独立提取以便测试)
 - `crates/mcp/src/task_server/tools/tasks.rs`(新)— 5 个新 tool
 - `crates/mcp/src/task_server/tools/task_attempts.rs` — 给 `start_workspace` 加可选 `task_id`
 - `crates/mcp/src/task_server/tools/workspaces.rs` — 给 `list_workspaces` 加可选 `task_id` filter;给 `WorkspaceSummary` 加 `task_id: Option<String>` 字段
-- `crates/mcp/src/task_server/tools/mod.rs` — `scope_allows_workspace` 改为 async,加 D12 的 parent-child 关系检查
+- `crates/mcp/src/task_server/tools/mod.rs` — `scope_allows_workspace` 改为 async(`check_scope_allows_workspace`)+ 加 D12 的 parent-child 关系检查(通过 HTTP,memoize 至 tool-call 生命周期内);全部 8 处生产 + 1 处测试调用点改 `.await`
+- `crates/mcp/src/task_server/http_client.rs`(或等价位置)— 新增 `get_workspace(uuid)` / `get_task(uuid)` 方法,供 D12 检查使用
 - `crates/mcp/src/task_server/mod.rs` — 注册新 tool router
 - `crates/api-types/src/lib.rs` — `TaskCreate`、`TaskUpdate`、`CreateAndStartTaskRequest`、`CreateAndStartTaskResponse`
 - `shared/types.ts` 重新生成
 - 测试:
   - 单元:`Task::create` / `update` / `delete` 主路径 + 约束违反
+  - 单元:**D13 级联** — delete 有关联 workspace 的 task,断言 workspace 存活且 `task_id IS NULL`
+  - 单元:**D13 事务回滚** — 模拟 workspace UPDATE 失败,断言 task 未被删除
   - 单元:并发检查在 `MAX_CHILDREN_PER_PARENT + 1` 时返回 429
-  - 单元:scope 检查 — manager 访问自己 child 通过、访问别人 child 被拒
+  - 单元:scope 检查 — manager 访问自己 child 通过、访问别人 child 被拒、非 Orchestrator 模式行为不变
+  - 单元:scope 检查 memoize — 同一 tool call 内对同一 target 重复检查只发一次 HTTP
   - 集成:`POST /api/tasks/start` 用故意错误的 `repo_id` → 没有 Task 行残留(事务回滚)
+  - 集成:`POST /api/tasks/start` 成功路径 → Task + Workspace + 关联都存在,execution_id 已派生
   - 集成:派生 6 个 child 当 `MAX = 5` → 第 6 个收到 `parent_concurrency_exceeded`
   - 集成:Orchestrator 模式 manager 访问自己派生的 child 的 `get_execution` 不被拒
 
-预估 diff:~900 LOC(含 D12 的 scope 改造)。
+预估 diff:~1100 LOC(含 D12 scope 改造 + D13 事务 + `create_in_tx` helper 抽取)。
 
 ---
 
@@ -430,10 +548,11 @@ Tier A++ 创建了丰富的数据(manager workspace → tasks → child workspac
 
 - `ApiResponse.error` 是 `#[serde(skip_serializing_if = "Option::is_none")]` → 现有客户端无感知。
 - 所有新 MCP tool 是叠加的。`start_workspace` 加的是 *可选* `task_id` — 不破坏。
-- `get_execution` 响应字段:`status` 类型从 `String` 升级为 `ExecutionProcessStatus` enum — **不完全向后兼容**(序列化值实际相同,但 TS 客户端如果之前手写了 `status: string` 类型会需要改)。`shared/types.ts` regen 后 TS 端会自动正确。
+- `get_execution` 响应字段:`status` 类型从 `String` 升级为 `ExecutionProcessStatus` enum — **wire 格式不变**。`ExecutionProcessStatus` 使用 `#[serde(rename_all = "lowercase")]`(`crates/db/src/models/execution_process.rs:39-48`),序列化字节与此前 `String` 标签完全相同(`"running"` / `"completed"` / `"failed"` / `"killed"`)。TS 端 regen 后从 `string` 变为 union literal,属于类型收窄而非破坏。
 - `error` 字段新增,`final_message` 行为不变(仍 `None`)。
 - Task CRUD endpoint 是净新增 — 现有客户端无影响。
 - UI 改动是叠加的(新 breadcrumb 组件、新可选开关)。
+- D13 的 `Task::delete` 级联:旧行为是 leaf delete 留下 dangling `task_id`;新行为是清理关联。旧客户端如果依赖 dangling 状态(无) — 不存在,因此净收益。
 
 ### 8.4 Push gate 合规
 
@@ -449,14 +568,16 @@ Tier A++ 创建了丰富的数据(manager workspace → tasks → child workspac
 | D2  | 5 个 canonical `kind`,不是 13 个;后续按需细分                                    | 接受     |
 | D3  | `read_session_messages` 默认 `last_n = 20`                                       | 接受     |
 | D4  | `final_assistant_message` 是顶层便利字段,完整文本                                | 接受     |
-| D5  | `include_reasoning = false` 默认关闭,控制 token 成本                             | 接受     |
+| D5  | `include_thinking = false` 默认关闭,控制 token 成本(命名对齐 VK 内部 `NormalizedEntryType::Thinking`) | 接受     |
 | D6  | 仅在新 `/api/tasks/start` 用 DB 事务原子 — 不改造现有 endpoint                    | 接受     |
 | D7  | 并发上限在服务端强制,不在 MCP 端                                                 | 接受     |
 | D8  | `list_tasks` 默认按调用方 workspace 的 parent scope 过滤                          | 接受     |
 | D9  | 两步路径(`create_task` + `start_workspace`)失败不自动清理                       | 接受     |
 | D10 | UI 在本期只读;编辑 UI 延后                                                       | 接受     |
 | D11 | `GetExecutionResponse.final_message` 保持 `None`;消息读取唯一渠道是 `read_session_messages` | 接受     |
-| D12 | Orchestrator 模式 scope 放宽:manager 可访问自己派生的 children(通过 task.parent_workspace_id 关系) | 接受     |
+| D12 | Orchestrator 模式 scope 放宽:manager 可访问自己派生的 children(通过 HTTP 两次查询,memoize 至单次 tool-call 生命周期) | 接受     |
+| D13 | `Task::delete` 级联:应用层事务 UPDATE-then-DELETE,不改 FK schema    | 接受     |
+| D5a | `NormalizedEntryType::{Loading, TokenUsageInfo, NextAction, UserAnsweredQuestions}` 永久过滤,不出现在 `read_session_messages` 输出中 | 接受     |
 
 ---
 
@@ -466,9 +587,11 @@ Tier A++ 创建了丰富的数据(manager workspace → tasks → child workspac
 
 - **D2** — 5 个 `kind` 如果你有具体消费者要求 `auth_required` 再细分,可能太粗。容易扩展。
 - **D3** — `last_n = 20` 如果你的 manager prompt 期望长 final 消息带中间摘要,可能太小。已经支持 per-call 调整。
-- **D6** — 接受 *其他* endpoint 的 orphan window 不修是有意取舍;如果你要全服务端原子性,那是个更大的 PR。
+- **D5a** — 如果 manager 需要 `TokenUsageInfo` 做成本统计,可以把"永久过滤"改成"由参数控制"(例如 `include_meta_entries`)。目前无需求。
+- **D6** — 接受 *其他* endpoint 的 orphan window 不修是有意取舍;如果你要全服务端原子性,那是个更大的 PR。`create_in_tx` helper 已经铺好路,后续补齐成本低。
 - **D10** — 只读 UI 意味着人类无法通过 UI 改 manager 创建的 task 标题。如果 manager 起错名,只能再走 MCP。v1 可接受。
-- **D12** — scope 放宽规则只支持一层(manager 直系 child),不支持递归(manager → child → grandchild)。如果要多层编排,放宽规则要递归查 task chain。本期不做。
+- **D12** — scope 放宽规则只支持一层(manager 直系 child),不支持递归(manager → child → grandchild)。如果要多层编排,放宽规则要递归查 task chain。本期不做。**另一轴:** 若未来 MCP 需要在毫秒内频繁检查 scope(例如高频率 tool call),可以考虑把 MCP 直连 db,此时 D12 的 HTTP 路径会变成 in-process 查询;目前 LLM 节奏下无此压力。
+- **D13** — 如果你希望 "删除 task 保留 workspace 作为孤儿但带有历史引用",当前级联会清空 `task_id`。可以改成"仅 archive task 不物理删除",但会引入新的 archival 状态字段,超出本期。
 
 如果以上无需翻转,ack spec 即可进入 writing-plans。
 
@@ -523,6 +646,6 @@ Tier A++ 创建了丰富的数据(manager workspace → tasks → child workspac
 | PR    | 文件 |
 |-------|------|
 | PR-X1 | `crates/utils/src/response.rs`、`crates/server/src/error.rs`、`crates/services/src/services/container.rs`、`crates/server/src/routes/sessions/mod.rs`、`crates/server/src/routes/workspaces/create.rs`、`crates/mcp/src/task_server/tools/sessions.rs`、`shared/types.ts`(重生) |
-| PR-X2 | `crates/mcp/src/task_server/tools/sessions.rs`、`crates/server/src/routes/sessions/mod.rs`、`shared/types.ts`(重生) |
-| PR-X3 | `crates/db/src/models/task.rs`、`crates/server/src/routes/tasks/`(新)、`crates/server/src/routes/mod.rs`、`crates/services/src/services/task_concurrency.rs`(新)、`crates/mcp/src/task_server/tools/tasks.rs`(新)、`crates/mcp/src/task_server/tools/task_attempts.rs`(extend `start_workspace`)、`crates/mcp/src/task_server/tools/workspaces.rs`(extend `list_workspaces` + `WorkspaceSummary`)、`crates/mcp/src/task_server/tools/mod.rs`(`scope_allows_workspace` 改 async + 放宽规则)、`crates/mcp/src/task_server/mod.rs`、`crates/api-types/src/lib.rs`、`shared/types.ts`(重生) |
+| PR-X2 | `crates/mcp/src/task_server/tools/sessions.rs`、`crates/server/src/routes/sessions/mod.rs`、`crates/executors/src/logs/mod.rs`(可能:`NormalizedEntryType` discriminant serde 调整)、`shared/types.ts`(重生) |
+| PR-X3 | `crates/db/src/models/task.rs`(含 D13 事务 delete、`create_in_tx`)、`crates/db/src/models/workspace.rs`(`create_in_tx` 抽取)、`crates/services/src/services/workspace.rs`(`create_in_tx` helper)、`crates/server/src/routes/tasks/`(新)、`crates/server/src/routes/mod.rs`、`crates/services/src/services/task_concurrency.rs`(新)、`crates/mcp/src/task_server/tools/tasks.rs`(新)、`crates/mcp/src/task_server/tools/task_attempts.rs`(extend `start_workspace`)、`crates/mcp/src/task_server/tools/workspaces.rs`(extend `list_workspaces` + `WorkspaceSummary`)、`crates/mcp/src/task_server/tools/mod.rs`(`scope_allows_workspace` → `check_scope_allows_workspace`,async + HTTP 放宽规则 + memoize;8 处生产 + 1 处测试调用点改 `.await`)、`crates/mcp/src/task_server/http_client.rs`(新增 `get_workspace` / `get_task`)、`crates/mcp/src/task_server/mod.rs`、`crates/api-types/src/lib.rs`、`shared/types.ts`(重生) |
 | PR-X4 | `packages/web-core/src/api/tasks.ts`(新)、`packages/web-core/src/hooks/useTaskBreadcrumb.ts`(新)、`packages/web-core/src/components/WorkspaceBreadcrumb.tsx`(新)、`packages/web-core/src/components/WorkspaceList.tsx`、`packages/local-web/src/...`(把 breadcrumb 接入现有详情页) |
