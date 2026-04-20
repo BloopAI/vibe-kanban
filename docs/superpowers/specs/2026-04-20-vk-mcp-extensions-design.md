@@ -1,84 +1,88 @@
-# VK MCP Orchestration Extensions — Master Design
+# VK MCP 编排能力扩展 — 主设计文档
 
-**Status:** Draft v2 (Tier A++ — supersedes v1)
-**Date:** 2026-04-20
-**Author:** Claude (with phuongmumma35@hotmail.com)
-**Predecessor:** PR #merged `0095e565` "MCP error transparency" (PR1 — extended `ApiResponseEnvelope` with `error_kind` + classifier on the MCP-deserialize side)
+**状态:** Draft v3(中文版,修正了 v2 的 5 个技术 claim 错误 + 新增 1 个阻塞性问题处理)
+**日期:** 2026-04-20
+**作者:** Claude(协作:phuongmumma35@hotmail.com)
+**前置 PR:** `0095e565` "MCP error transparency"(PR1 — 在 MCP 反序列化侧扩展了 `ApiResponseEnvelope.error_kind` + 分类器)
 
 ---
 
-## 1. Goal
+## 1. 目标
 
-Enable **session-spawning-sessions** orchestration on Vibe Kanban: a *manager* MCP session can create persistent todo items and spawn child sessions to execute them, observe each child's status and output, and aggregate results.
+让 Vibe Kanban 支持 **会话派生会话** 的编排模式:一个 *manager* MCP 会话能创建持久化 todo 项、派生 child 会话执行它们、观测每个 child 的状态和产出、聚合结果。
 
-Concretely, a manager prompt should be able to:
+具体来说,manager 的 prompt 应该能够:
 
-1. Create N persistent todos (visible in the VK UI, survives restarts).
-2. Spawn one or more child workspaces per todo.
-3. Poll child status with structured error info.
-4. Read child session output without overflowing manager context.
-5. Update todo status as children complete.
+1. 创建 N 个持久化 todo(在 VK UI 中可见,会话重启后仍存在)
+2. 为每个 todo 派生一个或多个 child workspace
+3. 轮询 child 状态,带结构化错误信息
+4. 读取 child 会话产出而不撑爆 manager context
+5. 当 child 完成时更新 todo 状态
 
-The current MCP surface supports step 2 only. Steps 1, 3, 4, 5 are blocked by missing or half-built capabilities.
+当前的 MCP 表面只支持步骤 2。步骤 1、3、4、5 都被缺失或半成品的能力阻塞。
 
-## 2. Background — current friction
+## 2. 背景 — 当前的摩擦
 
-The Vibe Kanban MCP server (`crates/mcp/`) exposes 22 tools today (workspace start, session follow-up, issue/repo/project queries, etc.). Four gaps block the orchestration loop:
+VK MCP 服务(`crates/mcp/`)目前暴露 22 个 tool(workspace 启动、session 跟进、issue/repo/project 查询等)。有四个 gap 阻塞编排闭环:
 
-1. **Opaque executor failures.** PR1 plumbed `error_kind` *through* the MCP layer, but the server still buckets all `ExecutorError` variants as `ErrorInfo::internal("ExecutorError")` (`crates/server/src/error.rs:498`). Manager has no machine-readable signal to branch on (retry? abort? ask human?).
-2. **No way to read child session output.** The MCP `get_execution` tool returns metadata only; `final_message` is hard-coded `None` (`crates/mcp/src/task_server/tools/sessions.rs:354`). Manager can spawn a child but cannot extract its results.
-3. **Task entity is half-built.** `db::models::task::Task` exists with `parent_workspace_id` and `status` fields and is referenced by `Workspace.task_id`, but only `find_all` / `find_by_id` are implemented. No CRUD endpoint, no MCP wiring. Manager has nowhere to persist its todo list.
-4. **No UI surface for manager-spawned tasks.** Even when the data exists, an observer cannot trace "which manager spawned which workspace via which task". Debugging orchestration failures becomes impossible.
+1. **executor 失败不透明。** PR1 在 MCP 层 *透传* 了 `error_kind`,但服务端仍把所有 `ExecutorError` 变体桶到 `ErrorInfo::internal("ExecutorError")`(`crates/server/src/error.rs:498`)。manager 没有可机器识别的信号去分支(重试?放弃?叫人?)。
+2. **没法读 child 会话产出。** MCP `get_execution` tool 仅返回元数据;`final_message` 字段被硬编码为 `None`(`crates/mcp/src/task_server/tools/sessions.rs:354`)。manager 能派生 child,但拿不到结果。
+3. **Task entity 半成品。** `db::models::task::Task` 有 `parent_workspace_id` 和 `status` 字段,且被 `Workspace.task_id` 引用,但只有 `find_all` / `find_by_id`。没有 CRUD endpoint,没有 MCP wiring。manager 无处持久化 todo 列表。
+4. **没有 UI 入口展示 manager 派生的 task 树。** 即便数据存在,观察者也无法追溯"哪个 manager 通过哪个 task 派生了哪个 workspace"。debug 编排失败几乎不可能。
 
-## 3. Scope — Tier A++ (4 PRs)
+**额外的阻塞性问题(v2 漏了):**
+
+5. **Orchestrator 模式 scope 检查会挡住 manager → child 访问。** `scope_allows_workspace`(`crates/mcp/src/task_server/tools/mod.rs:322-337`)在 Orchestrator 模式下严格拒绝 scope 外的 workspace。manager scope 是自己,child workspace 是别的 ID,所以 `get_execution(child)` 会被直接拒绝。**必须放宽 scope 规则**让 manager 能访问自己派生的 children(见 D11)。
+
+## 3. Scope — Tier A++(4 个 PR)
 
 ### In scope
 
-| PR  | Theme                              | Server | MCP | UI |
-|-----|------------------------------------|--------|-----|----|
-| **PR-X1** | Error transparency           | ✓      | ✓   |    |
-| **PR-X2** | Read child session output    |        | ✓   |    |
-| **PR-X3** | Task entity + composite tool + concurrency | ✓ | ✓ |  |
-| **PR-X4** | UI surface for task tree     |        |     | ✓  |
+| PR  | 主题                              | Server | MCP | UI |
+|-----|----------------------------------|--------|-----|----|
+| **PR-X1** | 错误透明                    | ✓      | ✓   |    |
+| **PR-X2** | 读 child 会话产出           |        | ✓   |    |
+| **PR-X3** | Task entity + 复合 tool + 并发护栏 + scope 放宽 | ✓ | ✓ |  |
+| **PR-X4** | UI 展示 task 树             |        |     | ✓  |
 
 ### Out of scope
 
-- MCP transport stability / heartbeat / reconnect (no concrete symptom yet — defer until reported).
-- `batch_start` MCP tool (LLM tool-loop is naturally serial; per-parent concurrency limit in PR-X3 provides the back-pressure manager needs).
-- SSE-based push subscription (`subscribe_session_events`) — polling `get_execution` is sufficient at LLM cadence.
-- Project-level tag CRUD MCP wiring — independent feature, defer.
-- Retrofitting the existing `/api/workspaces/start` + `/api/workspaces/{id}/links` two-call flow with a server-side transaction. The new `/api/tasks/start` endpoint in PR-X3 *is* atomic; the legacy two-call path remains as-is and is left to caller-side handling.
-- Multi-level task nesting (Task → Task). Only Workspace → Task → Workspace is supported.
-- Authentication / authorization changes.
-- Remote (`crates/remote`) crate changes — local-deployment only.
+- MCP 传输稳定性 / 心跳 / 重连(暂无具体故障症状,延后)
+- `batch_start` MCP tool(LLM 的 tool-loop 本身就是串行的;PR-X3 的 per-parent 并发上限提供 manager 需要的反压)
+- SSE 推送订阅(`subscribe_session_events`)— LLM 节奏下轮询 `get_execution` 完全够
+- 项目级标签 CRUD MCP wiring — 独立功能,延后
+- 给现有的 `/api/workspaces/start` + `/api/workspaces/{id}/links` 两步流程加服务端事务包装。新的 `/api/tasks/start` 是原子的;旧的两步路径保持现状,留给调用方处理
+- 多层 task 嵌套(Task → Task)。只支持 Workspace → Task → Workspace
+- 鉴权 / 授权变化
+- 远程(`crates/remote`)crate 的改动 — 只针对 local-deployment
 
-### Dependency order
+### 依赖顺序
 
 ```
-PR-X1 (error_kind object + stderr tail + get_execution status)
-  ↓ shape consumed by
-PR-X2 (read_session_messages)
-  ↓ independent
-PR-X3 (Task CRUD + create_and_start_task + concurrency limit)
-  ↓ data model consumed by
-PR-X4 (UI breadcrumb + grouping)
+PR-X1(error envelope + stderr tail + get_execution 字段升级)
+  ↓ 数据形状被消费
+PR-X2(read_session_messages)
+  ↓ 独立
+PR-X3(Task CRUD + create_and_start_task + 并发上限 + scope 放宽)
+  ↓ 数据模型被消费
+PR-X4(UI breadcrumb + 分组)
 ```
 
-PRs land in the order X1 → X2 → X3 → X4. X2 can run in parallel with X3 if convenient.
+合并顺序:X1 → X2 → X3 → X4。X2 和 X3 可并行分支。
 
 ---
 
-## 4. PR-X1 — Error transparency
+## 4. PR-X1 — 错误透明
 
-### 4.1 Problem
+### 4.1 问题
 
-`ApiError::Executor(_)` collapses every `ExecutorError` variant to a single 500. PR1 added `error_kind` to the MCP-side `ApiResponseEnvelope` but the server's `ApiResponse<T,E>` (`crates/utils/src/response.rs:5`) still has only `{success, data, error_data, message}`. Manager receives `success: false` plus a free-text message and cannot programmatically decide what to do.
+`ApiError::Executor(_)` 把所有 `ExecutorError` 变体折叠成单一 500。PR1 在 MCP 侧的 `ApiResponseEnvelope` 加了 `error_kind`,但服务端的 `ApiResponse<T,E>`(`crates/utils/src/response.rs:5`)仍然只有 `{success, data, error_data, message}`。manager 收到 `success: false` + 一段自由文本 message,无法编程决定下一步做什么。
 
-### 4.2 Design
+### 4.2 设计
 
-**Server: `crates/utils/src/response.rs`**
+**服务端:`crates/utils/src/response.rs`**
 
-Add an `error` object (replaces flat `error_kind` from earlier draft) carrying everything a manager needs to branch on:
+新增 `error` 对象(替代之前草案里的扁平 `error_kind`),携带 manager 分支需要的全部信息:
 
 ```rust
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -93,120 +97,128 @@ pub struct ApiResponse<T, E = T> {
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct ApiErrorEnvelope {
-    /// Stable machine-readable kind. Manager switches on this.
+    /// 稳定的机器可读 kind。manager 据此分支。
     pub kind: String,
-    /// True if the same request can be retried unchanged.
+    /// 是否可以原样重试。
     pub retryable: bool,
-    /// True if no automated retry will help (auth, missing binary, etc.).
+    /// 自动重试是否无效(认证失败、缺二进制等)。
     pub human_intervention_required: bool,
-    /// Optional last 2 KiB of executor stderr for diagnostic surfacing.
+    /// executor stderr 的最后 2 KiB,用于诊断展示。
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stderr_tail: Option<String>,
-    /// Optional executor program name (e.g. "claude", "codex").
+    /// executor 程序名(如 "claude"、"codex")。
     #[serde(skip_serializing_if = "Option::is_none")]
     pub program: Option<String>,
 }
 ```
 
-**Server: `crates/server/src/error.rs`**
+**服务端:`crates/server/src/error.rs`**
 
-`ErrorInfo` gains `error: ApiErrorEnvelope`. The collapsed line 498 expands to a 5-kind taxonomy (deliberately small — extend later if a real consumer needs more granularity):
+`ErrorInfo` 新增 `error: ApiErrorEnvelope`。被折叠的 line 498 展开为 5-kind 分类(刻意保持小;后续真有消费者再细分):
 
-| `kind`                       | HTTP | `ExecutorError` source                              | retryable | human_intervention |
-|------------------------------|------|-----------------------------------------------------|-----------|--------------------|
-| `executor_not_found`         | 500  | `ExecutableNotFound`                                | false     | true               |
-| `auth_required`              | 500  | `AuthRequired`                                      | false     | true               |
-| `follow_up_not_supported`    | 500  | `FollowUpNotSupported`                              | false     | false              |
-| `spawn_failed`               | 500  | `SpawnError` / `Io` / others not above              | true      | false              |
-| `internal`                   | 500  | catch-all + non-executor errors                     | true      | false              |
+| `kind`                       | HTTP | `ExecutorError` 来源                                | retryable | human_intervention |
+|------------------------------|------|----------------------------------------------------|-----------|--------------------|
+| `executor_not_found`         | 500  | `ExecutableNotFound`                               | false     | true               |
+| `auth_required`              | 500  | `AuthRequired`                                     | false     | true               |
+| `follow_up_not_supported`    | 500  | `FollowUpNotSupported`                             | false     | false              |
+| `spawn_failed`               | 500  | `SpawnError` / `Io` / 其他未列出的                  | true      | false              |
+| `internal`                   | 500  | catch-all + 非 executor 类错误                      | true      | false              |
 
-**D1 — HTTP status stays 500 for all executor errors.** Manager switches on `error.kind`, not status code. Re-mapping to 401/424/409 changes the wire contract for existing clients with no benefit.
+**D1 — executor 错误统一保持 HTTP 500。** manager 通过 `error.kind` 分支,而不是 status code。改成 401/424/409 会破坏现有客户端契约,收益为零。
 
-**D2 — Five kinds, not thirteen.** A small canonical set is easier to switch on. Other `ExecutorError` variants (`Json`, `TomlSerialize`, `CommandBuild`, etc.) map to `internal` until a real consumer needs them split out. Forward-compatible because `kind` is a string.
+**D2 — 5 个 kind 而不是 13 个。** 小集合更易于 switch。其他 `ExecutorError` 变体(`Json`、`TomlSerialize`、`CommandBuild` 等)统一映射到 `internal`,直到真有消费者要求细分。`kind` 是字符串,前向兼容。
 
-**Stderr tail capture (`crates/services/src/services/container.rs`)**
+**stderr tail 捕获(`crates/services/src/services/container.rs`)**
 
-`ContainerService::start_execution` writes failures to `MsgStore` via `LogMsg::Stderr` but route handlers never see it. Add:
+`ContainerService::start_execution`(`crates/services/src/services/container.rs:1133`)把失败写到 `MsgStore` 的 `LogMsg::Stderr`,但路由 handler 看不到。新增:
 
 ```rust
 pub struct ExecutorFailureContext {
     pub error: ExecutorError,
-    pub stderr_tail: Option<String>,   // ≤ 2048 bytes UTF-8, left-truncated with "…" prefix
+    pub stderr_tail: Option<String>,   // ≤ 2048 字节 UTF-8,左侧用 "…" 截断
     pub program: Option<String>,
 }
 ```
 
-`ApiError::Executor` becomes `Executor { source: ExecutorError, context: Option<ExecutorFailureContext> }`. A custom `From<ExecutorError>` keeps the `?` operator working with `context: None`.
+`ApiError::Executor` 变成 `Executor { source: ExecutorError, context: Option<ExecutorFailureContext> }`。自定义 `From<ExecutorError>` 让 `?` 操作符在 `context: None` 的情况下继续工作。
 
-**Enhance `get_execution` MCP tool**
+**升级 `get_execution` MCP tool**
 
-Today `get_execution` returns metadata. Extend its response with `status: ExecutionProcessStatus` (already exists in db) and the same `error` envelope shape when status is `Failed`:
+> ⚠️ **v2 修正**:`get_execution` 已经返回 `status`(string label,见 `sessions.rs:351`)和 `final_message: None`(line 354)。本 PR **不是新增 status 字段**,而是:
+> - 把现有 `status: String` 升级为 `status: ExecutionProcessStatus` enum(机器可识别)
+> - 新增 `error: Option<ApiErrorEnvelope>`(失败时填充)
+> - **保留** `final_message: None` 不动 — 由 PR-X2 的 `read_session_messages` 唯一负责读消息,避免双源维护(见 D11)
+
+升级后的响应:
 
 ```rust
 struct GetExecutionResponse {
-    workspace_id: String,
     execution_id: String,
-    status: ExecutionProcessStatus,                  // Running | Completed | Failed | Killed
-    started_at: String,
-    finished_at: Option<String>,
-    error: Option<ApiErrorEnvelope>,                 // populated when status == Failed
+    session_id: String,
+    status: ExecutionProcessStatus,                  // Running | Completed | Failed | Killed(从 string 升级)
+    is_finished: bool,
+    execution: serde_json::Value,                    // 现有完整序列化保留
+    error: Option<ApiErrorEnvelope>,                 // 新增,status == Failed 时填充
+    final_message: Option<String>,                   // 保持 None;manager 应改用 read_session_messages
 }
 ```
 
-Manager polls `get_execution`; when `status` is terminal it knows to stop polling and (if Failed) read `error.retryable` / `error.human_intervention_required`.
+输入仍然是 `execution_id`(不是 workspace_id)。
 
-### 4.3 PR boundary
+manager 轮询 `get_execution`;`status` 进入终态时停止轮询,失败时读 `error.retryable` / `error.human_intervention_required`。
 
-- `crates/utils/src/response.rs` — `ApiErrorEnvelope`, `ApiResponse.error` field
-- `crates/server/src/error.rs` — `ErrorInfo.error`, expanded `ApiError::Executor` arm with 5-kind mapping; existing arms get `error.kind = error_type` and `retryable = true, human_intervention_required = false` defaults
-- `crates/services/src/services/container.rs` — `ExecutorFailureContext`, capture stderr tail in `start_execution`
-- `crates/server/src/routes/sessions/mod.rs` — `follow_up` handler propagates context
-- `crates/server/src/routes/workspaces/create.rs` — `create_and_start_workspace` handler propagates context
-- `crates/mcp/src/task_server/tools/sessions.rs` — `get_execution` returns `status` + `error`
-- `shared/types.ts` regen via `pnpm run generate-types`
-- Tests:
-  - Unit: `ApiResponse::error_full` round-trips `error` envelope
-  - Unit: each `ExecutorError` variant → expected `kind` + flags
-  - Integration: simulate `ExecutableNotFound` → `kind: "executor_not_found", retryable: false, human_intervention_required: true` + stderr tail
+### 4.3 PR 边界
 
-Expected diff: ~500 LOC including tests.
+- `crates/utils/src/response.rs` — `ApiErrorEnvelope`,`ApiResponse.error` 字段
+- `crates/server/src/error.rs` — `ErrorInfo.error`,展开 `ApiError::Executor` 分支为 5-kind 映射;现有其他分支默认 `error.kind = error_type`,`retryable = true`,`human_intervention_required = false`
+- `crates/services/src/services/container.rs` — `ExecutorFailureContext`,在 `start_execution` 中捕获 stderr tail
+- `crates/server/src/routes/sessions/mod.rs` — `follow_up` handler 透传 context
+- `crates/server/src/routes/workspaces/create.rs` — `create_and_start_workspace` handler 透传 context
+- `crates/mcp/src/task_server/tools/sessions.rs` — `get_execution` 升级 `status` 类型 + 新增 `error` 字段
+- `shared/types.ts` 通过 `pnpm run generate-types` 重新生成
+- 测试:
+  - 单元:`ApiResponse::error_full` 来回序列化 `error` envelope
+  - 单元:每个 `ExecutorError` 变体 → 期望的 `kind` + flags
+  - 集成:模拟 `ExecutableNotFound` → `kind: "executor_not_found"`、`retryable: false`、`human_intervention_required: true` + stderr tail
+
+预估 diff:~500 LOC(含测试)。
 
 ---
 
-## 5. PR-X2 — Read child session output
+## 5. PR-X2 — 读 child 会话产出
 
-### 5.1 Problem
+### 5.1 问题
 
-Manager spawns a child via `start_workspace`, polls until `status == Completed`, then needs to extract the result. `final_message: None` at `crates/mcp/src/task_server/tools/sessions.rs:354` is the dead end.
+manager 通过 `start_workspace` 派生 child,轮询直到 `status == Completed`,然后需要提取结果。`final_message: None` 在 `crates/mcp/src/task_server/tools/sessions.rs:354` 是死路。
 
-A naive "return the whole conversation" risks tens of thousands of tokens, blowing up the manager's context. Pagination + sensible defaults are mandatory.
+朴素的"返回完整对话"风险是几万 token,会撑爆 manager 的 context。分页 + 合理默认值是必须的。
 
-### 5.2 Design
+### 5.2 设计
 
-New MCP tool `read_session_messages`:
+新 MCP tool `read_session_messages`:
 
 ```rust
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct ReadSessionMessagesRequest {
-    #[schemars(description = "Workspace ID whose session to read.")]
+    #[schemars(description = "要读取会话所属的 workspace ID。")]
     workspace_id: Uuid,
-    #[schemars(description = "Number of messages to return from the tail. Default 20, max 200.")]
+    #[schemars(description = "从尾部返回多少条消息。默认 20,最大 200。")]
     last_n: Option<u32>,
-    #[schemars(description = "Zero-based start index to read from. Overrides `last_n` when set.")]
+    #[schemars(description = "从第几条开始读(0-based)。设了之后覆盖 last_n。")]
     from_index: Option<u32>,
-    #[schemars(description = "Include reasoning / thinking content. Default false to reduce token cost.")]
+    #[schemars(description = "是否包含 reasoning / thinking 内容。默认 false 以降低 token 成本。")]
     include_reasoning: Option<bool>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 struct ReadSessionMessagesResponse {
     messages: Vec<SessionMessage>,
-    /// Total messages in the session (not just returned).
+    /// 该会话的总消息数(不只是返回的窗口)。
     total_count: u32,
-    /// True if there are messages older than the returned window.
+    /// 是否还有比返回窗口更早的消息。
     has_more: bool,
-    /// Convenience: text of the last assistant message in the session (full, not truncated).
-    /// Most manager queries only need this — avoid parsing `messages` for the common case.
+    /// 便利字段:会话最后一条 assistant 消息的完整文本(不截断)。
+    /// 大多数 manager 查询只需要这个 — 不必扫描整个 messages 数组。
     final_assistant_message: Option<String>,
 }
 
@@ -215,58 +227,61 @@ struct SessionMessage {
     index: u32,
     role: String,                          // "user" | "assistant" | "tool" | "system"
     content: String,
-    tool_calls: Option<serde_json::Value>, // structured if present
+    tool_calls: Option<serde_json::Value>, // 有则结构化
     timestamp: String,                     // RFC3339
 }
 ```
 
-**D3 — Default `last_n = 20`.** Manager's typical query is "did the child succeed and what did it say last?". Twenty messages covers most final exchanges with reasonable token cost (~2-5 KB).
+**D3 — 默认 `last_n = 20`。** manager 的典型查询是"child 成功了吗、最后说了什么"。20 条覆盖大多数终态,token 成本约 2-5 KB。
 
-**D4 — `final_assistant_message` is a separate field.** 99% of manager queries are "what did the child conclude". Surfacing it directly avoids forcing every manager to scan the `messages` array. Full text, never truncated — managers depend on completeness here.
+**D4 — `final_assistant_message` 单独是顶层字段。** 99% 的 manager 查询只想要"child 最终说了什么"。直接 surface 它,不强迫每个 manager 解析 `messages` 数组。完整文本,不截断 — manager 在这里依赖完整性。
 
-**D5 — `include_reasoning = false` by default.** Reasoning blocks (Claude's thinking, etc.) can multiply token cost 3-10x. Off by default; manager opts in for deep debugging.
+**D5 — `include_reasoning = false` 默认关闭。** reasoning 块(Claude 的 thinking 等)能让 token 成本翻 3-10 倍。默认关;manager 深度调试时再打开。
 
-**Implementation:** the persisted message model is `CodingAgentTurn` (`crates/db/src/models/coding_agent_turn.rs:8`) with `find_by_execution_process_id` already available. Add a new server route `GET /api/sessions/{session_id}/messages?last_n=&from_index=&include_reasoning=` that returns the paginated payload above by joining the latest execution's turns. The MCP tool is a thin wrapper.
+**D11(新增)— `final_message` 字段策略:** PR-X1 升级后的 `GetExecutionResponse.final_message` 保持 `None`。manager 必须改用 `read_session_messages` 来读消息。理由:避免双数据源(get_execution 是元数据 + 状态,read_session_messages 是内容)同时维护。
 
-### 5.3 PR boundary
+**实现:** 持久化的消息模型是 `CodingAgentTurn`(`crates/db/src/models/coding_agent_turn.rs:8`),已有 `find_by_execution_process_id`。新增服务端路由 `GET /api/sessions/{session_id}/messages?last_n=&from_index=&include_reasoning=`,通过 join 最新 execution 的 turns 返回上面的分页 payload。MCP tool 是薄包装。
 
-- `crates/mcp/src/task_server/tools/sessions.rs` — new tool `read_session_messages`
-- `crates/server/src/routes/sessions/mod.rs` — new `GET /api/sessions/{id}/messages?last_n=&from_index=&include_reasoning=` route
-- `shared/types.ts` regen
-- Tests:
-  - Unit: pagination math (`last_n` window, `from_index` override, `has_more` flag)
-  - Unit: `final_assistant_message` extraction (handles empty session, last-message-is-tool-call, last-message-is-user)
-  - Integration: spawn a small child → wait → read → assert `final_assistant_message` matches expected
+### 5.3 PR 边界
 
-Expected diff: ~300 LOC.
+- `crates/mcp/src/task_server/tools/sessions.rs` — 新 tool `read_session_messages`
+- `crates/server/src/routes/sessions/mod.rs` — 新路由 `GET /api/sessions/{id}/messages?last_n=&from_index=&include_reasoning=`
+- `shared/types.ts` 重新生成
+- 测试:
+  - 单元:分页计算(`last_n` 窗口、`from_index` 覆盖、`has_more` flag)
+  - 单元:`final_assistant_message` 提取(空会话、最后是 tool call、最后是 user 三种 case)
+  - 集成:派生小 child → 等待 → 读 → 断言 `final_assistant_message` 匹配
+
+预估 diff:~300 LOC。
 
 ---
 
-## 6. PR-X3 — Task entity + composite tool + concurrency
+## 6. PR-X3 — Task entity + 复合 tool + 并发护栏 + scope 放宽
 
-### 6.1 Problem
+### 6.1 问题
 
-Three distinct gaps share one PR because they form a coherent unit:
+四个独立 gap 共享一个 PR,因为它们形成一个连贯单元:
 
-1. **No persistent todo list.** `Task` entity has `find_all` / `find_by_id` only — no `create`, `update`, `delete`, no route, no MCP.
-2. **Two-step main path.** Even with Task CRUD, "create todo + spawn child" requires `create_task` then `start_workspace(task_id=...)`. For 10 todos that's 20 RPCs and a non-trivial error recovery diamond.
-3. **No back-pressure.** Manager could naively spawn 50 children at once, exhausting disk / process limits.
+1. **没有持久化 todo 列表。** `Task` entity 只有 `find_all` / `find_by_id` — 没有 `create`、`update`、`delete`,没有路由,没有 MCP。
+2. **主路径两步割裂。** 即使有了 Task CRUD,"创建 todo + 派生 child"还是要 `create_task` 然后 `start_workspace(task_id=...)`。10 个 todo 就是 20 次 RPC,加上非平凡的错误恢复菱形。
+3. **没有反压。** manager 可能一次傻派 50 个 child,耗尽磁盘 / 进程数。
+4. **Orchestrator 模式 scope 检查阻塞 manager → child 访问(新发现的阻塞)。** 见 §2 第 5 点和 D12。
 
-### 6.2 Design
+### 6.2 设计
 
-**Server: Task CRUD endpoint**
+**服务端:Task CRUD endpoint**
 
 ```
-POST   /api/tasks                          — create
-GET    /api/tasks/{id}                     — get
-PUT    /api/tasks/{id}                     — update (title, description, status)
-DELETE /api/tasks/{id}                     — delete (cascades to clearing workspace.task_id)
-GET    /api/tasks?parent_workspace_id=...  — list (filter by parent)
+POST   /api/tasks                          — 创建
+GET    /api/tasks/{id}                     — 获取
+PUT    /api/tasks/{id}                     — 更新(title、description、status)
+DELETE /api/tasks/{id}                     — 删除(级联清空 workspace.task_id)
+GET    /api/tasks?parent_workspace_id=...  — 列表(按 parent 过滤)
 ```
 
-`Task::create`, `update`, `delete` added to `crates/db/src/models/task.rs` mirroring existing patterns in `workspace.rs`.
+`Task::create`、`update`、`delete` 在 `crates/db/src/models/task.rs` 中按 `workspace.rs` 现有模式新增。
 
-**Server: composite endpoint — atomic create-and-start**
+**服务端:复合 endpoint — 原子的 create-and-start**
 
 ```
 POST /api/tasks/start
@@ -277,214 +292,237 @@ body: {
 response: { task_id, workspace_id, execution_id }
 ```
 
-Single DB transaction wraps `{Task INSERT, Workspace INSERT, repo attaches, Workspace.task_id link}`. `start_execution` (which spawns the agent process) runs **after** transaction commit, so failure inside the transaction means nothing was spawned and rollback is clean.
+单 DB 事务包裹 `{Task INSERT, Workspace INSERT, repo attaches, Workspace.task_id 关联}`。`start_execution`(派生 agent 进程的步骤)在事务 commit **之后** 才跑,所以事务内失败意味着什么都没派生,回滚干净。
 
-**D6 — Atomic via DB transaction in this composite endpoint only.** The general `/api/workspaces/start` endpoint keeps its current behavior (no transaction wrapping with arbitrary post-creation operations). Only the new `/api/tasks/start` provides the atomicity guarantee. Other orphan windows are accepted as out-of-scope for this PR.
+**D6 — 仅在这个复合 endpoint 中通过 DB 事务保证原子性。** 通用的 `/api/workspaces/start` 端点保持现状。只有新的 `/api/tasks/start` 提供原子保证。其他 orphan window 在本 PR 中接受为 out-of-scope。
 
-**Server: per-parent concurrency limit**
+**服务端:per-parent 并发上限**
 
-On `POST /api/tasks/start` and `POST /api/workspaces/start` (when called with a `task_id` whose task has `parent_workspace_id == Some(p)`), count workspaces `W` such that `W.task_id IS NOT NULL` AND `Task[W.task_id].parent_workspace_id == p` AND the latest `ExecutionProcess` for `W` has `status == Running`. If `count >= MAX_CHILDREN_PER_PARENT` (default 5, configurable via env `VK_MAX_CHILDREN_PER_PARENT`), reject with:
+在 `POST /api/tasks/start` 和 `POST /api/workspaces/start`(后者当用 `task_id` 调用且该 task 的 `parent_workspace_id == Some(p)` 时),计数所有 workspace `W` 满足:`W.task_id IS NOT NULL` AND `Task[W.task_id].parent_workspace_id == p` AND `W` 的最新 `ExecutionProcess.status == Running`。如果 `count >= MAX_CHILDREN_PER_PARENT`(默认 5,可通过环境变量 `VK_MAX_CHILDREN_PER_PARENT` 配置),拒绝并返回:
 
 ```
 HTTP 429 + error: { kind: "parent_concurrency_exceeded", retryable: true, human_intervention_required: false }
 ```
 
-Manager retries with exponential backoff (or waits for a polled child to finish, then retries).
+manager 用指数退避重试(或等某个轮询中的 child 完成后再试)。
 
-**D7 — Limit enforced server-side, not MCP-side.** A future second MCP-using client (or direct API call) would bypass an MCP-side check. Server is the right authority.
+**D7 — 上限在服务端而不是 MCP 端强制。** 未来可能有第二个 MCP 客户端(或直接 API 调用)绕过 MCP 端检查。服务端是正确的权威点。
 
-**MCP tools — five new + one extended**
+**MCP tool — 5 个新增 + 2 个扩展**
 
 ```rust
-// New
-create_and_start_task(...)          // primary path: composite atomic creation
-create_task(...)                    // for "build todo list now, execute later"
-list_tasks(parent_workspace_id?)    // defaults to current MCP session's workspace if available
+// 新增
+create_and_start_task(...)          // 主路径:复合的原子创建
+create_task(...)                    // 用于"先建 todo 列表,稍后执行"
+list_tasks(parent_workspace_id?)    // 默认按当前 MCP 调用方所在 workspace 过滤
 get_task(task_id)
 update_task_status(task_id, status) // status ∈ {todo, in_progress, in_review, done, cancelled}
 delete_task(task_id)
 
-// Extended (already exist)
-start_workspace(..., task_id?)      // optional task_id binds a fresh attempt to an existing task
-list_workspaces(..., task_id?)      // adds task_id filter to existing tool (`crates/mcp/src/task_server/tools/workspaces.rs:102`)
+// 扩展(已存在)
+start_workspace(..., task_id?)      // 可选 task_id,把新 attempt 绑定到已有 task
+list_workspaces(..., task_id?)      // 加 task_id filter(`crates/mcp/src/task_server/tools/workspaces.rs:102`)
+                                    // 同时 WorkspaceSummary 加 task_id 字段(否则结果分不清)
 ```
 
-**D8 — `list_tasks` defaults to caller's workspace context.** When the MCP server has a known calling workspace (orchestrator launch mode — see `crates/mcp/src/task_server/tools/context.rs`), `list_tasks` without arguments filters to `parent_workspace_id == caller`. Manager naturally sees only its own todos. Explicit `parent_workspace_id` argument overrides. When the MCP server has no known calling workspace and no argument is given, return an error `kind: "missing_parent_workspace_id"` rather than dumping all tasks across the system (forces explicit scoping).
+**D8 — `list_tasks` 默认按调用方 workspace context 过滤。** 当 MCP 服务有已知的调用方 workspace(Orchestrator 模式 — 见 `crates/mcp/src/task_server/tools/context.rs`),不带参数的 `list_tasks` 过滤为 `parent_workspace_id == caller`。manager 自然只看到自己的 todo。显式 `parent_workspace_id` 参数覆盖默认。当 MCP 服务没有已知调用方 workspace 且没有显式参数时,返回错误 `kind: "missing_parent_workspace_id"`(强制显式 scope,而不是无差别返回所有 task)。
 
-**D9 — Manager-side compensation NOT needed for `create_and_start_task`** (covered by server transaction in D6). For the standalone two-step path (`create_task` then `start_workspace(task_id=...)`), if `start_workspace` fails the manager can choose to retry or call `update_task_status(task_id, Cancelled)` — no automatic cleanup. Acceptable: user explicitly decided to use the two-step path, so the recovery semantics are theirs.
+**D9 — `create_and_start_task` 不需要 manager 端补偿**(由 D6 的服务端事务覆盖)。两步路径(`create_task` 然后 `start_workspace(task_id=...)`)如果 `start_workspace` 失败,manager 可以选择重试或调用 `update_task_status(task_id, Cancelled)` — 不自动清理。可接受:用户主动选了两步路径,恢复语义由用户决定。
 
-### 6.3 PR boundary
+**D12(新增,阻塞性)— Orchestrator 模式 scope 放宽:允许访问自己派生的 children。**
 
-- `crates/db/src/models/task.rs` — `create`, `update`, `delete` methods
-- `crates/server/src/routes/tasks/` (new module) — CRUD routes + `/start` composite + concurrency check
+`scope_allows_workspace`(`crates/mcp/src/task_server/tools/mod.rs:322`)目前在 Orchestrator 模式下严格拒绝任何 scope 外 workspace。这会挡住 manager 调用 `get_execution(child_execution_id)`、`read_session_messages(child_workspace_id)` 等所有跨 workspace 的操作。
+
+放宽规则:在 Orchestrator 模式下,如果 target workspace `t` 满足以下任一条件,允许通过:
+
+1. `t.id == scoped_workspace_id`(原有规则)
+2. `t.task_id IS NOT NULL` AND `Task[t.task_id].parent_workspace_id == scoped_workspace_id`(新规则:t 是 scoped workspace 派生的 child)
+
+实现需要在 MCP server 的 context 中持有 db 句柄(已经有,通过 `client.get(/api/tasks/...)` 访问)。检查变成异步 — 重命名 `scope_allows_workspace` → `check_scope_allows_workspace`(异步)。
+
+调用方影响:所有现有 `scope_allows_workspace` 调用点(7 处,在 `workspaces.rs` 和 `sessions.rs`)改为 `.await`。
+
+**安全语义**:manager A 不能访问 manager B 派生的 children。manager A 能访问 A 自己派生的所有层级(目前只支持一层,不需要递归)。Standalone(非 Orchestrator)模式行为不变。
+
+### 6.3 PR 边界
+
+- `crates/db/src/models/task.rs` — `create`、`update`、`delete` 方法
+- `crates/server/src/routes/tasks/`(新模块)— CRUD 路由 + `/start` 复合 + 并发检查
 - `crates/server/src/routes/mod.rs` — wire `tasks::router()`
-- `crates/services/src/services/task_concurrency.rs` (new) — counter + limit check (extracted for testability)
-- `crates/mcp/src/task_server/tools/tasks.rs` (new) — 5 new tools
-- `crates/mcp/src/task_server/tools/task_attempts.rs` — extend `start_workspace` with optional `task_id`
-- `crates/mcp/src/task_server/tools/workspaces.rs` — extend `list_workspaces` with optional `task_id` filter
-- `crates/mcp/src/task_server/mod.rs` — register new tool router
-- `crates/api-types/src/lib.rs` — `TaskCreate`, `TaskUpdate`, `CreateAndStartTaskRequest`, `CreateAndStartTaskResponse`
-- `shared/types.ts` regen
-- Tests:
-  - Unit: `Task::create` / `update` / `delete` happy path + constraint violations
-  - Unit: concurrency check returns 429 at exactly `MAX_CHILDREN_PER_PARENT + 1`
-  - Integration: `POST /api/tasks/start` with deliberately-invalid `repo_id` → no Task row remains (transaction rolled back)
-  - Integration: spawn 6 children with `MAX = 5` → 6th gets `parent_concurrency_exceeded`
+- `crates/services/src/services/task_concurrency.rs`(新)— 计数器 + 上限检查(独立提取以便测试)
+- `crates/mcp/src/task_server/tools/tasks.rs`(新)— 5 个新 tool
+- `crates/mcp/src/task_server/tools/task_attempts.rs` — 给 `start_workspace` 加可选 `task_id`
+- `crates/mcp/src/task_server/tools/workspaces.rs` — 给 `list_workspaces` 加可选 `task_id` filter;给 `WorkspaceSummary` 加 `task_id: Option<String>` 字段
+- `crates/mcp/src/task_server/tools/mod.rs` — `scope_allows_workspace` 改为 async,加 D12 的 parent-child 关系检查
+- `crates/mcp/src/task_server/mod.rs` — 注册新 tool router
+- `crates/api-types/src/lib.rs` — `TaskCreate`、`TaskUpdate`、`CreateAndStartTaskRequest`、`CreateAndStartTaskResponse`
+- `shared/types.ts` 重新生成
+- 测试:
+  - 单元:`Task::create` / `update` / `delete` 主路径 + 约束违反
+  - 单元:并发检查在 `MAX_CHILDREN_PER_PARENT + 1` 时返回 429
+  - 单元:scope 检查 — manager 访问自己 child 通过、访问别人 child 被拒
+  - 集成:`POST /api/tasks/start` 用故意错误的 `repo_id` → 没有 Task 行残留(事务回滚)
+  - 集成:派生 6 个 child 当 `MAX = 5` → 第 6 个收到 `parent_concurrency_exceeded`
+  - 集成:Orchestrator 模式 manager 访问自己派生的 child 的 `get_execution` 不被拒
 
-Expected diff: ~800 LOC.
+预估 diff:~900 LOC(含 D12 的 scope 改造)。
 
 ---
 
-## 7. PR-X4 — UI surface for task tree
+## 7. PR-X4 — UI 展示 task 树
 
-### 7.1 Problem
+### 7.1 问题
 
-Tier A++ creates rich data (manager workspace → tasks → child workspaces) but without UI surfacing it, debugging orchestration failures requires SQL access. A minimal UI delta makes orchestration **observable**.
+Tier A++ 创建了丰富的数据(manager workspace → tasks → child workspaces)但没有 UI surface,debug 编排失败需要 SQL 访问。最小的 UI 增量让编排 **可观测**。
 
-### 7.2 Design
+### 7.2 设计
 
-Two changes to `packages/web-core` (shared between `local-web` and `remote-web`):
+`packages/web-core`(`local-web` 和 `remote-web` 共享)中两处改动:
 
-**Change 1 — Workspace detail breadcrumb**
+**改动 1 — Workspace 详情 breadcrumb**
 
-When a workspace has `task_id != null`, fetch the Task; when the Task has `parent_workspace_id != null`, fetch that workspace. Render at the top of the workspace detail view:
+当一个 workspace 有 `task_id != null`,fetch Task;当 Task 有 `parent_workspace_id != null`,fetch 该父 workspace。在 workspace 详情视图顶部渲染:
 
 ```
 [Manager: <parent_workspace_name>] / [Task: <task_title>] / Attempt #<n>
 ```
 
-Each segment is a link (parent workspace clickable to navigate up). If only one of the two relationships exists, render the available segment(s) only.
+每段是链接(父 workspace 可点击向上导航)。如果只有其中一种关系存在,只渲染可用的段。
 
-**Change 2 — Workspace list grouping toggle**
+**改动 2 — Workspace 列表分组开关**
 
-Add a "Group by manager" toggle in the workspace list header. When enabled:
+在 workspace 列表头部加一个 "Group by manager" 开关。开启时:
 
-- Workspaces with no `task_id` (or whose task has no `parent_workspace_id`) render under "Standalone"
-- Workspaces with a manager parent group under "Manager: <parent_workspace_name>", collapsible
+- 没有 `task_id`(或 task 没有 `parent_workspace_id`)的 workspace 归到 "Standalone"
+- 有 manager parent 的 workspace 归到 "Manager: <parent_workspace_name>",可折叠
 
-Default off (current flat list behavior preserved).
+默认关闭(保留当前扁平列表行为)。
 
-**D10 — Read-only UI, no editing.** This PR does not add task editing UI (rename, status change, delete). Those happen via MCP tools or direct API. UI is for **observability**. Editing UI is a follow-up if user demand surfaces.
+**D10 — 只读 UI,不加编辑。** 本 PR 不加 task 编辑 UI(改名、改状态、删除)。这些通过 MCP tool 或直接 API 进行。UI 用于 **可观测性**。编辑 UI 是 follow-up,看用户需求决定。
 
-### 7.3 PR boundary
+### 7.3 PR 边界
 
-- `packages/web-core/src/api/tasks.ts` (new) — TS client for Task GET endpoints (POST/PUT/DELETE not needed in UI)
-- `packages/web-core/src/hooks/useTaskBreadcrumb.ts` (new) — fetches task + parent workspace given a workspace
-- `packages/web-core/src/components/WorkspaceBreadcrumb.tsx` (new)
-- `packages/web-core/src/components/WorkspaceList.tsx` — add `groupByManager` toggle + grouping logic
-- `packages/local-web/src/...` — wire the breadcrumb into existing workspace detail page
-- Tests: Vitest snapshot on breadcrumb component for {no task, task only, task + parent}
+- `packages/web-core/src/api/tasks.ts`(新)— Task GET endpoint 的 TS 客户端(POST/PUT/DELETE 在 UI 中不需要)
+- `packages/web-core/src/hooks/useTaskBreadcrumb.ts`(新)— 给一个 workspace,fetch task + 父 workspace
+- `packages/web-core/src/components/WorkspaceBreadcrumb.tsx`(新)
+- `packages/web-core/src/components/WorkspaceList.tsx` — 加 `groupByManager` 开关 + 分组逻辑
+- `packages/local-web/src/...` — 把 breadcrumb 接入现有 workspace 详情页
+- 测试:Vitest 对 breadcrumb 组件 snapshot {无 task、只有 task、task + parent}
 
-Expected diff: ~400 LOC.
-
----
-
-## 8. Cross-cutting concerns
-
-### 8.1 Type sharing
-
-All new request/response types use `#[derive(Serialize, Deserialize, schemars::JsonSchema)]` for MCP. Types crossing into TS also derive `ts_rs::TS`. `pnpm run generate-types` runs at the end of each PR.
-
-### 8.2 Testing strategy
-
-- **Server:** unit tests next to handlers; integration tests in `crates/server/tests/` for flows touching DB transactions and concurrency limits.
-- **MCP:** unit tests next to each tool file using the existing faked-HTTP-client pattern (see `crates/mcp/src/task_server/tools/mod.rs::tests::response_classification`).
-- **Web:** Vitest co-located with components; no e2e harness changes.
-- **Manual smoke:** each PR includes a documented manual smoke test in its PR description (e.g. "spawn child via Claude Code MCP → assert error_kind on auth failure").
-
-### 8.3 Backward compatibility
-
-- `ApiResponse.error` is `#[serde(skip_serializing_if = "Option::is_none")]` → existing clients see no change.
-- All new MCP tools are additive. `start_workspace` gains an *optional* `task_id` field — no break.
-- `get_execution` response gains `status` + `error` fields — additive.
-- Task CRUD endpoints are net-new — no existing client code paths affected.
-- UI changes are additive (new breadcrumb component, new optional toggle).
-
-### 8.4 Push gate compliance
-
-Per user policy: read-only by default; show diff before commit; **wait for explicit authorization before push**. Each PR pauses at `git push` for sign-off. No exceptions.
+预估 diff:~400 LOC。
 
 ---
 
-## 9. Decision log
+## 8. 横向关注点
 
-| ID  | Decision                                                                              | Status   |
-|-----|---------------------------------------------------------------------------------------|----------|
-| D1  | Executor errors keep HTTP 500; manager switches on `error.kind`, not status           | Accepted |
-| D2  | Five canonical `kind` values, not 13; extend later if a consumer needs split          | Accepted |
-| D3  | `read_session_messages` default `last_n = 20`                                         | Accepted |
-| D4  | `final_assistant_message` is a top-level convenience field, full text                 | Accepted |
-| D5  | `include_reasoning = false` by default to control token cost                          | Accepted |
-| D6  | Atomicity via DB transaction in the new `/api/tasks/start` only — not retrofit existing endpoints | Accepted |
-| D7  | Concurrency limit enforced server-side, not MCP-side                                  | Accepted |
-| D8  | `list_tasks` defaults to caller workspace's parent scope                              | Accepted |
-| D9  | Two-step path (`create_task` + `start_workspace`) does not auto-cleanup on failure    | Accepted |
-| D10 | UI is read-only in this campaign; editing UI deferred                                 | Accepted |
+### 8.1 类型共享
 
----
+所有新的 request/response 类型用 `#[derive(Serialize, Deserialize, schemars::JsonSchema)]` 给 MCP。跨入 TS 的类型同时 derive `ts_rs::TS`。每个 PR 末尾跑 `pnpm run generate-types`。
 
-## 10. Items most likely to draw a flip request
+### 8.2 测试策略
 
-These decisions are owner-callable; flagging the ones where pushback is most plausible:
+- **服务端:** 单元测试紧贴 handler;集成测试在 `crates/server/tests/`,覆盖触及 DB 事务和并发上限的流程。
+- **MCP:** 单元测试紧贴每个 tool 文件,使用现有的伪 HTTP client 模式(参考 `crates/mcp/src/task_server/tools/mod.rs::tests::response_classification`)。
+- **Web:** Vitest 与组件同位置;不加 e2e harness。
+- **手工 smoke:** 每个 PR 在描述中包含一份手工 smoke 测试(如"通过 Claude Code MCP 派生 child → 断言 auth 失败时的 error_kind")。
 
-- **D2** — five `kind` values may feel too coarse if you have a specific consumer needing `auth_required` separated from a more granular sub-kind. Easy to extend.
-- **D3** — `last_n = 20` could be too small if your manager prompts expect long final messages with intermediate summaries. Tunable per-call already.
-- **D6** — accepting that orphan windows in *other* endpoints remain unfixed is a deliberate trade-off; if you want full server-side atomicity across all workspace creations, that's a meaningfully bigger PR.
-- **D10** — shipping read-only UI means humans cannot rename a manager-created task from the UI. If the manager mis-titles things, only re-running through MCP fixes it. Acceptable for v1.
+### 8.3 向后兼容
 
-If none of these need flipping, ack the spec and we go to writing-plans.
+- `ApiResponse.error` 是 `#[serde(skip_serializing_if = "Option::is_none")]` → 现有客户端无感知。
+- 所有新 MCP tool 是叠加的。`start_workspace` 加的是 *可选* `task_id` — 不破坏。
+- `get_execution` 响应字段:`status` 类型从 `String` 升级为 `ExecutionProcessStatus` enum — **不完全向后兼容**(序列化值实际相同,但 TS 客户端如果之前手写了 `status: string` 类型会需要改)。`shared/types.ts` regen 后 TS 端会自动正确。
+- `error` 字段新增,`final_message` 行为不变(仍 `None`)。
+- Task CRUD endpoint 是净新增 — 现有客户端无影响。
+- UI 改动是叠加的(新 breadcrumb 组件、新可选开关)。
+
+### 8.4 Push gate 合规
+
+按用户策略:默认只读;commit 前展示 diff;**push 前等显式授权**。每个 PR 在 `git push` 处暂停等签字。无例外。
 
 ---
 
-## Appendix A: Manager prompt pattern (reference)
+## 9. 决策日志
 
-A reference fragment showing how a manager prompt uses these tools end-to-end. **Not part of any PR** — purely for spec reviewers to validate that the API surface composes naturally.
+| ID  | 决策                                                                              | 状态     |
+|-----|----------------------------------------------------------------------------------|----------|
+| D1  | executor 错误统一 HTTP 500;manager 通过 `error.kind` 分支,不看 status            | 接受     |
+| D2  | 5 个 canonical `kind`,不是 13 个;后续按需细分                                    | 接受     |
+| D3  | `read_session_messages` 默认 `last_n = 20`                                       | 接受     |
+| D4  | `final_assistant_message` 是顶层便利字段,完整文本                                | 接受     |
+| D5  | `include_reasoning = false` 默认关闭,控制 token 成本                             | 接受     |
+| D6  | 仅在新 `/api/tasks/start` 用 DB 事务原子 — 不改造现有 endpoint                    | 接受     |
+| D7  | 并发上限在服务端强制,不在 MCP 端                                                 | 接受     |
+| D8  | `list_tasks` 默认按调用方 workspace 的 parent scope 过滤                          | 接受     |
+| D9  | 两步路径(`create_task` + `start_workspace`)失败不自动清理                       | 接受     |
+| D10 | UI 在本期只读;编辑 UI 延后                                                       | 接受     |
+| D11 | `GetExecutionResponse.final_message` 保持 `None`;消息读取唯一渠道是 `read_session_messages` | 接受     |
+| D12 | Orchestrator 模式 scope 放宽:manager 可访问自己派生的 children(通过 task.parent_workspace_id 关系) | 接受     |
+
+---
+
+## 10. 最可能被翻转的决策
+
+这些是 owner 可调用决策;最可能被 push back 的列出来:
+
+- **D2** — 5 个 `kind` 如果你有具体消费者要求 `auth_required` 再细分,可能太粗。容易扩展。
+- **D3** — `last_n = 20` 如果你的 manager prompt 期望长 final 消息带中间摘要,可能太小。已经支持 per-call 调整。
+- **D6** — 接受 *其他* endpoint 的 orphan window 不修是有意取舍;如果你要全服务端原子性,那是个更大的 PR。
+- **D10** — 只读 UI 意味着人类无法通过 UI 改 manager 创建的 task 标题。如果 manager 起错名,只能再走 MCP。v1 可接受。
+- **D12** — scope 放宽规则只支持一层(manager 直系 child),不支持递归(manager → child → grandchild)。如果要多层编排,放宽规则要递归查 task chain。本期不做。
+
+如果以上无需翻转,ack spec 即可进入 writing-plans。
+
+---
+
+## 附录 A:Manager prompt 模式(参考)
+
+一段参考片段,展示 manager prompt 端到端使用这些 tool 的样子。**不属于任何 PR** — 纯粹给 spec 评审者验证 API 表面是否自然组合。
 
 ```
-You are an orchestrator session in Vibe Kanban. Your workspace ID is {self_workspace_id}.
+你是 Vibe Kanban 中的一个 orchestrator session。你的 workspace ID 是 {self_workspace_id}。
 
-On startup, recover state:
-  1. tasks = list_tasks()                                          # defaults to parent_workspace_id == self
+启动时恢复状态:
+  1. tasks = list_tasks()                                          # 默认 parent_workspace_id == self
   2. for t in tasks where t.status == in_progress:
        workspaces = list_workspaces(task_id=t.id)
-       latest = workspaces[0]                                      # already sorted desc by created_at
+       latest = workspaces[0]                                      # 已按 created_at desc 排序
        e = get_execution(latest.id)
        if e.status in (Completed, Failed):
-         resolve t (update_task_status accordingly)
+         resolve t(对应地 update_task_status)
 
-For each new piece of work:
+每个新工作:
   1. result = create_and_start_task(
        task: { project_id, title: "...", description: "...", parent_workspace_id: {self} },
        workspace: { repos: [...], executor_config: {...}, prompt: t.description }
      )
-  2. record (task_id, workspace_id) for polling
+  2. 记录 (task_id, workspace_id) 用于轮询
 
-Polling loop:
+轮询循环:
   for (tid, wid) in pending:
     e = get_execution(wid)
     if e.status == Running: continue
     if e.status == Completed:
-      msgs = read_session_messages(wid)              # default last_n=20
+      msgs = read_session_messages(wid)              # 默认 last_n=20
       summary = msgs.final_assistant_message
       update_task_status(tid, done)
     if e.status == Failed:
       if e.error.retryable and not e.error.human_intervention_required:
-        retry up to 2 more times
+        重试最多 2 次
       else:
         update_task_status(tid, cancelled)
-        report e.error.kind + e.error.stderr_tail to user
+        把 e.error.kind + e.error.stderr_tail 上报给用户
 
-Back-pressure:
-  on parent_concurrency_exceeded: wait for next pending child to finish, then retry
+反压:
+  收到 parent_concurrency_exceeded:等下一个 pending child 完成,然后重试
 ```
 
 ---
 
-## Appendix B: Files touched (per PR)
+## 附录 B:每个 PR 涉及的文件
 
-| PR    | Files |
-|-------|-------|
-| PR-X1 | `crates/utils/src/response.rs`, `crates/server/src/error.rs`, `crates/services/src/services/container.rs`, `crates/server/src/routes/sessions/mod.rs`, `crates/server/src/routes/workspaces/create.rs`, `crates/mcp/src/task_server/tools/sessions.rs`, `shared/types.ts` (regen) |
-| PR-X2 | `crates/mcp/src/task_server/tools/sessions.rs`, (conditional) `crates/server/src/routes/sessions/mod.rs`, `shared/types.ts` (regen) |
-| PR-X3 | `crates/db/src/models/task.rs`, `crates/server/src/routes/tasks/` (new), `crates/server/src/routes/mod.rs`, `crates/services/src/services/task_concurrency.rs` (new), `crates/mcp/src/task_server/tools/tasks.rs` (new), `crates/mcp/src/task_server/tools/task_attempts.rs` (extend `start_workspace`), `crates/mcp/src/task_server/mod.rs`, `crates/api-types/src/lib.rs`, `shared/types.ts` (regen) |
-| PR-X4 | `packages/web-core/src/api/tasks.ts` (new), `packages/web-core/src/hooks/useTaskBreadcrumb.ts` (new), `packages/web-core/src/components/WorkspaceBreadcrumb.tsx` (new), `packages/web-core/src/components/WorkspaceList.tsx`, `packages/local-web/src/...` (wire breadcrumb into existing detail page) |
+| PR    | 文件 |
+|-------|------|
+| PR-X1 | `crates/utils/src/response.rs`、`crates/server/src/error.rs`、`crates/services/src/services/container.rs`、`crates/server/src/routes/sessions/mod.rs`、`crates/server/src/routes/workspaces/create.rs`、`crates/mcp/src/task_server/tools/sessions.rs`、`shared/types.ts`(重生) |
+| PR-X2 | `crates/mcp/src/task_server/tools/sessions.rs`、`crates/server/src/routes/sessions/mod.rs`、`shared/types.ts`(重生) |
+| PR-X3 | `crates/db/src/models/task.rs`、`crates/server/src/routes/tasks/`(新)、`crates/server/src/routes/mod.rs`、`crates/services/src/services/task_concurrency.rs`(新)、`crates/mcp/src/task_server/tools/tasks.rs`(新)、`crates/mcp/src/task_server/tools/task_attempts.rs`(extend `start_workspace`)、`crates/mcp/src/task_server/tools/workspaces.rs`(extend `list_workspaces` + `WorkspaceSummary`)、`crates/mcp/src/task_server/tools/mod.rs`(`scope_allows_workspace` 改 async + 放宽规则)、`crates/mcp/src/task_server/mod.rs`、`crates/api-types/src/lib.rs`、`shared/types.ts`(重生) |
+| PR-X4 | `packages/web-core/src/api/tasks.ts`(新)、`packages/web-core/src/hooks/useTaskBreadcrumb.ts`(新)、`packages/web-core/src/components/WorkspaceBreadcrumb.tsx`(新)、`packages/web-core/src/components/WorkspaceList.tsx`、`packages/local-web/src/...`(把 breadcrumb 接入现有详情页) |
