@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { Button } from '@vibe/ui/components/Button';
 import { Input } from '@vibe/ui/components/Input';
 import { Label } from '@vibe/ui/components/Label';
@@ -24,9 +23,6 @@ import { useOrganizationMutations } from '@/shared/hooks/useOrganizationMutation
 import { MemberRole } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 import { defineModal } from '@/shared/lib/modals';
-import { ApiError } from '@/shared/lib/api';
-import { getRemoteApiUrl } from '@/shared/lib/remoteApi';
-import { ArrowSquareOut } from '@phosphor-icons/react';
 
 export type InviteMemberResult = {
   action: 'invited' | 'canceled';
@@ -43,7 +39,6 @@ const InviteMemberDialogImpl = create<InviteMemberDialogProps>((props) => {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<MemberRole>(MemberRole.MEMBER);
   const [error, setError] = useState<string | null>(null);
-  const [isSubscriptionRequired, setIsSubscriptionRequired] = useState(false);
 
   const { createInvitation } = useOrganizationMutations({
     onInviteSuccess: () => {
@@ -51,15 +46,9 @@ const InviteMemberDialogImpl = create<InviteMemberDialogProps>((props) => {
       modal.hide();
     },
     onInviteError: (err) => {
-      if (err instanceof ApiError && err.statusCode === 402) {
-        setIsSubscriptionRequired(true);
-        setError(t('inviteDialog.subscriptionRequired'));
-      } else {
-        setIsSubscriptionRequired(false);
-        setError(
-          err instanceof Error ? err.message : 'Failed to send invitation'
-        );
-      }
+      setError(
+        err instanceof Error ? err.message : 'Failed to send invitation'
+      );
     },
   });
 
@@ -69,7 +58,6 @@ const InviteMemberDialogImpl = create<InviteMemberDialogProps>((props) => {
       setEmail('');
       setRole(MemberRole.MEMBER);
       setError(null);
-      setIsSubscriptionRequired(false);
     }
   }, [modal.visible]);
 
@@ -169,28 +157,8 @@ const InviteMemberDialogImpl = create<InviteMemberDialogProps>((props) => {
           </div>
 
           {error && (
-            <Alert variant={isSubscriptionRequired ? 'default' : 'destructive'}>
-              <AlertDescription>
-                {error}
-                {isSubscriptionRequired && getRemoteApiUrl() && (
-                  <div className="mt-2">
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {t('inviteDialog.upgradePrompt')}
-                    </p>
-                    <PrimaryButton
-                      onClick={() =>
-                        window.open(
-                          `${getRemoteApiUrl()}/upgrade?org_id=${organizationId}`,
-                          '_blank'
-                        )
-                      }
-                      actionIcon={ArrowSquareOut}
-                    >
-                      {t('inviteDialog.upgradeButton')}
-                    </PrimaryButton>
-                  </div>
-                )}
-              </AlertDescription>
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
         </div>

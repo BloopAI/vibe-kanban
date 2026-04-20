@@ -92,6 +92,16 @@ function ProjectMutationsRegistration({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function ProjectKanbanBoard() {
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col">
+      <div className="min-h-0 flex-1">
+        <KanbanContainer />
+      </div>
+    </div>
+  );
+}
+
 function ProjectKanbanLayout({ projectName }: { projectName: string }) {
   const { issueId, isPanelOpen } = useCurrentKanbanRouteState();
   const isMobile = useIsMobile();
@@ -112,7 +122,7 @@ function ProjectKanbanLayout({ projectName }: { projectName: string }) {
       </div>
     ) : (
       <div className="h-full w-full overflow-hidden bg-primary">
-        <KanbanContainer />
+        <ProjectKanbanBoard />
       </div>
     );
   }
@@ -143,7 +153,7 @@ function ProjectKanbanLayout({ projectName }: { projectName: string }) {
         minSize="20%"
         className="min-w-0 h-full overflow-hidden bg-primary"
       >
-        <KanbanContainer />
+        <ProjectKanbanBoard />
       </Panel>
 
       {isRightPanelOpen && (

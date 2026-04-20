@@ -177,6 +177,12 @@ export type CommitAttachmentsResponse = { attachments: Array<AttachmentWithBlob>
 
 export type AttachmentUrlResponse = { url: string, };
 
+export type ExportRequest = { organization_id: string, 
+/**
+ * If empty, exports all projects in the organization.
+ */
+project_ids: Array<string>, include_attachments: boolean, };
+
 // Shape definition interface
 export interface ShapeDefinition<T> {
   readonly table: string;

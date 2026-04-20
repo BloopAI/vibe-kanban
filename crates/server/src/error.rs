@@ -21,7 +21,6 @@ use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
     file::FileError,
-    migration::MigrationError,
     remote_client::RemoteClientError,
     repo::RepoError as RepoServiceError,
 };
@@ -88,8 +87,6 @@ pub enum ApiError {
     CommandBuilder(#[from] CommandBuildError),
     #[error(transparent)]
     Pty(#[from] PtyError),
-    #[error(transparent)]
-    Migration(#[from] MigrationError),
     #[error(transparent)]
     WebRtc(#[from] WebRtcError),
 }
@@ -497,47 +494,6 @@ impl IntoResponse for ApiError {
             ),
             ApiError::Config(_) => ErrorInfo::internal("ConfigError"),
             ApiError::Io(_) => ErrorInfo::internal("IoError"),
-            ApiError::Migration(MigrationError::Database(_)) => {
-                ErrorInfo::internal("MigrationError")
-            }
-            ApiError::Migration(MigrationError::MigrationState(_)) => {
-                ErrorInfo::internal("MigrationError")
-            }
-            ApiError::Migration(MigrationError::Workspace(_)) => {
-                ErrorInfo::internal("MigrationError")
-            }
-            ApiError::Migration(MigrationError::RemoteClient(err)) => remote_client_error(err),
-            ApiError::Migration(MigrationError::NotAuthenticated) => ErrorInfo::with_status(
-                StatusCode::UNAUTHORIZED,
-                "MigrationError",
-                "Not authenticated - please log in first.",
-            ),
-            ApiError::Migration(MigrationError::OrganizationNotFound) => {
-                ErrorInfo::not_found("MigrationError", "Organization not found for user.")
-            }
-            ApiError::Migration(MigrationError::EntityNotFound { entity_type, id }) => {
-                ErrorInfo::not_found(
-                    "MigrationError",
-                    format!("Entity not found: {} with id {}", entity_type, id),
-                )
-            }
-            ApiError::Migration(MigrationError::MigrationInProgress) => {
-                ErrorInfo::conflict("MigrationError", "Migration already in progress.")
-            }
-            ApiError::Migration(MigrationError::StatusMappingFailed(status)) => {
-                ErrorInfo::bad_request(
-                    "MigrationError",
-                    format!("Status mapping failed: unknown status '{}'", status),
-                )
-            }
-            ApiError::Migration(MigrationError::BrokenReferenceChain(msg)) => {
-                ErrorInfo::bad_request("MigrationError", format!("Broken reference chain: {}", msg))
-            }
-            ApiError::Migration(MigrationError::RemoteError(msg)) => ErrorInfo::with_status(
-                StatusCode::BAD_GATEWAY,
-                "MigrationError",
-                format!("Remote error: {}", msg),
-            ),
             ApiError::WebRtc(err) => match err {
                 WebRtcError::SessionNotFound { .. } => {
                     ErrorInfo::not_found("WebRtcError", err.to_string())

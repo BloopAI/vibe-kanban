@@ -190,11 +190,16 @@ fn fix_hunk_headers(hunks: Vec<String>) -> Vec<String> {
     new_hunks
 }
 
-/// Creates a full unified diff with the file path in the header,
+/// Creates a full unified diff with the file path in the header.
+///
+/// Outputs git-diff format (`diff --git` prefix) so that downstream parsers
+/// (e.g. @pierre/diffs) split on `^diff --git` boundaries instead of
+/// `^---\s+\S`, which collides with deleted lines starting with `-- `.
 pub fn concatenate_diff_hunks(file_path: &str, hunks: &[String]) -> String {
     let mut unified_diff = String::new();
 
-    let header = format!("--- a/{file_path}\n+++ b/{file_path}\n");
+    let header =
+        format!("diff --git a/{file_path} b/{file_path}\n--- a/{file_path}\n+++ b/{file_path}\n");
 
     unified_diff.push_str(&header);
 

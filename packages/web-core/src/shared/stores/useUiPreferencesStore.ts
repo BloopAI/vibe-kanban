@@ -12,7 +12,7 @@ export const RIGHT_MAIN_PANEL_MODES = {
 export type RightMainPanelMode =
   (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES];
 
-export type LayoutMode = 'workspaces' | 'kanban' | 'migrate';
+export type LayoutMode = 'workspaces' | 'kanban';
 
 export type MobileTab =
   | 'workspaces'

@@ -42,7 +42,7 @@ function ReleaseNotesHandler() {
     if (!config || !config.remote_onboarding_acknowledged) return;
 
     const pathname = location.pathname;
-    if (pathname.startsWith('/onboarding') || pathname.startsWith('/migrate')) {
+    if (pathname.startsWith('/onboarding')) {
       return;
     }
 
