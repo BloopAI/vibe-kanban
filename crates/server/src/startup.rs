@@ -8,7 +8,7 @@ use deployment::{Deployment, DeploymentError};
 use services::services::container::ContainerService;
 use tokio_util::sync::CancellationToken;
 use tower_http::validate_request::ValidateRequestHeaderLayer;
-use utils::assets::asset_dir;
+use utils::{assets::asset_dir, port_file::write_port_file_with_proxy};
 
 use crate::{
     DeploymentImpl, middleware::origin::validate_origin, routes, runtime::relay_registration,
@@ -116,6 +116,14 @@ pub async fn start_with_bind(
     let proxy_port = proxy_listener.local_addr()?.port();
 
     tracing::info!("Server on :{port}, Preview proxy on :{proxy_port}");
+
+    // Publish the bound ports so the sidecar MCP binary can locate the
+    // backend. Shared between the standalone server and the Tauri desktop
+    // app — without this, the Tauri build leaves a stale port file from an
+    // earlier `pnpm run dev` session and the MCP connects to a dead port.
+    if let Err(e) = write_port_file_with_proxy(port, Some(proxy_port)).await {
+        tracing::warn!("Failed to write port file: {}", e);
+    }
 
     Ok(ServerHandle {
         port,
