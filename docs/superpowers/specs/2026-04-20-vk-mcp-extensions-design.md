@@ -126,7 +126,7 @@ pub struct ApiErrorEnvelope {
 
 **D1 — executor 错误统一保持 HTTP 500。** manager 通过 `error.kind` 分支,而不是 status code。改成 401/424/409 会破坏现有客户端契约,收益为零。
 
-**D2 — 5 个 kind 而不是 13 个。** 小集合更易于 switch。其他 `ExecutorError` 变体(`Json`、`TomlSerialize`、`CommandBuild` 等)统一映射到 `internal`,直到真有消费者要求细分。`kind` 是字符串,前向兼容。
+**D2 — 5 个 kind 而不是 12 个。** 小集合更易于 switch。其他 `ExecutorError` 变体(`Json`、`TomlSerialize`、`CommandBuild` 等)统一映射到 `internal`,直到真有消费者要求细分。`kind` 是字符串,前向兼容。
 
 **stderr tail 捕获(`crates/services/src/services/container.rs`)**
 
@@ -580,7 +580,7 @@ Tier A++ 创建了丰富的数据(manager workspace → tasks → child workspac
 | ID  | 决策                                                                              | 状态     |
 |-----|----------------------------------------------------------------------------------|----------|
 | D1  | executor 错误统一 HTTP 500;manager 通过 `error.kind` 分支,不看 status            | 接受     |
-| D2  | 5 个 canonical `kind`,不是 13 个;后续按需细分                                    | 接受     |
+| D2  | 5 个 canonical `kind`,不是 12 个;后续按需细分                                    | 接受     |
 | D3  | `read_session_messages` 默认 `last_n = 20`                                       | 接受     |
 | D4  | `final_assistant_message` 是顶层便利字段,完整文本                                | 接受     |
 | D5  | `include_thinking = false` 默认关闭,控制 token 成本(命名对齐 VK 内部 `NormalizedEntryType::Thinking`) | 接受     |

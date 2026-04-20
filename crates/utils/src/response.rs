@@ -11,9 +11,11 @@ pub struct ApiErrorEnvelope {
     pub human_intervention_required: bool,
     /// Last ~2 KiB of the executor's stderr, for diagnostic display.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub stderr_tail: Option<String>,
     /// Executor program name (e.g. `"claude"`, `"codex"`).
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub program: Option<String>,
 }
 

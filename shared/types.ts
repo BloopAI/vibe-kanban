@@ -256,11 +256,11 @@ human_intervention_required: boolean,
 /**
  * Last ~2 KiB of the executor's stderr, for diagnostic display.
  */
-stderr_tail: string | null, 
+stderr_tail?: string, 
 /**
  * Executor program name (e.g. `"claude"`, `"codex"`).
  */
-program: string | null, };
+program?: string, };
 
 export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_data: E | null, message: string | null, error?: ApiErrorEnvelope | null, };
 
