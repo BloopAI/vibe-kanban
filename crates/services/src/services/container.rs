@@ -1202,7 +1202,15 @@ pub trait ContainerService {
                 Some(review_request.prompt.clone())
             }
             ExecutorActionType::ScriptRequest(_) => None,
-        } {
+        }
+        .and_then(|prompt| {
+            let trimmed = prompt.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        }) {
             let create_coding_agent_turn = CreateCodingAgentTurn {
                 execution_process_id: execution_process.id,
                 prompt: Some(prompt),

@@ -169,6 +169,23 @@ interface SessionChatBoxProps<TExecutor extends string = string> {
   reviewComments?: ReviewCommentsProps;
   toolbarActions?: ToolbarActionsProps;
   modelSelector?: ReactNode;
+  /**
+   * Override the default editor placeholder ("Continue working on this
+   * task..."). Used by the Cursor MCP integration to surface "Reply to
+   * Cursor MCP — N waiting" when a `wait_for_user_input` tool call is
+   * holding the bridge open. Ignored while in feedback/edit/approval/
+   * ask-question modes since those have stronger contextual placeholders.
+   */
+  placeholderOverride?: string;
+  /**
+   * Optional secondary button rendered next to the Send button in the
+   * `'idle'` state. Currently used by Cursor MCP sessions to surface a
+   * dedicated **Stop** action alongside Send: Send goes through
+   * `cursorMcpApi.resolve`, while this button lets the user stop all
+   * processes in the session. Ignored in non-idle states (which have
+   * their own button layouts).
+   */
+  idleSecondaryAction?: ReactNode;
   error?: string | null;
   repoIds?: string[];
   agent?: TExecutor | null;
@@ -234,6 +251,8 @@ export function SessionChatBox<TExecutor extends string = string>({
   reviewComments,
   toolbarActions,
   modelSelector,
+  placeholderOverride,
+  idleSecondaryAction,
   error,
   repoIds,
   agent,
@@ -309,7 +328,7 @@ export function SessionChatBox<TExecutor extends string = string>({
           ? 'Type a different answer...'
           : session.isNewSessionMode
             ? 'Start a new conversation...'
-            : 'Continue working on this task...';
+            : (placeholderOverride ?? 'Continue working on this task...');
 
   // Cmd+Enter handler
   const handleCmdEnter = () => {
@@ -504,11 +523,14 @@ export function SessionChatBox<TExecutor extends string = string>({
     switch (status) {
       case 'idle':
         return (
-          <PrimaryButton
-            onClick={actions.onSend}
-            disabled={!canSend}
-            value={t('conversation.actions.send')}
-          />
+          <>
+            <PrimaryButton
+              onClick={actions.onSend}
+              disabled={!canSend}
+              value={t('conversation.actions.send')}
+            />
+            {idleSecondaryAction}
+          </>
         );
 
       case 'sending':

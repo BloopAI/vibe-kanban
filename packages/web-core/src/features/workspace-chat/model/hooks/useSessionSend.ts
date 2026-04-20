@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { ExecutorConfig } from 'shared/types';
-import { sessionsApi } from '@/shared/lib/api';
+import { cursorMcpApi, sessionsApi } from '@/shared/lib/api';
 import { useCreateSession } from './useCreateSession';
 
 interface UseSessionSendOptions {
@@ -14,6 +14,19 @@ interface UseSessionSendOptions {
   onSelectSession?: (sessionId: string) => void;
   /** Unified executor config (executor + variant + overrides) */
   executorConfig?: ExecutorConfig | null;
+  /**
+   * `true` if this session is bound to a Cursor MCP bridge conversation.
+   * When set, send() short-circuits to `cursorMcpApi.resolve` instead of
+   * `sessionsApi.followUp` — there is no real coding agent process to
+   * spawn, just the in-memory rendezvous holding Cursor's
+   * `wait_for_user_input` tool call open.
+   *
+   * Computed from the per-session cursor-mcp snapshot (presence of
+   * `bridge_session_id`) rather than `session.executor`, because the
+   * executor field can lag behind a fresh adoption while React Query's
+   * session list is mid-refetch.
+   */
+  isCursorMcpSession?: boolean;
 }
 
 interface UseSessionSendResult {
@@ -42,6 +55,7 @@ export function useSessionSend({
   isNewSessionMode,
   onSelectSession,
   executorConfig,
+  isCursorMcpSession = false,
 }: UseSessionSendOptions): UseSessionSendResult {
   const { mutateAsync: createSession, isPending: isCreatingSession } =
     useCreateSession();
@@ -52,6 +66,46 @@ export function useSessionSend({
     async (message: string): Promise<boolean> => {
       const trimmed = message.trim();
       if (!trimmed) return false;
+
+      // Cursor MCP fast path: deliver the user reply straight to the
+      // in-memory rendezvous so Cursor's `wait_for_user_input` tool
+      // call returns. No executor process is spawned and `executorConfig`
+      // is intentionally optional here — adoption may have completed
+      // before the executor metadata propagated to the session row.
+      //
+      // The endpoint returns `{ data: false }` when there is no
+      // pending wait to resolve (Cursor hasn't called
+      // `wait_for_user_input` yet, or it was cancelled). In that
+      // case we keep the user's message in the editor and surface a
+      // friendly error instead of silently losing it. UI-level state
+      // (placeholder copy, disabled send button once we observe
+      // `pendingCount === 0`) is the primary defence; this is the
+      // backstop for races.
+      if (isCursorMcpSession && !isNewSessionMode && sessionId) {
+        setError(null);
+        setIsSendingFollowUp(true);
+        try {
+          const resolved = await cursorMcpApi.resolve(sessionId, {
+            text: trimmed,
+          });
+          if (!resolved) {
+            setError(
+              'Cursor has no pending wait to resolve — wait for the next wait_for_user_input call to reply.'
+            );
+            return false;
+          }
+          return true;
+        } catch (e: unknown) {
+          const err = e as { message?: string };
+          setError(
+            `Failed to reply to Cursor MCP: ${err.message ?? 'Unknown error'}`
+          );
+          return false;
+        } finally {
+          setIsSendingFollowUp(false);
+        }
+      }
+
       if (!executorConfig) {
         setError('No executor selected');
         return false;
@@ -109,6 +163,7 @@ export function useSessionSend({
       createSession,
       onSelectSession,
       executorConfig,
+      isCursorMcpSession,
     ]
   );
 

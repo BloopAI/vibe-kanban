@@ -61,6 +61,7 @@ interface CreateChatBoxProps<TExecutor extends string = string> {
   agentIcon?: ReactNode;
   onSend: () => void;
   isSending: boolean;
+  canSend?: boolean;
   disabled?: boolean;
   executor: ExecutorProps<TExecutor>;
   formatExecutorLabel?: (executor: TExecutor) => string;
@@ -96,6 +97,7 @@ export function CreateChatBox<TExecutor extends string = string>({
   agentIcon,
   onSend,
   isSending,
+  canSend: canSendOverride,
   disabled = false,
   executor,
   formatExecutorLabel = defaultExecutorLabel,
@@ -116,7 +118,8 @@ export function CreateChatBox<TExecutor extends string = string>({
   const { t } = useTranslation(['common', 'tasks']);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isDisabled = disabled || isSending;
-  const canSend = editor.value.trim().length > 0 && !isDisabled;
+  const canSend =
+    (canSendOverride ?? editor.value.trim().length > 0) && !isDisabled;
 
   const handleCmdEnter = () => {
     if (canSend) {

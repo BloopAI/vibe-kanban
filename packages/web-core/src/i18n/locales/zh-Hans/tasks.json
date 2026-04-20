@@ -502,6 +502,20 @@
       "failedToCreateWorkspace": "创建工作区失败"
     }
   },
+  "cursorMcpLobby": {
+    "buttonNoChatsNoBridges": "暂无 Cursor MCP 对话",
+    "buttonNoChatsConnected": "已连接 Cursor · 暂无未绑定对话",
+    "buttonWithChats_one": "Cursor MCP · {{count}} 个未绑定对话",
+    "buttonWithChats_other": "Cursor MCP · {{count}} 个未绑定对话",
+    "pickTooltip": "选择一个尚未绑定工作区的 Composer 对话，用于创建本工作区。",
+    "panelTitle": "未绑定的 Composer 对话",
+    "panelHint": "此处仅列出尚未采纳进工作区的会话。已在看板里绑定过的对话请从左侧工作区列表打开，不会出现在这里。",
+    "loading": "加载中…",
+    "emptyNoBridges": "还没有未绑定对话。请先用上方的连接说明配置 Cursor。",
+    "emptyNoChats": "还没有未绑定对话。打开 Cursor 并让助手调用 wait_for_user_input，此处会出现一行。",
+    "pendingWaits_one": "{{count}} 处待回复",
+    "pendingWaits_other": "{{count}} 处待回复"
+  },
   "shareDialog": {
     "loginRequired": {
       "title": "Sign in required",

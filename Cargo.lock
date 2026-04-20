@@ -5166,8 +5166,10 @@ version = "0.1.43"
 dependencies = [
  "anyhow",
  "api-types",
+ "dashmap",
  "db",
  "executors",
+ "futures-util",
  "regex",
  "reqwest 0.13.2",
  "rmcp 1.3.0",
@@ -5178,6 +5180,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
+ "tokio-tungstenite 0.26.2",
  "tracing",
  "tracing-subscriber",
  "utils",

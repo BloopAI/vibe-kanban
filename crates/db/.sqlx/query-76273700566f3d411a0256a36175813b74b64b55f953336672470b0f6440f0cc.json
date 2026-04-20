@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE cursor_mcp_lobby_sessions\n               SET last_activity_at = datetime('now')\n               WHERE bridge_session_id = ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "76273700566f3d411a0256a36175813b74b64b55f953336672470b0f6440f0cc"
+}

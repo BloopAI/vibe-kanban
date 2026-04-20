@@ -2,12 +2,14 @@ use std::collections::HashMap;
 
 use axum::{Json, extract::State, response::Json as ResponseJson};
 use db::models::{
+    cursor_mcp_lobby::CursorMcpLobbySession,
     requests::{
         CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, CreateWorkspaceApiRequest,
     },
     workspace::{CreateWorkspace, Workspace},
 };
 use deployment::Deployment;
+use executors::executors::BaseCodingAgent;
 use services::services::container::ContainerService;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -15,6 +17,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
+    routes::cursor_mcp::adopt_cursor_mcp_lobby_session,
     routes::workspaces::attachments::{
         ImportedIssueAttachment, import_issue_attachments_from_remote,
     },
@@ -72,6 +75,77 @@ fn normalize_prompt(prompt: &str) -> Option<String> {
     } else {
         Some(trimmed.to_string())
     }
+}
+
+fn normalize_optional_name(name: Option<String>) -> Option<String> {
+    name.and_then(|value| {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CursorMcpAdoptionContext {
+    bridge_session_id: String,
+}
+
+fn resolve_cursor_mcp_adoption_context(
+    executor: BaseCodingAgent,
+    requested_name: Option<String>,
+    prompt: &str,
+    lobby: Option<&CursorMcpLobbySession>,
+    adopt_bridge_session_id: Option<&str>,
+) -> Result<
+    (
+        Option<String>,
+        Option<String>,
+        Option<CursorMcpAdoptionContext>,
+    ),
+    ApiError,
+> {
+    let normalized_name = normalize_optional_name(requested_name);
+    let normalized_prompt = normalize_prompt(prompt);
+    let adopt_bridge_session_id = adopt_bridge_session_id
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+
+    let Some(bridge_session_id) = adopt_bridge_session_id else {
+        return Ok((normalized_name, normalized_prompt, None));
+    };
+
+    if executor != BaseCodingAgent::CursorMcp {
+        return Err(ApiError::BadRequest(
+            "Cursor MCP lobby adoption is only supported for the CURSOR_MCP executor.".to_string(),
+        ));
+    }
+
+    let Some(lobby) = lobby else {
+        return Err(ApiError::BadRequest(format!(
+            "Cursor MCP lobby session '{}' was not found.",
+            bridge_session_id
+        )));
+    };
+
+    let workspace_name = normalized_name.or_else(|| {
+        lobby
+            .title
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(ToString::to_string)
+    });
+
+    Ok((
+        workspace_name.clone(),
+        normalized_prompt,
+        Some(CursorMcpAdoptionContext {
+            bridge_session_id: bridge_session_id.to_string(),
+        }),
+    ))
 }
 
 fn escape_markdown_label(label: &str) -> String {
@@ -220,13 +294,33 @@ pub async fn create_and_start_workspace(
         executor_config,
         prompt,
         attachment_ids,
+        adopt_cursor_mcp_lobby_bridge_session_id,
     } = payload;
 
-    let mut workspace_prompt = normalize_prompt(&prompt).ok_or_else(|| {
-        ApiError::BadRequest(
-            "A workspace prompt is required. Provide a non-empty `prompt`.".to_string(),
-        )
-    })?;
+    let cursor_mcp_lobby =
+        if let Some(bridge_session_id) = adopt_cursor_mcp_lobby_bridge_session_id.as_deref() {
+            CursorMcpLobbySession::find(&deployment.db().pool, bridge_session_id).await?
+        } else {
+            None
+        };
+
+    let (workspace_name, workspace_prompt, adopt_context) = resolve_cursor_mcp_adoption_context(
+        executor_config.executor,
+        name,
+        &prompt,
+        cursor_mcp_lobby.as_ref(),
+        adopt_cursor_mcp_lobby_bridge_session_id.as_deref(),
+    )?;
+
+    let mut workspace_prompt = if adopt_context.is_some() {
+        workspace_prompt.unwrap_or_default()
+    } else {
+        workspace_prompt.ok_or_else(|| {
+            ApiError::BadRequest(
+                "A workspace prompt is required. Provide a non-empty `prompt`.".to_string(),
+            )
+        })?
+    };
 
     if repos.is_empty() {
         return Err(ApiError::BadRequest(
@@ -236,7 +330,7 @@ pub async fn create_and_start_workspace(
 
     let mut managed_workspace = deployment
         .workspace_manager()
-        .load_managed_workspace(create_workspace_record(&deployment, name).await?)
+        .load_managed_workspace(create_workspace_record(&deployment, workspace_name).await?)
         .await?;
 
     for repo in &repos {
@@ -300,6 +394,46 @@ pub async fn create_and_start_workspace(
         .start_workspace(&workspace, executor_config.clone(), workspace_prompt)
         .await?;
 
+    if let Some(adopt_context) = adopt_context {
+        adopt_cursor_mcp_lobby_session(
+            &deployment,
+            &adopt_context.bridge_session_id,
+            execution_process.session_id,
+        )
+        .await
+        .map_err(|err| {
+            if let Some(cursor_err) =
+                err.downcast_ref::<services::services::cursor_mcp::CursorMcpError>()
+            {
+                match cursor_err {
+                    services::services::cursor_mcp::CursorMcpError::LobbyNotFound(_) => {
+                        ApiError::BadRequest(format!(
+                            "Cursor MCP lobby session '{}' was not found.",
+                            adopt_context.bridge_session_id
+                        ))
+                    }
+                    services::services::cursor_mcp::CursorMcpError::LobbyAlreadyAdopted(_) => {
+                        ApiError::Conflict(format!(
+                            "Cursor MCP lobby session '{}' was already adopted.",
+                            adopt_context.bridge_session_id
+                        ))
+                    }
+                    services::services::cursor_mcp::CursorMcpError::Db(e) => {
+                        ApiError::BadRequest(format!(
+                            "Failed to adopt Cursor MCP lobby session '{}': {}",
+                            adopt_context.bridge_session_id, e
+                        ))
+                    }
+                }
+            } else {
+                ApiError::BadRequest(format!(
+                    "Failed to adopt Cursor MCP lobby session '{}': {}",
+                    adopt_context.bridge_session_id, err
+                ))
+            }
+        })?;
+    }
+
     deployment
         .track_if_analytics_allowed(
             "workspace_created_and_started",
@@ -323,9 +457,15 @@ pub async fn create_and_start_workspace(
 mod tests {
     use chrono::Utc;
     use db::models::file::File;
+    use executors::executors::BaseCodingAgent;
     use uuid::Uuid;
 
-    use super::{ImportedIssueAttachment, rewrite_imported_issue_attachments_markdown};
+    use crate::error::ApiError;
+
+    use super::{
+        CursorMcpAdoptionContext, ImportedIssueAttachment, resolve_cursor_mcp_adoption_context,
+        rewrite_imported_issue_attachments_markdown,
+    };
 
     fn imported_file(
         attachment_id: Uuid,
@@ -468,5 +608,52 @@ mod tests {
             rewritten,
             "See [doc.pdf](.vibe-attachments/doc_file.pdf) and ![shot.png](.vibe-attachments/shot_file.png). https://example.com"
         );
+    }
+
+    #[test]
+    fn cursor_mcp_adoption_allows_empty_prompt_and_defaults_name_from_lobby_title() {
+        let lobby = db::models::cursor_mcp_lobby::CursorMcpLobbySession {
+            bridge_session_id: "ab12-cd34".to_string(),
+            bridge_label: Some("host".to_string()),
+            title: Some("Runloom / vibe-kanban".to_string()),
+            first_message: Some("hello".to_string()),
+            last_activity_at: Utc::now(),
+            created_at: Utc::now(),
+            adopted_into_session_id: None,
+        };
+
+        let resolved = resolve_cursor_mcp_adoption_context(
+            BaseCodingAgent::CursorMcp,
+            None,
+            "   ",
+            Some(&lobby),
+            Some("ab12-cd34"),
+        )
+        .expect("resolve");
+
+        assert_eq!(
+            resolved,
+            (
+                Some("Runloom / vibe-kanban".to_string()),
+                None,
+                Some(CursorMcpAdoptionContext {
+                    bridge_session_id: "ab12-cd34".to_string(),
+                })
+            )
+        );
+    }
+
+    #[test]
+    fn cursor_mcp_adoption_rejects_non_cursor_executor() {
+        let err = resolve_cursor_mcp_adoption_context(
+            BaseCodingAgent::Codex,
+            None,
+            "",
+            None,
+            Some("ab12-cd34"),
+        )
+        .expect_err("must reject");
+
+        assert!(matches!(err, ApiError::BadRequest(_)));
     }
 }

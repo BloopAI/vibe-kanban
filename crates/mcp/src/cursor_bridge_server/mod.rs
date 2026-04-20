@@ -1,18 +1,26 @@
-//! `vibe-kanban-mcp --mode cursor-bridge --session-id <UUID>`
+//! `vibe-kanban-mcp --mode cursor-bridge [--label <text>]` (v4 lobby model)
 //!
-//! A minimal stdio MCP server that exposes a single tool,
-//! `wait_for_user_input`, mirroring the PChat extension's tool. Cursor IDE's
-//! Composer Agent calls it at the end of every turn; the call blocks until
-//! the user types a reply in the **vibe-kanban** session UI bound to the
-//! `--session-id` flag (or until the backend force-renews via
-//! `TIMEOUT_RENEW`).
+//! v4 stdio MCP server that:
+//! 1. Holds a single WebSocket open to
+//!    `ws://<backend>/api/cursor-mcp/bridge/ws` for the lifetime of the
+//!    process. **No workspace-id**: bridges are global; the backend
+//!    routes by `bridge_session_id` instead.
+//! 2. Sends a 30-second `Ping` heartbeat so the backend can detect the
+//!    bridge going away in real time.
+//! 3. Exposes a single MCP tool, `wait_for_user_input`, that the LLM
+//!    calls at the end of every Composer turn. The tool body is
+//!    forwarded over the WebSocket as a `Wait` frame and blocks on a
+//!    `oneshot` until the backend pushes back a `WaitResult`.
 //!
-//! The bridge does not directly touch any vibe-kanban internals: it long-polls
-//! `POST <backend>/api/cursor-mcp/bridge/wait`. The backend
-//! ([`server::routes::cursor_mcp`]) owns the rendezvous with the UI.
+//! On `Register`, the bridge sends an optional `label` derived from
+//! `<hostname> · <cwd>` (or overridden by the `--label` flag) so the
+//! Inbox UI can disambiguate which Cursor window / machine produced a
+//! given conversation.
 
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
+use dashmap::DashMap;
+use futures_util::{SinkExt, StreamExt};
 use rmcp::{
     ErrorData, ServerHandler,
     handler::server::{tool::ToolRouter, wrapper::Parameters},
@@ -22,28 +30,88 @@ use rmcp::{
     schemars, serde_json, tool, tool_handler, tool_router,
 };
 use serde::{Deserialize, Serialize};
+use tokio::sync::{Mutex as AsyncMutex, mpsc, oneshot};
+use tokio_tungstenite::tungstenite::Message;
 use uuid::Uuid;
 
-/// Sentinel keep-alive returned by the backend when no user reply has come
-/// in within the auto-renew interval. Cursor's Agent should silently re-call
-/// the tool when it sees this string.
 pub const TIMEOUT_RENEW: &str = "TIMEOUT_RENEW";
-
-/// Sentinel returned when the user explicitly cancels the prompt from the UI.
+#[allow(dead_code)]
 pub const USER_DISMISSED_QUEUE: &str = "__USER_DISMISSED_QUEUE__";
 
-/// Hard upper bound for one HTTP long-poll cycle to the backend.
-/// Slightly larger than the backend's auto-renew interval so the backend
-/// always returns first.
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(60 * 60); // 60 min
+const PING_INTERVAL: Duration = Duration::from_secs(30);
+const TOOL_CALL_HARD_TIMEOUT: Duration = Duration::from_secs(60 * 70);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum BridgeInbound {
+    Register {
+        version: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        label: Option<String>,
+    },
+    Wait {
+        request_id: String,
+        bridge_session_id: String,
+        message: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        prompt: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        title: Option<String>,
+    },
+    #[allow(dead_code)]
+    CancelWait {
+        request_id: String,
+    },
+    Ping,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum BridgeOutbound {
+    Registered,
+    WaitResult {
+        request_id: String,
+        text: String,
+        session_id: String,
+    },
+    Error {
+        #[serde(default)]
+        request_id: Option<String>,
+        message: String,
+    },
+    Pong,
+}
+
+struct WaitEnvelope {
+    text: String,
+    session_id: String,
+}
+
+/// Pending tool call, indexed by the MCP `request_id` we minted when the
+/// LLM invoked `wait_for_user_input`. We remember the *original*
+/// `sessionId` the LLM passed in so that when the bridge WS drops mid-
+/// wait we can echo that exact id back — otherwise the LLM sees a
+/// `[session_id: NEW]` on retry and forks the conversation.
+struct PendingEntry {
+    tx: oneshot::Sender<WaitEnvelope>,
+    original_session_id: String,
+}
+
+struct BridgeInner {
+    outbound_tx: mpsc::UnboundedSender<BridgeInbound>,
+    pending: Arc<DashMap<String, PendingEntry>>,
+}
+
+#[derive(Clone)]
 pub struct CursorBridgeServer {
-    client: reqwest::Client,
-    base_url: String,
-    /// vibe-kanban session UUID this bridge is permanently bound to.
-    session_id: Uuid,
-    tool_router: ToolRouter<CursorBridgeServer>,
+    inner: Arc<BridgeInner>,
+    tool_router: ToolRouter<Self>,
+}
+
+impl std::fmt::Debug for CursorBridgeServer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CursorBridgeServer").finish()
+    }
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -54,131 +122,164 @@ pub struct WaitForUserInputArgs {
     pub message: String,
 
     #[schemars(
+        description = "REQUIRED. Identifies which Cursor MCP conversation this Composer chat belongs to. On the FIRST tool call of a new Composer chat, pass the literal string \"NEW\" so the backend mints a fresh friendly id (e.g. \"ab12-cd34\"). The backend echoes the resolved id in the tool result as `[session_id: ab12-cd34]`. EVERY subsequent call in this same Composer chat MUST pass that exact same id back so the conversation stays bound to one vibe-kanban session. You may also pass a custom human-friendly id (e.g. \"refactor-foo\") on the first call instead of \"NEW\"."
+    )]
+    pub session_id: String,
+
+    #[schemars(
         description = "Hint text shown above the input box. Optional. Use to guide the user's reply."
     )]
     #[serde(default)]
     pub prompt: Option<String>,
 
     #[schemars(
-        description = "Optional title hint for the persistent chat session tab (only the first call may take effect)."
+        description = "Optional title hint for the lobby preview. Only takes effect on the FIRST call (when the conversation is being added to the inbox). Subsequent calls are ignored."
     )]
     #[serde(default)]
     pub title: Option<String>,
-
-    /// Some clients pass back a `sessionId` from the previous tool result.
-    /// We accept and ignore it — the bridge is bound to its `--session-id`
-    /// at startup, so we never route across sessions. Kept here only to
-    /// preserve a tool schema compatible with PChat-style models.
-    #[schemars(
-        description = "Ignored. The bridge is bound to a specific vibe-kanban session at startup. Pass anything (e.g. echo back the value from the previous response)."
-    )]
-    #[serde(default)]
-    pub session_id: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct BridgeWaitRequest {
-    session_id: Uuid,
-    request_id: String,
-    message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    prompt: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    title: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct BridgeWaitResponse {
-    text: String,
 }
 
 impl CursorBridgeServer {
-    pub fn new(base_url: &str, session_id: Uuid) -> Self {
-        let client = reqwest::Client::builder()
-            // No global timeout; we long-poll for up to ~1h per request.
-            .pool_idle_timeout(Some(Duration::from_secs(90)))
-            .build()
-            .expect("failed to build reqwest::Client for cursor-bridge");
+    /// `label` is shown in the Inbox picker so the user can tell which
+    /// Cursor window / machine produced a conversation. Pass `None` to
+    /// auto-derive `<hostname> · <cwd>`.
+    pub fn new(base_url: &str, label: Option<String>) -> Self {
+        let pending: Arc<DashMap<String, PendingEntry>> = Arc::new(DashMap::new());
+        let (outbound_tx, outbound_rx) = mpsc::unbounded_channel::<BridgeInbound>();
+
+        let resolved_label = label.or_else(default_label);
+
+        tokio::spawn(driver_loop(
+            base_url.to_string(),
+            resolved_label,
+            pending.clone(),
+            outbound_rx,
+        ));
+
+        let inner = Arc::new(BridgeInner {
+            outbound_tx,
+            pending,
+        });
 
         Self {
-            client,
-            base_url: base_url.trim_end_matches('/').to_string(),
-            session_id,
+            inner,
             tool_router: Self::tool_router_default(),
         }
     }
 }
 
+fn default_label() -> Option<String> {
+    let host = hostname_or_unknown();
+    let cwd = std::env::current_dir()
+        .ok()
+        .and_then(|p| p.file_name().map(|f| f.to_string_lossy().into_owned()))
+        .unwrap_or_else(|| "?".to_string());
+    Some(format!("{} · {}", host, cwd))
+}
+
+fn hostname_or_unknown() -> String {
+    // Resolution order:
+    // 1. Env var override (`HOSTNAME` / `COMPUTERNAME`). Some users set
+    //    this explicitly in shells; respect it.
+    // 2. `scutil --get LocalHostName` on macOS, which returns the
+    //    friendly hostname even when `HOSTNAME` is not exported (the
+    //    default Cursor-spawned process environment).
+    // 3. `/etc/hostname` on Linux.
+    // 4. Fallback placeholder.
+    if let Ok(h) = std::env::var("HOSTNAME")
+        && !h.trim().is_empty()
+    {
+        return h.trim().to_string();
+    }
+    if let Ok(h) = std::env::var("COMPUTERNAME")
+        && !h.trim().is_empty()
+    {
+        return h.trim().to_string();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(out) = std::process::Command::new("scutil")
+            .args(["--get", "LocalHostName"])
+            .output()
+            && out.status.success()
+        {
+            let h = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if !h.is_empty() {
+                return h;
+            }
+        }
+    }
+    if let Ok(h) = std::fs::read_to_string("/etc/hostname") {
+        let trimmed = h.trim();
+        if !trimmed.is_empty() {
+            return trimmed.to_string();
+        }
+    }
+    "?".to_string()
+}
+
 #[tool_router(router = tool_router_default, vis = "pub")]
 impl CursorBridgeServer {
     #[tool(
-        description = "Wait for user input in the vibe-kanban Cursor MCP persistent chat panel.\n\nRULES:\n- Normal text returned: process as user reply.\n- Text starting with \"TIMEOUT_RENEW\" returned: keep-alive signal. Do NOT show this to the user. Silently call this tool again with the same `message` (or a fresh one if the situation changed). This may repeat many times.\n- Text equal to \"__USER_DISMISSED_QUEUE__\" returned: the user cancelled this prompt from the UI. Treat it as the user choosing to stop the loop.\n\nThe tool blocks until one of the above happens. The vibe-kanban backend force-renews the wait every ~55 minutes to defeat upstream MCP timeouts.\n\nParameters:\n- message: The full assistant reply (Markdown).\n- prompt: Optional hint above the input box.\n- title: Optional session tab title.\n- sessionId: Ignored (this bridge is bound to one vibe-kanban session at startup)."
+        description = "Wait for user input in the vibe-kanban Cursor MCP persistent chat panel.\n\nSESSION ROUTING (read carefully):\n- On the FIRST call within a new Composer chat, pass `sessionId: \"NEW\"`. The tool result will include `[session_id: <id>]` — the backend's chosen friendly id (e.g. `ab12-cd34`).\n- On EVERY subsequent call in the SAME Composer chat, pass that exact same `sessionId` so the conversation stays bound to one vibe-kanban session. NEVER pass `\"NEW\"` again or you will fork into a brand-new conversation.\n- You may instead pass a custom friendly id (e.g. `\"refactor-foo\"`, `\"bug-123\"`) as the first sessionId — the backend will adopt it.\n\nRETURN VALUE RULES:\n- Normal text returned: process as the user's reply.\n- Text starting with `\"TIMEOUT_RENEW\"`: keep-alive signal. Do NOT show this to the user. Silently re-call this tool with the SAME `sessionId`. This may repeat many times.\n- Text equal to `\"__USER_DISMISSED_QUEUE__\"`: the user cancelled this prompt from the UI. Treat it as the user choosing to stop the loop.\n\nThe tool blocks until one of the above happens (up to ~55 minutes per call before auto-renewing)."
     )]
     async fn wait_for_user_input(
         &self,
         Parameters(args): Parameters<WaitForUserInputArgs>,
     ) -> Result<CallToolResult, ErrorData> {
-        let url = format!("{}/api/cursor-mcp/bridge/wait", self.base_url);
-        let payload = BridgeWaitRequest {
-            session_id: self.session_id,
-            request_id: Uuid::new_v4().to_string(),
+        let request_id = Uuid::new_v4().to_string();
+        let (tx, rx) = oneshot::channel::<WaitEnvelope>();
+        let original_session_id = args.session_id.trim().to_string();
+        self.inner.pending.insert(
+            request_id.clone(),
+            PendingEntry {
+                tx,
+                original_session_id: original_session_id.clone(),
+            },
+        );
+
+        let frame = BridgeInbound::Wait {
+            request_id: request_id.clone(),
+            bridge_session_id: original_session_id,
             message: args.message,
             prompt: args.prompt,
             title: args.title,
         };
 
-        let response = match tokio::time::timeout(
-            REQUEST_TIMEOUT,
-            self.client.post(&url).json(&payload).send(),
-        )
-        .await
-        {
-            Ok(Ok(resp)) => resp,
-            Ok(Err(err)) => {
-                tracing::error!("cursor-bridge HTTP error: {}", err);
-                return Ok(Self::error_result(&format!(
-                    "Failed to reach vibe-kanban backend at {}: {}. Is vibe-kanban running and is the bridge --session-id correct?",
-                    url, err
-                )));
-            }
-            Err(_) => {
-                tracing::warn!("cursor-bridge request timed out — telling Agent to retry");
-                return Ok(Self::keep_alive_result(self.session_id));
-            }
-        };
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_default();
-            return Ok(Self::error_result(&format!(
-                "vibe-kanban backend returned {}: {}",
-                status, body
-            )));
+        if self.inner.outbound_tx.send(frame).is_err() {
+            self.inner.pending.remove(&request_id);
+            return Ok(Self::error_result(
+                "vibe-kanban bridge driver shut down — backend unreachable",
+            ));
         }
 
-        // The /bridge/wait endpoint returns {"text": "..."} directly (not
-        // wrapped in ApiResponseEnvelope) so it can be a thin pass-through.
-        let parsed = match response.json::<BridgeWaitResponse>().await {
-            Ok(v) => v,
-            Err(err) => {
-                // Fall back to envelope-wrapped shape if the backend ever
-                // changes; we don't want a deserialisation tweak to break
-                // Cursor's Agent loop.
-                tracing::warn!("cursor-bridge response decode failed: {}", err);
-                return Ok(Self::keep_alive_result(self.session_id));
+        let envelope = match tokio::time::timeout(TOOL_CALL_HARD_TIMEOUT, rx).await {
+            Ok(Ok(env)) => env,
+            Ok(Err(_)) => {
+                self.inner.pending.remove(&request_id);
+                return Ok(Self::keep_alive_result(args.session_id.trim()));
+            }
+            Err(_) => {
+                self.inner.pending.remove(&request_id);
+                return Ok(Self::keep_alive_result(args.session_id.trim()));
             }
         };
 
-        let body = format!("{}\n\n[session_id: {}]", parsed.text, self.session_id);
+        let body = format!("{}\n\n[session_id: {}]", envelope.text, envelope.session_id);
         Ok(CallToolResult::success(vec![Content::text(body)]))
     }
 }
 
 impl CursorBridgeServer {
-    fn keep_alive_result(session_id: Uuid) -> CallToolResult {
+    fn keep_alive_result(session_id: &str) -> CallToolResult {
+        let echoed = if session_id.is_empty() || session_id.eq_ignore_ascii_case("NEW") {
+            "NEW".to_string()
+        } else {
+            session_id.to_string()
+        };
         CallToolResult::success(vec![Content::text(format!(
             "{}\n\n[session_id: {}]",
-            TIMEOUT_RENEW, session_id
+            TIMEOUT_RENEW, echoed
         ))])
     }
 
@@ -197,13 +298,11 @@ impl CursorBridgeServer {
 #[tool_handler]
 impl ServerHandler for CursorBridgeServer {
     fn get_info(&self) -> ServerInfo {
-        let instructions = format!(
-            "vibe-kanban Cursor MCP bridge for session {}. \
+        let instructions = "vibe-kanban Cursor MCP bridge. \
              Call `wait_for_user_input` at the end of every assistant turn so the user can reply in vibe-kanban. \
-             If the tool returns text starting with `TIMEOUT_RENEW`, silently call it again. \
-             If it returns `__USER_DISMISSED_QUEUE__`, the user cancelled the prompt.",
-            self.session_id
-        );
+             On the FIRST call of a new chat pass sessionId=\"NEW\" (or a custom id). On every subsequent call reuse the id from the previous result's [session_id: ...] tag. \
+             If the tool returns text starting with `TIMEOUT_RENEW`, silently call it again with the same sessionId. \
+             If it returns `__USER_DISMISSED_QUEUE__`, the user cancelled the prompt.";
 
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new(
@@ -215,15 +314,176 @@ impl ServerHandler for CursorBridgeServer {
     }
 }
 
-// Tiny smoke test: the bridge object can be constructed and exposes exactly
-// one tool.
+// ---------------------------------------------------------------------------
+// Driver loop — owns the WebSocket, reconnects forever, drains outbound_rx.
+// ---------------------------------------------------------------------------
+
+async fn driver_loop(
+    base_url: String,
+    label: Option<String>,
+    pending: Arc<DashMap<String, PendingEntry>>,
+    outbound_rx: mpsc::UnboundedReceiver<BridgeInbound>,
+) {
+    let outbound_rx = Arc::new(AsyncMutex::new(outbound_rx));
+
+    let ws_url = format!(
+        "{}/api/cursor-mcp/bridge/ws",
+        base_url
+            .trim_end_matches('/')
+            .replacen("http://", "ws://", 1)
+            .replacen("https://", "wss://", 1),
+    );
+
+    let mut backoff = Duration::from_millis(500);
+    const MAX_BACKOFF: Duration = Duration::from_secs(30);
+
+    loop {
+        match connect_and_run(&ws_url, label.clone(), &pending, outbound_rx.clone()).await {
+            Ok(()) => {
+                tracing::info!("cursor-bridge WS closed cleanly; reconnecting");
+                backoff = Duration::from_millis(500);
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "cursor-bridge WS connection failed: {} — retrying in {:?}",
+                    e,
+                    backoff
+                );
+            }
+        }
+        drain_pending(&pending);
+        tokio::time::sleep(backoff).await;
+        backoff = std::cmp::min(backoff.saturating_mul(2), MAX_BACKOFF);
+    }
+}
+
+/// Called when the bridge WS drops mid-wait. We fail every pending tool
+/// call with `TIMEOUT_RENEW` so the LLM re-calls — but critically we
+/// echo back the EXACT `sessionId` the LLM passed in (stored alongside
+/// the sender). Echoing "NEW" here would make the LLM treat the next
+/// call as a fresh conversation and fork the whole thing on the
+/// backend.
+fn drain_pending(pending: &DashMap<String, PendingEntry>) {
+    let keys: Vec<String> = pending.iter().map(|e| e.key().clone()).collect();
+    for k in keys {
+        if let Some((_, entry)) = pending.remove(&k) {
+            let _ = entry.tx.send(WaitEnvelope {
+                text: TIMEOUT_RENEW.to_string(),
+                session_id: entry.original_session_id,
+            });
+        }
+    }
+}
+
+async fn connect_and_run(
+    ws_url: &str,
+    label: Option<String>,
+    pending: &Arc<DashMap<String, PendingEntry>>,
+    outbound_rx: Arc<AsyncMutex<mpsc::UnboundedReceiver<BridgeInbound>>>,
+) -> anyhow::Result<()> {
+    tracing::info!("cursor-bridge connecting to {}", ws_url);
+    let (ws, _resp) = tokio_tungstenite::connect_async(ws_url).await?;
+    let (mut sender, mut receiver) = ws.split();
+
+    let reg = serde_json::to_string(&BridgeInbound::Register {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        label,
+    })?;
+    sender.send(Message::Text(reg.into())).await?;
+
+    let mut ping_interval = tokio::time::interval(PING_INTERVAL);
+    ping_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    ping_interval.tick().await;
+
+    let mut outbound_rx = outbound_rx.lock().await;
+
+    loop {
+        tokio::select! {
+            outbound = outbound_rx.recv() => {
+                match outbound {
+                    Some(frame) => {
+                        let text = serde_json::to_string(&frame)?;
+                        sender.send(Message::Text(text.into())).await?;
+                    }
+                    None => return Ok(()),
+                }
+            }
+            _ = ping_interval.tick() => {
+                let p = serde_json::to_string(&BridgeInbound::Ping)?;
+                sender.send(Message::Text(p.into())).await?;
+            }
+            inbound = receiver.next() => {
+                match inbound {
+                    Some(Ok(Message::Text(text))) => {
+                        match serde_json::from_str::<BridgeOutbound>(text.as_ref()) {
+                            Ok(BridgeOutbound::Registered) => {
+                                tracing::info!("cursor-bridge backend acknowledged registration");
+                            }
+                            Ok(BridgeOutbound::Pong) => {}
+                            Ok(BridgeOutbound::WaitResult { request_id, text, session_id }) => {
+                                if let Some((_, entry)) = pending.remove(&request_id) {
+                                    let _ = entry.tx.send(WaitEnvelope { text, session_id });
+                                } else {
+                                    tracing::debug!(
+                                        "cursor-bridge got WaitResult for unknown request_id {}",
+                                        request_id
+                                    );
+                                }
+                            }
+                            Ok(BridgeOutbound::Error { request_id, message }) => {
+                                tracing::warn!("cursor-bridge backend error: {}", message);
+                                if let Some(rid) = request_id
+                                    && let Some((_, entry)) = pending.remove(&rid)
+                                {
+                                    // Echo the ORIGINAL sessionId so the LLM
+                                    // stays on the same conversation.
+                                    let session_id = entry.original_session_id.clone();
+                                    let _ = entry.tx.send(WaitEnvelope {
+                                        text: format!("{}: {}", TIMEOUT_RENEW, message),
+                                        session_id,
+                                    });
+                                }
+                            }
+                            Err(e) => {
+                                tracing::warn!(
+                                    "cursor-bridge bad inbound JSON: {} ({})",
+                                    text,
+                                    e
+                                );
+                            }
+                        }
+                    }
+                    Some(Ok(Message::Ping(payload))) => {
+                        sender.send(Message::Pong(payload)).await.ok();
+                    }
+                    Some(Ok(Message::Pong(_))) => {}
+                    Some(Ok(Message::Binary(_))) => {}
+                    Some(Ok(Message::Close(_))) => {
+                        tracing::info!("cursor-bridge backend closed WS");
+                        return Ok(());
+                    }
+                    Some(Ok(Message::Frame(_))) => {}
+                    Some(Err(e)) => {
+                        return Err(anyhow::anyhow!("cursor-bridge WS recv error: {}", e));
+                    }
+                    None => return Ok(()),
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn bridge_router_only_has_wait_for_user_input() {
-        let svc = CursorBridgeServer::new("http://127.0.0.1:1", Uuid::new_v4());
+    #[tokio::test]
+    async fn bridge_router_only_has_wait_for_user_input() {
+        let svc = CursorBridgeServer::new("http://127.0.0.1:1", None);
         let names: Vec<_> = svc
             .tool_router
             .list_all()
@@ -231,5 +491,11 @@ mod tests {
             .map(|t| t.name)
             .collect();
         assert_eq!(names, vec!["wait_for_user_input"]);
+    }
+
+    #[test]
+    fn default_label_includes_host_and_cwd() {
+        let l = default_label().expect("label");
+        assert!(l.contains('·'));
     }
 }

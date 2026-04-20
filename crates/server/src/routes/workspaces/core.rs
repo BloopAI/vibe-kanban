@@ -138,6 +138,19 @@ pub async fn delete_workspace(
         }
     }
 
+    // Drop any in-memory Cursor MCP routing state for this workspace's
+    // sessions before deletion so the DashMaps in `CursorMcpService`
+    // don't retain `ConversationState` for sessions that no longer
+    // exist. Safe no-op for workspaces that never used CURSOR_MCP.
+    if let Ok(sessions) =
+        db::models::session::Session::find_by_workspace_id(pool, workspace_id).await
+    {
+        let svc = deployment.cursor_mcp();
+        for session in &sessions {
+            svc.forget_vk_session(session.id);
+        }
+    }
+
     let managed_workspace = workspace_manager.load_managed_workspace(workspace).await?;
     let deletion_context = managed_workspace.prepare_deletion_context().await?;
     let rows_affected = managed_workspace.delete_record().await?;

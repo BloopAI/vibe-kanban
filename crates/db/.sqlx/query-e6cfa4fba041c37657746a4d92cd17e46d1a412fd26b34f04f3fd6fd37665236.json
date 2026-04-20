@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO cursor_mcp_lobby_sessions\n                   (bridge_session_id, bridge_label, title, first_message)\n               VALUES (?1, ?2, ?3, ?4)\n               ON CONFLICT(bridge_session_id) DO UPDATE SET\n                   last_activity_at = datetime('now'),\n                   bridge_label = COALESCE(excluded.bridge_label, bridge_label),\n                   title        = COALESCE(excluded.title,        title)\n               RETURNING\n                   bridge_session_id        AS \"bridge_session_id!: String\",\n                   bridge_label,\n                   title,\n                   first_message,\n                   last_activity_at         AS \"last_activity_at!: DateTime<Utc>\",\n                   created_at               AS \"created_at!: DateTime<Utc>\",\n                   adopted_into_session_id  AS \"adopted_into_session_id?: Uuid\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "bridge_session_id!: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "bridge_label",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "first_message",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_activity_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "adopted_into_session_id?: Uuid",
+        "ordinal": 6,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e6cfa4fba041c37657746a4d92cd17e46d1a412fd26b34f04f3fd6fd37665236"
+}

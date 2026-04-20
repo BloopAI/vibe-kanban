@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE cursor_mcp_lobby_sessions\n               SET adopted_into_session_id = ?1,\n                   last_activity_at = datetime('now')\n               WHERE bridge_session_id = ?2\n                 AND adopted_into_session_id IS NULL\n               RETURNING\n                   bridge_session_id        AS \"bridge_session_id!: String\",\n                   bridge_label,\n                   title,\n                   first_message,\n                   last_activity_at         AS \"last_activity_at!: DateTime<Utc>\",\n                   created_at               AS \"created_at!: DateTime<Utc>\",\n                   adopted_into_session_id  AS \"adopted_into_session_id?: Uuid\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "bridge_session_id!: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "bridge_label",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "first_message",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_activity_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Null"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Null"
+      },
+      {
+        "name": "adopted_into_session_id?: Uuid",
+        "ordinal": 6,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "2edf0a19dcca280c739f18b3ec70a1c08deba5e5bb78b34c57fbc4ed7bd84a50"
+}

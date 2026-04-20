@@ -19,6 +19,11 @@ import { CreateChatBox } from '@vibe/ui/components/CreateChatBox';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CreateModeRepoPickerBar } from './CreateModeRepoPickerBar';
 import { ModelSelectorContainer } from '@/shared/components/ModelSelectorContainer';
+import {
+  CursorMcpConnectHint,
+  CursorMcpLobbyPicker,
+} from '@/features/workspace-chat/ui/CursorMcpComposerExtras';
+import type { InboxLobbyItem } from 'shared/types';
 
 function getRepoDisplayName(repo: Repo) {
   return repo.display_name || repo.name;
@@ -30,6 +35,12 @@ function truncateBranchLabel(branch: string) {
   return branch.length > BRANCH_LABEL_MAX_CHARS
     ? `${branch.slice(0, BRANCH_LABEL_MAX_CHARS)}...`
     : branch;
+}
+
+function deriveAdoptedLobbyWorkspaceName(item: InboxLobbyItem): string {
+  const title = item.title?.trim();
+  if (title) return title;
+  return item.bridge_session_id;
 }
 
 interface CreateChatBoxContainerProps {
@@ -61,6 +72,8 @@ export function CreateChatBoxContainer({
   const { createWorkspace } = useCreateWorkspace();
   const hasSelectedRepos = repos.length > 0;
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const [adoptedLobbyItem, setAdoptedLobbyItem] =
+    useState<InboxLobbyItem | null>(null);
   const [hasInitializedStep, setHasInitializedStep] = useState(false);
   const [isSelectingRepos, setIsSelectingRepos] = useState(true);
 
@@ -164,13 +177,15 @@ export function CreateChatBoxContainer({
   const hasSelectedBranchesForAllRepos = repos.every(
     (repo) => !!targetBranches[repo.id]
   );
+  const isCursorMcpAdoptMode =
+    effectiveExecutor === 'CURSOR_MCP' && adoptedLobbyItem !== null;
 
   // Determine if we can submit
   const canSubmit =
     hasSelectedRepos &&
     hasSelectedBranchesForAllRepos &&
-    message.trim().length > 0 &&
-    effectiveExecutor !== null;
+    effectiveExecutor !== null &&
+    (isCursorMcpAdoptMode || message.trim().length > 0);
 
   const handlePresetSelect = (presetId: string | null) => {
     if (!effectiveExecutor) return;
@@ -226,10 +241,13 @@ export function CreateChatBoxContainer({
     if (!canSubmit || !executorConfig) return;
 
     const { title } = splitMessageToTitleDescription(message);
+    const workspaceName = isCursorMcpAdoptMode
+      ? deriveAdoptedLobbyWorkspaceName(adoptedLobbyItem)
+      : title;
     const data = {
       executor_config: executorConfig,
-      name: title,
-      prompt: message,
+      name: workspaceName,
+      prompt: isCursorMcpAdoptMode ? '' : message,
       repos: repos.map((r) => ({
         repo_id: r.id,
         target_branch: targetBranches[r.id]!,
@@ -241,6 +259,9 @@ export function CreateChatBoxContainer({
           }
         : null,
       attachment_ids: getAttachmentIds(),
+      adopt_cursor_mcp_lobby_bridge_session_id: isCursorMcpAdoptMode
+        ? adoptedLobbyItem.bridge_session_id
+        : null,
     };
     const linkToIssue = linkedIssue
       ? {
@@ -248,12 +269,14 @@ export function CreateChatBoxContainer({
           issueId: linkedIssue.issueId,
         }
       : undefined;
-
     const result = await createWorkspace.mutateAsync({
       data,
       linkToIssue,
     });
 
+    // `mutateAsync` throws if adopt fails (see useCreateWorkspace), so we
+    // only reach this block when the whole chain succeeded — safe to
+    // navigate.
     if (result.workspace) {
       onWorkspaceCreated(result.workspace.id);
     }
@@ -278,6 +301,8 @@ export function CreateChatBoxContainer({
     clearAttachments,
     clearDraft,
     linkedIssue,
+    adoptedLobbyItem,
+    isCursorMcpAdoptMode,
   ]);
 
   // Determine error to display
@@ -319,6 +344,34 @@ export function CreateChatBoxContainer({
                 {t('createMode.headings.chatStep')}
               </h2>
 
+              {effectiveExecutor === 'CURSOR_MCP' && (
+                <div className="mb-base flex flex-col gap-2">
+                  <CursorMcpConnectHint />
+                  {adoptedLobbyItem && (
+                    <div className="flex items-center justify-between gap-2 rounded border border-blue-300 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+                      <div className="flex items-center gap-2 truncate">
+                        <strong>Adopting</strong>
+                        <code className="rounded bg-blue-100 px-1.5 py-0.5">
+                          {adoptedLobbyItem.bridge_session_id}
+                        </code>
+                        {adoptedLobbyItem.title && (
+                          <span className="truncate">
+                            {adoptedLobbyItem.title}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAdoptedLobbyItem(null)}
+                        className="rounded border border-blue-300 bg-white px-2 py-0.5 text-[11px] font-medium text-blue-800 hover:bg-blue-100"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex justify-center @container">
                 <CreateChatBox
                   editor={{
@@ -335,23 +388,48 @@ export function CreateChatBoxContainer({
                     executor,
                     onPasteFiles,
                     localAttachments,
-                  }) => (
-                    <WYSIWYGEditor
-                      placeholder="Describe the task..."
-                      value={value}
-                      onChange={onChange}
-                      onCmdEnter={onCmdEnter}
-                      disabled={disabled}
-                      className="min-h-double max-h-[50vh] overflow-y-auto"
-                      repoIds={repoIds}
-                      repoId={repoId}
-                      executor={executor}
-                      autoFocus
-                      onPasteFiles={onPasteFiles}
-                      localAttachments={localAttachments}
-                      sendShortcut={config?.send_message_shortcut}
-                    />
-                  )}
+                  }) =>
+                    isCursorMcpAdoptMode && adoptedLobbyItem ? (
+                      <div className="min-h-double rounded border border-medium bg-secondary px-base py-base text-sm text-normal">
+                        <div className="flex flex-col gap-half">
+                          <span className="font-medium text-high">
+                            This workspace will adopt the existing Cursor MCP
+                            conversation.
+                          </span>
+                          <span className="text-low">
+                            No extra kickoff prompt is sent here. Continue the
+                            conversation from the workspace chat after creation.
+                          </span>
+                          <div className="flex items-center gap-2 text-xs text-low">
+                            <code className="rounded bg-primary px-1.5 py-0.5 text-high">
+                              {adoptedLobbyItem.bridge_session_id}
+                            </code>
+                            {adoptedLobbyItem.title && (
+                              <span className="truncate">
+                                {adoptedLobbyItem.title}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <WYSIWYGEditor
+                        placeholder="Describe the task..."
+                        value={value}
+                        onChange={onChange}
+                        onCmdEnter={onCmdEnter}
+                        disabled={disabled}
+                        className="min-h-double max-h-[50vh] overflow-y-auto"
+                        repoIds={repoIds}
+                        repoId={repoId}
+                        executor={executor}
+                        autoFocus
+                        onPasteFiles={onPasteFiles}
+                        localAttachments={localAttachments}
+                        sendShortcut={config?.send_message_shortcut}
+                      />
+                    )
+                  }
                   agentIcon={
                     <AgentIcon
                       agent={effectiveExecutor}
@@ -359,6 +437,7 @@ export function CreateChatBoxContainer({
                     />
                   }
                   onSend={handleSubmit}
+                  canSend={canSubmit}
                   isSending={createWorkspace.isPending}
                   disabled={!hasSelectedRepos}
                   executor={{
@@ -371,7 +450,13 @@ export function CreateChatBoxContainer({
                   repoIds={repos.map((r) => r.id)}
                   repoId={repoId}
                   modelSelector={
-                    effectiveExecutor ? (
+                    effectiveExecutor === 'CURSOR_MCP' ? (
+                      <CursorMcpLobbyPicker
+                        onPick={(item) => {
+                          setAdoptedLobbyItem(item);
+                        }}
+                      />
+                    ) : effectiveExecutor ? (
                       <ModelSelectorContainer
                         agent={effectiveExecutor}
                         workspaceId={undefined}

@@ -193,6 +193,15 @@ pub async fn follow_up(
         //    one is already on file.
         let prior = ExecutionProcess::find_by_session_id(pool, session.id, false).await?;
         if let Some(latest) = prior.into_iter().last() {
+            // Push the user message into the existing execution_process
+            // MsgStore so the standard normalized-logs WS renders it.
+            crate::routes::cursor_mcp::push_user_reply_to_session_msgstore(
+                &deployment,
+                session.id,
+                &prompt,
+            )
+            .await;
+
             // Best-effort scratch cleanup mirrors the normal happy path.
             if let Err(e) = Scratch::delete(pool, session.id, &ScratchType::DraftFollowUp).await {
                 tracing::debug!(
@@ -216,7 +225,7 @@ pub async fn follow_up(
             .cloned();
         let initial = ExecutorActionType::CodingAgentInitialRequest(
             executors::actions::coding_agent_initial::CodingAgentInitialRequest {
-                prompt,
+                prompt: prompt.clone(),
                 executor_config: payload.executor_config.clone(),
                 working_dir,
             },
@@ -231,6 +240,14 @@ pub async fn follow_up(
                 &ExecutionProcessRunReason::CodingAgent,
             )
             .await?;
+        // Now that the execution_process and its MsgStore exist, push the
+        // user reply so it shows up in the chat.
+        crate::routes::cursor_mcp::push_user_reply_to_session_msgstore(
+            &deployment,
+            session.id,
+            &prompt,
+        )
+        .await;
         if let Err(e) = Scratch::delete(pool, session.id, &ScratchType::DraftFollowUp).await {
             tracing::debug!(
                 "Failed to delete draft follow-up scratch for cursor-mcp session {}: {}",

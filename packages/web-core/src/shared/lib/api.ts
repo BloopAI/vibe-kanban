@@ -396,7 +396,11 @@ export const sessionsApi = {
   },
 };
 
-// Cursor MCP (PChat-like persistent chat) APIs
+// Cursor MCP (PChat-like persistent chat) APIs.
+//
+// v4 (lobby model): the bridge is global (one mcp.json entry, no
+// workspace-id). Conversations land in a global Inbox until the user
+// explicitly creates a vibe-kanban workspace and adopts one in.
 export const cursorMcpApi = {
   /** Snapshot of the in-memory conversation + pending waits for a session. */
   getState: async (
@@ -408,6 +412,26 @@ export const cursorMcpApi = {
     return handleApiResponse<import('shared/types').CursorMcpSessionSnapshot>(
       response
     );
+  },
+
+  /**
+   * Resolve the front pending `wait_for_user_input` of a vk session
+   * with a user reply. The bridge picks up the text and the LLM in
+   * Cursor receives it as the tool result. Returns whether anything
+   * was actually resolved (false = no pending wait was queued).
+   */
+  resolve: async (
+    sessionId: string,
+    body: import('shared/types').ResolveBody
+  ): Promise<boolean> => {
+    const response = await makeRequest(
+      `/api/cursor-mcp/sessions/${sessionId}/resolve`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }
+    );
+    return handleApiResponse<boolean>(response);
   },
 
   /** Cancel a queued wait (sends `__USER_DISMISSED_QUEUE__` back to Cursor). */
@@ -425,14 +449,51 @@ export const cursorMcpApi = {
     return handleApiResponse<boolean>(response);
   },
 
-  /** Returns the JSON snippet to drop into ~/.cursor/mcp.json. */
-  getLaunchConfig: async (
-    sessionId: string
-  ): Promise<import('shared/types').LaunchConfig> => {
-    const response = await makeRequest(
-      `/api/cursor-mcp/sessions/${sessionId}/launch-config`
-    );
+  /**
+   * Global mcp.json snippet (v4). Drop ONCE under `mcpServers` in
+   * `~/.cursor/mcp.json` — every Composer chat then auto-creates a
+   * Cursor MCP conversation in the inbox.
+   */
+  getLaunchConfig: async (): Promise<import('shared/types').LaunchConfig> => {
+    const response = await makeRequest('/api/cursor-mcp/launch-config');
     return handleApiResponse<import('shared/types').LaunchConfig>(response);
+  },
+
+  /** Initial REST snapshot of the global Inbox (bridges + lobby). */
+  getInboxState: async (): Promise<import('shared/types').InboxSnapshot> => {
+    const response = await makeRequest('/api/cursor-mcp/inbox/state');
+    return handleApiResponse<import('shared/types').InboxSnapshot>(response);
+  },
+
+  /**
+   * Adopt a lobby Cursor MCP conversation into a freshly-created vk
+   * session. Caller is responsible for creating the workspace + session
+   * before calling this.
+   */
+  adoptLobby: async (
+    bridgeSessionId: string,
+    vkSessionId: string
+  ): Promise<import('shared/types').AdoptLobbyResponse> => {
+    const response = await makeRequest(
+      `/api/cursor-mcp/lobby/${encodeURIComponent(bridgeSessionId)}/adopt`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          vk_session_id: vkSessionId,
+        } as import('shared/types').AdoptLobbyBody),
+      }
+    );
+    return handleApiResponse<import('shared/types').AdoptLobbyResponse>(
+      response
+    );
+  },
+
+  /** Manually drop a lobby entry (Cancel & dismiss). */
+  deleteLobby: async (bridgeSessionId: string): Promise<void> => {
+    await makeRequest(
+      `/api/cursor-mcp/lobby/${encodeURIComponent(bridgeSessionId)}`,
+      { method: 'DELETE' }
+    );
   },
 };
 

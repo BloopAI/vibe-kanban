@@ -55,3 +55,4 @@ mime_guess = "2.0"
 
 [dev-dependencies]
 tempfile = "3"
+db = { path = "../db", features = ["test-utils"] }

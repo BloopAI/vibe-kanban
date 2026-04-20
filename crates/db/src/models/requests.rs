@@ -36,6 +36,8 @@ pub struct CreateAndStartWorkspaceRequest {
     pub executor_config: ExecutorConfig,
     pub prompt: String,
     pub attachment_ids: Option<Vec<Uuid>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub adopt_cursor_mcp_lobby_bridge_session_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]

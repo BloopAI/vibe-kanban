@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                   bridge_session_id        AS \"bridge_session_id!: String\",\n                   bridge_label,\n                   title,\n                   first_message,\n                   last_activity_at         AS \"last_activity_at!: DateTime<Utc>\",\n                   created_at               AS \"created_at!: DateTime<Utc>\",\n                   adopted_into_session_id  AS \"adopted_into_session_id?: Uuid\"\n               FROM cursor_mcp_lobby_sessions\n               WHERE adopted_into_session_id IS NULL\n               ORDER BY last_activity_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "bridge_session_id!: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "bridge_label",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "first_message",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_activity_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Null"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Null"
+      },
+      {
+        "name": "adopted_into_session_id?: Uuid",
+        "ordinal": 6,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "402071316a635877d1d2f1de58cfda3e88d3dbdb7fc7cd291a274bc88ded35cd"
+}

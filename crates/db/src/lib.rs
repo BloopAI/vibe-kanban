@@ -73,6 +73,26 @@ pub struct DBService {
 }
 
 impl DBService {
+    /// Isolated in-memory `DBService` for tests. Every call creates a
+    /// fresh database (no cross-test pollution) with all migrations
+    /// applied. Returns a pool with `max_connections=1` so all tasks
+    /// share the same `:memory:` instance.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn new_in_memory() -> Result<DBService, Error> {
+        let options = SqliteConnectOptions::from_str("sqlite::memory:")?
+            .create_if_missing(true)
+            .journal_mode(SqliteJournalMode::Memory);
+        // Reuse a single connection so every test task sees the same
+        // schema + data (the default pool would open parallel
+        // `:memory:` handles which are invisible to each other).
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(options)
+            .await?;
+        run_migrations(&pool).await?;
+        Ok(DBService { pool })
+    }
+
     pub async fn new() -> Result<DBService, Error> {
         let database_url = format!(
             "sqlite://{}",

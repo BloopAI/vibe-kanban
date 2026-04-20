@@ -509,6 +509,20 @@
       "action": "Sign in"
     }
   },
+  "cursorMcpLobby": {
+    "buttonNoChatsNoBridges": "No Cursor MCP chats",
+    "buttonNoChatsConnected": "Cursor connected · no unlinked chats",
+    "buttonWithChats_one": "Cursor MCP · {{count}} unlinked chat",
+    "buttonWithChats_other": "Cursor MCP · {{count}} unlinked chats",
+    "pickTooltip": "Pick an unlinked Composer chat to attach this new workspace to.",
+    "panelTitle": "Unlinked Composer chats",
+    "panelHint": "Only chats not yet bound to a workspace are listed. Sessions you already adopted are opened from the workspace sidebar—not here.",
+    "loading": "Loading…",
+    "emptyNoBridges": "No unlinked chats yet. Use the connect hint above to wire up Cursor.",
+    "emptyNoChats": "No unlinked chats yet. Open Cursor and let the agent call wait_for_user_input—a row will appear here.",
+    "pendingWaits_one": "{{count}} open wait",
+    "pendingWaits_other": "{{count}} open waits"
+  },
   "linkPrToIssue": {
     "title": "Lier une pull request",
     "description": "Lier une pull request existante à ce ticket.",

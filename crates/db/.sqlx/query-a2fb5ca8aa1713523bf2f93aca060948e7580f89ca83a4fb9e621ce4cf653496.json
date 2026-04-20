@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                   bridge_session_id        AS \"bridge_session_id!: String\",\n                   adopted_into_session_id  AS \"adopted_into_session_id!: Uuid\"\n               FROM cursor_mcp_lobby_sessions\n               WHERE adopted_into_session_id IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "name": "bridge_session_id!: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "adopted_into_session_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "a2fb5ca8aa1713523bf2f93aca060948e7580f89ca83a4fb9e621ce4cf653496"
+}

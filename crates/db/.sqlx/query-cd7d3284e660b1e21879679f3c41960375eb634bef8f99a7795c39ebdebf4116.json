@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM cursor_mcp_lobby_sessions WHERE bridge_session_id = ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "cd7d3284e660b1e21879679f3c41960375eb634bef8f99a7795c39ebdebf4116"
+}

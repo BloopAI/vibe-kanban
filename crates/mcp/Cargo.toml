@@ -30,3 +30,7 @@ reqwest = { workspace = true }
 rustls = { workspace = true }
 regex = "1"
 thiserror = { workspace = true }
+# Cursor MCP bridge: WebSocket client for the long-lived bridge connection.
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"] }
+futures-util = { version = "0.3", features = ["sink"] }
+dashmap = "6.1"

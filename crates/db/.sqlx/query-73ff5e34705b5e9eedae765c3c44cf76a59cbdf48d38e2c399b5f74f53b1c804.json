@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT bridge_session_id AS \"bridge_session_id!: String\"\n               FROM cursor_mcp_lobby_sessions\n               WHERE adopted_into_session_id = ?1\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "bridge_session_id!: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "73ff5e34705b5e9eedae765c3c44cf76a59cbdf48d38e2c399b5f74f53b1c804"
+}

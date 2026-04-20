@@ -163,7 +163,10 @@ impl Deployment for LocalDeployment {
 
         let approvals = Approvals::new();
         let queued_message_service = QueuedMessageService::new();
-        let cursor_mcp = CursorMcpService::new();
+        let cursor_mcp = CursorMcpService::new(db.clone());
+        if let Err(e) = cursor_mcp.rehydrate_adopted().await {
+            tracing::warn!("cursor-mcp rehydrate_adopted failed: {}", e);
+        }
 
         let oauth_credentials = Arc::new(OAuthCredentials::new(credentials_path()));
         if let Err(e) = oauth_credentials.load().await {

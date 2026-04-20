@@ -92,10 +92,29 @@ export function deriveConversationSemanticTimeline(
             entry.content.entry_type.type === 'token_usage_info'
         ) ?? null;
 
+      // Normally user messages are derived from the turn's DB-backed
+      // `prompt` column (rendered once at the top of the turn), so any
+      // `user_message` normalized entry streamed from an agent's
+      // stdout is just a duplicate and gets filtered out.
+      //
+      // CURSOR_MCP breaks that assumption: there is a single
+      // long-lived placeholder process per session and user replies
+      // are injected into its MsgStore from
+      // `/api/cursor-mcp/sessions/{id}/resolve`. There's no DB turn
+      // row per reply, so `user_message` entries are the ONLY source
+      // of user text in the conversation. Keep them visible.
+      const executorActionTyp = processState.executionProcess.executor_action
+        .typ as { type: string; executor_config?: { executor?: string } };
+      const isCursorMcpProcess =
+        (executorActionTyp.type === 'CodingAgentInitialRequest' ||
+          executorActionTyp.type === 'CodingAgentFollowUpRequest') &&
+        executorActionTyp.executor_config?.executor === 'CURSOR_MCP';
+
       const visibleEntries = processState.entries.filter(
         (entry) =>
           entry.type !== 'NORMALIZED_ENTRY' ||
-          (entry.content.entry_type.type !== 'user_message' &&
+          ((isCursorMcpProcess ||
+            entry.content.entry_type.type !== 'user_message') &&
             entry.content.entry_type.type !== 'token_usage_info')
       );
 

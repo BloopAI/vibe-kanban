@@ -1,4 +1,5 @@
 pub mod coding_agent_turn;
+pub mod cursor_mcp_lobby;
 pub mod execution_process;
 pub mod execution_process_logs;
 pub mod execution_process_repo_state;

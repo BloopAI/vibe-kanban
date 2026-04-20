@@ -19,3 +19,9 @@ serde_with = { workspace = true }
 strum = "0.27.2"
 strum_macros = "0.27.2"
 futures = "0.3.32"
+
+[features]
+# Expose `DBService::new_in_memory` to downstream crates' `#[cfg(test)]`
+# blocks. Enable via `db = { path = "...", features = ["test-utils"] }`
+# under `[dev-dependencies]`.
+test-utils = []

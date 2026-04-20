@@ -465,13 +465,25 @@ impl Workspace {
         while let Some(action) = current {
             match action.typ() {
                 ExecutorActionType::CodingAgentInitialRequest(request) => {
-                    return Some(request.prompt.clone());
+                    let trimmed = request.prompt.trim();
+                    if !trimmed.is_empty() {
+                        return Some(trimmed.to_string());
+                    }
+                    return None;
                 }
                 ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-                    return Some(request.prompt.clone());
+                    let trimmed = request.prompt.trim();
+                    if !trimmed.is_empty() {
+                        return Some(trimmed.to_string());
+                    }
+                    return None;
                 }
                 ExecutorActionType::ReviewRequest(request) => {
-                    return Some(request.prompt.clone());
+                    let trimmed = request.prompt.trim();
+                    if !trimmed.is_empty() {
+                        return Some(trimmed.to_string());
+                    }
+                    return None;
                 }
                 ExecutorActionType::ScriptRequest(_) => {
                     current = action.next_action();
@@ -672,6 +684,15 @@ impl Workspace {
 
 #[cfg(test)]
 mod tests {
+    use executors::{
+        actions::{
+            ExecutorAction, ExecutorActionType,
+            coding_agent_initial::CodingAgentInitialRequest,
+            script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
+        },
+        executors::BaseCodingAgent,
+        profile::ExecutorConfig,
+    };
     use uuid::Uuid;
 
     use super::Workspace;
@@ -708,5 +729,47 @@ mod tests {
         );
 
         assert_eq!(selected, None);
+    }
+
+    #[test]
+    fn extract_first_prompt_ignores_empty_initial_prompt() {
+        let action = ExecutorAction::new(
+            ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+                prompt: "   ".to_string(),
+                executor_config: ExecutorConfig::new(BaseCodingAgent::CursorMcp),
+                working_dir: None,
+            }),
+            None,
+        );
+
+        assert_eq!(
+            Workspace::extract_first_prompt_from_executor_action(&action),
+            None
+        );
+    }
+
+    #[test]
+    fn extract_first_prompt_falls_through_setup_to_non_empty_prompt() {
+        let action = ExecutorAction::new(
+            ExecutorActionType::ScriptRequest(ScriptRequest {
+                script: "echo setup".to_string(),
+                language: ScriptRequestLanguage::Bash,
+                context: ScriptContext::SetupScript,
+                working_dir: None,
+            }),
+            Some(Box::new(ExecutorAction::new(
+                ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+                    prompt: "resume adopted Cursor MCP chat".to_string(),
+                    executor_config: ExecutorConfig::new(BaseCodingAgent::CursorMcp),
+                    working_dir: None,
+                }),
+                None,
+            ))),
+        );
+
+        assert_eq!(
+            Workspace::extract_first_prompt_from_executor_action(&action),
+            Some("resume adopted Cursor MCP chat".to_string())
+        );
     }
 }

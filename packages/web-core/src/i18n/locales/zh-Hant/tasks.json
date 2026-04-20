@@ -509,6 +509,20 @@
       "action": "Sign in"
     }
   },
+  "cursorMcpLobby": {
+    "buttonNoChatsNoBridges": "暫無 Cursor MCP 對話",
+    "buttonNoChatsConnected": "已連線 Cursor · 暫無未綁定對話",
+    "buttonWithChats_one": "Cursor MCP · {{count}} 個未綁定對話",
+    "buttonWithChats_other": "Cursor MCP · {{count}} 個未綁定對話",
+    "pickTooltip": "選擇一個尚未綁定工作區的 Composer 對話，以建立此工作區。",
+    "panelTitle": "未綁定的 Composer 對話",
+    "panelHint": "此處僅列出尚未採納進工作區的會話。已在看板裡綁定過的對話請從左側工作區列表開啟，不會出現在這裡。",
+    "loading": "載入中…",
+    "emptyNoBridges": "還沒有未綁定對話。請先用上方的連線說明設定 Cursor。",
+    "emptyNoChats": "還沒有未綁定對話。開啟 Cursor 並讓助理呼叫 wait_for_user_input，此處會出現一列。",
+    "pendingWaits_one": "{{count}} 處待回覆",
+    "pendingWaits_other": "{{count}} 處待回覆"
+  },
   "linkPrToIssue": {
     "title": "連結拉取請求",
     "description": "將現有的拉取請求連結到此問題。",

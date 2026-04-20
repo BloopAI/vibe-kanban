@@ -66,43 +66,11 @@ impl Default for CursorMcp {
     }
 }
 
-/// Resolve the absolute path to the `vibe-kanban-mcp` binary.
-///
-/// Resolution order:
-/// 1. `VK_MCP_BINARY` env var (set by Tauri to the bundled sidecar)
-/// 2. Same directory as the currently running executable
-/// 3. `target/debug/vibe-kanban-mcp` relative to the current executable
-///    (typical `cargo run` layout)
-/// 4. Plain `vibe-kanban-mcp` (relies on PATH)
+/// Resolve the absolute path to the `vibe-kanban-mcp` binary. Shared with
+/// the launch-config endpoint so the path the user sees in the copy-mcp
+/// snippet matches what the placeholder process actually spawns.
 fn resolve_mcp_binary_path() -> std::path::PathBuf {
-    if let Ok(env_path) = std::env::var("VK_MCP_BINARY")
-        && !env_path.is_empty()
-    {
-        return std::path::PathBuf::from(env_path);
-    }
-
-    let exe_name = if cfg!(windows) {
-        "vibe-kanban-mcp.exe"
-    } else {
-        "vibe-kanban-mcp"
-    };
-
-    if let Ok(current_exe) = std::env::current_exe() {
-        if let Some(dir) = current_exe.parent() {
-            let candidate = dir.join(exe_name);
-            if candidate.exists() {
-                return candidate;
-            }
-            // Common dev layout: server is at `target/debug/server`,
-            // sibling `target/debug/vibe-kanban-mcp`.
-            let dev_candidate = dir.join(exe_name);
-            if dev_candidate.exists() {
-                return dev_candidate;
-            }
-        }
-    }
-
-    std::path::PathBuf::from(exe_name)
+    workspace_utils::mcp_binary::resolve_mcp_binary().path
 }
 
 #[async_trait]

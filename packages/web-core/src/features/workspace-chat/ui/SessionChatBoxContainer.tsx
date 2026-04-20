@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import {
@@ -27,6 +28,7 @@ import { useExecutorConfig } from '@/shared/hooks/useExecutorConfig';
 import { useSessionMessageEditor } from '../model/hooks/useSessionMessageEditor';
 import { useSessionQueueInteraction } from '../model/hooks/useSessionQueueInteraction';
 import { useSessionSend } from '../model/hooks/useSessionSend';
+import { useCursorMcpSession } from '@/shared/hooks/useCursorMcpSession';
 import { useSessionAttachments } from '../model/hooks/useSessionAttachments';
 import { useMessageEditRetry } from '../model/hooks/useMessageEditRetry';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
@@ -43,6 +45,7 @@ import {
   type ExecutionStatus,
   type SessionChatBoxEditorRenderProps,
 } from '@vibe/ui/components/SessionChatBox';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { ModelSelectorContainer } from '@/shared/components/ModelSelectorContainer';
 import {
   useWorkspacePanelState,
@@ -188,6 +191,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     [queryClient, hostId, workspaceId]
   );
   const appNavigation = useAppNavigation();
+  const { t } = useTranslation('tasks');
 
   const { executeAction } = useActions();
   const actionCtx = useActionVisibilityContext();
@@ -387,8 +391,21 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     return null;
   }, [processes, lastSessionProcesses, sessions]);
 
+  // Live snapshot of the per-session Cursor MCP rendezvous. Used for
+  // three things:
+  //   1. Suppress the executor selector once we know the session is bound
+  //      to a Cursor MCP bridge (no real executor to pick).
+  //   2. Detect cursor-mcp sessions independently of `session.executor`
+  //      (which can lag behind a fresh adoption).
+  //   3. Drive the composer placeholder text so the input box reads as
+  //      "Reply to Cursor MCP …" when a wait is open.
+  const cursorMcp = useCursorMcpSession(sessionId);
+  const isCursorMcpSession =
+    cursorMcp.isCursorMcp || session?.executor === 'CURSOR_MCP';
+
   const needsExecutorSelection =
-    isNewSessionMode || (!session?.executor && !latestConfig?.executor);
+    !isCursorMcpSession &&
+    (isNewSessionMode || (!session?.executor && !latestConfig?.executor));
 
   // Message editor state
   const {
@@ -496,6 +513,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     isNewSessionMode,
     onSelectSession,
     executorConfig,
+    isCursorMcpSession,
   });
 
   const handleSend = useCallback(async () => {
@@ -877,14 +895,27 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     ? new Date() > new Date(pendingApproval.timeoutAt)
     : false;
 
+  // CURSOR_MCP: the "placeholder" execution_process lives for the
+  // entire session, so `isAttemptRunning` is permanently true and
+  // would leave the composer in `'running'` (Queue + fake-spinner
+  // Stop pair) forever — exactly what users complained about. We
+  // pin the cursor-mcp state to `'idle'`/`'sending'` so the primary
+  // Send button always drives `cursorMcpApi.resolve` (see
+  // `useSessionSend`'s cursor-mcp branch). The Stop affordance is
+  // rendered separately as `idleSecondaryAction` below.
+  const effectiveIsAttemptRunning = isCursorMcpSession
+    ? false
+    : isAttemptRunning;
+  const effectiveIsQueued = isCursorMcpSession ? false : isQueued;
+
   const status = computeExecutionStatus({
     isInFeedbackMode,
     isInEditMode,
     isStopping,
     isQueueLoading,
     isSendingFollowUp: isSending,
-    isQueued,
-    isAttemptRunning,
+    isQueued: effectiveIsQueued,
+    isAttemptRunning: effectiveIsAttemptRunning,
   });
 
   // During loading, render with empty editor to preserve container UI
@@ -1031,8 +1062,16 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       }}
       actions={{
         onSend: handleSend,
-        onQueue: handleQueueMessage,
-        onCancelQueue: handleCancelQueue,
+        // CURSOR_MCP: status is forced to 'idle' / 'sending' above so
+        // onQueue / onCancelQueue / onStop should never fire from the
+        // rendered UI. Route them defensively anyway so a stray call
+        // (hotkey, a11y, external trigger) can't tear down the
+        // placeholder process or spray /queue requests that the
+        // backend can't honour.
+        onQueue: isCursorMcpSession ? handleSend : handleQueueMessage,
+        onCancelQueue: isCursorMcpSession
+          ? () => Promise.resolve()
+          : handleCancelQueue,
         onStop: stopExecution,
         onPasteFiles: uploadFiles,
       }}
@@ -1125,6 +1164,30 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       localAttachments={localAttachments}
       dropzone={{ getRootProps, getInputProps, isDragActive }}
       modelSelector={modelSelectorNode}
+      placeholderOverride={
+        isCursorMcpSession
+          ? cursorMcp.pendingCount > 0
+            ? cursorMcp.pendingCount === 1
+              ? 'Reply to Cursor — your message resolves the pending wait'
+              : `Reply to Cursor — ${cursorMcp.pendingCount} waits pending (oldest resolves first)`
+            : 'Waiting for Cursor to call wait_for_user_input...'
+          : undefined
+      }
+      idleSecondaryAction={
+        isCursorMcpSession ? (
+          <PrimaryButton
+            variant="secondary"
+            onClick={stopExecution}
+            disabled={isStopping || processes.length === 0}
+            actionIcon={isStopping ? 'spinner' : undefined}
+            value={
+              isStopping
+                ? t('conversation.actions.stopping')
+                : t('conversation.actions.stop')
+            }
+          />
+        ) : undefined
+      }
     />
   );
 }
