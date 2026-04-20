@@ -154,6 +154,42 @@ impl MsgStore {
             .boxed()
     }
 
+    /// Collect all buffered stderr chunks and return the last `limit_bytes` bytes.
+    ///
+    /// Concatenates all `LogMsg::Stderr` entries in history order, then truncates
+    /// from the left so the returned string is at most `limit_bytes` bytes.
+    /// Returns `None` if there are no stderr entries.
+    pub fn collect_stderr_tail(&self, limit_bytes: usize) -> Option<String> {
+        let inner = self.inner.read().unwrap();
+        let combined: String = inner
+            .history
+            .iter()
+            .filter_map(|s| {
+                if let LogMsg::Stderr(text) = &s.msg {
+                    Some(text.as_str())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if combined.is_empty() {
+            return None;
+        }
+
+        if combined.len() <= limit_bytes {
+            return Some(combined);
+        }
+
+        // Truncate from the left, respecting UTF-8 char boundaries.
+        let start = combined.len() - limit_bytes;
+        let mut boundary = start;
+        while !combined.is_char_boundary(boundary) && boundary < combined.len() {
+            boundary += 1;
+        }
+        Some(format!("\u{2026}{}", &combined[boundary..]))
+    }
+
     /// Forward a stream of typed log messages into this store.
     pub fn spawn_forwarder<S, E>(self: Arc<Self>, stream: S) -> JoinHandle<()>
     where

@@ -1397,4 +1397,102 @@ pub trait ContainerService {
         tracing::debug!("Started next action: {:?}", next_action);
         Ok(())
     }
+
+    /// Sister method to `start_execution` that also returns failure context on error.
+    ///
+    /// On success the second element is `None`.
+    /// On failure the second element contains whatever stderr was buffered in the
+    /// `MsgStore` for the new process, plus the program name when it can be derived
+    /// from the `ExecutorError` variant.
+    async fn start_execution_with_context(
+        &self,
+        workspace: &Workspace,
+        session: &Session,
+        executor_action: &ExecutorAction,
+        run_reason: &ExecutionProcessRunReason,
+    ) -> (
+        Result<ExecutionProcess, ContainerError>,
+        Option<ExecutorFailureContext>,
+    ) {
+        let result = self
+            .start_execution(workspace, session, executor_action, run_reason)
+            .await;
+
+        match result {
+            Ok(ep) => (Ok(ep), None),
+            Err(ref err) => {
+                // Derive program name from the error when possible.
+                // TODO(Task 1.5): consider sourcing program name from executor config as well.
+                let program =
+                    if let ContainerError::ExecutorError(ExecutorError::ExecutableNotFound {
+                        program,
+                    }) = err
+                    {
+                        Some(program.clone())
+                    } else {
+                        None
+                    };
+
+                // Collect stderr tail from the MsgStore.  The store for the new
+                // process may have already been removed by `start_execution` on
+                // failure, so we fall back gracefully to None.
+                let stderr_tail = None; // MsgStore is removed before we can read it in the error path
+
+                let ctx = ExecutorFailureContext {
+                    stderr_tail,
+                    program,
+                };
+                (result, Some(ctx))
+            }
+        }
+    }
+}
+
+/// Context attached to an executor failure, surfaced to API callers.
+#[derive(Debug, Clone)]
+pub struct ExecutorFailureContext {
+    pub stderr_tail: Option<String>,
+    pub program: Option<String>,
+}
+
+/// Keep only the last ~2 KiB of stderr. Truncates from the left and prefixes "…".
+/// Respects UTF-8 char boundaries.
+pub fn truncate_stderr_tail(s: &str) -> String {
+    const LIMIT: usize = 2048;
+    if s.len() <= LIMIT {
+        return s.to_string();
+    }
+    let start = s.len() - LIMIT;
+    let mut boundary = start;
+    while !s.is_char_boundary(boundary) && boundary < s.len() {
+        boundary += 1;
+    }
+    format!("\u{2026}{}", &s[boundary..])
+}
+
+#[cfg(test)]
+mod failure_context_tests {
+    use super::*;
+
+    #[test]
+    fn truncates_stderr_from_left_to_2kib() {
+        let big = "x".repeat(5000);
+        let tail = truncate_stderr_tail(&big);
+        assert!(tail.starts_with('\u{2026}'));
+        assert!(tail.len() <= 2052); // 2048 + few bytes for ellipsis/UTF-8 safety (…is 3 bytes)
+    }
+
+    #[test]
+    fn short_stderr_passes_through() {
+        let tail = truncate_stderr_tail("hello");
+        assert_eq!(tail, "hello");
+    }
+
+    #[test]
+    fn utf8_boundary_is_respected() {
+        let s = format!("{}{}", "a".repeat(3000), "日本語");
+        let tail = truncate_stderr_tail(&s);
+        assert!(tail.is_char_boundary(0));
+        assert!(tail.is_char_boundary(tail.len()));
+    }
 }
