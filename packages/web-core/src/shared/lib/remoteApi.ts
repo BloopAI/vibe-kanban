@@ -1,5 +1,4 @@
 import type {
-  AttachmentUrlResponse,
   AttachmentWithBlob,
   CommitAttachmentsRequest,
   CommitAttachmentsResponse,
@@ -58,10 +57,27 @@ async function makeAuthenticatedRequest(
   options: RequestInit = {},
   retryOn401 = true
 ): Promise<Response> {
+  // In local-first mode there is no remote API base and no auth token.
+  // Return a synthetic 501 so callers that check `response.ok` fail
+  // gracefully, and avoid throwing an unhandled rejection that React Query
+  // surfaces as a visible error banner.
+  if (!baseUrl) {
+    return new Response(
+      JSON.stringify({ error: 'Local-first mode — remote API not available' }),
+      {
+        status: 501,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+
   const authRuntime = getAuthRuntime();
   const token = await authRuntime.getToken();
   if (!token) {
-    throw new Error('Not authenticated');
+    return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   const headers = new Headers(options.headers ?? {});
@@ -108,33 +124,28 @@ export interface BulkUpdateProjectItem {
 }
 
 export async function bulkUpdateProjects(
-  updates: BulkUpdateProjectItem[]
+  _updates: BulkUpdateProjectItem[]
 ): Promise<void> {
-  const response = await makeRequest('/v1/projects/bulk', {
-    method: 'POST',
-    body: JSON.stringify({
-      updates: updates.map((u) => ({ id: u.id, ...u.changes })),
-    }),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to bulk update projects');
-  }
+  // No-op in local-first mode — cloud project sync is not available.
 }
 
 export async function bulkUpdateIssues(
   updates: BulkUpdateIssueItem[]
 ): Promise<void> {
-  const response = await makeRequest('/v1/issues/bulk', {
-    method: 'POST',
-    body: JSON.stringify({
-      updates: updates.map((u) => ({ id: u.id, ...u.changes })),
-    }),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to bulk update issues');
-  }
+  if (!updates.length) return;
+  const { kanbanIssuesApi } = await import('@/shared/lib/kanbanApi');
+  await kanbanIssuesApi.bulkUpdate(
+    updates.map((u) => ({
+      id: u.id,
+      status_id: u.changes.status_id ?? null,
+      sort_order: u.changes.sort_order ?? null,
+      title: u.changes.title ?? null,
+      description: u.changes.description ?? null,
+      priority: (u.changes.priority ?? null) as
+        | import('shared/types').KanbanIssuePriority
+        | null,
+    }))
+  );
 }
 
 export interface BulkUpdateProjectStatusItem {
@@ -143,18 +154,9 @@ export interface BulkUpdateProjectStatusItem {
 }
 
 export async function bulkUpdateProjectStatuses(
-  updates: BulkUpdateProjectStatusItem[]
+  _updates: BulkUpdateProjectStatusItem[]
 ): Promise<void> {
-  const response = await makeRequest('/v1/project_statuses/bulk', {
-    method: 'POST',
-    body: JSON.stringify({
-      updates: updates.map((u) => ({ id: u.id, ...u.changes })),
-    }),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to bulk update project statuses');
-  }
+  // No-op in local-first mode — cloud project status sync is not available.
 }
 
 // ---------------------------------------------------------------------------
@@ -162,6 +164,7 @@ export async function bulkUpdateProjectStatuses(
 // ---------------------------------------------------------------------------
 
 export async function listRelayHosts(): Promise<RelayHost[]> {
+  if (!getRemoteApiUrl()) return [];
   const response = await makeRequest('/v1/hosts', { method: 'GET' });
   if (!response.ok) {
     throw await parseErrorResponse(response, 'Failed to list relay hosts');
@@ -170,19 +173,6 @@ export async function listRelayHosts(): Promise<RelayHost[]> {
   const body = (await response.json()) as ListRelayHostsResponse;
   return body.hosts;
 }
-
-// ---------------------------------------------------------------------------
-// SAS URL cache with TTL — SAS URLs expire after 5 minutes, cache for 4
-// ---------------------------------------------------------------------------
-
-const SAS_URL_TTL_MS = 4 * 60 * 1000;
-
-interface CachedSasUrl {
-  url: string;
-  expiresAt: number;
-}
-
-const sasUrlCache = new Map<string, CachedSasUrl>();
 
 // ---------------------------------------------------------------------------
 // Utility: SHA-256 file hash
@@ -263,107 +253,44 @@ async function parseErrorResponse(
 // ---------------------------------------------------------------------------
 
 export async function initAttachmentUpload(
-  params: InitUploadRequest
+  _params: InitUploadRequest
 ): Promise<InitUploadResponse> {
-  const response = await makeRequest('/v1/attachments/init', {
-    method: 'POST',
-    body: JSON.stringify(params),
-  });
-  if (!response.ok) {
-    throw await parseErrorResponse(
-      response,
-      'Failed to init attachment upload'
-    );
-  }
-  return response.json();
+  throw new Error(
+    'Cloud attachment upload is not available in local-first mode.'
+  );
 }
 
 export async function confirmAttachmentUpload(
-  params: ConfirmUploadRequest
+  _params: ConfirmUploadRequest
 ): Promise<AttachmentWithBlob> {
-  const response = await makeRequest('/v1/attachments/confirm', {
-    method: 'POST',
-    body: JSON.stringify(params),
-  });
-  if (!response.ok) {
-    throw await parseErrorResponse(
-      response,
-      'Failed to confirm attachment upload'
-    );
-  }
-  return response.json();
+  throw new Error(
+    'Cloud attachment upload is not available in local-first mode.'
+  );
 }
 
 export async function commitIssueAttachments(
-  issueId: string,
-  request: CommitAttachmentsRequest
+  _issueId: string,
+  _request: CommitAttachmentsRequest
 ): Promise<CommitAttachmentsResponse> {
-  const response = await makeRequest(
-    `/v1/issues/${issueId}/attachments/commit`,
-    {
-      method: 'POST',
-      body: JSON.stringify(request),
-    }
-  );
-  if (!response.ok) {
-    throw await parseErrorResponse(
-      response,
-      'Failed to commit issue attachments'
-    );
-  }
-  return response.json();
+  return { attachments: [] };
 }
 
 export async function commitCommentAttachments(
-  commentId: string,
-  request: CommitAttachmentsRequest
+  _commentId: string,
+  _request: CommitAttachmentsRequest
 ): Promise<CommitAttachmentsResponse> {
-  const response = await makeRequest(
-    `/v1/comments/${commentId}/attachments/commit`,
-    {
-      method: 'POST',
-      body: JSON.stringify(request),
-    }
-  );
-  if (!response.ok) {
-    throw await parseErrorResponse(
-      response,
-      'Failed to commit comment attachments'
-    );
-  }
-  return response.json();
+  return { attachments: [] };
 }
 
-export async function deleteAttachment(attachmentId: string): Promise<void> {
-  const response = await makeRequest(`/v1/attachments/${attachmentId}`, {
-    method: 'DELETE',
-  });
-  if (!response.ok) {
-    throw await parseErrorResponse(response, 'Failed to delete attachment');
-  }
+export async function deleteAttachment(_attachmentId: string): Promise<void> {
+  // No-op in local-first mode — cloud attachments are not available.
 }
 
 export async function fetchAttachmentSasUrl(
-  attachmentId: string,
-  type: 'file' | 'thumbnail'
+  _attachmentId: string,
+  _type: 'file' | 'thumbnail'
 ): Promise<string> {
-  const cacheKey = `${attachmentId}:${type}`;
-  const cached = sasUrlCache.get(cacheKey);
-  if (cached && Date.now() < cached.expiresAt) {
-    return cached.url;
-  }
-
-  const response = await makeRequest(`/v1/attachments/${attachmentId}/${type}`);
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch attachment ${type}: ${response.statusText}`
-    );
-  }
-
-  const data: AttachmentUrlResponse = await response.json();
-  sasUrlCache.set(cacheKey, {
-    url: data.url,
-    expiresAt: Date.now() + SAS_URL_TTL_MS,
-  });
-  return data.url;
+  throw new Error(
+    'Cloud attachment URLs are not available in local-first mode.'
+  );
 }

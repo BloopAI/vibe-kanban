@@ -7,7 +7,7 @@ import i18n from '@/i18n';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { ThemeProvider } from '@web/app/providers/ThemeProvider';
 import { useUiPreferencesScratch } from '@/shared/hooks/useUiPreferencesScratch';
-import { UserProvider } from '@/shared/providers/remote/UserProvider';
+import { LocalUserProvider } from '@/shared/providers/local/LocalUserProvider';
 import '@/app/styles/new/index.css';
 
 function RootRouteComponent() {
@@ -32,9 +32,9 @@ function RootRouteComponent() {
   return (
     <I18nextProvider i18n={i18n}>
       <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
-        <UserProvider>
+        <LocalUserProvider>
           <Outlet />
-        </UserProvider>
+        </LocalUserProvider>
       </ThemeProvider>
     </I18nextProvider>
   );

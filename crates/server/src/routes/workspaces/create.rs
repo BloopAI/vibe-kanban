@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use axum::{Json, extract::State, response::Json as ResponseJson};
 use db::models::{
     requests::{
@@ -12,13 +10,7 @@ use services::services::container::ContainerService;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{
-    DeploymentImpl,
-    error::ApiError,
-    routes::workspaces::attachments::{
-        ImportedIssueAttachment, import_issue_attachments_from_remote,
-    },
-};
+use crate::{DeploymentImpl, error::ApiError};
 
 pub(crate) async fn create_workspace_record(
     deployment: &DeploymentImpl,
@@ -74,6 +66,7 @@ fn normalize_prompt(prompt: &str) -> Option<String> {
     }
 }
 
+#[cfg(test)]
 fn escape_markdown_label(label: &str) -> String {
     let mut escaped = String::with_capacity(label.len());
     for ch in label.chars() {
@@ -85,8 +78,9 @@ fn escape_markdown_label(label: &str) -> String {
     escaped
 }
 
+#[cfg(test)]
 fn build_workspace_attachment_markdown(
-    file: &ImportedIssueAttachment,
+    file: &crate::routes::workspaces::attachments::ImportedIssueAttachment,
     label: &str,
     uses_image_markdown: bool,
 ) -> String {
@@ -105,6 +99,7 @@ fn build_workspace_attachment_markdown(
     }
 }
 
+#[cfg(test)]
 struct ParsedAttachmentMarkdown<'a> {
     attachment_id: Uuid,
     label: &'a str,
@@ -112,6 +107,7 @@ struct ParsedAttachmentMarkdown<'a> {
     end: usize,
 }
 
+#[cfg(test)]
 fn find_unescaped_char(haystack: &str, target: char) -> Option<usize> {
     let mut escaped = false;
 
@@ -134,6 +130,7 @@ fn find_unescaped_char(haystack: &str, target: char) -> Option<usize> {
     None
 }
 
+#[cfg(test)]
 fn parse_attachment_markdown_at(
     prompt: &str,
     start: usize,
@@ -171,18 +168,20 @@ fn parse_attachment_markdown_at(
     })
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
 fn rewrite_imported_issue_attachments_markdown(
     prompt: &str,
-    imported_attachments: &[ImportedIssueAttachment],
+    imported_attachments: &[crate::routes::workspaces::attachments::ImportedIssueAttachment],
 ) -> String {
     if imported_attachments.is_empty() {
         return prompt.to_string();
     }
 
-    let imported_by_attachment_id = imported_attachments
+    let imported_by_attachment_id: std::collections::HashMap<_, _> = imported_attachments
         .iter()
         .map(|attachment| (attachment.attachment_id, attachment))
-        .collect::<HashMap<_, _>>();
+        .collect();
     let mut rewritten = String::with_capacity(prompt.len());
     let mut index = 0;
 
@@ -216,13 +215,13 @@ pub async fn create_and_start_workspace(
     let CreateAndStartWorkspaceRequest {
         name,
         repos,
-        linked_issue,
+        linked_issue: _,
         executor_config,
         prompt,
         attachment_ids,
     } = payload;
 
-    let mut workspace_prompt = normalize_prompt(&prompt).ok_or_else(|| {
+    let workspace_prompt = normalize_prompt(&prompt).ok_or_else(|| {
         ApiError::BadRequest(
             "A workspace prompt is required. Provide a non-empty `prompt`.".to_string(),
         )
@@ -248,48 +247,6 @@ pub async fn create_and_start_workspace(
 
     if let Some(ids) = &attachment_ids {
         managed_workspace.associate_attachments(ids).await?;
-    }
-
-    if let Some(linked_issue) = &linked_issue
-        && let Ok(client) = deployment.remote_client()
-    {
-        match import_issue_attachments_from_remote(
-            &client,
-            deployment.file(),
-            linked_issue.issue_id,
-        )
-        .await
-        {
-            Ok(imported_attachments) if !imported_attachments.is_empty() => {
-                let imported_ids = imported_attachments
-                    .iter()
-                    .map(|imported| imported.file.id)
-                    .collect::<Vec<_>>();
-
-                if let Err(e) = managed_workspace.associate_attachments(&imported_ids).await {
-                    tracing::warn!("Failed to associate imported files with workspace: {}", e);
-                }
-
-                workspace_prompt = rewrite_imported_issue_attachments_markdown(
-                    &workspace_prompt,
-                    &imported_attachments,
-                );
-
-                tracing::info!(
-                    "Imported {} files from issue {}",
-                    imported_ids.len(),
-                    linked_issue.issue_id
-                );
-            }
-            Ok(_) => {}
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to import issue attachments for issue {}: {}",
-                    linked_issue.issue_id,
-                    e
-                );
-            }
-        }
     }
 
     let workspace = managed_workspace.workspace.clone();
@@ -325,7 +282,8 @@ mod tests {
     use db::models::file::File;
     use uuid::Uuid;
 
-    use super::{ImportedIssueAttachment, rewrite_imported_issue_attachments_markdown};
+    use super::rewrite_imported_issue_attachments_markdown;
+    use crate::routes::workspaces::attachments::ImportedIssueAttachment;
 
     fn imported_file(
         attachment_id: Uuid,

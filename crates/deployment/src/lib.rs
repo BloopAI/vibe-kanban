@@ -10,8 +10,6 @@ use futures::{StreamExt, TryStreamExt};
 use git::{GitService, GitServiceError};
 use preview_proxy::PreviewProxyService;
 use relay_control::{RelayControl, signing::RelaySigningService};
-use relay_hosts::RelayHosts;
-use remote_info::RemoteInfo;
 use serde_json::Value;
 use services::services::{
     analytics::AnalyticsService,
@@ -25,7 +23,6 @@ use services::services::{
     filesystem::{FilesystemError, FilesystemService},
     filesystem_watcher::FilesystemWatcherError,
     queued_message::QueuedMessageService,
-    remote_client::RemoteClient,
     repo::RepoService,
 };
 use sqlx::Error as SqlxError;
@@ -35,14 +32,6 @@ use tokio_util::sync::CancellationToken;
 use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
 use utils::sentry as sentry_utils;
 use worktree_manager::WorktreeError;
-
-#[derive(Debug, Clone, Copy, Error)]
-#[error("Remote client not configured")]
-pub struct RemoteClientNotConfigured;
-
-#[derive(Debug, Clone, Copy, Error)]
-#[error("Relay hosts not configured")]
-pub struct RelayHostsNotConfigured;
 
 #[derive(Debug, Error)]
 pub enum DeploymentError {
@@ -70,8 +59,6 @@ pub enum DeploymentError {
     Event(#[from] EventError),
     #[error(transparent)]
     Config(#[from] ConfigError),
-    #[error("Remote client not configured")]
-    RemoteClientNotConfigured,
     #[error(transparent)]
     Other(#[from] AnyhowError),
 }
@@ -114,19 +101,9 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn client_info(&self) -> &ClientInfo;
 
-    fn remote_info(&self) -> &RemoteInfo;
-
     fn preview_proxy(&self) -> &PreviewProxyService;
 
-    fn relay_hosts(&self) -> Result<&Arc<RelayHosts>, RelayHostsNotConfigured> {
-        Err(RelayHostsNotConfigured)
-    }
-
     fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime;
-
-    fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
-        Err(RemoteClientNotConfigured)
-    }
 
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();

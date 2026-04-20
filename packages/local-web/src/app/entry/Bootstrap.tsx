@@ -9,9 +9,6 @@ import App from '@web/app/entry/App';
 import { CrashScreen } from '@vibe/ui/components/CrashScreen';
 import '@/i18n';
 import { router } from '@web/app/router';
-import { oauthApi } from '@/shared/lib/api';
-import { tokenManager } from '@/shared/lib/auth/tokenManager';
-import { configureAuthRuntime } from '@/shared/lib/auth/runtime';
 import '@/shared/types/modals';
 import { queryClient } from '@/shared/lib/queryClient';
 import { isTauriApp } from '@/shared/lib/platform';
@@ -76,13 +73,6 @@ if (isTauriApp()) {
   document.addEventListener('gesturestart', (e) => e.preventDefault());
   document.addEventListener('gesturechange', (e) => e.preventDefault());
 }
-
-configureAuthRuntime({
-  getToken: () => tokenManager.getToken(),
-  triggerRefresh: () => tokenManager.triggerRefresh(),
-  registerShape: (shape) => tokenManager.registerShape(shape),
-  getCurrentUser: () => oauthApi.getCurrentUser(),
-});
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

@@ -171,10 +171,6 @@ function SettingsDialogContent({
       return initialSection;
     }
 
-    if (hostsResolved && availableHosts.length === 0) {
-      return 'organizations';
-    }
-
     return 'general';
   }, [availableHosts.length, hostsResolved, initialSection]);
 
@@ -215,16 +211,6 @@ function SettingsDialogContent({
     setActiveSection(sectionId);
     setMobileShowContent(true);
   };
-
-  useEffect(() => {
-    if (
-      hostsResolved &&
-      isHostSpecificSettingsSection(activeSection) &&
-      availableHosts.length === 0
-    ) {
-      setActiveSection('organizations');
-    }
-  }, [activeSection, availableHosts.length, hostsResolved]);
 
   const handleMobileBack = () => {
     setMobileShowContent(false);

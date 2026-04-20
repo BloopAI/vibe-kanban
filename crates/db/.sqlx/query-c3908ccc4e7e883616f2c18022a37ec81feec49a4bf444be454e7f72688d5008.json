@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT MAX(sort_order) AS \"max: i64\" FROM kanban_project_statuses WHERE project_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "max: i64",
+        "ordinal": 0,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "c3908ccc4e7e883616f2c18022a37ec81feec49a4bf444be454e7f72688d5008"
+}

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COALESCE(MAX(issue_number), 0) + 1 AS \"num!: i64\" FROM kanban_issues WHERE project_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "num!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f1c04a841e1e1b63d53be953d5e97aa5091af9112dcb9cfb7fba7333140a7bf9"
+}

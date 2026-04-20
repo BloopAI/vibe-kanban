@@ -23,12 +23,9 @@ embedded-ssh = { path = "../embedded-ssh" }
 relay-control = { path = "../relay-control" }
 relay-protocol = { path = "../relay-protocol" }
 relay-ws = { path = "../relay-ws" }
-relay-client = { path = "../relay-client" }
-relay-hosts = { path = "../relay-hosts" }
 relay-types = { path = "../relay-types" }
 relay-tunnel-core = { path = "../relay-tunnel-core" }
 ssh-tunnel = { path = "../ssh-tunnel" }
-relay-webrtc = { path = "../relay-webrtc" }
 ws-bridge = { path = "../ws-bridge" }
 desktop-bridge = { path = "../desktop-bridge" }
 preview-proxy = { path = "../preview-proxy" }

@@ -429,14 +429,8 @@ export const Actions = {
     icon: GearIcon,
     requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => ctx.layoutMode === 'kanban',
-    execute: async (ctx) => {
-      await SettingsDialog.show({
-        initialSection: 'remote-projects',
-        initialState: {
-          organizationId: ctx.kanbanOrgId,
-          projectId: ctx.kanbanProjectId,
-        },
-      });
+    execute: async () => {
+      await SettingsDialog.show({ initialSection: 'general' });
     },
   } satisfies GlobalActionDefinition,
 

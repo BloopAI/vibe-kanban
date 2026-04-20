@@ -1,24 +1,13 @@
 use std::time::Duration;
 
-use axum::{
-    Json, Router,
-    extract::{Path, State},
-    http::HeaderMap,
-    response::Json as ResponseJson,
-    routing::{delete, get, post},
-};
+use axum::{Json, Router, extract::State, http::HeaderMap, routing::post};
 use db::{
     p2p_audit_log::{event, log_event},
     p2p_hosts::{CreateP2pHostParams, create_p2p_host, update_p2p_host_paired},
 };
 use deployment::Deployment;
-use relay_types::{
-    ListRelayPairedHostsResponse, PairRelayHostRequest, PairRelayHostResponse,
-    RemoveRelayPairedHostResponse,
-};
 use serde::{Deserialize, Serialize};
 use utils::response::ApiResponse;
-use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
@@ -34,8 +23,7 @@ use crate::{DeploymentImpl, error::ApiError};
 // denylist for loopback/link-local addresses before any outbound HTTP request.
 // ---------------------------------------------------------------------------
 
-/// Characters that are forbidden inside a hostname or IP literal. Any address
-/// containing one of these is almost certainly a URL-injection attempt.
+/// Characters that are forbidden inside a hostname or IP literal.
 const FORBIDDEN_ADDR_CHARS: &[char] = &['/', '?', '#', '@', ' ', '\n', '\r', '\t'];
 
 /// Returns `true` only if the address looks like a legitimate hostname or IP
@@ -47,8 +35,6 @@ fn is_safe_peer_address(address: &str, port: u16) -> bool {
     if address.chars().any(|c| FORBIDDEN_ADDR_CHARS.contains(&c)) {
         return false;
     }
-    // Block loopback (127.0.0.0/8) and link-local (169.254.0.0/16) in release
-    // builds to prevent connecting to the machine itself or APIPA ranges.
     #[cfg(not(debug_assertions))]
     {
         let lower = address.to_ascii_lowercase();
@@ -73,19 +59,8 @@ fn extract_ip(headers: &HeaderMap) -> String {
 }
 
 pub fn router() -> Router<DeploymentImpl> {
-    Router::new()
-        .route("/relay-auth/client/pair", post(pair_relay_host))
-        .route("/relay-auth/client/hosts", get(list_relay_paired_hosts))
-        .route(
-            "/relay-auth/client/hosts/{host_id}",
-            delete(remove_relay_paired_host),
-        )
-        .route("/relay-auth/client/p2p-pair", post(p2p_pair_host))
+    Router::new().route("/relay-auth/client/p2p-pair", post(p2p_pair_host))
 }
-
-// ---------------------------------------------------------------------------
-// P2P pairing types
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize)]
 pub struct P2pPairRequest {
@@ -115,54 +90,6 @@ struct PairResult {
     session_token: String,
     #[serde(default)]
     host_machine_id: String,
-}
-
-pub async fn pair_relay_host(
-    State(deployment): State<DeploymentImpl>,
-    Json(req): Json<PairRelayHostRequest>,
-) -> Result<Json<ApiResponse<PairRelayHostResponse>>, ApiError> {
-    if !cfg!(debug_assertions) {
-        let hosts = deployment.remote_client()?.list_relay_hosts().await?;
-        let selected_host = hosts
-            .into_iter()
-            .find(|host| host.id == req.host_id)
-            .ok_or_else(|| ApiError::BadRequest("Selected host is not available".to_string()))?;
-
-        if selected_host.machine_id == deployment.user_id() {
-            return Err(ApiError::BadRequest(
-                "Cannot pair this machine to itself".to_string(),
-            ));
-        }
-    }
-
-    let relay_hosts = deployment.relay_hosts()?;
-    relay_hosts.pair_host(&req).await?;
-    Ok(Json(ApiResponse::success(PairRelayHostResponse {
-        paired: true,
-    })))
-}
-
-pub async fn list_relay_paired_hosts(
-    State(deployment): State<DeploymentImpl>,
-) -> ResponseJson<ApiResponse<ListRelayPairedHostsResponse>> {
-    // When relay is not configured (self-hosted mode), return empty list
-    // rather than a 400 error so the frontend can degrade gracefully.
-    let hosts = match deployment.relay_hosts() {
-        Ok(relay) => relay.list_hosts().await,
-        Err(_) => vec![],
-    };
-    ResponseJson(ApiResponse::success(ListRelayPairedHostsResponse { hosts }))
-}
-
-pub async fn remove_relay_paired_host(
-    State(deployment): State<DeploymentImpl>,
-    Path(host_id): Path<Uuid>,
-) -> Result<Json<ApiResponse<RemoveRelayPairedHostResponse>>, ApiError> {
-    let relay_hosts = deployment.relay_hosts()?;
-    let removed = relay_hosts.remove_host(host_id).await?;
-    Ok(Json(ApiResponse::success(RemoveRelayPairedHostResponse {
-        removed,
-    })))
 }
 
 pub async fn p2p_pair_host(

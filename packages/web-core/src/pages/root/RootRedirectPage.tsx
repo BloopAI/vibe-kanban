@@ -1,13 +1,10 @@
 import { useEffect } from 'react';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
-import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
-import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { kanbanProjectsApi } from '@/shared/lib/kanbanApi';
 
 export function RootRedirectPage() {
-  const { config, loading, loginStatus } = useUserSystem();
-  const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
+  const { config, loading } = useUserSystem();
   const appNavigation = useAppNavigation();
 
   useEffect(() => {
@@ -22,37 +19,27 @@ export function RootRedirectPage() {
         return;
       }
 
-      if (loginStatus?.status !== 'loggedin') {
+      // Local-first: try to redirect to the first local kanban project.
+      try {
+        const projects = await kanbanProjectsApi.list();
+        if (!isActive) return;
+        if (projects.length > 0) {
+          appNavigation.goToProject(projects[0].id, { replace: true });
+          return;
+        }
+      } catch {
+        // If the API isn't ready yet, fall through to workspace create.
+      }
+
+      if (isActive) {
         appNavigation.goToWorkspacesCreate({ replace: true });
-        return;
       }
-
-      // Read saved selections imperatively to avoid re-triggering this effect
-      // when the scratch store initializes from the server
-      const { selectedOrgId, selectedProjectId } =
-        useUiPreferencesStore.getState();
-
-      const destination = await getFirstProjectDestination(
-        setSelectedOrgId,
-        selectedOrgId,
-        selectedProjectId
-      );
-      if (!isActive) {
-        return;
-      }
-
-      if (destination?.kind === 'project') {
-        appNavigation.goToProject(destination.projectId, { replace: true });
-        return;
-      }
-
-      appNavigation.goToWorkspacesCreate({ replace: true });
     })();
 
     return () => {
       isActive = false;
     };
-  }, [appNavigation, config, loading, loginStatus?.status, setSelectedOrgId]);
+  }, [appNavigation, config, loading]);
 
   return (
     <div className="h-screen bg-primary flex items-center justify-center">

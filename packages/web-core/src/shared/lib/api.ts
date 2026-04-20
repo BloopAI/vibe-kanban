@@ -65,8 +65,6 @@ import {
   CreateScratch,
   UpdateScratch,
   PushError,
-  TokenResponse,
-  CurrentUserResponse,
   QueueStatus,
   PrCommentsResponse,
   MergeWorkspaceRequest,
@@ -81,7 +79,6 @@ import {
   GitRemote,
   ListPrsError,
   PullRequestDetail,
-  LinkPrToIssueRequest,
   AttachExistingPrRequest,
   AttachPrResponse,
   CreateWorkspaceFromPrBody,
@@ -92,15 +89,45 @@ import {
   RelayPairedClient,
   ListRelayPairedClientsResponse,
   RemoveRelayPairedClientResponse,
-  PairRelayHostRequest,
-  PairRelayHostResponse,
   RelayPairedHost,
   ListRelayPairedHostsResponse,
   RemoveRelayPairedHostResponse,
-  OpenRemoteWorkspaceInEditorRequest,
   OpenRemoteEditorResponse,
   ProfileResponse,
 } from 'shared/types';
+
+// Local inline types for removed cloud types
+export interface TokenResponse {
+  access_token: string;
+  expires_at: string | null;
+}
+
+export interface CurrentUserResponse {
+  user_id: string;
+}
+
+export interface LinkPrToIssueRequest {
+  pr_url: string;
+  pr_number: number;
+  base_branch: string;
+}
+
+export interface PairRelayHostRequest {
+  host_id: string;
+  host_name: string;
+  enrollment_code: string;
+}
+
+export interface PairRelayHostResponse {
+  paired: boolean;
+}
+
+export interface OpenRemoteWorkspaceInEditorRequest {
+  workspace_id: string;
+  host_id: string;
+  editor_type: string | null;
+  file_path: string | null;
+}
 import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';

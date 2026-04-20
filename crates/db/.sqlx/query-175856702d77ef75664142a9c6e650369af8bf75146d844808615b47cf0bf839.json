@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                id AS \"id!: Uuid\",\n                issue_id AS \"issue_id!: Uuid\",\n                related_issue_id AS \"related_issue_id!: Uuid\",\n                relationship_type AS \"relationship_type!: KanbanIssueRelationshipType\",\n                created_at AS \"created_at!: DateTime<Utc>\"\n               FROM kanban_issue_relationships\n               WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "issue_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "related_issue_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "relationship_type!: KanbanIssueRelationshipType",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "175856702d77ef75664142a9c6e650369af8bf75146d844808615b47cf0bf839"
+}

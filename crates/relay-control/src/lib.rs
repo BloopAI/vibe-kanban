@@ -1,5 +1,9 @@
 pub mod signing;
 
+/// HTTP header name set on requests forwarded through any relay (cloud or P2P).
+/// Presence of this header triggers relay request signature verification.
+pub const RELAY_HEADER: &str = "x-vk-relayed";
+
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 

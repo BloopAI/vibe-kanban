@@ -1,7 +1,5 @@
 use std::{sync::Arc, time::Duration};
 
-use api_types::{PullRequestStatus, UpdatePullRequestApiRequest, UpsertPullRequestRequest};
-use chrono::Utc;
 use db::{
     DBService,
     models::{
@@ -17,12 +15,7 @@ use thiserror::Error;
 use tokio::{sync::Notify, time::interval};
 use tracing::{debug, error, info, warn};
 
-use crate::services::{
-    analytics::AnalyticsContext,
-    container::ContainerService,
-    remote_client::{RemoteClient, RemoteClientError},
-    remote_sync,
-};
+use crate::services::{analytics::AnalyticsContext, container::ContainerService};
 
 #[derive(Debug, Error)]
 enum PrMonitorError {
@@ -51,7 +44,6 @@ pub struct PrMonitorService<C: ContainerService> {
     poll_interval: Duration,
     analytics: Option<AnalyticsContext>,
     container: C,
-    remote_client: Option<RemoteClient>,
     sync_notify: Arc<Notify>,
 }
 
@@ -60,7 +52,6 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
         db: DBService,
         analytics: Option<AnalyticsContext>,
         container: C,
-        remote_client: Option<RemoteClient>,
         sync_notify: Arc<Notify>,
     ) -> tokio::task::JoinHandle<()> {
         let service = Self {
@@ -68,7 +59,6 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
             poll_interval: Duration::from_secs(60),
             analytics,
             container,
-            remote_client,
             sync_notify,
         };
         tokio::spawn(async move {
@@ -95,7 +85,6 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
                     debug!("PR sync triggered externally");
                 }
             }
-            self.sync_pending_to_remote().await;
         }
     }
 
@@ -140,7 +129,7 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
         }
 
         let merged_at = if matches!(&status.status, MergeStatus::Merged) {
-            Some(status.merged_at.unwrap_or_else(Utc::now))
+            Some(status.merged_at.unwrap_or_else(chrono::Utc::now))
         } else {
             None
         };
@@ -208,85 +197,5 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
         }
 
         Ok(())
-    }
-
-    /// Sync pending PR status changes to remote server.
-    async fn sync_pending_to_remote(&self) {
-        let Some(client) = &self.remote_client else {
-            return;
-        };
-
-        let pending = match PullRequest::get_pending_sync(&self.db.pool).await {
-            Ok(prs) => prs,
-            Err(e) => {
-                error!("Failed to query pending sync PRs: {}", e);
-                return;
-            }
-        };
-
-        if pending.is_empty() {
-            return;
-        }
-
-        debug!("Syncing {} pending PRs to remote", pending.len());
-
-        for pr in &pending {
-            let pr_api_status = match &pr.pr_status {
-                MergeStatus::Open => PullRequestStatus::Open,
-                MergeStatus::Merged => PullRequestStatus::Merged,
-                MergeStatus::Closed => PullRequestStatus::Closed,
-                MergeStatus::Unknown => continue,
-            };
-
-            let request = UpdatePullRequestApiRequest {
-                url: pr.pr_url.clone(),
-                status: Some(pr_api_status),
-                merged_at: pr.merged_at.map(Some),
-                merge_commit_sha: pr.merge_commit_sha.clone().map(Some),
-            };
-
-            match client.update_pull_request(request).await {
-                Ok(_) => {
-                    if let Err(e) = PullRequest::mark_synced(&self.db.pool, &pr.id).await {
-                        error!("Failed to mark PR #{} as synced: {}", pr.pr_number, e);
-                    }
-                }
-                Err(RemoteClientError::Http { status: 404, .. }) => {
-                    if let Some(workspace_id) = pr.workspace_id {
-                        let request = UpsertPullRequestRequest {
-                            url: pr.pr_url.clone(),
-                            number: pr.pr_number as i32,
-                            status: pr_api_status,
-                            merged_at: pr.merged_at,
-                            merge_commit_sha: pr.merge_commit_sha.clone(),
-                            target_branch_name: pr.target_branch_name.clone(),
-                            local_workspace_id: workspace_id,
-                        };
-                        remote_sync::sync_pr_to_remote(client, request).await;
-                        if let Err(e) = PullRequest::mark_synced(&self.db.pool, &pr.id).await {
-                            error!("Failed to mark PR #{} as synced: {}", pr.pr_number, e);
-                        }
-                    } else {
-                        warn!(
-                            "PR #{} not found on remote and has no workspace, removing local record",
-                            pr.pr_number
-                        );
-                        if let Err(e) = PullRequest::delete(&self.db.pool, &pr.id).await {
-                            error!("Failed to delete orphaned local PR: {}", e);
-                        }
-                    }
-                }
-                Err(RemoteClientError::Auth) => {
-                    debug!("PR sync sweep stopped: not authenticated");
-                    return;
-                }
-                Err(e) => {
-                    error!(
-                        "Failed to sync PR #{} status to remote: {}",
-                        pr.pr_number, e
-                    );
-                }
-            }
-        }
     }
 }
