@@ -587,9 +587,7 @@ impl CursorMcpService {
             } else if let Some(state_arc) = self.lobby_state.get(&bridge_session_id) {
                 let state = state_arc.lock().await;
                 let item = self.lobby_item_for(&bridge_session_id, &state).await;
-                let _ = self
-                    .inbox_patches_tx
-                    .send(InboxPatch::SessionUpdated(item));
+                let _ = self.inbox_patches_tx.send(InboxPatch::SessionUpdated(item));
             }
         }
     }
@@ -633,10 +631,8 @@ impl CursorMcpService {
         else {
             return None;
         };
-        self.bridge_to_vk
-            .insert(bridge_id.clone(), vk_session_id);
-        self.vk_to_bridge
-            .insert(vk_session_id, bridge_id.clone());
+        self.bridge_to_vk.insert(bridge_id.clone(), vk_session_id);
+        self.vk_to_bridge.insert(vk_session_id, bridge_id.clone());
         Some(bridge_id)
     }
 
@@ -1014,10 +1010,8 @@ impl CursorMcpService {
             && let Some(vk_id) = row.adopted_into_session_id
         {
             // Heal the in-memory map so future waits skip the DB hop.
-            self.bridge_to_vk
-                .insert(bridge_session_id.clone(), vk_id);
-            self.vk_to_bridge
-                .insert(vk_id, bridge_session_id.clone());
+            self.bridge_to_vk.insert(bridge_session_id.clone(), vk_id);
+            self.vk_to_bridge.insert(vk_id, bridge_session_id.clone());
             routed_vk = Some(vk_id);
         }
 

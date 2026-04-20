@@ -54,6 +54,16 @@ pub enum ApiError {
     Container(ContainerError),
     #[error(transparent)]
     Executor(#[from] ExecutorError),
+    /// Executor error with a pre-built envelope carrying stderr tail and program name.
+    /// Use this variant when the caller has already collected failure context via
+    /// `start_execution_with_context` or `start_workspace_with_context`.
+    ///
+    /// `message` is the `Display` string of the original error.
+    #[error("{message}")]
+    ExecutorWithContext {
+        message: String,
+        envelope: ApiErrorEnvelope,
+    },
     #[error(transparent)]
     Database(#[from] sqlx::Error),
     #[error(transparent)]
@@ -542,6 +552,12 @@ impl IntoResponse for ApiError {
                 message: Some(e.to_string()),
                 envelope: Some(executor_error_envelope(e, None, None)),
             },
+            ApiError::ExecutorWithContext { message, envelope } => ErrorInfo {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                error_type: "ExecutorError",
+                message: Some(message.clone()),
+                envelope: Some(envelope.clone()),
+            },
             ApiError::CommandBuilder(_) => ErrorInfo::internal("CommandBuildError"),
             ApiError::Database(_) => ErrorInfo::internal("DatabaseError"),
             ApiError::Worktree(err) => ErrorInfo::with_status(
@@ -727,6 +743,15 @@ mod tests {
     }
 
     #[test]
+    fn classifies_spawn_error_variant_as_retryable() {
+        let err = ExecutorError::SpawnError(std::io::Error::other("boom"));
+        let env = executor_error_envelope(&err, None, None);
+        assert_eq!(env.kind, "spawn_failed");
+        assert!(env.retryable);
+        assert!(!env.human_intervention_required);
+    }
+
+    #[test]
     fn unknown_variants_fall_through_to_internal() {
         let err = ExecutorError::UnknownExecutorType("foo".into());
         let env = executor_error_envelope(&err, None, None);
@@ -773,6 +798,34 @@ mod tests {
         assert_eq!(json["error"]["kind"], "auth_required");
         assert_eq!(json["error"]["retryable"], false);
         assert_eq!(json["error"]["human_intervention_required"], true);
+    }
+
+    #[tokio::test]
+    async fn executor_with_context_response_carries_stderr_and_program() {
+        use utils::response::ApiErrorEnvelope;
+        let envelope = ApiErrorEnvelope {
+            kind: "executor_not_found".into(),
+            retryable: false,
+            human_intervention_required: true,
+            stderr_tail: Some("…last line of stderr".to_string()),
+            program: Some("nonexistent-bin".into()),
+        };
+        let err = ApiError::ExecutorWithContext {
+            message: ExecutorError::ExecutableNotFound {
+                program: "nonexistent-bin".into(),
+            }
+            .to_string(),
+            envelope: envelope.clone(),
+        };
+        let response = err.into_response();
+        let (parts, body) = response.into_parts();
+        let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(parts.status, axum::http::StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(json["success"], false);
+        assert_eq!(json["error"]["kind"], "executor_not_found");
+        assert_eq!(json["error"]["stderr_tail"], "…last line of stderr");
+        assert_eq!(json["error"]["program"], "nonexistent-bin");
     }
 
     #[tokio::test]

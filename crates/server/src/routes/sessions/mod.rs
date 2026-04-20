@@ -32,7 +32,9 @@ use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{
-    DeploymentImpl, error::ApiError, middleware::load_session_middleware,
+    DeploymentImpl,
+    error::{ApiError, executor_error_envelope},
+    middleware::load_session_middleware,
     routes::workspaces::execution::RunScriptError,
 };
 
@@ -231,15 +233,26 @@ pub async fn follow_up(
             },
         );
         let action = ExecutorAction::new(initial, cleanup_action.map(Box::new));
-        let execution_process = deployment
+        let (exec_result, failure_ctx) = deployment
             .container()
-            .start_execution(
+            .start_execution_with_context(
                 &workspace,
                 &session,
                 &action,
                 &ExecutionProcessRunReason::CodingAgent,
             )
-            .await?;
+            .await;
+        let execution_process = exec_result.map_err(|e| {
+            if let services::services::container::ContainerError::ExecutorError(ref exe_err) = e {
+                let ctx = failure_ctx.unwrap_or_default();
+                ApiError::ExecutorWithContext {
+                    message: exe_err.to_string(),
+                    envelope: executor_error_envelope(exe_err, ctx.stderr_tail, ctx.program),
+                }
+            } else {
+                ApiError::from(e)
+            }
+        })?;
         // Now that the execution_process and its MsgStore exist, push the
         // user reply so it shows up in the chat.
         crate::routes::cursor_mcp::push_user_reply_to_session_msgstore(
@@ -301,15 +314,26 @@ pub async fn follow_up(
 
     let action = ExecutorAction::new(action_type, cleanup_action.map(Box::new));
 
-    let execution_process = deployment
+    let (exec_result, failure_ctx) = deployment
         .container()
-        .start_execution(
+        .start_execution_with_context(
             &workspace,
             &session,
             &action,
             &ExecutionProcessRunReason::CodingAgent,
         )
-        .await?;
+        .await;
+    let execution_process = exec_result.map_err(|e| {
+        if let services::services::container::ContainerError::ExecutorError(ref exe_err) = e {
+            let ctx = failure_ctx.unwrap_or_default();
+            ApiError::ExecutorWithContext {
+                message: exe_err.to_string(),
+                envelope: executor_error_envelope(exe_err, ctx.stderr_tail, ctx.program),
+            }
+        } else {
+            ApiError::from(e)
+        }
+    })?;
 
     // Clear the draft follow-up scratch on successful spawn
     // This ensures the scratch is wiped even if the user navigates away quickly
