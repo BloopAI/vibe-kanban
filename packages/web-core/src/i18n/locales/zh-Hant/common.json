@@ -397,11 +397,6 @@
       "active": "活動",
       "all": "全部"
     },
-    "loginRequired": {
-      "title": "需要登入",
-      "description": "請登入以查看此專案。",
-      "action": "登入"
-    },
     "team": "Team",
     "personal": "Personal",
     "searchPlaceholder": "Search issues...",

@@ -71,6 +71,9 @@ function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
   return theme === ThemeMode.DARK ? 'dark' : 'light';
 }
 
+// True when built without a cloud API base — all cloud features are absent.
+const IS_LOCAL_FIRST_MODE = !import.meta.env.VITE_VK_SHARED_API_BASE;
+
 export function OnboardingSignInPage() {
   const appNavigation = useAppNavigation();
   const { t } = useTranslation('common');
@@ -84,6 +87,7 @@ export function OnboardingSignInPage() {
   const isCompletingOnboardingRef = useRef(false);
   const hasTrackedStageViewRef = useRef(false);
   const hasRedirectedToRootRef = useRef(false);
+  const hasAutoSkippedRef = useRef(false);
   const [pendingProvider, setPendingProvider] = useState<OAuthProvider | null>(
     null
   );
@@ -140,6 +144,29 @@ export function OnboardingSignInPage() {
     hasRedirectedToRootRef.current = true;
     appNavigation.goToRoot({ replace: true });
   }, [appNavigation, config?.remote_onboarding_acknowledged]);
+
+  // In local-first mode there is no cloud — skip straight to workspaces
+  // without showing the sign-in comparison or OAuth buttons.
+  useEffect(() => {
+    if (
+      !IS_LOCAL_FIRST_MODE ||
+      loading ||
+      !config ||
+      hasAutoSkippedRef.current ||
+      isCompletingOnboardingRef.current
+    ) {
+      return;
+    }
+
+    hasAutoSkippedRef.current = true;
+    void updateAndSaveConfig({
+      remote_onboarding_acknowledged: true,
+      onboarding_acknowledged: true,
+      disclaimer_acknowledged: true,
+    }).then(() => {
+      appNavigation.goToWorkspacesCreate({ replace: true });
+    });
+  }, [appNavigation, config, loading, updateAndSaveConfig]);
 
   const getOnboardingDestination = async (): Promise<OnboardingDestination> => {
     const firstProjectDestination =

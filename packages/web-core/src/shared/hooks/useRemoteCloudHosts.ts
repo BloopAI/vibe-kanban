@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AppBarHost, AppBarHostStatus } from '@vibe/ui/components/AppBar';
-import type { PairRelayHostRequest, RelayPairedHost } from 'shared/types';
+import type { RelayPairedHost } from 'shared/types';
 import type { RelayHost } from 'shared/remote-types';
-import { relayApi } from '@/shared/lib/api';
+import { relayApi, type PairRelayHostRequest } from '@/shared/lib/api';
 import { getRemoteApiUrl, listRelayHosts } from '@/shared/lib/remoteApi';
 
 export type RemoteCloudHostStatus = AppBarHostStatus;

@@ -5,7 +5,6 @@ import type {
   SshPairRequest,
   SshPairResponse,
   UpdateSshConfigRequest,
-  ListP2pHostsResponse,
 } from '@/shared/types/p2p-hosts';
 
 // Local-only request helper that bypasses host-scoping (hostScope: 'none')
@@ -21,8 +20,7 @@ const makeP2pRequest = (url: string, options: RequestInit = {}) => {
 export const p2pHostsApi = {
   async listHosts(): Promise<P2pHost[]> {
     const response = await makeP2pRequest('/api/p2p/hosts');
-    const data = await handleApiResponse<ListP2pHostsResponse>(response);
-    return data.hosts;
+    return handleApiResponse<P2pHost[]>(response);
   },
 
   async getHost(id: string): Promise<P2pHost> {

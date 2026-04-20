@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                kia.id AS \"id!: Uuid\",\n                kia.issue_id AS \"issue_id!: Uuid\",\n                kia.user_id,\n                kia.assigned_at AS \"assigned_at!: DateTime<Utc>\"\n               FROM kanban_issue_assignees kia\n               JOIN kanban_issues ki ON ki.id = kia.issue_id\n               WHERE ki.project_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "issue_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "assigned_at!: DateTime<Utc>",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "675701f343404e59a0132533b2199bc3af49a94c70c3cdff2341cf72b259c4ba"
+}

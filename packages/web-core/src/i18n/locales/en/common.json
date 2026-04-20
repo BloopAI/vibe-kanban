@@ -411,11 +411,6 @@
       "active": "Active",
       "all": "All"
     },
-    "loginRequired": {
-      "title": "Sign in required",
-      "description": "Please sign in to view this project.",
-      "action": "Sign in"
-    },
     "team": "Team",
     "personal": "Personal",
     "searchPlaceholder": "Search issues...",

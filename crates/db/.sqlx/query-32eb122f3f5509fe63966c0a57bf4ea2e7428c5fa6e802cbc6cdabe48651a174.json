@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE kanban_tags\n               SET name  = COALESCE($2, name),\n                   color = COALESCE($3, color)\n               WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "32eb122f3f5509fe63966c0a57bf4ea2e7428c5fa6e802cbc6cdabe48651a174"
+}

@@ -164,9 +164,9 @@ export function SharedAppLayout() {
               isWorkspacesActive={isWorkspacesActive}
               isExportActive={false}
               activeProjectId={activeProjectId}
-              isSignedIn={true}
+              isSignedIn={false}
               isLoadingProjects={false}
-              onSignIn={() => {}}
+              onSignIn={() => handleWorkspacesClick()}
               onHoverStart={() => setIsAppBarHovered(true)}
               onHoverEnd={() => setIsAppBarHovered(false)}
               notificationBell={<AppBarNotificationBellContainer />}

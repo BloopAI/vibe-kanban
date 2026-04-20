@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO kanban_issues\n                (id, project_id, issue_number, simple_id, status_id, title, description,\n                 priority, start_date, target_date, completed_at, sort_order,\n                 parent_issue_id, parent_issue_sort_order, extension_metadata, creator_user_id)\n               VALUES\n                ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 16
+    },
+    "nullable": []
+  },
+  "hash": "9143c50c5a541318a5a3a18f765face96f291b19ea1a660887e85302d7067ea4"
+}

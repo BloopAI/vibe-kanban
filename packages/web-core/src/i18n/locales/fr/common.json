@@ -49,7 +49,7 @@
     "subagent": {
       "defaultType": "Sous-agent"
     },
-    "loadingEarlierMessages": "Chargement des messages pr\u00e9c\u00e9dents"
+    "loadingEarlierMessages": "Chargement des messages précédents"
   },
   "folderPicker": {
     "legend": "Cliquez sur les noms de dossiers pour naviguer • Utilisez les boutons d'action pour sélectionner",
@@ -396,11 +396,6 @@
     "viewTabs": {
       "active": "Actif",
       "all": "Tout"
-    },
-    "loginRequired": {
-      "title": "Connexion requise",
-      "description": "Veuillez vous connecter pour voir ce projet.",
-      "action": "Se connecter"
     },
     "team": "Team",
     "personal": "Personal",

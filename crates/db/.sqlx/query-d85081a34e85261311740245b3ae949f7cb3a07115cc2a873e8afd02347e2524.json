@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE kanban_issues\n               SET status_id              = COALESCE($2, status_id),\n                   title                  = COALESCE($3, title),\n                   description            = COALESCE($4, description),\n                   priority               = COALESCE($5, priority),\n                   start_date             = COALESCE($6, start_date),\n                   target_date            = COALESCE($7, target_date),\n                   completed_at           = COALESCE($8, completed_at),\n                   sort_order             = COALESCE($9, sort_order),\n                   parent_issue_id        = COALESCE($10, parent_issue_id),\n                   parent_issue_sort_order = COALESCE($11, parent_issue_sort_order),\n                   updated_at             = datetime('now', 'subsec')\n               WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 11
+    },
+    "nullable": []
+  },
+  "hash": "d85081a34e85261311740245b3ae949f7cb3a07115cc2a873e8afd02347e2524"
+}

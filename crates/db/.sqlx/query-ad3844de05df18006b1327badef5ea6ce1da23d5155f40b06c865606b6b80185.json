@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO kanban_projects (id, name, color, sort_order)\n               VALUES ($1, $2, $3, COALESCE((SELECT MAX(sort_order) + 1 FROM kanban_projects), 0))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "ad3844de05df18006b1327badef5ea6ce1da23d5155f40b06c865606b6b80185"
+}

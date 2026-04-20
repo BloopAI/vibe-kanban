@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                kit.id AS \"id!: Uuid\",\n                kit.issue_id AS \"issue_id!: Uuid\",\n                kit.tag_id AS \"tag_id!: Uuid\"\n               FROM kanban_issue_tags kit\n               JOIN kanban_issues ki ON ki.id = kit.issue_id\n               WHERE ki.project_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "issue_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "tag_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "bfe9664477502769e4fc78dfa074f4ba94ac202e7f4dd7b2d66fbe0c7853b563"
+}

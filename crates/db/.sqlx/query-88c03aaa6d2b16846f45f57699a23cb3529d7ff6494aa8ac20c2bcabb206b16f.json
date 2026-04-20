@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR IGNORE INTO kanban_issue_tags (id, issue_id, tag_id)\n               VALUES ($1, $2, $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "88c03aaa6d2b16846f45f57699a23cb3529d7ff6494aa8ac20c2bcabb206b16f"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO kanban_tags (id, project_id, name, color)\n               VALUES ($1, $2, $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "76aa400b869ec0f5d2e1a9e217a3afb6307f5f94ad56bd74f762d15c02662e03"
+}

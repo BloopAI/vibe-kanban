@@ -13,10 +13,7 @@ use db::models::{file::File, session::Session, workspace::Workspace};
 use deployment::Deployment;
 use mime_guess::MimeGuess;
 use serde::{Deserialize, Serialize};
-use services::services::{
-    container::ContainerService,
-    file::{FileError, FileService},
-};
+use services::services::{container::ContainerService, file::FileError};
 use tokio::fs::File as TokioFile;
 use tokio_util::io::ReaderStream;
 use ts_rs::TS;
@@ -60,6 +57,7 @@ pub struct ImportIssueAttachmentsResponse {
     pub attachment_ids: Vec<Uuid>,
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone)]
 pub(crate) struct ImportedIssueAttachment {
     pub attachment_id: Uuid,

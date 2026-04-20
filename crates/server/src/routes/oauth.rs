@@ -6,7 +6,6 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, post},
 };
-use deployment::Deployment;
 use utils::response::ApiResponse;
 
 use crate::{DeploymentImpl, error::ApiError};

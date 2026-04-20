@@ -8,6 +8,48 @@ export type Repo = { id: string, path: string, name: string, display_name: strin
 
 export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
 
+export type KanbanProject = { id: string, name: string, color: string, sort_order: number, created_at: string, updated_at: string, };
+
+export type CreateKanbanProject = { id: string | null, name: string, color: string, };
+
+export type UpdateKanbanProject = { name: string | null, color: string | null, sort_order: number | null, };
+
+export type KanbanProjectStatus = { id: string, project_id: string, name: string, color: string, sort_order: number, hidden: boolean, created_at: string, };
+
+export type CreateKanbanProjectStatus = { id: string | null, project_id: string, name: string, color: string, sort_order: number | null, hidden: boolean, };
+
+export type UpdateKanbanProjectStatus = { name: string | null, color: string | null, sort_order: number | null, hidden: boolean | null, };
+
+export type KanbanIssue = { id: string, project_id: string, issue_number: number, simple_id: string, status_id: string, title: string, description: string | null, priority: KanbanIssuePriority | null, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, parent_issue_sort_order: number | null, extension_metadata: Record<string, unknown>, creator_user_id: string | null, created_at: string, updated_at: string, };
+
+export type KanbanIssuePriority = "urgent" | "high" | "medium" | "low";
+
+export type CreateKanbanIssue = { id: string | null, project_id: string, status_id: string, title: string, description: string | null, priority: KanbanIssuePriority | null, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number | null, parent_issue_id: string | null, parent_issue_sort_order: number | null, extension_metadata: JsonValue | null, };
+
+export type UpdateKanbanIssue = { status_id: string | null, title: string | null, description: string | null, priority: KanbanIssuePriority | null, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number | null, parent_issue_id: string | null, parent_issue_sort_order: number | null, };
+
+export type BulkUpdateKanbanIssueItem = { id: string, status_id: string | null, sort_order: number | null, title: string | null, description: string | null, priority: KanbanIssuePriority | null, };
+
+export type KanbanTag = { id: string, project_id: string, name: string, color: string, created_at: string, };
+
+export type CreateKanbanTag = { id: string | null, project_id: string, name: string, color: string, };
+
+export type UpdateKanbanTag = { name: string | null, color: string | null, };
+
+export type KanbanIssueTag = { id: string, issue_id: string, tag_id: string, };
+
+export type CreateKanbanIssueTag = { id: string | null, issue_id: string, tag_id: string, };
+
+export type KanbanIssueAssignee = { id: string, issue_id: string, user_id: string, assigned_at: string, };
+
+export type CreateKanbanIssueAssignee = { id: string | null, issue_id: string, user_id: string, };
+
+export type KanbanIssueRelationship = { id: string, issue_id: string, related_issue_id: string, relationship_type: KanbanIssueRelationshipType, created_at: string, };
+
+export type KanbanIssueRelationshipType = "blocking" | "related" | "has_duplicate";
+
+export type CreateKanbanIssueRelationship = { id: string | null, issue_id: string, related_issue_id: string, relationship_type: KanbanIssueRelationshipType, };
+
 export type UpdateRepo = { display_name?: string | null, setup_script?: string | null, cleanup_script?: string | null, archive_script?: string | null, copy_files?: string | null, parallel_setup_script?: boolean | null, dev_server_script?: string | null, default_target_branch?: string | null, default_working_dir?: string | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, 
@@ -264,8 +306,6 @@ export type InitRepoRequest = { parent_path: string, folder_name: string, };
 
 export type TagSearchParams = { search: string | null, };
 
-export type TokenResponse = { access_token: string, expires_at: string | null, };
-
 export type UserSystemInfo = { version: string, config: Config, machine_id: string, login_status: LoginStatus, remote_auth_degraded: string | null, environment: Environment, 
 /**
  * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
@@ -287,8 +327,6 @@ export type CheckEditorAvailabilityResponse = { available: boolean, };
 export type CheckAgentAvailabilityQuery = { executor: BaseCodingAgent, };
 
 export type AgentPresetOptionsQuery = { executor: BaseCodingAgent, variant: string | null, };
-
-export type CurrentUserResponse = { user_id: string, };
 
 export type StartSpake2EnrollmentRequest = { enrollment_code: string, client_message_b64: string, };
 
@@ -337,12 +375,6 @@ export type OpenEditorRequest = { editor_type: string | null, file_path: string 
 export type OpenEditorResponse = { url: string | null, };
 
 export type OpenRemoteEditorResponse = { url: string, local_port: number, ssh_alias: string, };
-
-export type OpenRemoteWorkspaceInEditorRequest = { host_id: string, workspace_id: string, editor_type: string | null, file_path: string | null, };
-
-export type PairRelayHostRequest = { host_id: string, host_name: string, enrollment_code: string, };
-
-export type PairRelayHostResponse = { paired: boolean, };
 
 export type RelayPairedHost = { host_id: string, host_name: string | null, paired_at: string | null, };
 
@@ -411,8 +443,6 @@ export type PullRequestDetail = { number: bigint, url: string, status: MergeStat
 export type GitRemote = { name: string, url: string, };
 
 export type ListPrsError = { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "auth_failed", message: string, } | { "type": "unsupported_provider" };
-
-export type LinkPrToIssueRequest = { pr_url: string, pr_number: number, base_branch: string, };
 
 export type CreateWorkspaceFromPrBody = { repo_id: string, pr_number: bigint, pr_title: string, pr_url: string, head_branch: string, base_branch: string, run_setup: boolean, remote_name: string | null, };
 
@@ -808,80 +838,6 @@ permissions: Array<PermissionPolicy>, };
 export type ExecutorDiscoveredOptions = { model_selector: ModelSelectorConfig, slash_commands: Array<SlashCommandDescription>, loading_models: boolean, loading_agents: boolean, loading_slash_commands: boolean, error: string | null, };
 
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;
-
-export type RelayWsMessageType = "text" | "binary" | "ping" | "pong" | "close";
-
-export type DataChannelMessage = { "type": "http_request" } & DataChannelRequest | { "type": "http_response" } & DataChannelResponse | { "type": "ws_open" } & WsOpen | { "type": "ws_opened" } & WsOpened | { "type": "ws_frame" } & WsFrame | { "type": "ws_close" } & WsClose | { "type": "ws_error" } & WsError;
-
-export type DataChannelRequest = { id: string, method: string, path: string, headers: { [key in string]?: Array<string> }, 
-/**
- * Base64-encoded request body, if any.
- */
-body_b64?: string | null, };
-
-export type DataChannelResponse = { id: string, status: number, headers: { [key in string]?: Array<string> }, 
-/**
- * Base64-encoded response body, if any.
- */
-body_b64?: string | null, };
-
-export type WsOpen = { 
-/**
- * Unique connection ID for multiplexing.
- */
-conn_id: string, 
-/**
- * Target path, e.g. `/api/sessions/abc/queue`.
- */
-path: string, 
-/**
- * Optional sub-protocol(s) to negotiate.
- */
-protocols?: string | null, };
-
-export type WsOpened = { conn_id: string, 
-/**
- * The sub-protocol selected by the server, if any.
- */
-selected_protocol?: string | null, };
-
-export type WsFrame = { conn_id: string, msg_type: RelayWsMessageType, 
-/**
- * Base64-encoded payload.
- */
-payload_b64?: string | null, };
-
-export type WsClose = { conn_id: string, 
-/**
- * Close code (RFC 6455 §7.4).
- */
-code?: number | null, 
-/**
- * Close reason.
- */
-reason?: string | null, };
-
-export type WsError = { conn_id: string, error: string, };
-
-export type SdpOffer = { 
-/**
- * The SDP string from the peer's `RTCPeerConnection.createOffer()`.
- */
-sdp: string, 
-/**
- * Caller-provided session identifier to correlate offer/answer/candidates.
- */
-session_id: string, };
-
-export type SdpAnswer = { 
-/**
- * The SDP string from `Rtc::direct_api().create_answer()`.
- */
-sdp: string, 
-/**
- * Echoed session identifier from the offer.
- */
-session_id: string, };
 
 export const DEFAULT_PR_DESCRIPTION_PROMPT = "Update the PR that was just created with a better title and description.\nThe PR number is #{pr_number} and the URL is {pr_url}.\n\nAnalyze the changes in this branch and write:\n1. A concise, descriptive title that summarizes the changes, postfixed with \"(Vibe Kanban)\"\n2. A detailed description that explains:\n   - What changes were made\n   - Why they were made (based on the task context)\n   - Any important implementation details\n   - At the end, include a note: \"This PR was written using [Vibe Kanban](https://vibekanban.com)\"\n\nUse the appropriate CLI tool to update the PR (gh pr edit for GitHub, az repos pr update for Azure DevOps).";
 

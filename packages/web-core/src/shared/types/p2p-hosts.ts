@@ -44,7 +44,3 @@ export type UpdateSshConfigRequest = {
   ssh_key_path?: string;
   connection_mode?: 'direct' | 'ssh' | 'auto';
 };
-
-export type ListP2pHostsResponse = {
-  hosts: P2pHost[];
-};

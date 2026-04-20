@@ -6,7 +6,6 @@ use axum::{
     routing::{delete, post},
 };
 use db::models::workspace::Workspace;
-use deployment::Deployment;
 use serde::Deserialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;

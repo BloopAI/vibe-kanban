@@ -397,11 +397,6 @@
       "active": "アクティブ",
       "all": "すべて"
     },
-    "loginRequired": {
-      "title": "サインインが必要です",
-      "description": "このプロジェクトを表示するにはサインインしてください。",
-      "action": "サインイン"
-    },
     "team": "Team",
     "personal": "Personal",
     "searchPlaceholder": "Search issues...",

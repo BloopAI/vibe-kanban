@@ -1,19 +1,17 @@
-import { useQuery } from '@tanstack/react-query';
-import { organizationsApi } from '@/shared/lib/api';
-import { useAuth } from '@/shared/hooks/auth/useAuth';
 import type { ListOrganizationsResponse } from 'shared/types';
-import { organizationKeys } from '@/shared/hooks/organizationKeys';
+
+const EMPTY: ListOrganizationsResponse = { organizations: [] };
 
 /**
- * Hook to fetch all organizations that the current user is a member of
+ * Local-first stub — organizations are a cloud-only concept.
+ * Always returns empty data so all consumers that read `orgsData?.organizations`
+ * see an empty array without making any network requests.
  */
 export function useUserOrganizations() {
-  const { isSignedIn } = useAuth();
-
-  return useQuery<ListOrganizationsResponse>({
-    queryKey: organizationKeys.userList(),
-    queryFn: () => organizationsApi.getUserOrganizations(),
-    enabled: isSignedIn,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  return {
+    data: EMPTY,
+    isLoading: false,
+    error: null as Error | null,
+    refetch: () => Promise.resolve(),
+  };
 }

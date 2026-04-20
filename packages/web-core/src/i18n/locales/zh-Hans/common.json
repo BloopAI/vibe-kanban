@@ -397,11 +397,6 @@
       "active": "活动",
       "all": "全部"
     },
-    "loginRequired": {
-      "title": "需要登录",
-      "description": "请登录以查看此项目。",
-      "action": "登录"
-    },
     "team": "Team",
     "personal": "Personal",
     "searchPlaceholder": "Search issues...",

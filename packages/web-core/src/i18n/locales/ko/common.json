@@ -397,11 +397,6 @@
       "active": "활성",
       "all": "전체"
     },
-    "loginRequired": {
-      "title": "로그인 필요",
-      "description": "이 프로젝트를 보려면 로그인하세요.",
-      "action": "로그인"
-    },
     "team": "Team",
     "personal": "Personal",
     "searchPlaceholder": "Search issues...",

@@ -17,6 +17,7 @@ pub mod execution_processes;
 pub mod filesystem;
 pub mod frontend;
 pub mod health;
+pub mod kanban;
 pub mod oauth;
 pub mod p2p_hosts;
 pub mod preview;
@@ -50,6 +51,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(preview::api_router())
         .merge(releases::router())
         .merge(sessions::router(&deployment))
+        .merge(kanban::router(&deployment))
         .merge(terminal::router())
         .route("/ssh-session", get(ssh_session::ssh_session_ws))
         .nest("/attachments", attachments::routes())
