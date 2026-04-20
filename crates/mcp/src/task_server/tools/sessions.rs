@@ -361,8 +361,11 @@ impl McpServer {
             status: execution_process.status.clone(),
             is_finished,
             execution: execution_process_value,
-            // TODO(PR-X?): populate from persisted failure metadata once
-            // `ExecutionProcess` carries `failure_kind` / `stderr_tail`.
+            // TODO: populate from persisted failure metadata once `ExecutionProcess`
+            // carries failure columns (e.g. `failure_kind`, `stderr_tail`). Today the
+            // in-flight spawn-failure path surfaces `ApiErrorEnvelope` via the
+            // `follow_up` / `create_and_start_workspace` HTTP error body (Task 1.5),
+            // but `get_execution` reads a stored row that has no envelope yet.
             error: None,
             final_message: None,
         })
@@ -432,14 +435,11 @@ mod get_execution_tests {
             final_message: None,
         };
         let json = serde_json::to_string(&resp).unwrap();
-        assert!(
-            json.contains("\"status\":\"failed\""),
-            "status should serialize to lowercase: {json}"
-        );
-        assert!(
-            json.contains("\"kind\":\"auth_required\""),
-            "envelope kind should round-trip: {json}"
-        );
+        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(v["status"], "failed");
+        assert_eq!(v["error"]["kind"], "auth_required");
+        assert_eq!(v["error"]["retryable"], false);
+        assert_eq!(v["error"]["human_intervention_required"], true);
     }
 
     #[test]
@@ -455,13 +455,13 @@ mod get_execution_tests {
             final_message: None,
         };
         let json = serde_json::to_string(&resp).unwrap();
+        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert!(
-            json.contains("\"final_message\":null"),
-            "final_message should serialize as null: {json}"
+            v["final_message"].is_null(),
+            "final_message should be null: {json}"
         );
-        // `error: None` with skip_serializing_if should be omitted
         assert!(
-            !json.contains("\"error\":"),
+            v.get("error").is_none(),
             "error should be omitted when None: {json}"
         );
     }

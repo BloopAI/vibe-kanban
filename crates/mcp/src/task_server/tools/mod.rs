@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use api_types::{Issue, ListProjectStatusesResponse, ProjectStatus};
-use db::models::{execution_process::ExecutionProcessStatus, tag::Tag};
+use db::models::tag::Tag;
 use executors::executors::BaseCodingAgent;
 use regex::Regex;
 use rmcp::{
@@ -504,16 +504,6 @@ impl McpServer {
                     executor
                 ))
             })
-    }
-
-    #[allow(dead_code)] // Retained for potential future callers (e.g. log formatting).
-    fn execution_process_status_label(status: &ExecutionProcessStatus) -> &'static str {
-        match status {
-            ExecutionProcessStatus::Running => "running",
-            ExecutionProcessStatus::Completed => "completed",
-            ExecutionProcessStatus::Failed => "failed",
-            ExecutionProcessStatus::Killed => "killed",
-        }
     }
 }
 
