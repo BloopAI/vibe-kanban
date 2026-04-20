@@ -31,7 +31,7 @@ export function CloudShutdownExportBanner({
         'text-sm font-medium text-on-brand hover:bg-brand-hover'
       )}
     >
-      Vibe Kanban Cloud is shutting down. Export your data within 30 days.{' '}
+      Agent Kanban Cloud is shutting down. Export your data within 30 days.{' '}
       <a
         href="https://vibekanban.com/shutdown"
         target="_blank"

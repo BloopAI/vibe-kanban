@@ -89,7 +89,7 @@
           "host": {
             "label": "远程 SSH 主机（可选）",
             "placeholder": "例如：主机名或 IP 地址",
-            "helper": "如果 Vibe Kanban 在远程服务器上运行，请设置此项。设置后，点击在编辑器中打开将生成 URL 以通过 SSH 打开编辑器，而不是执行本地命令。"
+            "helper": "如果 Agent Kanban 在远程服务器上运行，请设置此项。设置后，点击在编辑器中打开将生成 URL 以通过 SSH 打开编辑器，而不是执行本地命令。"
           },
           "user": {
             "label": "远程 SSH 用户（可选）",
@@ -99,7 +99,7 @@
         },
         "autoInstallExtension": {
           "label": "Auto-install VS Code Extension",
-          "helper": "Automatically install the Vibe Kanban extension when opening a project in VS Code or Cursor. This runs in the background and has no effect if the extension is already installed."
+          "helper": "Automatically install the Agent Kanban extension when opening a project in VS Code or Cursor. This runs in the background and has no effect if the extension is already installed."
         },
         "availability": {
           "checking": "检查可用性...",
@@ -507,11 +507,11 @@
       },
       "remove": {
         "title": "移除仓库",
-        "description": "从 Vibe Kanban 取消关联此仓库。磁盘上的文件不会被删除。",
+        "description": "从 Agent Kanban 取消关联此仓库。磁盘上的文件不会被删除。",
         "button": "移除",
         "confirm": "移除仓库",
         "dialogTitle": "移除「{{name}}」？",
-        "dialogDescription": "这将从 Vibe Kanban 取消关联此仓库。您磁盘上的文件不受影响。您可以稍后重新添加。",
+        "dialogDescription": "这将从 Agent Kanban 取消关联此仓库。您磁盘上的文件不受影响。您可以稍后重新添加。",
         "success": "仓库移除成功。",
         "error": "移除仓库失败。"
       },

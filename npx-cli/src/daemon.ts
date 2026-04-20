@@ -93,7 +93,7 @@ async function installMacOS(
 ): Promise<void> {
   if (isMacOSDaemonInstalled() && !force) {
     console.error(
-      'Vibe Kanban daemon is already installed. Use --force to reinstall.',
+      'Agent Kanban daemon is already installed. Use --force to reinstall.',
     );
     process.exit(1);
   }
@@ -129,7 +129,7 @@ async function installMacOS(
     process.exit(1);
   }
 
-  console.log('Vibe Kanban daemon installed and started.');
+  console.log('Agent Kanban daemon installed and started.');
   console.log(`  URL:  http://${host === '0.0.0.0' ? '127.0.0.1' : host}:${port}`);
   console.log(`  Logs: ${DAEMON_LOG}`);
   console.log('');
@@ -138,12 +138,12 @@ async function installMacOS(
 
 async function uninstallMacOS(): Promise<void> {
   if (!isMacOSDaemonInstalled()) {
-    console.log('Vibe Kanban daemon is not installed.');
+    console.log('Agent Kanban daemon is not installed.');
     return;
   }
   run(`launchctl unload -w "${LAUNCHD_PLIST_PATH}" 2>/dev/null`);
   fs.unlinkSync(LAUNCHD_PLIST_PATH);
-  console.log('Vibe Kanban daemon stopped and removed.');
+  console.log('Agent Kanban daemon stopped and removed.');
 }
 
 function statusMacOS(): void {
@@ -219,14 +219,14 @@ async function installLinux(
 ): Promise<void> {
   if (!isSystemdAvailable()) {
     console.error(
-      'systemd is not available. Use Docker or run Vibe Kanban manually.',
+      'systemd is not available. Use Docker or run Agent Kanban manually.',
     );
     process.exit(1);
   }
 
   if (isLinuxDaemonInstalled() && !force) {
     console.error(
-      'Vibe Kanban daemon is already installed. Use --force to reinstall.',
+      'Agent Kanban daemon is already installed. Use --force to reinstall.',
     );
     process.exit(1);
   }
@@ -272,7 +272,7 @@ async function installLinux(
     process.exit(1);
   }
 
-  console.log('Vibe Kanban daemon installed and started.');
+  console.log('Agent Kanban daemon installed and started.');
   console.log(`  URL:  http://${host === '0.0.0.0' ? '127.0.0.1' : host}:${port}`);
   console.log(`  Logs: ${DAEMON_LOG}`);
 
@@ -284,14 +284,14 @@ async function installLinux(
 
 async function uninstallLinux(): Promise<void> {
   if (!isLinuxDaemonInstalled()) {
-    console.log('Vibe Kanban daemon is not installed.');
+    console.log('Agent Kanban daemon is not installed.');
     return;
   }
   run(`systemctl --user stop ${SYSTEMD_SERVICE_NAME} 2>/dev/null`);
   run(`systemctl --user disable ${SYSTEMD_SERVICE_NAME} 2>/dev/null`);
   fs.unlinkSync(SYSTEMD_UNIT_PATH);
   run('systemctl --user daemon-reload 2>/dev/null');
-  console.log('Vibe Kanban daemon stopped and removed.');
+  console.log('Agent Kanban daemon stopped and removed.');
 }
 
 function statusLinux(): void {
@@ -384,7 +384,7 @@ export function getDaemonLogs(lines: number = 100): void {
 export function stopDaemon(): void {
   if (process.platform === 'darwin') {
     if (!isMacOSDaemonInstalled()) {
-      console.log('Vibe Kanban daemon is not installed.');
+      console.log('Agent Kanban daemon is not installed.');
       return;
     }
     const { ok } = run(
@@ -396,14 +396,14 @@ export function stopDaemon(): void {
     }
     // Simpler: just stop the process via launchctl stop
     run(`launchctl stop ${LAUNCHD_LABEL} 2>/dev/null`);
-    console.log('Vibe Kanban daemon stopped.');
+    console.log('Agent Kanban daemon stopped.');
   } else if (process.platform === 'linux') {
     if (!isLinuxDaemonInstalled()) {
-      console.log('Vibe Kanban daemon is not installed.');
+      console.log('Agent Kanban daemon is not installed.');
       return;
     }
     run(`systemctl --user stop ${SYSTEMD_SERVICE_NAME}`);
-    console.log('Vibe Kanban daemon stopped.');
+    console.log('Agent Kanban daemon stopped.');
   } else {
     console.error('Daemon mode is not supported on Windows.');
     process.exit(1);
@@ -414,21 +414,21 @@ export function startDaemon(): void {
   if (process.platform === 'darwin') {
     if (!isMacOSDaemonInstalled()) {
       console.log(
-        'Vibe Kanban daemon is not installed. Run: npx vibe-kanban daemon install',
+        'Agent Kanban daemon is not installed. Run: npx vibe-kanban daemon install',
       );
       return;
     }
     run(`launchctl start ${LAUNCHD_LABEL}`);
-    console.log('Vibe Kanban daemon started.');
+    console.log('Agent Kanban daemon started.');
   } else if (process.platform === 'linux') {
     if (!isLinuxDaemonInstalled()) {
       console.log(
-        'Vibe Kanban daemon is not installed. Run: npx vibe-kanban daemon install',
+        'Agent Kanban daemon is not installed. Run: npx vibe-kanban daemon install',
       );
       return;
     }
     run(`systemctl --user start ${SYSTEMD_SERVICE_NAME}`);
-    console.log('Vibe Kanban daemon started.');
+    console.log('Agent Kanban daemon started.');
   } else {
     console.error('Daemon mode is not supported on Windows.');
     process.exit(1);

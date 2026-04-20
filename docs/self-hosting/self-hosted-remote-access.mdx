@@ -1,12 +1,12 @@
 ---
 title: "Self-Hosted Remote Access"
-description: "Connect two Vibe Kanban instances directly, without Vibe Kanban Cloud, using a self-hosted relay or SSH tunnel"
+description: "Connect two Agent Kanban instances directly, without Agent Kanban Cloud, using a self-hosted relay or SSH tunnel"
 ---
 
-Self-Hosted Remote Access lets one Vibe Kanban instance control another over the network — no Vibe Kanban Cloud account required. Both instances communicate through a lightweight relay server that you run yourself, or through an SSH tunnel you already operate.
+Self-Hosted Remote Access lets one Agent Kanban instance control another over the network — no Agent Kanban Cloud account required. Both instances communicate through a lightweight relay server that you run yourself, or through an SSH tunnel you already operate.
 
 <Info>
-If you do have a Vibe Kanban Cloud account and prefer the managed experience, see [Remote Access](/remote-access) instead.
+If you do have a Agent Kanban Cloud account and prefer the managed experience, see [Remote Access](/remote-access) instead.
 </Info>
 
 ## How it works
@@ -14,12 +14,12 @@ If you do have a Vibe Kanban Cloud account and prefer the managed experience, se
 ```
 Local machine                     VPS / remote machine
 ─────────────────                 ──────────────────────────────────
-Vibe Kanban  ──── WebSocket ────► local-relay (port 8081)
-  client               or         Vibe Kanban server (port 8080)
+Agent Kanban  ──── WebSocket ────► local-relay (port 8081)
+  client               or         Agent Kanban server (port 8080)
              ──── SSH tunnel ───►
 ```
 
-The **local relay** (`crates/local-relay`) is a small Axum server that runs on the remote machine alongside Vibe Kanban. It keeps a persistent WebSocket connection from the local machine and proxies API requests through it using Yamux multiplexing.
+The **local relay** (`crates/local-relay`) is a small Axum server that runs on the remote machine alongside Agent Kanban. It keeps a persistent WebSocket connection from the local machine and proxies API requests through it using Yamux multiplexing.
 
 If a direct WebSocket connection is not reachable (e.g. the remote is behind a firewall), the local machine can open an **SSH tunnel** to the VPS first and connect through that.
 
@@ -27,7 +27,7 @@ If a direct WebSocket connection is not reachable (e.g. the remote is behind a f
 
 | Component | Where it runs | Purpose |
 |---|---|---|
-| `local-relay` | Remote machine | Accepts incoming WebSocket connections from paired clients; proxies requests to local Vibe Kanban |
+| `local-relay` | Remote machine | Accepts incoming WebSocket connections from paired clients; proxies requests to local Agent Kanban |
 | `P2pConnectionManager` | Local machine | Maintains a persistent outbound connection to each paired relay; auto-reconnects with backoff |
 | `ssh-tunnel` crate | Local machine | Opens an SSH port-forward when direct WS is blocked |
 | `p2p_hosts` table | Local machine (SQLite) | Stores configuration and session tokens for all paired hosts |
@@ -37,16 +37,16 @@ If a direct WebSocket connection is not reachable (e.g. the remote is behind a f
 
 - **Remote machine**: a server with a public IP or reachable hostname (e.g. a VPS, home server with port-forwarding, or any machine on the same network)
 - **Port 8081** open on the remote machine (or whichever relay port you choose)
-- **Vibe Kanban** running on the remote machine
+- **Agent Kanban** running on the remote machine
 - For SSH pairing: an SSH private key on the local machine with access to the remote machine
 
 ## Setting up the remote machine
 
-The relay server is embedded in Vibe Kanban and starts automatically on port `8081` alongside the main server. No separate installation is needed.
+The relay server is embedded in Agent Kanban and starts automatically on port `8081` alongside the main server. No separate installation is needed.
 
 <Steps>
-<Step title="Start Vibe Kanban on the remote machine">
-  Run Vibe Kanban as normal. The relay server starts on port `8081` automatically.
+<Step title="Start Agent Kanban on the remote machine">
+  Run Agent Kanban as normal. The relay server starts on port `8081` automatically.
 
   <Check>
   Verify the relay is listening: `curl http://<remote-ip>:8081/health`
@@ -72,7 +72,7 @@ If you use SSH tunnelling, you do **not** need to open port 8081 in your firewal
 
 ## Pairing methods
 
-There are two ways to pair a local Vibe Kanban instance with a remote one.
+There are two ways to pair a local Agent Kanban instance with a remote one.
 
 <Tabs>
 <Tab title="Pairing code (recommended for first-time setup)">
@@ -107,7 +107,7 @@ Use a short-lived, single-use pairing code when you can reach both instances sim
 </Step>
 
 <Step title="Confirm the pairing">
-  Click **Pair**. Vibe Kanban validates the code with the remote instance, generates a session token, and stores the host configuration locally.
+  Click **Pair**. Agent Kanban validates the code with the remote instance, generates a session token, and stores the host configuration locally.
 
   <Check>
   The host appears in the Remote Hosts list with status **paired**.
@@ -140,7 +140,7 @@ Use SSH key pairing when you already have SSH access to the remote machine. No p
 </Step>
 
 <Step title="Verify the host key fingerprint">
-  Vibe Kanban connects via SSH and displays the remote server's **SHA-256 host key fingerprint**:
+  Agent Kanban connects via SSH and displays the remote server's **SHA-256 host key fingerprint**:
 
   ```
   SHA256:AbCdEf1234567890...
@@ -159,7 +159,7 @@ Use SSH key pairing when you already have SSH access to the remote machine. No p
 
 ## Switching between hosts
 
-Once paired, your remote hosts appear in the **AppBar host switcher** alongside any cloud-connected hosts. Click a host name to switch — all projects and workspaces shown in the main view are fetched from the selected host's Vibe Kanban instance.
+Once paired, your remote hosts appear in the **AppBar host switcher** alongside any cloud-connected hosts. Click a host name to switch — all projects and workspaces shown in the main view are fetched from the selected host's Agent Kanban instance.
 
 Click the local device entry to return to your own workspaces.
 
@@ -249,7 +249,7 @@ Session tokens rotate automatically on a configurable interval (default: every 2
 
 ## Configuration reference
 
-All P2P behaviour is configurable via environment variables set on the **local machine** (the one running the client). No rebuild is required — values are read when Vibe Kanban starts.
+All P2P behaviour is configurable via environment variables set on the **local machine** (the one running the client). No rebuild is required — values are read when Agent Kanban starts.
 
 Set variables in your shell environment or in a `.env` file in the workspace root.
 
@@ -325,11 +325,11 @@ You can trigger an immediate manual rotation for any specific host at any time r
   1. Verify the relay is running on the remote machine: `curl http://<remote-ip>:8081/health`
   2. Confirm port `8081` is open in the firewall on the remote machine
   3. Try switching the host's connection mode to **SSH** if the port is behind NAT
-  4. Check the Vibe Kanban server logs on the remote machine for relay errors
+  4. Check the Agent Kanban server logs on the remote machine for relay errors
 </Accordion>
 
 <Accordion title="SSH pairing fails with 'Authentication failed'">
-  - Confirm the private key path is correct and the file is readable by Vibe Kanban
+  - Confirm the private key path is correct and the file is readable by Agent Kanban
   - Verify the key is authorised on the remote machine: `~/.ssh/authorized_keys` should contain the matching public key
   - Check that the SSH user exists on the remote machine and has login access
   - Try connecting manually with `ssh -i <key-path> -p <port> <user>@<host>` from your terminal to confirm the key works independently
@@ -354,7 +354,7 @@ You can trigger an immediate manual rotation for any specific host at any time r
 
 <Accordion title="Projects from remote host are not loading">
   - Confirm the host switcher in the AppBar shows the remote host as selected
-  - Check the remote host's Vibe Kanban instance is running and healthy
+  - Check the remote host's Agent Kanban instance is running and healthy
   - Open Settings → Remote Hosts and verify the host status is **paired** (not **revoked**)
   - Try rotating the session token to force a fresh connection
 </Accordion>

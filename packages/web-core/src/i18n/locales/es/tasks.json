@@ -172,7 +172,7 @@
       "changeTarget": "Cambiar destino",
       "loginRequired": {
         "title": "Inicia sesión para gestionar acciones de Git",
-        "description": "Inicia sesión en Vibe Kanban para enviar ramas, fusionar cambios o abrir pull requests para esta tarea.",
+        "description": "Inicia sesión en Agent Kanban para enviar ramas, fusionar cambios o abrir pull requests para esta tarea.",
         "action": "Iniciar sesión"
       }
     },

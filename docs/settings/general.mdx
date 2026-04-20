@@ -85,14 +85,14 @@ The context bar shows your configured IDE's logo. For more details, see the [Wor
 
 ## Remote SSH Configuration
 
-When running Vibe Kanban on a remote server (e.g., accessed via Cloudflare tunnel, ngrok, or as a systemctl service), you can configure VSCode-based editors to open projects via SSH instead of assuming localhost.
+When running Agent Kanban on a remote server (e.g., accessed via Cloudflare tunnel, ngrok, or as a systemctl service), you can configure VSCode-based editors to open projects via SSH instead of assuming localhost.
 
 This feature is available for **VS Code**, **Cursor**, and **Windsurf** editors.
 
 ### When to Use Remote SSH
 
 Enable remote SSH configuration when:
-- Vibe Kanban runs on a remote server (VPS, cloud instance, etc.)
+- Agent Kanban runs on a remote server (VPS, cloud instance, etc.)
 - You access the web UI through a tunnel or reverse proxy
 - Your code files are on a different machine than your browser
 - You want your local editor to connect to the remote server via SSH
@@ -132,7 +132,7 @@ Configure git branch naming and workspace storage preferences.
 
 ### Branch Prefix
 
-Set a prefix for auto-generated branch names. When you create a new workspace or task, Vibe Kanban automatically creates a git branch for your changes.
+Set a prefix for auto-generated branch names. When you create a new workspace or task, Agent Kanban automatically creates a git branch for your changes.
 
 | Prefix Setting | Example Branch Name |
 |----------------|---------------------|
@@ -146,7 +146,7 @@ Use a prefix that matches your team's branching conventions (e.g., `feature`, `f
 
 ### Workspace Directory
 
-Specify where Vibe Kanban stores workspace data. Workspaces are created in a `.vibe-kanban-workspaces` subdirectory within this path.
+Specify where Agent Kanban stores workspace data. Workspaces are created in a `.vibe-kanban-workspaces` subdirectory within this path.
 
 - **Default location** - Leave empty to use the system default (typically your home directory)
 - **Custom location** - Set a specific path if you prefer workspaces on a different drive or directory
@@ -161,10 +161,10 @@ Changes to Workspace Directory require an app restart. Existing workspaces remai
 <img src="/images/settings-notifications.png" alt="Notifications settings showing sound effects and push notifications toggles" />
 </Frame>
 
-Configure how Vibe Kanban alerts you about task progress and status changes.
+Configure how Agent Kanban alerts you about task progress and status changes.
 
-- **Sound Effects** - Play audio notifications when tasks complete, need attention, or encounter errors. Useful when working with multiple tasks or when Vibe Kanban runs in a background tab.
-- **Push Notifications** - Receive browser notifications even when Vibe Kanban isn't in focus. Requires browser permission when first enabled.
+- **Sound Effects** - Play audio notifications when tasks complete, need attention, or encounter errors. Useful when working with multiple tasks or when Agent Kanban runs in a background tab.
+- **Push Notifications** - Receive browser notifications even when Agent Kanban isn't in focus. Requires browser permission when first enabled.
 
 <Tip>
 Enable notifications if you frequently run long-running tasks and want to be alerted when they complete or need your attention.
@@ -172,7 +172,7 @@ Enable notifications if you frequently run long-running tasks and want to be ale
 
 ## Telemetry
 
-Enable or disable telemetry data collection to help improve Vibe Kanban.
+Enable or disable telemetry data collection to help improve Agent Kanban.
 
 ## Message Input
 

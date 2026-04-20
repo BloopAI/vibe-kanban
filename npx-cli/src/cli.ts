@@ -395,7 +395,7 @@ async function main(): Promise<void> {
   cli
     .command(
       "daemon <action>",
-      "Manage Vibe Kanban as a persistent background service (macOS/Linux)",
+      "Manage Agent Kanban as a persistent background service (macOS/Linux)",
     )
     .option("--port <port>", "Port for the server (install only)", {
       default: "8080",

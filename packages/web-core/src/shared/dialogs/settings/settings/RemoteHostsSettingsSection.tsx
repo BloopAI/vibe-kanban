@@ -48,7 +48,7 @@ export function RemoteHostsSettingsSection() {
     <div className="space-y-8">
       <SettingsCard
         title="Paired Remote Hosts"
-        description="Self-hosted Vibe Kanban instances paired directly via P2P (not cloud relay)."
+        description="Self-hosted Agent Kanban instances paired directly via P2P (not cloud relay)."
         headerAction={
           <div className="flex gap-2">
             <PrimaryButton

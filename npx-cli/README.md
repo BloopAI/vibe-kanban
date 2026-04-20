@@ -1,4 +1,4 @@
-# Vibe Kanban
+# Agent Kanban
 
 > A visual project management tool for developers that integrates with git repositories and coding agents like Claude Code and Amp.
 
@@ -21,9 +21,9 @@ npx vibe-kanban review --help
 npx vibe-kanban mcp --help
 ```
 
-## What is Vibe Kanban?
+## What is Agent Kanban?
 
-Vibe Kanban is a modern project management tool designed specifically for developers. It helps you organize your coding projects with kanban-style task management while providing powerful integrations with git repositories and AI coding agents.
+Agent Kanban is a modern project management tool designed specifically for developers. It helps you organize your coding projects with kanban-style task management while providing powerful integrations with git repositories and AI coding agents.
 
 ### ✨ Key Features
 
@@ -76,7 +76,7 @@ Vibe Kanban is a modern project management tool designed specifically for develo
 
 ## Core Functionality
 
-Vibe Kanban provides a complete project management experience with these key capabilities:
+Agent Kanban provides a complete project management experience with these key capabilities:
 
 **Project Repository Management**
 
@@ -116,7 +116,7 @@ Vibe Kanban provides a complete project management experience with these key cap
 
 ## Configuration
 
-Vibe Kanban supports customization through its configuration system:
+Agent Kanban supports customization through its configuration system:
 
 - **Editor Integration**: Choose your preferred code editor
 - **Sound Notifications**: Customize completion sounds

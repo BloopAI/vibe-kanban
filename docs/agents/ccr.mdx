@@ -20,7 +20,7 @@ npx -y @musistudio/claude-code-router ui
 This launches the CCR local UI where you configure providers and models.
 
 ## Authentication
-Authenticate and configure CCR outside of Vibe Kanban. Follow the instructions on the CCR GitHub repo:
+Authenticate and configure CCR outside of Agent Kanban. Follow the instructions on the CCR GitHub repo:
 
 - GitHub: https://github.com/musistudio/claude-code-router
 
@@ -63,9 +63,9 @@ CCR can also be configured via its JSON configuration file. Refer to the CCR Git
 <img src="/images/ccr-config-example.png" alt="CCR models configuration example" />
 </Frame>
 
-## Configure Vibe Kanban
+## Configure Agent Kanban
 
-Vibe Kanban does not ship a default configuration for CCR. Add configurations to the existing Claude Code agent:
+Agent Kanban does not ship a default configuration for CCR. Add configurations to the existing Claude Code agent:
 
 1) Open the "Coding Agent Configurations" page.
 2) Add a new configuration for the Claude Code agent (or edit an existing one).
@@ -86,13 +86,13 @@ Tips:
 - Create multiple configurations if you want easy switching between different models.
 - Leave the model string empty if you want CCR to use its own routing based on your CCR UI configuration (e.g., its `default`/`longContext`/etc. mappings).
 
-### Example: Claude Code agent configuration in Vibe Kanban
+### Example: Claude Code agent configuration in Agent Kanban
 
 <Frame>
-<img src="/images/vk-ccr-agent-config.png" alt="Claude Code agent configuration in Vibe Kanban" />
+<img src="/images/vk-ccr-agent-config.png" alt="Claude Code agent configuration in Agent Kanban" />
 </Frame>
 
-## Using CCR in Vibe Kanban
+## Using CCR in Agent Kanban
 
 When creating a Task Attempt, select the coding agent and configuration: choose the Claude Code agent, then pick one of your CCR-enabled configurations.
 

@@ -8,7 +8,7 @@ export function generateSystemdUnit(
   logPath: string,
 ): string {
   return `[Unit]
-Description=Vibe Kanban Server
+Description=Agent Kanban Server
 After=network.target
 
 [Service]

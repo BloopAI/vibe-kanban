@@ -89,7 +89,7 @@
           "host": {
             "label": "Hôte SSH distant (optionnel)",
             "placeholder": "ex: nom d'hôte ou adresse IP",
-            "helper": "Définissez ceci si Vibe Kanban fonctionne sur un serveur distant. Lorsque défini, cliquer sur \"Ouvrir dans l'éditeur\" générera une URL pour ouvrir votre éditeur via SSH au lieu de lancer une commande locale."
+            "helper": "Définissez ceci si Agent Kanban fonctionne sur un serveur distant. Lorsque défini, cliquer sur \"Ouvrir dans l'éditeur\" générera une URL pour ouvrir votre éditeur via SSH au lieu de lancer une commande locale."
           },
           "user": {
             "label": "Utilisateur SSH distant (optionnel)",
@@ -99,7 +99,7 @@
         },
         "autoInstallExtension": {
           "label": "Auto-install VS Code Extension",
-          "helper": "Automatically install the Vibe Kanban extension when opening a project in VS Code or Cursor. This runs in the background and has no effect if the extension is already installed."
+          "helper": "Automatically install the Agent Kanban extension when opening a project in VS Code or Cursor. This runs in the background and has no effect if the extension is already installed."
         },
         "availability": {
           "checking": "Vérification de la disponibilité...",
@@ -507,11 +507,11 @@
       },
       "remove": {
         "title": "Retirer le dépôt",
-        "description": "Dissocier ce dépôt de Vibe Kanban. Les fichiers sur le disque ne seront pas supprimés.",
+        "description": "Dissocier ce dépôt de Agent Kanban. Les fichiers sur le disque ne seront pas supprimés.",
         "button": "Retirer",
         "confirm": "Retirer le dépôt",
         "dialogTitle": "Retirer « {{name}} » ?",
-        "dialogDescription": "Cela dissociera le dépôt de Vibe Kanban. Vos fichiers sur le disque ne seront pas affectés. Vous pourrez le rajouter ultérieurement.",
+        "dialogDescription": "Cela dissociera le dépôt de Agent Kanban. Vos fichiers sur le disque ne seront pas affectés. Vous pourrez le rajouter ultérieurement.",
         "success": "Dépôt retiré avec succès.",
         "error": "Échec du retrait du dépôt."
       },

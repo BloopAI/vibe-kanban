@@ -113,7 +113,7 @@
     <mj-section padding="24px">
       <mj-column>
         <mj-text font-size="12px" color="#9CA3AF" align="center">
-          You're receiving this because you have unread notifications on Vibe Kanban.
+          You're receiving this because you have unread notifications on Agent Kanban.
         </mj-text>
         <mj-text font-size="12px" color="#9CA3AF" align="center" padding-top="4px">
           <a href="{unsubscribe_link}" style="color: #9CA3AF; text-decoration: underline;">Unsubscribe</a>

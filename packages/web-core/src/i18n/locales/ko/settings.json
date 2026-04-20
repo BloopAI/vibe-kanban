@@ -89,7 +89,7 @@
           "host": {
             "label": "원격 SSH 호스트 (선택사항)",
             "placeholder": "예: 호스트 이름 또는 IP 주소",
-            "helper": "Vibe Kanban이 원격 서버에서 실행 중인 경우 설정하세요. 설정하면 \"에디터에서 열기\"를 클릭할 때 로컬 명령을 실행하는 대신 SSH를 통해 에디터를 여는 URL이 생성됩니다."
+            "helper": "Agent Kanban이 원격 서버에서 실행 중인 경우 설정하세요. 설정하면 \"에디터에서 열기\"를 클릭할 때 로컬 명령을 실행하는 대신 SSH를 통해 에디터를 여는 URL이 생성됩니다."
           },
           "user": {
             "label": "원격 SSH 사용자 (선택사항)",
@@ -99,7 +99,7 @@
         },
         "autoInstallExtension": {
           "label": "Auto-install VS Code Extension",
-          "helper": "Automatically install the Vibe Kanban extension when opening a project in VS Code or Cursor. This runs in the background and has no effect if the extension is already installed."
+          "helper": "Automatically install the Agent Kanban extension when opening a project in VS Code or Cursor. This runs in the background and has no effect if the extension is already installed."
         },
         "availability": {
           "checking": "사용 가능 여부 확인 중...",
@@ -507,11 +507,11 @@
       },
       "remove": {
         "title": "저장소 제거",
-        "description": "이 저장소를 Vibe Kanban에서 연결 해제합니다. 디스크의 파일은 삭제되지 않습니다.",
+        "description": "이 저장소를 Agent Kanban에서 연결 해제합니다. 디스크의 파일은 삭제되지 않습니다.",
         "button": "제거",
         "confirm": "저장소 제거",
         "dialogTitle": "\"{{name}}\"을(를) 제거하시겠습니까?",
-        "dialogDescription": "저장소를 Vibe Kanban에서 연결 해제합니다. 디스크의 파일은 영향을 받지 않습니다. 나중에 다시 추가할 수 있습니다.",
+        "dialogDescription": "저장소를 Agent Kanban에서 연결 해제합니다. 디스크의 파일은 영향을 받지 않습니다. 나중에 다시 추가할 수 있습니다.",
         "success": "저장소가 성공적으로 제거되었습니다.",
         "error": "저장소 제거에 실패했습니다."
       },

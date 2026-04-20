@@ -177,7 +177,7 @@
       "prMerged": "PR #{{number}} 已合併",
       "loginRequired": {
         "title": "登入以管理 Git 操作",
-        "description": "登入 Vibe Kanban，才能推送分支、合併變更或為此任務建立 PR。",
+        "description": "登入 Agent Kanban，才能推送分支、合併變更或為此任務建立 PR。",
         "action": "登入"
       }
     },

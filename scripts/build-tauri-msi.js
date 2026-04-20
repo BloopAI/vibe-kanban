@@ -41,7 +41,7 @@ const iconPath = path.join(tauriAppDir, 'icons', 'icon.ico');
 
 // Read tauri.conf.json for product metadata
 const conf = JSON.parse(fs.readFileSync(confPath, 'utf8'));
-const productName = conf.productName || 'Vibe Kanban';
+const productName = conf.productName || 'Agent Kanban';
 const confVersion = conf.version || '0.0.0';
 
 // Version from CLI or config

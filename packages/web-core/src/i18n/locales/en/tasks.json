@@ -256,7 +256,7 @@
       "prMerged": "PR #{{number}} is already merged",
       "loginRequired": {
         "title": "Sign in to manage git actions",
-        "description": "Sign in to Vibe Kanban so you can push branches, merge changes, or open pull requests for this task.",
+        "description": "Sign in to Agent Kanban so you can push branches, merge changes, or open pull requests for this task.",
         "action": "Sign in"
       }
     },

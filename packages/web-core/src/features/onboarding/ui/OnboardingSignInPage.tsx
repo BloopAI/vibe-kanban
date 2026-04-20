@@ -305,7 +305,7 @@ export function OnboardingSignInPage() {
             <div className="flex justify-center">
               <img
                 src={logoSrc}
-                alt="Vibe Kanban"
+                alt="Agent Kanban"
                 className="h-8 w-auto logo"
               />
             </div>

@@ -1,13 +1,13 @@
 ---
 title: "Azure Repos Integration"
-description: "Connect to Azure Repos to create pull requests and manage your workflow directly from Vibe Kanban"
+description: "Connect to Azure Repos to create pull requests and manage your workflow directly from Agent Kanban"
 ---
 
-Vibe Kanban integrates with Azure Repos to let you create pull requests directly from your task attempts. This integration relies on the [Azure CLI (`az`)](https://learn.microsoft.com/en-us/cli/azure/) with the Azure DevOps extension being installed and authenticated on your system.
+Agent Kanban integrates with Azure Repos to let you create pull requests directly from your task attempts. This integration relies on the [Azure CLI (`az`)](https://learn.microsoft.com/en-us/cli/azure/) with the Azure DevOps extension being installed and authenticated on your system.
 
 ## Setup
 
-Before you can create pull requests from Vibe Kanban, you need to install and configure the Azure CLI manually.
+Before you can create pull requests from Agent Kanban, you need to install and configure the Azure CLI manually.
 
 ### Install Azure CLI
 
@@ -39,7 +39,7 @@ az extension add --name azure-devops
 
 ## Supported URL Formats
 
-Vibe Kanban supports both modern and legacy Azure DevOps URL formats:
+Agent Kanban supports both modern and legacy Azure DevOps URL formats:
 
 - **Modern**: `https://dev.azure.com/{org}/{project}/_git/{repo}`
 - **Legacy**: `https://{org}.visualstudio.com/{project}/_git/{repo}`

@@ -380,7 +380,7 @@ fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(
 ) -> Result<tauri::WebviewWindow<R>, tauri::Error> {
     let handle = manager.app_handle().clone();
     let builder = tauri::WebviewWindowBuilder::new(manager, "main", url)
-        .title("Vibe Kanban")
+        .title("Agent Kanban")
         .inner_size(1280.0, 800.0)
         .min_inner_size(800.0, 600.0)
         .resizable(true)

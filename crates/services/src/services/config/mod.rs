@@ -11,12 +11,12 @@ pub const DEFAULT_PR_DESCRIPTION_PROMPT: &str = r#"Update the PR that was just c
 The PR number is #{pr_number} and the URL is {pr_url}.
 
 Analyze the changes in this branch and write:
-1. A concise, descriptive title that summarizes the changes, postfixed with "(Vibe Kanban)"
+1. A concise, descriptive title that summarizes the changes, postfixed with "(Agent Kanban)"
 2. A detailed description that explains:
    - What changes were made
    - Why they were made (based on the task context)
    - Any important implementation details
-   - At the end, include a note: "This PR was written using [Vibe Kanban](https://vibekanban.com)"
+   - At the end, include a note: "This PR was written using [Agent Kanban](https://vibekanban.com)"
 
 Use the appropriate CLI tool to update the PR (gh pr edit for GitHub, az repos pr update for Azure DevOps)."#;
 

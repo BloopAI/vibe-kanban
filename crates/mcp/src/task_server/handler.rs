@@ -19,10 +19,10 @@ impl ServerHandler for McpServer {
 
         let preamble = match self.mode() {
             McpMode::Global => {
-                "A Vibe Kanban MCP server for task, issue, repository, workspace, and session management."
+                "An Agent Kanban MCP server for task, issue, repository, workspace, and session management."
             }
             McpMode::Orchestrator => {
-                "An orchestrator-scoped Vibe Kanban MCP server with tools limited to the configured workspace and orchestrator session context."
+                "An orchestrator-scoped Agent Kanban MCP server with tools limited to the configured workspace and orchestrator session context."
             }
         };
         let mut instruction = format!(

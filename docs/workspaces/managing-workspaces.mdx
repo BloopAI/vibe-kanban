@@ -139,7 +139,7 @@ Large directories like `node_modules`, `target/`, or `build/` are copied into ea
 
 ## Manual Worktree Deletion
 
-If you manually delete a worktree directory (e.g., using `rm -rf` in terminal), Vibe Kanban will **automatically recreate it** the next time you open that workspace. The worktree is recreated from the branch's last commit.
+If you manually delete a worktree directory (e.g., using `rm -rf` in terminal), Agent Kanban will **automatically recreate it** the next time you open that workspace. The worktree is recreated from the branch's last commit.
 
 <Warning>
 **Uncommitted changes will be lost.** If you had staged or unstaged changes that weren't committed, they cannot be recovered. Always commit your work before manually deleting worktree directories.
@@ -147,7 +147,7 @@ If you manually delete a worktree directory (e.g., using `rm -rf` in terminal), 
 
 ## Orphan Cleanup
 
-Vibe Kanban automatically cleans up "orphaned" worktrees on startup - these are worktree directories that no longer have a matching workspace in the database (e.g., if the app crashed during deletion).
+Agent Kanban automatically cleans up "orphaned" worktrees on startup - these are worktree directories that no longer have a matching workspace in the database (e.g., if the app crashed during deletion).
 
 This cleanup runs automatically, so you don't need to manually manage stale worktree directories.
 

@@ -34,7 +34,7 @@ const ProjectsGuideDialogImpl = NiceModal.create<NoProps>(() => {
       title: t('kanban.projectsGuide.intro.title', 'Welcome'),
       content: t(
         'kanban.projectsGuide.intro.content',
-        'Welcome to Vibe Kanban. Use the help sections in this panel to learn how things work, then create your first issue. You can re-open this help dialog or give feedback anytime from the navbar.'
+        'Welcome to Agent Kanban. Use the help sections in this panel to learn how things work, then create your first issue. You can re-open this help dialog or give feedback anytime from the navbar.'
       ),
       imageSrc: '/guide-images/welcome.png',
     },
@@ -70,7 +70,7 @@ const ProjectsGuideDialogImpl = NiceModal.create<NoProps>(() => {
       title: t('kanban.projectsGuide.organizations.title', 'Invite your team'),
       content: t(
         'kanban.projectsGuide.organizations.content',
-        "We've automatically created a personal organization, and initial project so you can easily get started with Vibe Kanban. You can also create new organizations and invite your team to collaborate."
+        "We've automatically created a personal organization, and initial project so you can easily get started with Agent Kanban. You can also create new organizations and invite your team to collaborate."
       ),
       imageSrc: '/guide-images/projects-org-settings.png',
     },

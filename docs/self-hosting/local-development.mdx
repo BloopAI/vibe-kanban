@@ -1,9 +1,9 @@
 ---
 title: "Local Development"
-description: "Run Vibe Kanban in development mode"
+description: "Run Agent Kanban in development mode"
 ---
 
-This guide walks you through running Vibe Kanban locally for development and testing.
+This guide walks you through running Agent Kanban locally for development and testing.
 
 ## Prerequisites
 
@@ -70,7 +70,7 @@ BACKEND_PORT=8080
 FRONTEND_PORT=3000
 ```
 
-No OAuth credentials, database setup, or external services are required. Vibe Kanban stores all data in a local SQLite database.
+No OAuth credentials, database setup, or external services are required. Agent Kanban stores all data in a local SQLite database.
 
 ## Type Checking
 
@@ -110,7 +110,7 @@ pnpm run format
 
 ## Database
 
-Vibe Kanban uses SQLite via SQLx. Migrations run automatically on server startup. If you need to regenerate the SQLx offline query cache after changing queries:
+Agent Kanban uses SQLite via SQLx. Migrations run automatically on server startup. If you need to regenerate the SQLx offline query cache after changing queries:
 
 ```bash
 pnpm run prepare-db

@@ -1,16 +1,16 @@
 ---
-title: "Vibe Kanban MCP Server"
-description: "Configure the Vibe Kanban MCP server"
+title: "Agent Kanban MCP Server"
+description: "Configure the Agent Kanban MCP server"
 ---
 
-Vibe Kanban exposes a local MCP (Model Context Protocol) server, allowing you to manage organisations, projects, issues, workspaces, and repositories from external MCP clients like Claude Desktop, Raycast, or even coding agents running within Vibe Kanban itself.
+Agent Kanban exposes a local MCP (Model Context Protocol) server, allowing you to manage organisations, projects, issues, workspaces, and repositories from external MCP clients like Claude Desktop, Raycast, or even coding agents running within Agent Kanban itself.
 
 <Note>
-This page covers connecting **external MCP clients** to Vibe Kanban's MCP server. For configuring MCP servers **within** Vibe Kanban for your coding agents, see the [MCP Server Configuration](/integrations/mcp-server-configuration) guide.
+This page covers connecting **external MCP clients** to Agent Kanban's MCP server. For configuring MCP servers **within** Agent Kanban for your coding agents, see the [MCP Server Configuration](/integrations/mcp-server-configuration) guide.
 </Note>
 
 <Info>
-Vibe Kanban's MCP server is **local-only** - it runs on your computer and can only be accessed by applications installed locally. It cannot be accessed via publicly accessible URLs.
+Agent Kanban's MCP server is **local-only** - it runs on your computer and can only be accessed by applications installed locally. It cannot be accessed via publicly accessible URLs.
 </Info>
 
 <video
@@ -23,14 +23,14 @@ Vibe Kanban's MCP server is **local-only** - it runs on your computer and can on
 
 ### Option 1: Using the Web Interface
 
-This works if you're adding the Vibe Kanban MCP server to any [supported coding agent](/supported-coding-agents) **within** Vibe Kanban.
+This works if you're adding the Agent Kanban MCP server to any [supported coding agent](/supported-coding-agents) **within** Agent Kanban.
 
-1. In Vibe Kanban Settings, navigate to the "MCP Servers" page
-2. In the "Popular servers" section, click on the Vibe Kanban card
+1. In Agent Kanban Settings, navigate to the "MCP Servers" page
+2. In the "Popular servers" section, click on the Agent Kanban card
 3. Click the `Save Settings` button
 
 <Frame>
-<img src="/images/vk-mcp-server-config.png" alt="MCP Servers configuration page showing how to add Vibe Kanban MCP server" />
+<img src="/images/vk-mcp-server-config.png" alt="MCP Servers configuration page showing how to add Agent Kanban MCP server" />
 </Frame>
 
 ### Option 2: Manual Configuration
@@ -54,7 +54,7 @@ Add the following configuration to your agent's MCP servers configuration:
 
 ## Available MCP Tools
 
-The Vibe Kanban MCP server provides tools for managing organisations, projects, issues, workspaces, and task execution.
+The Agent Kanban MCP server provides tools for managing organisations, projects, issues, workspaces, and task execution.
 
 <Note>
 Many tools accept an optional `project_id` or `organization_id` parameter. When running inside a workspace linked to a remote project, these are inferred automatically from context and can be omitted. The exception is `list_projects`, which always requires an explicit `organization_id`.
@@ -175,7 +175,7 @@ Once you have the MCP server configured, you can leverage it to streamline your 
 
 1. **Plan Your Work**: Describe a large feature or project to your MCP client
 2. **Request Issue Creation**: At the end of your description, simply add "then turn this plan into issues"
-3. **Automatic Issue Generation**: Your MCP client will use the Vibe Kanban MCP server to automatically create structured issues in your project
+3. **Automatic Issue Generation**: Your MCP client will use the Agent Kanban MCP server to automatically create structured issues in your project
 4. **Start Workspaces**: Use `start_workspace` to programmatically begin work on issues with specific coding agents
 
 ## Example Usage
@@ -193,7 +193,7 @@ I need to build a user authentication system with the following features:
 Then turn this plan into issues.
 ```
 
-Your MCP client will use the `create_issue` tool to break this down into individual issues and add them to your Vibe Kanban project automatically.
+Your MCP client will use the `create_issue` tool to break this down into individual issues and add them to your Agent Kanban project automatically.
 
 ### Starting a Workspace Session
 
@@ -233,14 +233,14 @@ This creates a new workspace, links it to the issue, generates a feature branch,
 
 Each step uses the appropriate MCP tool (`list_organizations`, `list_projects`, `list_issues`, `create_issue`, `assign_issue`, `start_workspace`) to manage the complete workflow from planning to execution.
 
-### Internal Coding Agents (Within Vibe Kanban)
+### Internal Coding Agents (Within Agent Kanban)
 
-A powerful workflow involves using coding agents within Vibe Kanban that are also connected to the Vibe Kanban MCP server:
+A powerful workflow involves using coding agents within Agent Kanban that are also connected to the Agent Kanban MCP server:
 
 1. **Create a Planning Issue**: Create an issue with a custom agent profile configured with a planning prompt. See [Agent Configurations](/settings/agent-configurations) for details on creating custom profiles.
 2. **Explore and Plan**: The coding agent explores the codebase and develops a comprehensive plan
 3. **Generate Issues**: Ask the coding agent to "create a series of individual issues for this plan"
-4. **Automatic Population**: The agent uses the MCP server to populate individual issues directly in the Vibe Kanban interface
+4. **Automatic Population**: The agent uses the MCP server to populate individual issues directly in the Agent Kanban interface
 
 This creates a seamless workflow where high-level planning automatically generates actionable issues in your project board.
 
@@ -248,17 +248,17 @@ This creates a seamless workflow where high-level planning automatically generat
 
 ### Raycast Example
 
-Raycast is a popular MCP client that can connect to Vibe Kanban's MCP server. Here's how to configure it:
+Raycast is a popular MCP client that can connect to Agent Kanban's MCP server. Here's how to configure it:
 
 For complete Raycast MCP configuration details, see the [official Raycast MCP documentation](https://manual.raycast.com/model-context-protocol).
 
 <Tabs>
 <Tab title="Step 1: Open MCP Server Installer">
 <Frame>
-<img src="/images/vk-raycast-mcp-part-1.png" alt="Raycast MCP configuration - adding Vibe Kanban server" />
+<img src="/images/vk-raycast-mcp-part-1.png" alt="Raycast MCP configuration - adding Agent Kanban server" />
 </Frame>
 
-Configure the Vibe Kanban MCP server in Raycast by adding the server details.
+Configure the Agent Kanban MCP server in Raycast by adding the server details.
 </Tab>
 
 <Tab title="Step 2: Supply Command">
@@ -266,7 +266,7 @@ Configure the Vibe Kanban MCP server in Raycast by adding the server details.
 <img src="/images/vk-raycast-mcp-part-2.png" alt="Raycast MCP configuration - server successfully added" />
 </Frame>
 
-Once configured, you'll see the Vibe Kanban MCP server listed and ready to use in Raycast.
+Once configured, you'll see the Agent Kanban MCP server listed and ready to use in Raycast.
 </Tab>
 </Tabs>
 

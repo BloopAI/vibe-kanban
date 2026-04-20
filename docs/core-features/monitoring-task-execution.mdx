@@ -12,7 +12,7 @@ When you start a task, the main panel provides real-time visibility into everyth
 
 ## What Happens During Execution
 
-When you start a task attempt, Vibe Kanban orchestrates several steps to create an isolated environment and execute your task:
+When you start a task attempt, Agent Kanban orchestrates several steps to create an isolated environment and execute your task:
 
 1. **Git Worktree Creation**: An isolated environment is created for this task attempt
 2. **Setup Scripts Run**: Any setup script defined in your project settings runs automatically
@@ -22,7 +22,7 @@ When you start a task attempt, Vibe Kanban orchestrates several steps to create 
 
 ### Git Worktrees
 
-Vibe Kanban uses Git worktrees to create isolated environments for each task attempt. These environments are ephemeral and automatically cleaned up after execution completes.
+Agent Kanban uses Git worktrees to create isolated environments for each task attempt. These environments are ephemeral and automatically cleaned up after execution completes.
 
 <Info>
 Worktrees ensure task attempts don't interfere with each other or your main working directory.
@@ -70,7 +70,7 @@ After every agent turn, your cleanup script runs (if configured). This is useful
 
 ### 6. Commit Messages
 
-Vibe Kanban generates commit messages based on the last message sent by the agent. These automated messages may not always be the most descriptive.
+Agent Kanban generates commit messages based on the last message sent by the agent. These automated messages may not always be the most descriptive.
 
 <Tip>
 When merging to your base branch, use GitHub's "squash & merge" option to rewrite commits with a summary of what actually changed. Alternatively, ask your coding agent to clean up commits manually.
