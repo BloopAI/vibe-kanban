@@ -303,60 +303,9 @@ impl LocalDeployment {
         &self.workspace_manager
     }
 
-    /// For single-user local mode, the user is always considered logged in.
+    /// In local-first mode the local user is always the operator — always logged in.
     pub async fn get_login_status(&self) -> LoginStatus {
-        // In local-first mode (no cloud configured), the user is always the
-        // local operator — no credentials or cloud auth needed.
-        if self.remote_client.is_err() {
-            return LoginStatus::LoggedIn { profile: None };
-        }
-
-        if self.auth_context.get_credentials().await.is_none() {
-            self.auth_context.clear_profile().await;
-            self.auth_context.clear_remote_auth_degraded_slug().await;
-            return LoginStatus::LoggedOut;
-        };
-
-        if let Some(cached_profile) = self.auth_context.cached_profile().await {
-            return LoginStatus::LoggedIn {
-                profile: Some(cached_profile),
-            };
-        }
-
-        let Ok(client) = self.remote_client() else {
-            return LoginStatus::LoggedOut;
-        };
-
-        match client.profile().await {
-            Ok(profile) => {
-                self.auth_context.clear_remote_auth_degraded_slug().await;
-                self.auth_context.set_profile(profile.clone()).await;
-                LoginStatus::LoggedIn {
-                    profile: Some(profile),
-                }
-            }
-            Err(RemoteClientError::Auth) => {
-                let _ = self.auth_context.clear_credentials().await;
-                self.auth_context.clear_profile().await;
-                self.auth_context.clear_remote_auth_degraded_slug().await;
-                LoginStatus::LoggedOut
-            }
-            Err(err) => {
-                if self.auth_context.get_credentials().await.is_none() {
-                    self.auth_context.clear_profile().await;
-                    self.auth_context.clear_remote_auth_degraded_slug().await;
-                    return LoginStatus::LoggedOut;
-                }
-
-                self.auth_context
-                    .set_remote_auth_degraded_slug(
-                        err.degraded_slug()
-                            .unwrap_or_else(RemoteClientError::generic_degraded_slug),
-                    )
-                    .await;
-                LoginStatus::LoggedIn { profile: None }
-            }
-        }
+        LoginStatus::LoggedIn { profile: None }
     }
 
     pub fn pty(&self) -> &PtyService {

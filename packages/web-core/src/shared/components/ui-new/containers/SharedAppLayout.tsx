@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { siDiscord, siGithub } from 'simple-icons';
 import { XIcon, PlusIcon, LayoutIcon } from '@phosphor-icons/react';
 import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
@@ -7,6 +8,7 @@ import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { cn } from '@/shared/lib/utils';
 import { isTauriMac } from '@/shared/lib/platform';
+import { kanbanProjectsApi } from '@/shared/lib/kanbanApi';
 
 import { NavbarContainer } from './NavbarContainer';
 import { AppBar, type AppBarHostStatus } from '@vibe/ui/components/AppBar';
@@ -125,6 +127,48 @@ export function SharedAppLayout() {
     void SettingsDialog.show({ initialSection: 'remote-hosts' });
   }, []);
 
+  // Local kanban projects
+  const queryClient = useQueryClient();
+  const { data: kanbanProjects = [], isLoading: isLoadingProjects } = useQuery({
+    queryKey: ['kanban-projects'],
+    queryFn: () => kanbanProjectsApi.list(),
+  });
+  const appBarProjects = useMemo(
+    () =>
+      kanbanProjects.map((p) => ({ id: p.id, name: p.name, color: p.color })),
+    [kanbanProjects]
+  );
+
+  const handleProjectClick = useCallback(
+    (projectId: string) => {
+      void navigate({ to: '/projects/$projectId', params: { projectId } });
+    },
+    [navigate]
+  );
+
+  const handleCreateProject = useCallback(async () => {
+    const name = `Project ${kanbanProjects.length + 1}`;
+    const colors = [
+      '#6366f1',
+      '#f59e0b',
+      '#10b981',
+      '#ef4444',
+      '#8b5cf6',
+      '#06b6d4',
+    ];
+    const color = colors[kanbanProjects.length % colors.length];
+    const project = await kanbanProjectsApi.create({
+      id: null,
+      name,
+      color,
+    });
+    await queryClient.invalidateQueries({ queryKey: ['kanban-projects'] });
+    void navigate({
+      to: '/projects/$projectId',
+      params: { projectId: project.id },
+    });
+  }, [kanbanProjects, navigate, queryClient]);
+
   return (
     <SyncErrorProvider>
       <div
@@ -150,22 +194,22 @@ export function SharedAppLayout() {
             />
             {/* Desktop AppBar sidebar. */}
             <AppBar
-              projects={[]}
+              projects={appBarProjects}
               hosts={allHosts}
               activeHostId={activeHostId}
-              onCreateProject={() => {}}
+              onCreateProject={() => void handleCreateProject()}
               onExportClick={() => {}}
               onWorkspacesClick={handleWorkspacesClick}
               onHostClick={handleHostClick}
               onPairHostClick={handlePairHostClick}
-              onProjectClick={() => {}}
+              onProjectClick={handleProjectClick}
               onProjectsDragEnd={() => {}}
               isSavingProjectOrder={false}
               isWorkspacesActive={isWorkspacesActive}
               isExportActive={false}
               activeProjectId={activeProjectId}
-              isSignedIn={false}
-              isLoadingProjects={false}
+              isSignedIn={true}
+              isLoadingProjects={isLoadingProjects}
               onSignIn={() => handleWorkspacesClick()}
               onHoverStart={() => setIsAppBarHovered(true)}
               onHoverEnd={() => setIsAppBarHovered(false)}
