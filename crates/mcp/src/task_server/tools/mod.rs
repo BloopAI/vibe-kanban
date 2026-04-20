@@ -8,7 +8,7 @@ use rmcp::{
     ErrorData,
     model::{CallToolResult, Content},
 };
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{Serialize, de::DeserializeOwned};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -16,24 +16,166 @@ use super::{ApiResponseEnvelope, McpMode, McpServer};
 
 type ToolCallResult = Result<CallToolResult, ErrorData>;
 
+/// Upper bound on the size of the non-JSON body tail surfaced to the caller
+/// when a VK API error response can't be parsed as an `ApiResponse` envelope.
+/// We keep the tail (not the head) because stack traces / error strings tend
+/// to live at the end of a body; we also prefix with `"…"` when truncated.
+const BODY_TAIL_MAX: usize = 2048;
+
+// Optional fields are boxed so that `Result<_, ToolError>` fits well under
+// clippy's `result_large_err` threshold (<128 bytes). `ToolError` is a rare
+// path, so the extra allocation on error construction is free in practice.
 #[derive(Debug, Error)]
 #[error("{message}")]
 struct ToolError {
     message: String,
-    details: Option<String>,
+    details: Option<Box<str>>,
+    /// HTTP status from the upstream VK API, when applicable.
+    status: Option<u16>,
+    /// Typed error category emitted by the VK API (forward-compat: server
+    /// does not populate this yet but will in a follow-up PR).
+    error_kind: Option<Box<str>>,
+    /// Structured error payload from `ApiResponse.error_data`, when the
+    /// server returned one.
+    error_data: Option<Box<serde_json::Value>>,
+    /// Truncated tail of the raw response body, populated when the body
+    /// couldn't be parsed as an `ApiResponse` envelope.
+    body_tail: Option<Box<str>>,
 }
 
 impl ToolError {
     fn new(message: impl Into<String>, details: Option<impl Into<String>>) -> Self {
         Self {
             message: message.into(),
-            details: details.map(Into::into),
+            details: details.map(|d| d.into().into_boxed_str()),
+            status: None,
+            error_kind: None,
+            error_data: None,
+            body_tail: None,
         }
     }
 
     fn message(message: impl Into<String>) -> Self {
         Self::new(message, None::<String>)
     }
+
+    fn with_status(mut self, status: u16) -> Self {
+        self.status = Some(status);
+        self
+    }
+
+    fn with_error_kind(mut self, kind: impl Into<String>) -> Self {
+        self.error_kind = Some(kind.into().into_boxed_str());
+        self
+    }
+
+    fn with_error_data(mut self, data: serde_json::Value) -> Self {
+        self.error_data = Some(Box::new(data));
+        self
+    }
+
+    fn with_body_tail(mut self, tail: impl Into<String>) -> Self {
+        self.body_tail = Some(tail.into().into_boxed_str());
+        self
+    }
+}
+
+fn truncate_body_tail(body: &str) -> String {
+    if body.len() <= BODY_TAIL_MAX {
+        return body.to_string();
+    }
+    let mut cut = body.len() - BODY_TAIL_MAX;
+    while cut < body.len() && !body.is_char_boundary(cut) {
+        cut += 1;
+    }
+    format!("…{}", &body[cut..])
+}
+
+/// Classifies an HTTP response (given its status + already-read body) into
+/// either the parsed success payload or a fully-populated `ToolError` that
+/// surfaces the upstream `ApiResponse.error_*` fields (or the raw body tail
+/// when the response wasn't JSON at all).
+fn classify_response<T: DeserializeOwned>(
+    status: reqwest::StatusCode,
+    body: String,
+) -> Result<T, ToolError> {
+    let parsed = serde_json::from_str::<ApiResponseEnvelope<T>>(&body);
+
+    if !status.is_success() {
+        return Err(match parsed {
+            Ok(env) => envelope_to_error(env, status),
+            Err(parse_err) => ToolError::new(
+                format!("VK API returned HTTP {}", status.as_u16()),
+                Some(parse_err.to_string()),
+            )
+            .with_status(status.as_u16())
+            .with_body_tail(truncate_body_tail(&body)),
+        });
+    }
+
+    let env = parsed.map_err(|parse_err| {
+        ToolError::new(
+            "Failed to parse VK API response",
+            Some(parse_err.to_string()),
+        )
+        .with_status(status.as_u16())
+        .with_body_tail(truncate_body_tail(&body))
+    })?;
+
+    if !env.success {
+        return Err(envelope_to_error(env, status));
+    }
+
+    env.data
+        .ok_or_else(|| ToolError::message("VK API response missing data field"))
+}
+
+/// Same as `classify_response`, but ignores the `data` field so it can be used
+/// for endpoints that return `{"success": true}` with no payload.
+fn classify_empty_response(status: reqwest::StatusCode, body: String) -> Result<(), ToolError> {
+    let parsed = serde_json::from_str::<ApiResponseEnvelope<serde_json::Value>>(&body);
+
+    if !status.is_success() {
+        return Err(match parsed {
+            Ok(env) => envelope_to_error(env, status),
+            Err(parse_err) => ToolError::new(
+                format!("VK API returned HTTP {}", status.as_u16()),
+                Some(parse_err.to_string()),
+            )
+            .with_status(status.as_u16())
+            .with_body_tail(truncate_body_tail(&body)),
+        });
+    }
+
+    let env = parsed.map_err(|parse_err| {
+        ToolError::new(
+            "Failed to parse VK API response",
+            Some(parse_err.to_string()),
+        )
+        .with_status(status.as_u16())
+        .with_body_tail(truncate_body_tail(&body))
+    })?;
+
+    if !env.success {
+        return Err(envelope_to_error(env, status));
+    }
+
+    Ok(())
+}
+
+fn envelope_to_error<T>(env: ApiResponseEnvelope<T>, status: reqwest::StatusCode) -> ToolError {
+    let message = env
+        .message
+        .clone()
+        .unwrap_or_else(|| format!("VK API returned error (HTTP {})", status.as_u16()));
+    let mut err = ToolError::new(message, env.message.clone()).with_status(status.as_u16());
+    if let Some(kind) = env.error_kind {
+        err = err.with_error_kind(kind);
+    }
+    if let Some(data) = env.error_data {
+        err = err.with_error_data(data);
+    }
+    err
 }
 
 mod context;
@@ -95,7 +237,7 @@ impl McpServer {
         Ok(Self::tool_error(ToolError::new(msg, details)))
     }
 
-    fn tool_error(error: ToolError) -> CallToolResult {
+    fn tool_error_value(error: ToolError) -> serde_json::Value {
         let mut value = serde_json::json!({
             "success": false,
             "error": error.message,
@@ -103,7 +245,23 @@ impl McpServer {
         if let Some(details) = error.details {
             value["details"] = serde_json::json!(details);
         }
+        if let Some(status) = error.status {
+            value["status"] = serde_json::json!(status);
+        }
+        if let Some(kind) = error.error_kind {
+            value["error_kind"] = serde_json::json!(kind);
+        }
+        if let Some(data) = error.error_data {
+            value["error_data"] = *data;
+        }
+        if let Some(tail) = error.body_tail {
+            value["body_tail"] = serde_json::json!(tail);
+        }
+        value
+    }
 
+    fn tool_error(error: ToolError) -> CallToolResult {
+        let value = Self::tool_error_value(error);
         CallToolResult::error(vec![Content::text(
             serde_json::to_string_pretty(&value)
                 .unwrap_or_else(|_| "Failed to serialize error".to_string()),
@@ -117,61 +275,36 @@ impl McpServer {
         let resp = rb.send().await.map_err(|error| {
             ToolError::new("Failed to connect to VK API", Some(error.to_string()))
         })?;
-
-        if !resp.status().is_success() {
-            let status = resp.status();
-            return Err(ToolError::message(format!(
-                "VK API returned error status: {}",
-                status
-            )));
-        }
-
-        let api_response = resp
-            .json::<ApiResponseEnvelope<T>>()
-            .await
-            .map_err(|error| {
-                ToolError::new("Failed to parse VK API response", Some(error.to_string()))
-            })?;
-
-        if !api_response.success {
-            let msg = api_response.message.as_deref().unwrap_or("Unknown error");
-            return Err(ToolError::new("VK API returned error", Some(msg)));
-        }
-
-        api_response
-            .data
-            .ok_or_else(|| ToolError::message("VK API response missing data field"))
+        let status = resp.status();
+        let body = resp.text().await.map_err(|error| {
+            ToolError::new(
+                format!(
+                    "Failed to read VK API response body (HTTP {})",
+                    status.as_u16()
+                ),
+                Some(error.to_string()),
+            )
+            .with_status(status.as_u16())
+        })?;
+        classify_response::<T>(status, body)
     }
 
     async fn send_empty_json(&self, rb: reqwest::RequestBuilder) -> Result<(), ToolError> {
         let resp = rb.send().await.map_err(|error| {
             ToolError::new("Failed to connect to VK API", Some(error.to_string()))
         })?;
-
-        if !resp.status().is_success() {
-            let status = resp.status();
-            return Err(ToolError::message(format!(
-                "VK API returned error status: {}",
-                status
-            )));
-        }
-
-        #[derive(Deserialize)]
-        struct EmptyApiResponse {
-            success: bool,
-            message: Option<String>,
-        }
-
-        let api_response = resp.json::<EmptyApiResponse>().await.map_err(|error| {
-            ToolError::new("Failed to parse VK API response", Some(error.to_string()))
+        let status = resp.status();
+        let body = resp.text().await.map_err(|error| {
+            ToolError::new(
+                format!(
+                    "Failed to read VK API response body (HTTP {})",
+                    status.as_u16()
+                ),
+                Some(error.to_string()),
+            )
+            .with_status(status.as_u16())
         })?;
-
-        if !api_response.success {
-            let msg = api_response.message.as_deref().unwrap_or("Unknown error");
-            return Err(ToolError::new("VK API returned error", Some(msg)));
-        }
-
-        Ok(())
+        classify_empty_response(status, body)
     }
 
     fn resolve_workspace_id(&self, explicit: Option<Uuid>) -> Result<Uuid, ToolError> {
@@ -497,5 +630,173 @@ mod tests {
         let serialized = serde_json::to_value(&context).expect("context should serialize");
 
         assert!(serialized.get("orchestrator_session_id").is_none());
+    }
+
+    mod response_classification {
+        use reqwest::StatusCode;
+        use serde::Deserialize;
+        use serde_json::json;
+
+        use super::super::{
+            BODY_TAIL_MAX, McpServer, ToolError, classify_empty_response, classify_response,
+            truncate_body_tail,
+        };
+
+        #[derive(Debug, Deserialize, PartialEq, Eq)]
+        struct Sample {
+            id: u32,
+            name: String,
+        }
+
+        #[test]
+        fn success_envelope_returns_payload() {
+            let body = json!({
+                "success": true,
+                "data": { "id": 7, "name": "ok" }
+            })
+            .to_string();
+            let out: Sample = classify_response(StatusCode::OK, body).expect("success");
+            assert_eq!(
+                out,
+                Sample {
+                    id: 7,
+                    name: "ok".to_string()
+                }
+            );
+        }
+
+        #[test]
+        fn success_true_missing_data_is_an_error() {
+            let body = json!({ "success": true }).to_string();
+            let err: ToolError = classify_response::<Sample>(StatusCode::OK, body).unwrap_err();
+            assert!(err.message.contains("missing data field"));
+        }
+
+        #[test]
+        fn envelope_error_at_2xx_propagates_all_fields() {
+            let body = json!({
+                "success": false,
+                "message": "session is busy",
+                "error_kind": "session_busy",
+                "error_data": { "session_id": "abc" }
+            })
+            .to_string();
+            let err: ToolError = classify_response::<Sample>(StatusCode::OK, body).unwrap_err();
+            assert_eq!(err.message, "session is busy");
+            assert_eq!(err.status, Some(200));
+            assert_eq!(err.error_kind.as_deref(), Some("session_busy"));
+            assert_eq!(
+                err.error_data.as_ref().and_then(|v| v.get("session_id")),
+                Some(&json!("abc"))
+            );
+            assert!(err.body_tail.is_none());
+        }
+
+        #[test]
+        fn http_500_with_envelope_preserves_error_kind() {
+            let body = json!({
+                "success": false,
+                "message": "executor binary not found",
+                "error_kind": "executor_not_found"
+            })
+            .to_string();
+            let err: ToolError =
+                classify_response::<Sample>(StatusCode::INTERNAL_SERVER_ERROR, body).unwrap_err();
+            assert!(err.message.contains("executor binary not found"));
+            assert_eq!(err.status, Some(500));
+            assert_eq!(err.error_kind.as_deref(), Some("executor_not_found"));
+        }
+
+        #[test]
+        fn http_500_with_non_json_body_falls_back_to_body_tail() {
+            let body = "spawn: No such file or directory (os error 2)".to_string();
+            let err: ToolError =
+                classify_response::<Sample>(StatusCode::INTERNAL_SERVER_ERROR, body.clone())
+                    .unwrap_err();
+            assert_eq!(err.status, Some(500));
+            assert_eq!(err.body_tail.as_deref(), Some(body.as_str()));
+            assert!(err.error_kind.is_none());
+            assert!(err.error_data.is_none());
+        }
+
+        #[test]
+        fn body_tail_is_truncated_and_prefixed_when_over_limit() {
+            let big = "x".repeat(BODY_TAIL_MAX * 2);
+            let err: ToolError =
+                classify_response::<Sample>(StatusCode::BAD_GATEWAY, big).unwrap_err();
+            let tail = err.body_tail.expect("tail present");
+            assert!(tail.starts_with('…'));
+            // `…` is 3 bytes in UTF-8, followed by up to BODY_TAIL_MAX bytes of body.
+            assert!(tail.len() <= BODY_TAIL_MAX + 4);
+            assert!(tail.ends_with('x'));
+        }
+
+        #[test]
+        fn truncate_short_body_is_unchanged() {
+            let body = "short body";
+            assert_eq!(truncate_body_tail(body), "short body");
+        }
+
+        #[test]
+        fn truncate_respects_char_boundaries() {
+            // Force a cut that would land mid-char in a multibyte string.
+            let mut s = "a".repeat(BODY_TAIL_MAX);
+            s.push('中');
+            s.push_str(&"b".repeat(10));
+            let tail = truncate_body_tail(&s);
+            // Must still be valid UTF-8 (implicitly, by virtue of being a String).
+            assert!(tail.starts_with('…'));
+        }
+
+        #[test]
+        fn empty_response_accepts_success_without_data() {
+            let body = json!({ "success": true }).to_string();
+            classify_empty_response(StatusCode::OK, body).expect("empty success");
+        }
+
+        #[test]
+        fn empty_response_surfaces_envelope_error() {
+            let body = json!({
+                "success": false,
+                "message": "tag is referenced",
+                "error_kind": "conflict"
+            })
+            .to_string();
+            let err = classify_empty_response(StatusCode::CONFLICT, body).unwrap_err();
+            assert_eq!(err.status, Some(409));
+            assert_eq!(err.error_kind.as_deref(), Some("conflict"));
+            assert!(err.message.contains("tag is referenced"));
+        }
+
+        #[test]
+        fn tool_error_value_contains_all_optional_fields() {
+            let err = ToolError::new("primary", Some("details here"))
+                .with_status(502)
+                .with_error_kind("bootstrap_failed")
+                .with_error_data(json!({ "retry_safe": false }))
+                .with_body_tail("stderr tail...");
+
+            let value = McpServer::tool_error_value(err);
+            assert_eq!(value["success"], json!(false));
+            assert_eq!(value["error"], json!("primary"));
+            assert_eq!(value["details"], json!("details here"));
+            assert_eq!(value["status"], json!(502));
+            assert_eq!(value["error_kind"], json!("bootstrap_failed"));
+            assert_eq!(value["error_data"], json!({ "retry_safe": false }));
+            assert_eq!(value["body_tail"], json!("stderr tail..."));
+        }
+
+        #[test]
+        fn tool_error_value_omits_absent_fields() {
+            let err = ToolError::message("just a message");
+            let value = McpServer::tool_error_value(err);
+            assert_eq!(value["success"], json!(false));
+            assert_eq!(value["error"], json!("just a message"));
+            assert!(value.get("details").is_none());
+            assert!(value.get("status").is_none());
+            assert!(value.get("error_kind").is_none());
+            assert!(value.get("error_data").is_none());
+            assert!(value.get("body_tail").is_none());
+        }
     }
 }
