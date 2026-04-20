@@ -13,6 +13,7 @@ import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useActions } from '@/shared/hooks/useActions';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useNavigate } from '@tanstack/react-router';
 import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { cn } from '@/shared/lib/utils';
 import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
@@ -32,7 +33,7 @@ import {
   bulkUpdateIssues,
   type BulkUpdateIssueItem,
 } from '@/shared/lib/remoteApi';
-import { PlusIcon, DotsThreeIcon } from '@phosphor-icons/react';
+import { PlusIcon, DotsThreeIcon, TrashIcon } from '@phosphor-icons/react';
 import { Actions } from '@/shared/actions';
 import {
   buildKanbanIssueComposerKey,
@@ -66,6 +67,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@vibe/ui/components/Dropdown';
 import { SearchableTagDropdownContainer } from '@/shared/components/SearchableTagDropdownContainer';
@@ -128,6 +130,7 @@ export function KanbanContainer() {
   const isMobile = useIsMobile();
   const { t } = useTranslation('common');
   const appNavigation = useAppNavigation();
+  const navigate = useNavigate();
   const routeState = useCurrentKanbanRouteState();
 
   // Get data from contexts (set up by WorkspacesLayout)
@@ -158,6 +161,7 @@ export function KanbanContainer() {
   const {
     projects,
     membersWithProfilesById,
+    removeProject,
     isLoading: orgLoading,
   } = useOrgContext();
   const { activeWorkspaces } = useWorkspaceContext();
@@ -212,6 +216,17 @@ export function KanbanContainer() {
   const openProjectsGuide = useCallback(() => {
     executeAction(Actions.ProjectsGuide);
   }, [executeAction]);
+
+  const handleDeleteProject = useCallback(() => {
+    if (
+      confirm(
+        `Delete "${projectName}"? All issues will be permanently removed.`
+      )
+    ) {
+      removeProject(projectId);
+      void navigate({ to: '/projects' });
+    }
+  }, [projectName, projectId, removeProject, navigate]);
 
   const projectViewSelection = useUiPreferencesStore(
     (s) => s.kanbanProjectViewSelections[projectId]
@@ -943,6 +958,14 @@ export function KanbanContainer() {
                 }
               >
                 {t('kanban.editProjectSettings', 'Edit project settings')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                icon={TrashIcon}
+                onClick={handleDeleteProject}
+              >
+                {t('kanban.deleteProject', 'Delete project')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

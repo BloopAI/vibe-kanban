@@ -139,8 +139,8 @@ async fn main() -> Result<(), VibeKanbanError> {
 
     let app_router = routes::router(deployment.clone());
 
-    // Production only: open browser
-    if !cfg!(debug_assertions) {
+    // Production only: open browser (skipped when VIBE_KANBAN_NO_BROWSER=1, e.g. daemon mode)
+    if !cfg!(debug_assertions) && std::env::var("VIBE_KANBAN_NO_BROWSER").is_err() {
         tracing::info!("Opening browser...");
         let browser_port = actual_main_port;
         tokio::spawn(async move {

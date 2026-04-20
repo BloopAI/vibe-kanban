@@ -18,11 +18,26 @@ import {
   installAndLaunch,
   cleanOldDesktopVersions,
 } from "./desktop";
+import {
+  installDaemon,
+  uninstallDaemon,
+  getDaemonStatus,
+  getDaemonLogs,
+  startDaemon,
+  stopDaemon,
+} from "./daemon";
 
 const CLI_VERSION: string = require("../package.json").version;
 
 type RootOptions = {
   desktop?: boolean;
+};
+
+type DaemonOptions = {
+  port: string;
+  host: string;
+  force?: boolean;
+  lines?: number;
 };
 
 // Resolve effective arch for our published 64-bit binaries only.
@@ -294,6 +309,52 @@ function normalizeArgv(argv: string[]): string[] {
   return [...argv.slice(0, 2), ...normalizedArgs];
 }
 
+async function runDaemon(
+  action: string,
+  options: DaemonOptions,
+): Promise<void> {
+  const VALID_ACTIONS = ["install", "uninstall", "status", "start", "stop", "logs"];
+  if (!VALID_ACTIONS.includes(action)) {
+    console.error(`Unknown daemon action: "${action}"`);
+    console.error(`Valid actions: ${VALID_ACTIONS.join(", ")}`);
+    process.exit(1);
+  }
+
+  if (action === "uninstall") {
+    await uninstallDaemon();
+    return;
+  }
+  if (action === "status") {
+    getDaemonStatus();
+    return;
+  }
+  if (action === "logs") {
+    getDaemonLogs(options.lines ?? 100);
+    return;
+  }
+  if (action === "start") {
+    startDaemon();
+    return;
+  }
+  if (action === "stop") {
+    stopDaemon();
+    return;
+  }
+
+  // "install" — download/extract the binary, then register the service.
+  // We capture the bin path synchronously inside the launch callback and
+  // kick off the async install immediately after extractAndRun resolves.
+  let resolvedBinPath = "";
+  await extractAndRun("vibe-kanban", (cachedBinPath) => {
+    resolvedBinPath = cachedBinPath;
+  });
+  await installDaemon(resolvedBinPath, {
+    host: options.host,
+    port: options.port,
+    force: options.force,
+  });
+}
+
 function runOrExit(task: Promise<void>): void {
   void task.catch((err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
@@ -329,6 +390,27 @@ async function main(): Promise<void> {
     .allowUnknownOptions()
     .action((args: string[]) => {
       runOrExit(runMcp(args));
+    });
+
+  cli
+    .command(
+      "daemon <action>",
+      "Manage Vibe Kanban as a persistent background service (macOS/Linux)",
+    )
+    .option("--port <port>", "Port for the server (install only)", {
+      default: "8080",
+    })
+    .option(
+      "--host <host>",
+      "Host to bind to; use 0.0.0.0 for remote access (install only)",
+      { default: "127.0.0.1" },
+    )
+    .option("--force", "Force reinstall even if already installed")
+    .option("--lines <lines>", "Number of log lines to show (logs only)", {
+      default: "100",
+    })
+    .action((action: string, options: DaemonOptions) => {
+      runOrExit(runDaemon(action, options));
     });
 
   cli.help();
