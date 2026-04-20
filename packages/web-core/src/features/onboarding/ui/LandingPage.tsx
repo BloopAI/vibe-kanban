@@ -28,11 +28,9 @@ import {
   BaseCodingAgent,
   EditorType,
   SoundFile,
-  ThemeMode,
   type EditorConfig,
 } from 'shared/types';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { useTheme } from '@/shared/hooks/useTheme';
 import { AgentIcon, getAgentName } from '@/shared/components/AgentIcon';
 import { IdeIcon } from '@/shared/components/IdeIcon';
 import { getIdeName } from '@/shared/lib/ideName';
@@ -137,18 +135,8 @@ function randomDefaultSoundFile(): SoundFile {
   return SOUND_OPTIONS[randomIndex]?.value ?? SoundFile.COW_MOOING;
 }
 
-function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
-  if (theme === ThemeMode.SYSTEM) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light';
-  }
-  return theme === ThemeMode.DARK ? 'dark' : 'light';
-}
-
 export function LandingPage() {
   const appNavigation = useAppNavigation();
-  const { theme } = useTheme();
   const { config, profiles, updateAndSaveConfig, loading } = useUserSystem();
   const posthog = usePostHog();
 
@@ -175,10 +163,7 @@ export function LandingPage() {
     [posthog]
   );
 
-  const logoSrc =
-    resolveTheme(theme) === 'dark'
-      ? '/vibe-kanban-logo-dark.svg'
-      : '/vibe-kanban-logo.svg';
+  const logoSrc = '/agent-kanban-logo.png';
 
   useEffect(() => {
     if (!config || initialized) return;
