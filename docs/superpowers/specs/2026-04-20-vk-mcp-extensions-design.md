@@ -1,67 +1,84 @@
-# VK MCP Extensions — Master Design
+# VK MCP Orchestration Extensions — Master Design
 
-**Status:** Draft v1 (awaiting user review)
+**Status:** Draft v2 (Tier A++ — supersedes v1)
 **Date:** 2026-04-20
-**Author:** Claude (with t01094717190@gmail.com)
-**Predecessor:** PR #merged `0095e565` "MCP error transparency" (PR1 — extended `ApiResponseEnvelope` with `error_kind` + classifier)
+**Author:** Claude (with phuongmumma35@hotmail.com)
+**Predecessor:** PR #merged `0095e565` "MCP error transparency" (PR1 — extended `ApiResponseEnvelope` with `error_kind` + classifier on the MCP-deserialize side)
 
 ---
 
-## 1. Background
+## 1. Goal
 
-The Vibe Kanban MCP server (`crates/mcp/`) exposes coding-agent orchestration to MCP clients (Claude Code, Cursor, custom orchestrators). The current surface has four classes of friction observed in production usage:
+Enable **session-spawning-sessions** orchestration on Vibe Kanban: a *manager* MCP session can create persistent todo items and spawn child sessions to execute them, observe each child's status and output, and aggregate results.
 
-1. **Opaque executor failures.** When an agent process fails to spawn (missing binary, auth required, permission policy mismatch), the MCP returns a generic 500 with no machine-readable cause. PR1 plumbed `error_kind` *through* the MCP layer, but the server still buckets all `ExecutorError` variants as `ErrorInfo::internal("ExecutorError")` (`crates/server/src/error.rs:498`). Clients have nothing to switch on.
-2. **Missing tools.** Project-level tag CRUD (`create_tag` / `delete_tag`) and a session-phase aggregate (`get_session_status`) exist on the server but are not exposed via MCP. Orchestrators have to either reach into the HTTP API directly (defeating the abstraction) or poll `get_execution` and re-derive state.
-3. **An orphan window in `start_workspace`.** The MCP `start_workspace` tool (`crates/mcp/src/task_server/tools/task_attempts.rs:95`) calls the atomic `/api/workspaces/start` endpoint (good) but then performs a *separate* `link_workspace_to_issue` HTTP call (`task_attempts.rs:210-216`). If the link call fails, the workspace already exists and is unowned by the issue.
-4. **Concurrent fan-out and lifecycle observation.** Spawning N workspaces requires N round-trips. Long-running sessions can only be observed via polling.
+Concretely, a manager prompt should be able to:
 
-This spec covers four sub-projects (**S1–S4**) addressing items 1–4 respectively. A fifth concern — MCP transport stability (heartbeat / reconnect / parent-PID watch) — is **deferred** pending a concrete symptom report from the user (see §10).
+1. Create N persistent todos (visible in the VK UI, survives restarts).
+2. Spawn one or more child workspaces per todo.
+3. Poll child status with structured error info.
+4. Read child session output without overflowing manager context.
+5. Update todo status as children complete.
 
-## 2. Scope
+The current MCP surface supports step 2 only. Steps 1, 3, 4, 5 are blocked by missing or half-built capabilities.
+
+## 2. Background — current friction
+
+The Vibe Kanban MCP server (`crates/mcp/`) exposes 22 tools today (workspace start, session follow-up, issue/repo/project queries, etc.). Four gaps block the orchestration loop:
+
+1. **Opaque executor failures.** PR1 plumbed `error_kind` *through* the MCP layer, but the server still buckets all `ExecutorError` variants as `ErrorInfo::internal("ExecutorError")` (`crates/server/src/error.rs:498`). Manager has no machine-readable signal to branch on (retry? abort? ask human?).
+2. **No way to read child session output.** The MCP `get_execution` tool returns metadata only; `final_message` is hard-coded `None` (`crates/mcp/src/task_server/tools/sessions.rs:354`). Manager can spawn a child but cannot extract its results.
+3. **Task entity is half-built.** `db::models::task::Task` exists with `parent_workspace_id` and `status` fields and is referenced by `Workspace.task_id`, but only `find_all` / `find_by_id` are implemented. No CRUD endpoint, no MCP wiring. Manager has nowhere to persist its todo list.
+4. **No UI surface for manager-spawned tasks.** Even when the data exists, an observer cannot trace "which manager spawned which workspace via which task". Debugging orchestration failures becomes impossible.
+
+## 3. Scope — Tier A++ (4 PRs)
 
 ### In scope
-- Server-side: extend `ApiResponse` with `error_kind`; expand `ApiError::Executor(_)` mapping per variant; capture last 2 KiB of executor stderr into response `error_data`.
-- Server-side: tighten `/api/workspaces/start` so issue linking happens inside the same handler (transactional with workspace creation).
-- MCP-side: new tools `create_tag`, `delete_tag`, `get_session_status`, `batch_start`, `subscribe_session_events`.
-- Type sharing: regenerate `shared/types.ts` so TS clients can switch on `ErrorKind`.
+
+| PR  | Theme                              | Server | MCP | UI |
+|-----|------------------------------------|--------|-----|----|
+| **PR-X1** | Error transparency           | ✓      | ✓   |    |
+| **PR-X2** | Read child session output    |        | ✓   |    |
+| **PR-X3** | Task entity + composite tool + concurrency | ✓ | ✓ |  |
+| **PR-X4** | UI surface for task tree     |        |     | ✓  |
 
 ### Out of scope
-- MCP transport stability / heartbeat / parent-PID watch (S5 — deferred).
-- Server-side push to external webhooks. (Replaced by orchestrator-pull SSE subscription.)
+
+- MCP transport stability / heartbeat / reconnect (no concrete symptom yet — defer until reported).
+- `batch_start` MCP tool (LLM tool-loop is naturally serial; per-parent concurrency limit in PR-X3 provides the back-pressure manager needs).
+- SSE-based push subscription (`subscribe_session_events`) — polling `get_execution` is sufficient at LLM cadence.
+- Project-level tag CRUD MCP wiring — independent feature, defer.
+- Retrofitting the existing `/api/workspaces/start` + `/api/workspaces/{id}/links` two-call flow with a server-side transaction. The new `/api/tasks/start` endpoint in PR-X3 *is* atomic; the legacy two-call path remains as-is and is left to caller-side handling.
+- Multi-level task nesting (Task → Task). Only Workspace → Task → Workspace is supported.
 - Authentication / authorization changes.
-- Frontend (`packages/local-web`, `packages/remote-web`) UI changes. The TS types regenerate, but no React component is touched.
-- Remote (`crates/remote`) crate changes — local-deployment only for this campaign.
+- Remote (`crates/remote`) crate changes — local-deployment only.
 
-## 3. Sub-project overview & dependency order
+### Dependency order
 
 ```
-S1 (server error transparency)
-   ↓ [error_kind / error_data shape used by]
-S2 (create_tag, delete_tag, get_session_status)        — independent of S3
-   ↓
-S3 (start_workspace atomicity fix)                     — independent of S2
-   ↓
-S4a (batch_start)         depends on S1 + S3
-S4b (SSE subscription)    depends on S1
+PR-X1 (error_kind object + stderr tail + get_execution status)
+  ↓ shape consumed by
+PR-X2 (read_session_messages)
+  ↓ independent
+PR-X3 (Task CRUD + create_and_start_task + concurrency limit)
+  ↓ data model consumed by
+PR-X4 (UI breadcrumb + grouping)
 ```
 
-**PR sequence:** PR1 (S1) → PR2 (S2 tags) → PR3 (S2 status) → PR4 (S3) → PR5 (S4a) → PR6 (S4b).
-S2 and S3 could run in parallel branches if convenient, but S2-status assumes S1's `error_kind` is in the envelope, so PR3 must follow PR1.
+PRs land in the order X1 → X2 → X3 → X4. X2 can run in parallel with X3 if convenient.
 
 ---
 
-## 4. S1 — Server error transparency
+## 4. PR-X1 — Error transparency
 
 ### 4.1 Problem
 
-`ApiError::Executor(_)` collapses every `ExecutorError` variant to a single 500 with body `{"success": false, "message": "An internal error occurred. Please try again.", "error_data": null}`. Clients cannot distinguish "missing binary" from "auth required" from "JSON parse failure".
-
-PR1 added `error_kind` to `ApiResponseEnvelope` *on the MCP-deserialize side* but the server never sets it. The server's `ApiResponse<T,E>` (`crates/utils/src/response.rs:5`) still has only `{success, data, error_data, message}`.
+`ApiError::Executor(_)` collapses every `ExecutorError` variant to a single 500. PR1 added `error_kind` to the MCP-side `ApiResponseEnvelope` but the server's `ApiResponse<T,E>` (`crates/utils/src/response.rs:5`) still has only `{success, data, error_data, message}`. Manager receives `success: false` plus a free-text message and cannot programmatically decide what to do.
 
 ### 4.2 Design
 
-**Server changes (`crates/utils/src/response.rs`):**
+**Server: `crates/utils/src/response.rs`**
+
+Add an `error` object (replaces flat `error_kind` from earlier draft) carrying everything a manager needs to branch on:
 
 ```rust
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -70,426 +87,404 @@ pub struct ApiResponse<T, E = T> {
     data: Option<T>,
     error_data: Option<E>,
     message: Option<String>,
-    /// Stable machine-readable error code. Set by `ApiError::IntoResponse`.
-    /// Always `None` on success.
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    error_kind: Option<String>,
+    error: Option<ApiErrorEnvelope>,
 }
 
-impl<T, E> ApiResponse<T, E> {
-    pub fn error_with_kind(message: &str, kind: &'static str) -> Self { ... }
-    pub fn error_full(message: &str, kind: &'static str, data: E) -> Self { ... }
-}
-```
-
-**Server changes (`crates/server/src/error.rs`):**
-
-`ErrorInfo` gains an `error_kind: &'static str` field (separate from the existing `error_type`, which stays for tracing). The collapsed line 498 expands:
-
-```rust
-ApiError::Executor(executor_err) => match executor_err {
-    ExecutorError::ExecutableNotFound { .. } => ErrorInfo {
-        status: StatusCode::FAILED_DEPENDENCY,           // 424
-        error_type: "ExecutorError",
-        error_kind: "executor_not_found",
-        message: Some(executor_err.to_string()),
-    },
-    ExecutorError::AuthRequired(_) => ErrorInfo {
-        status: StatusCode::UNAUTHORIZED,                // 401
-        error_kind: "executor_auth_required",
-        ...
-    },
-    ExecutorError::FollowUpNotSupported(_) => ErrorInfo {
-        status: StatusCode::CONFLICT,                    // 409
-        error_kind: "executor_followup_unsupported",
-        ...
-    },
-    ExecutorError::SpawnError(_) | ExecutorError::Io(_) => ErrorInfo {
-        status: StatusCode::INTERNAL_SERVER_ERROR,
-        error_kind: "executor_spawn_failed",
-        ...
-    },
-    ExecutorError::Json(_) | ExecutorError::TomlSerialize(_) | ExecutorError::TomlDeserialize(_) => ErrorInfo {
-        status: StatusCode::INTERNAL_SERVER_ERROR,
-        error_kind: "executor_serde_error",
-        ...
-    },
-    ExecutorError::CommandBuild(_) => ErrorInfo {
-        status: StatusCode::BAD_REQUEST,                 // 400
-        error_kind: "executor_command_build_failed",
-        ...
-    },
-    ExecutorError::SetupHelperNotSupported => ErrorInfo {
-        status: StatusCode::CONFLICT,
-        error_kind: "executor_setup_helper_unsupported",
-        ...
-    },
-    ExecutorError::ExecutorApprovalError(_) => ErrorInfo {
-        status: StatusCode::CONFLICT,
-        error_kind: "executor_approval_required",
-        ...
-    },
-    ExecutorError::UnknownExecutorType(_) => ErrorInfo {
-        status: StatusCode::BAD_REQUEST,
-        error_kind: "executor_unknown_type",
-        ...
-    },
-},
-```
-
-**Stderr tail capture for `start_execution` failures:**
-
-`ContainerService::start_execution` (`crates/services/src/services/container.rs:1133`) currently writes failures to `MsgStore` via `LogMsg::Stderr` (line 1260) but the route handler never sees it. We add a side channel: when `start_workspace` / `follow_up` route handlers catch a `ContainerError::ExecutorError`, they construct `error_data` containing the last 2 KiB of stderr if available.
-
-```rust
-// New helper in crates/services/src/services/container.rs
-pub struct ExecutorFailureContext {
-    pub error: ExecutorError,
-    pub stderr_tail: Option<String>,        // ≤ 2048 bytes UTF-8
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct ApiErrorEnvelope {
+    /// Stable machine-readable kind. Manager switches on this.
+    pub kind: String,
+    /// True if the same request can be retried unchanged.
+    pub retryable: bool,
+    /// True if no automated retry will help (auth, missing binary, etc.).
+    pub human_intervention_required: bool,
+    /// Optional last 2 KiB of executor stderr for diagnostic surfacing.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stderr_tail: Option<String>,
+    /// Optional executor program name (e.g. "claude", "codex").
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub program: Option<String>,
 }
 ```
 
-The route handler maps this via the existing `ApiError::Executor` variant, extended to carry optional context (see D2):
+**Server: `crates/server/src/error.rs`**
+
+`ErrorInfo` gains `error: ApiErrorEnvelope`. The collapsed line 498 expands to a 5-kind taxonomy (deliberately small — extend later if a real consumer needs more granularity):
+
+| `kind`                       | HTTP | `ExecutorError` source                              | retryable | human_intervention |
+|------------------------------|------|-----------------------------------------------------|-----------|--------------------|
+| `executor_not_found`         | 500  | `ExecutableNotFound`                                | false     | true               |
+| `auth_required`              | 500  | `AuthRequired`                                      | false     | true               |
+| `follow_up_not_supported`    | 500  | `FollowUpNotSupported`                              | false     | false              |
+| `spawn_failed`               | 500  | `SpawnError` / `Io` / others not above              | true      | false              |
+| `internal`                   | 500  | catch-all + non-executor errors                     | true      | false              |
+
+**D1 — HTTP status stays 500 for all executor errors.** Manager switches on `error.kind`, not status code. Re-mapping to 401/424/409 changes the wire contract for existing clients with no benefit.
+
+**D2 — Five kinds, not thirteen.** A small canonical set is easier to switch on. Other `ExecutorError` variants (`Json`, `TomlSerialize`, `CommandBuild`, etc.) map to `internal` until a real consumer needs them split out. Forward-compatible because `kind` is a string.
+
+**Stderr tail capture (`crates/services/src/services/container.rs`)**
+
+`ContainerService::start_execution` writes failures to `MsgStore` via `LogMsg::Stderr` but route handlers never see it. Add:
 
 ```rust
-// crates/server/src/error.rs
-ApiError::Executor { source: ExecutorError, context: Option<ExecutorFailureContext> }
-```
-
-Existing `#[from] ExecutorError` impl is replaced by an explicit constructor (`ApiError::executor(source)` for the no-context case) to avoid a breaking change at every call site; the `?` operator is preserved via a custom `From<ExecutorError>` that sets `context: None`.
-
-`error_data` payload:
-
-```json
-{
-  "stderr_tail": "<last ≤2048 bytes>",
-  "program": "claude"
+pub struct ExecutorFailureContext {
+    pub error: ExecutorError,
+    pub stderr_tail: Option<String>,   // ≤ 2048 bytes UTF-8, left-truncated with "…" prefix
+    pub program: Option<String>,
 }
 ```
 
-### 4.3 `error_kind` canonical taxonomy (initial)
+`ApiError::Executor` becomes `Executor { source: ExecutorError, context: Option<ExecutorFailureContext> }`. A custom `From<ExecutorError>` keeps the `?` operator working with `context: None`.
 
-| `error_kind`                          | HTTP | Source                                          | Retry safe? |
-|---------------------------------------|------|-------------------------------------------------|-------------|
-| `executor_not_found`                  | 424  | `ExecutorError::ExecutableNotFound`             | no          |
-| `executor_auth_required`              | 401  | `ExecutorError::AuthRequired`                   | no          |
-| `executor_followup_unsupported`       | 409  | `ExecutorError::FollowUpNotSupported`           | no          |
-| `executor_spawn_failed`               | 500  | `ExecutorError::{SpawnError,Io}`                | yes         |
-| `executor_serde_error`                | 500  | `ExecutorError::{Json,TomlSerialize,TomlDeserialize}` | no    |
-| `executor_command_build_failed`       | 400  | `ExecutorError::CommandBuild`                   | no          |
-| `executor_setup_helper_unsupported`   | 409  | `ExecutorError::SetupHelperNotSupported`        | no          |
-| `executor_approval_required`          | 409  | `ExecutorError::ExecutorApprovalError`          | no          |
-| `executor_unknown_type`               | 400  | `ExecutorError::UnknownExecutorType`            | no          |
-| `workspace_partial_creation`          | 409  | `WorkspaceManagerError::PartialCreation`        | depends     |
-| `workspace_not_found`                 | 404  | `WorkspaceError::WorkspaceNotFound`             | no          |
-| `session_busy`                        | 409  | (new) follow-up while prior execution Running   | yes (after) |
-| `internal`                            | 500  | catch-all                                       | yes         |
+**Enhance `get_execution` MCP tool**
 
-Retry-safety is **descriptive**, not enforced server-side. MCP clients can use it for backoff.
+Today `get_execution` returns metadata. Extend its response with `status: ExecutionProcessStatus` (already exists in db) and the same `error` envelope shape when status is `Failed`:
 
-### 4.4 Decisions
+```rust
+struct GetExecutionResponse {
+    workspace_id: String,
+    execution_id: String,
+    status: ExecutionProcessStatus,                  // Running | Completed | Failed | Killed
+    started_at: String,
+    finished_at: Option<String>,
+    error: Option<ApiErrorEnvelope>,                 // populated when status == Failed
+}
+```
 
-- **D1 — `error_kind` field type:** `Option<String>` not enum on the wire. Server enum lives in `error.rs`; clients get strings. Trade-off: forward-compatible for new variants, no breaking schema changes when adding kinds. Alternative considered: `ts-rs` enum — rejected because adding a variant becomes a breaking client change.
-- **D2 — `ApiError::Executor` extension:** extend the existing variant to carry an optional `ExecutorFailureContext`, rather than introducing a parallel `ApiError::ExecutorWithContext`. Less code churn at call sites; default `None` for callers that don't have stderr.
-- **D3 — Stderr tail size:** 2 KiB (2048 bytes), UTF-8 truncated with `…` prefix on left if cut. Same convention as MCP `body_tail` from PR1.
-- **D4 — `error_kind` for already-typed errors:** existing 200+ `ErrorInfo` constructions in `error.rs` get `error_kind` set to the same string as `error_type` for now (e.g. `"WorkspaceError"`). PR1 lands focused on `ExecutorError` plus the taxonomy in §4.3. Other variants can be tightened in follow-up if needed; no breaking client change since clients fall back to `message`.
+Manager polls `get_execution`; when `status` is terminal it knows to stop polling and (if Failed) read `error.retryable` / `error.human_intervention_required`.
 
-### 4.5 PR boundary (PR1)
+### 4.3 PR boundary
 
-- `crates/utils/src/response.rs` — `error_kind` field + helpers
-- `crates/server/src/error.rs` — `ErrorInfo.error_kind`, expanded `ApiError::Executor` arm, all existing arms get `error_kind = error_type`
+- `crates/utils/src/response.rs` — `ApiErrorEnvelope`, `ApiResponse.error` field
+- `crates/server/src/error.rs` — `ErrorInfo.error`, expanded `ApiError::Executor` arm with 5-kind mapping; existing arms get `error.kind = error_type` and `retryable = true, human_intervention_required = false` defaults
 - `crates/services/src/services/container.rs` — `ExecutorFailureContext`, capture stderr tail in `start_execution`
 - `crates/server/src/routes/sessions/mod.rs` — `follow_up` handler propagates context
 - `crates/server/src/routes/workspaces/create.rs` — `create_and_start_workspace` handler propagates context
+- `crates/mcp/src/task_server/tools/sessions.rs` — `get_execution` returns `status` + `error`
 - `shared/types.ts` regen via `pnpm run generate-types`
 - Tests:
-  - Unit: `ApiResponse::error_full` round-trips `error_kind` + `error_data`
-  - Unit: each `ExecutorError` variant maps to its expected `error_kind`
-  - Integration: simulate `ExecutableNotFound` via `ContainerService` mock → 424 + `executor_not_found` + stderr tail in response
+  - Unit: `ApiResponse::error_full` round-trips `error` envelope
+  - Unit: each `ExecutorError` variant → expected `kind` + flags
+  - Integration: simulate `ExecutableNotFound` → `kind: "executor_not_found", retryable: false, human_intervention_required: true` + stderr tail
+
+Expected diff: ~500 LOC including tests.
 
 ---
 
-## 5. S2 — MCP tool补全 (tags + session status)
+## 5. PR-X2 — Read child session output
 
-### 5.1 S2a: `create_tag` / `delete_tag`
+### 5.1 Problem
 
-**Server endpoints** (already exist, no server change):
-- `POST /api/tags` body `CreateTag { tag_name }` → `Tag`
-- `DELETE /api/tags/{id}` → `()`
+Manager spawns a child via `start_workspace`, polls until `status == Completed`, then needs to extract the result. `final_message: None` at `crates/mcp/src/task_server/tools/sessions.rs:354` is the dead end.
 
-**MCP tools** (new file `crates/mcp/src/task_server/tools/tags.rs`):
+A naive "return the whole conversation" risks tens of thousands of tokens, blowing up the manager's context. Pagination + sensible defaults are mandatory.
 
-```rust
-#[tool(description = "Create a project-level tag.")]
-async fn create_tag(
-    &self,
-    Parameters(CreateTagRequest { tag_name }): Parameters<CreateTagRequest>,
-) -> Result<CallToolResult, ErrorData> { ... }
+### 5.2 Design
 
-#[tool(description = "Delete a project-level tag by ID. Use `list_tags` to look up the ID from a name.")]
-async fn delete_tag(
-    &self,
-    Parameters(DeleteTagRequest { tag_id }): Parameters<DeleteTagRequest>,
-) -> Result<CallToolResult, ErrorData> { ... }
-```
-
-**D5 — `delete_tag` lookup mode:** accept `tag_id: Uuid` only. Name lookup is convenience but introduces ambiguity (two tags can share a name across projects? — checked: no, unique). Decision: ID only for v1; client can call `list_tags` first if they have a name. Name-based deletion deferred to PR-follow-up only if a real consumer needs it.
-
-### 5.2 S2b: `get_session_status` phase machine
-
-**Problem:** `ExecutionProcessStatus` is `Running | Completed | Failed | Killed` (`crates/db/src/models/execution_process.rs:43`). Orchestrators want a higher-level lifecycle: is the agent still spawning? is it stuck? did it finish cleanly?
-
-**Phase machine output:**
+New MCP tool `read_session_messages`:
 
 ```rust
-#[derive(Serialize, schemars::JsonSchema)]
-struct GetSessionStatusResponse {
-    session_id: String,
-    phase: SessionPhase,
-    last_activity_at: Option<String>,         // RFC3339
-    current_execution_id: Option<String>,
-    last_finished_execution_id: Option<String>,
-    error_kind: Option<String>,               // when phase == Errored
-    error_message: Option<String>,
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct ReadSessionMessagesRequest {
+    #[schemars(description = "Workspace ID whose session to read.")]
+    workspace_id: Uuid,
+    #[schemars(description = "Number of messages to return from the tail. Default 20, max 200.")]
+    last_n: Option<u32>,
+    #[schemars(description = "Zero-based start index to read from. Overrides `last_n` when set.")]
+    from_index: Option<u32>,
+    #[schemars(description = "Include reasoning / thinking content. Default false to reduce token cost.")]
+    include_reasoning: Option<bool>,
 }
 
-#[derive(Serialize, schemars::JsonSchema)]
-#[serde(rename_all = "snake_case")]
-enum SessionPhase {
-    Idle,        // session exists, no executions yet OR last execution finished cleanly
-    Starting,    // most recent execution is Running and < 10 s old (no log yet)
-    Running,     // most recent execution is Running and has produced log activity
-    Stalled,     // Running, but no log activity for ≥ 5 min
-    Done,        // most recent execution status == Completed
-    Errored,     // most recent execution status ∈ {Failed, Killed}
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct ReadSessionMessagesResponse {
+    messages: Vec<SessionMessage>,
+    /// Total messages in the session (not just returned).
+    total_count: u32,
+    /// True if there are messages older than the returned window.
+    has_more: bool,
+    /// Convenience: text of the last assistant message in the session (full, not truncated).
+    /// Most manager queries only need this — avoid parsing `messages` for the common case.
+    final_assistant_message: Option<String>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct SessionMessage {
+    index: u32,
+    role: String,                          // "user" | "assistant" | "tool" | "system"
+    content: String,
+    tool_calls: Option<serde_json::Value>, // structured if present
+    timestamp: String,                     // RFC3339
 }
 ```
 
-**Derivation rules:**
-- Fetch session via existing `GET /api/sessions/{id}`.
-- Fetch most-recent `ExecutionProcess` for the session. The DB layer has `ExecutionProcess::find_by_session_id` (`crates/db/src/models/execution_process.rs:222`) which returns rows ordered by creation; in PR3 we add a thin server route `GET /api/sessions/{id}/latest-execution` that returns just the latest row (avoids client-side ordering and avoids loading all rows for chatty sessions).
-- If no execution: `Idle`.
-- If status `Completed`: `Done`.
-- If status `Failed` or `Killed`: `Errored`; populate `error_kind` from the execution's stored exit reason if available; else `"executor_exit_nonzero"`; `error_message` from the last stderr line.
-- If status `Running`:
-  - Compute `idle = now - execution.updated_at`. If `idle < 10s`: `Starting` (just kicked off, nothing committed yet). If `idle ≥ 5 min`: `Stalled`. Else: `Running`.
+**D3 — Default `last_n = 20`.** Manager's typical query is "did the child succeed and what did it say last?". Twenty messages covers most final exchanges with reasonable token cost (~2-5 KB).
 
-**D6 — Stalled threshold:** 5 minutes. Rationale: a Claude Code "thinking" gap can legitimately reach a few minutes; coding agents rarely exceed this without producing tool-use output. Threshold is an MCP-side constant, easily tuned.
+**D4 — `final_assistant_message` is a separate field.** 99% of manager queries are "what did the child conclude". Surfacing it directly avoids forcing every manager to scan the `messages` array. Full text, never truncated — managers depend on completeness here.
 
-**D7 — Source of "last activity":** use `ExecutionProcess.updated_at` from the latest-execution row. The container service updates this row when status transitions (start, log batches checkpoint, finish). Coarser than per-log-line timestamps but requires zero new state and one HTTP call. Per-log-line precision is a v2 concern; if a user reports false-negative `Stalled` (e.g. agent producing logs but DB row not advancing), revisit with a `MsgStore.last_activity_at` accessor.
+**D5 — `include_reasoning = false` by default.** Reasoning blocks (Claude's thinking, etc.) can multiply token cost 3-10x. Off by default; manager opts in for deep debugging.
+
+**Implementation:** the persisted message model is `CodingAgentTurn` (`crates/db/src/models/coding_agent_turn.rs:8`) with `find_by_execution_process_id` already available. Add a new server route `GET /api/sessions/{session_id}/messages?last_n=&from_index=&include_reasoning=` that returns the paginated payload above by joining the latest execution's turns. The MCP tool is a thin wrapper.
 
 ### 5.3 PR boundary
 
-- **PR2 (S2a — tags):** `crates/mcp/src/task_server/tools/tags.rs` (new), wire into `task_server/mod.rs`. Pure MCP wiring. Expected diff < 200 LOC including tests.
-- **PR3 (S2b — status):**
-  - Server: new endpoint `GET /api/sessions/{id}/last-activity` (small handler, reuses MsgStore)
-  - MCP: new tool `get_session_status` with phase derivation + unit tests for each phase transition (table-driven test, fake `now`)
-  - Expected diff < 400 LOC
+- `crates/mcp/src/task_server/tools/sessions.rs` — new tool `read_session_messages`
+- `crates/server/src/routes/sessions/mod.rs` — new `GET /api/sessions/{id}/messages?last_n=&from_index=&include_reasoning=` route
+- `shared/types.ts` regen
+- Tests:
+  - Unit: pagination math (`last_n` window, `from_index` override, `has_more` flag)
+  - Unit: `final_assistant_message` extraction (handles empty session, last-message-is-tool-call, last-message-is-user)
+  - Integration: spawn a small child → wait → read → assert `final_assistant_message` matches expected
+
+Expected diff: ~300 LOC.
 
 ---
 
-## 6. S3 — `start_workspace` atomicity fix
+## 6. PR-X3 — Task entity + composite tool + concurrency
 
 ### 6.1 Problem
 
-Current MCP flow (`crates/mcp/src/task_server/tools/task_attempts.rs:179-216`):
+Three distinct gaps share one PR because they form a coherent unit:
+
+1. **No persistent todo list.** `Task` entity has `find_all` / `find_by_id` only — no `create`, `update`, `delete`, no route, no MCP.
+2. **Two-step main path.** Even with Task CRUD, "create todo + spawn child" requires `create_task` then `start_workspace(task_id=...)`. For 10 todos that's 20 RPCs and a non-trivial error recovery diamond.
+3. **No back-pressure.** Manager could naively spawn 50 children at once, exhausting disk / process limits.
+
+### 6.2 Design
+
+**Server: Task CRUD endpoint**
 
 ```
-POST /api/workspaces/start  → workspace created + execution started  ✓
-if let Some(issue_id) ... self.link_workspace_to_issue(...)          ← can fail
+POST   /api/tasks                          — create
+GET    /api/tasks/{id}                     — get
+PUT    /api/tasks/{id}                     — update (title, description, status)
+DELETE /api/tasks/{id}                     — delete (cascades to clearing workspace.task_id)
+GET    /api/tasks?parent_workspace_id=...  — list (filter by parent)
 ```
 
-If `link_workspace_to_issue` fails (network blip, remote auth expired, issue deleted between resolve and link), the workspace exists but isn't linked. The MCP tool returns an error to the client; client retries → creates a *second* workspace. Orphan accumulation.
+`Task::create`, `update`, `delete` added to `crates/db/src/models/task.rs` mirroring existing patterns in `workspace.rs`.
 
-### 6.2 Options
+**Server: composite endpoint — atomic create-and-start**
 
-| Option | Where the fix lives | Pros | Cons |
-|--------|---------------------|------|------|
-| A | MCP-side compensation: on link failure, `DELETE /api/workspaces/{id}` | No server change | Compensation can itself fail; not transactional; deletion is destructive of any partial work |
-| B | Server-side: move issue-linking into `create_and_start_workspace` handler so it's part of the same request | Truly atomic in one handler; no compensation needed | Need to know issue context server-side at request time |
-| **C (recommended)** | Server-side: extend `CreateAndStartWorkspaceRequest` with `link_to_issue: Option<{remote_project_id, issue_id}>` (which already exists as `linked_issue` field! verified in `create.rs:293`); have the handler perform the link inside the same DB transaction | Reuses existing field; one HTTP call; rollback on failure; no MCP-side compensation logic | Changes server semantics: link failure now fails workspace creation (intended — that's the point) |
+```
+POST /api/tasks/start
+body: {
+  task: { project_id, title, description?, parent_workspace_id? },
+  workspace: { name?, repos: [...], executor_config, prompt },
+}
+response: { task_id, workspace_id, execution_id }
+```
 
-### 6.3 Recommendation: Option C
+Single DB transaction wraps `{Task INSERT, Workspace INSERT, repo attaches, Workspace.task_id link}`. `start_execution` (which spawns the agent process) runs **after** transaction commit, so failure inside the transaction means nothing was spawned and rollback is clean.
 
-Verified server-side state:
-- `CreateAndStartWorkspaceRequest.linked_issue: Option<LinkedIssueInfo>` exists (`crates/db/src/models/requests.rs:35`).
-- The server handler currently uses `linked_issue` *only* to import issue attachments (`crates/server/src/routes/workspaces/create.rs:347-387`). It does **not** create the workspace↔issue link record.
-- The link record is created by a separate POST to `/api/workspaces/{id}/links`, which the MCP calls *after* `/api/workspaces/start` returns (`crates/mcp/src/task_server/tools/mod.rs:471-486`). This is the orphan window.
+**D6 — Atomic via DB transaction in this composite endpoint only.** The general `/api/workspaces/start` endpoint keeps its current behavior (no transaction wrapping with arbitrary post-creation operations). Only the new `/api/tasks/start` provides the atomicity guarantee. Other orphan windows are accepted as out-of-scope for this PR.
 
-PR4 closes the loop:
+**Server: per-parent concurrency limit**
 
-1. Server `create_and_start_workspace` handler: when `linked_issue` is `Some(...)`, also call the existing link-creation logic from `routes/workspaces/links` (extract its DB-insert helper into `services::workspace_links::create_link`) *before returning success*. The whole creation runs inside one DB transaction; on failure the workspace insert rolls back and the worktree is cleaned up via `ManagedWorkspace::delete()` in the error path.
-2. MCP `start_workspace` tool: stop calling `link_workspace_to_issue` separately; rely on server.
-3. Keep the standalone `link_workspace_issue` MCP tool (`task_attempts.rs:228`) for the after-the-fact use case.
+On `POST /api/tasks/start` and `POST /api/workspaces/start` (when called with a `task_id` whose task has `parent_workspace_id == Some(p)`), count workspaces `W` such that `W.task_id IS NOT NULL` AND `Task[W.task_id].parent_workspace_id == p` AND the latest `ExecutionProcess` for `W` has `status == Running`. If `count >= MAX_CHILDREN_PER_PARENT` (default 5, configurable via env `VK_MAX_CHILDREN_PER_PARENT`), reject with:
 
-**D8 — Rollback mechanism on link failure:** server uses an explicit DB transaction wrapping {workspace insert, repo attaches, link insert}. The actual `start_execution` (which spawns processes) happens *after* the transaction commits, so if the link fails we never spawned anything. Worktree cleanup is the only side effect to undo, and it's handled by the existing `ManagedWorkspace::delete()` path on commit failure.
+```
+HTTP 429 + error: { kind: "parent_concurrency_exceeded", retryable: true, human_intervention_required: false }
+```
 
-### 6.4 PR boundary (PR4)
+Manager retries with exponential backoff (or waits for a polled child to finish, then retries).
 
-- `crates/services/src/services/workspace_links.rs` — extract link-creation DB helper from `crates/server/src/routes/workspaces/links.rs` (or wherever `POST /links` currently lives) so both the standalone route and `create_and_start_workspace` can call it without duplicating SQL
-- `crates/server/src/routes/workspaces/create.rs` — wrap workspace + repos + link in one DB transaction (`pool.begin()` → operate via `&mut tx` → `tx.commit()`); on any error, return early so the tx is dropped (rolled back); worktree cleanup runs in the error branch via the existing `ManagedWorkspace::delete()` path
-- `crates/server/src/routes/workspaces/links.rs` — refactored to use the new shared helper (no behavior change for standalone link)
-- `crates/mcp/src/task_server/tools/task_attempts.rs` — drop the post-call link (lines 209-216) since the server now does it
-- Integration test: simulate link failure (e.g. invalid `project_id`) → verify no orphan workspace row remains
-- Expected diff ~300 LOC
+**D7 — Limit enforced server-side, not MCP-side.** A future second MCP-using client (or direct API call) would bypass an MCP-side check. Server is the right authority.
+
+**MCP tools — five new + one extended**
+
+```rust
+// New
+create_and_start_task(...)          // primary path: composite atomic creation
+create_task(...)                    // for "build todo list now, execute later"
+list_tasks(parent_workspace_id?)    // defaults to current MCP session's workspace if available
+get_task(task_id)
+update_task_status(task_id, status) // status ∈ {todo, in_progress, in_review, done, cancelled}
+delete_task(task_id)
+
+// Extended (already exist)
+start_workspace(..., task_id?)      // optional task_id binds a fresh attempt to an existing task
+list_workspaces(..., task_id?)      // adds task_id filter to existing tool (`crates/mcp/src/task_server/tools/workspaces.rs:102`)
+```
+
+**D8 — `list_tasks` defaults to caller's workspace context.** When the MCP server has a known calling workspace (orchestrator launch mode — see `crates/mcp/src/task_server/tools/context.rs`), `list_tasks` without arguments filters to `parent_workspace_id == caller`. Manager naturally sees only its own todos. Explicit `parent_workspace_id` argument overrides. When the MCP server has no known calling workspace and no argument is given, return an error `kind: "missing_parent_workspace_id"` rather than dumping all tasks across the system (forces explicit scoping).
+
+**D9 — Manager-side compensation NOT needed for `create_and_start_task`** (covered by server transaction in D6). For the standalone two-step path (`create_task` then `start_workspace(task_id=...)`), if `start_workspace` fails the manager can choose to retry or call `update_task_status(task_id, Cancelled)` — no automatic cleanup. Acceptable: user explicitly decided to use the two-step path, so the recovery semantics are theirs.
+
+### 6.3 PR boundary
+
+- `crates/db/src/models/task.rs` — `create`, `update`, `delete` methods
+- `crates/server/src/routes/tasks/` (new module) — CRUD routes + `/start` composite + concurrency check
+- `crates/server/src/routes/mod.rs` — wire `tasks::router()`
+- `crates/services/src/services/task_concurrency.rs` (new) — counter + limit check (extracted for testability)
+- `crates/mcp/src/task_server/tools/tasks.rs` (new) — 5 new tools
+- `crates/mcp/src/task_server/tools/task_attempts.rs` — extend `start_workspace` with optional `task_id`
+- `crates/mcp/src/task_server/tools/workspaces.rs` — extend `list_workspaces` with optional `task_id` filter
+- `crates/mcp/src/task_server/mod.rs` — register new tool router
+- `crates/api-types/src/lib.rs` — `TaskCreate`, `TaskUpdate`, `CreateAndStartTaskRequest`, `CreateAndStartTaskResponse`
+- `shared/types.ts` regen
+- Tests:
+  - Unit: `Task::create` / `update` / `delete` happy path + constraint violations
+  - Unit: concurrency check returns 429 at exactly `MAX_CHILDREN_PER_PARENT + 1`
+  - Integration: `POST /api/tasks/start` with deliberately-invalid `repo_id` → no Task row remains (transaction rolled back)
+  - Integration: spawn 6 children with `MAX = 5` → 6th gets `parent_concurrency_exceeded`
+
+Expected diff: ~800 LOC.
 
 ---
 
-## 7. S4 — Concurrency & lifecycle
+## 7. PR-X4 — UI surface for task tree
 
-### 7.1 S4a: `batch_start`
+### 7.1 Problem
 
-**Goal:** spawn N workspaces in one MCP call.
+Tier A++ creates rich data (manager workspace → tasks → child workspaces) but without UI surfacing it, debugging orchestration failures requires SQL access. A minimal UI delta makes orchestration **observable**.
 
-**API:**
+### 7.2 Design
 
-```rust
-struct BatchStartRequest {
-    items: Vec<StartWorkspaceRequest>,   // reuse single-item type from task_attempts.rs
-    /// "all_or_nothing" → first failure aborts and rolls back successful workspaces.
-    /// "best_effort"    → return per-item Result; partial success allowed.
-    mode: BatchMode,                     // default: "best_effort"
-    max_parallelism: Option<usize>,      // default: 4
-}
+Two changes to `packages/web-core` (shared between `local-web` and `remote-web`):
 
-struct BatchStartResponse {
-    items: Vec<BatchStartItemResult>,
-}
+**Change 1 — Workspace detail breadcrumb**
 
-#[serde(tag = "status")]
-enum BatchStartItemResult {
-    Ok { workspace_id: String, execution_id: String },
-    Err {
-        index: usize,
-        error_kind: String,
-        message: String,
-        retry_safe: bool,
-    },
-}
+When a workspace has `task_id != null`, fetch the Task; when the Task has `parent_workspace_id != null`, fetch that workspace. Render at the top of the workspace detail view:
+
+```
+[Manager: <parent_workspace_name>] / [Task: <task_title>] / Attempt #<n>
 ```
 
-**D9 — Default mode:** `best_effort`. Rationale: `all_or_nothing` requires server-side rollback of arbitrary side effects (worktrees, git branches, possibly issue links); the cost of getting that right outweighs the value for most batch workloads. Clients that want strict semantics can iterate sequentially or implement their own rollback.
+Each segment is a link (parent workspace clickable to navigate up). If only one of the two relationships exists, render the available segment(s) only.
 
-**D10 — Parallelism:** default 4, capped at 8. Coding-agent spawns are CPU-light but worktree-create is I/O-heavy; 4 keeps disk thrash bounded on typical dev hardware.
+**Change 2 — Workspace list grouping toggle**
 
-**Implementation:** MCP-side fan-out using `futures::stream::FuturesUnordered` over the existing single-item path (which after S3 = single HTTP call). No server change.
+Add a "Group by manager" toggle in the workspace list header. When enabled:
 
-### 7.2 S4b: SSE subscription helper
+- Workspaces with no `task_id` (or whose task has no `parent_workspace_id`) render under "Standalone"
+- Workspaces with a manager parent group under "Manager: <parent_workspace_name>", collapsible
 
-**Goal:** orchestrator subscribes to a session's lifecycle events without polling. Replaces "webhook to orchestrator" — pull beats push for this topology.
+Default off (current flat list behavior preserved).
 
-**MCP tool:**
-
-```rust
-#[tool(description = "Stream lifecycle events for a session until it terminates or `timeout_secs` elapses.")]
-async fn subscribe_session_events(
-    &self,
-    Parameters(SubscribeSessionEventsRequest {
-        session_id,
-        timeout_secs,         // default 600, max 3600
-        include_log_lines,    // default false; if true, emit each stderr/stdout line
-    }): Parameters<...>,
-) -> Result<CallToolResult, ErrorData>
-```
-
-**Returns:** a single-shot `CallToolResult` containing a JSON array of events captured during the call. Per MCP semantics, tools don't stream — the call blocks until terminal event or timeout, then returns the accumulated events.
-
-**Event shape:**
-
-```json
-{
-  "ts": "2026-04-20T10:30:00Z",
-  "type": "phase_change" | "log_line" | "execution_started" | "execution_finished" | "timeout",
-  "phase": "running",                              // for phase_change
-  "execution_id": "...",                           // for execution_*
-  "level": "stderr",                               // for log_line
-  "text": "...",                                   // for log_line (truncated to 1KiB)
-  "error_kind": "executor_not_found"               // for execution_finished if errored
-}
-```
-
-**Implementation:** subscribe to existing SSE `/api/events` server stream, filter to `session_id`, accumulate, return on terminal phase (Done / Errored) or `timeout_secs`.
-
-**D11 — Why blocking single-shot vs streaming-tool:** rmcp 1.2 `tool` macro returns `CallToolResult` synchronously; true streaming requires raw protocol calls. Blocking-with-timeout is the pragmatic minimum for v1.
+**D10 — Read-only UI, no editing.** This PR does not add task editing UI (rename, status change, delete). Those happen via MCP tools or direct API. UI is for **observability**. Editing UI is a follow-up if user demand surfaces.
 
 ### 7.3 PR boundary
 
-- **PR5 (S4a):** `crates/mcp/src/task_server/tools/batch.rs` (new). Pure MCP-side. ~250 LOC including table-driven tests.
-- **PR6 (S4b):** `crates/mcp/src/task_server/tools/subscribe.rs` (new). Reuses MCP's existing reqwest client; needs `reqwest` SSE support — check feature flag in PR; if absent, add `reqwest-eventsource` as a dep. ~400 LOC.
+- `packages/web-core/src/api/tasks.ts` (new) — TS client for Task GET endpoints (POST/PUT/DELETE not needed in UI)
+- `packages/web-core/src/hooks/useTaskBreadcrumb.ts` (new) — fetches task + parent workspace given a workspace
+- `packages/web-core/src/components/WorkspaceBreadcrumb.tsx` (new)
+- `packages/web-core/src/components/WorkspaceList.tsx` — add `groupByManager` toggle + grouping logic
+- `packages/local-web/src/...` — wire the breadcrumb into existing workspace detail page
+- Tests: Vitest snapshot on breadcrumb component for {no task, task only, task + parent}
+
+Expected diff: ~400 LOC.
 
 ---
 
 ## 8. Cross-cutting concerns
 
 ### 8.1 Type sharing
-All new request/response types use `#[derive(Serialize, Deserialize, schemars::JsonSchema)]` for MCP, and where they cross the FFI boundary into TS, also `ts_rs::TS`. `pnpm run generate-types` runs at the end of each PR.
 
-### 8.2 Testing
-- Server-side: unit tests in `error.rs` for taxonomy mapping; integration test in `crates/server/tests/` for end-to-end stderr capture.
-- MCP-side: unit tests next to each tool file. Phase machine, batch fan-out, and SSE subscription each get table-driven tests with a faked HTTP client (existing pattern in `tools/mod.rs::tests::response_classification`).
-- No new e2e harness — existing `pnpm run dev` + manual smoke test for each PR.
+All new request/response types use `#[derive(Serialize, Deserialize, schemars::JsonSchema)]` for MCP. Types crossing into TS also derive `ts_rs::TS`. `pnpm run generate-types` runs at the end of each PR.
+
+### 8.2 Testing strategy
+
+- **Server:** unit tests next to handlers; integration tests in `crates/server/tests/` for flows touching DB transactions and concurrency limits.
+- **MCP:** unit tests next to each tool file using the existing faked-HTTP-client pattern (see `crates/mcp/src/task_server/tools/mod.rs::tests::response_classification`).
+- **Web:** Vitest co-located with components; no e2e harness changes.
+- **Manual smoke:** each PR includes a documented manual smoke test in its PR description (e.g. "spawn child via Claude Code MCP → assert error_kind on auth failure").
 
 ### 8.3 Backward compatibility
-- `error_kind` is `#[serde(skip_serializing_if = "Option::is_none")]` → existing clients that don't know about it see no change.
-- All new MCP tools are additive. Existing tools' contracts unchanged.
-- S3 changes the *behavior* of `/api/workspaces/start` when `linked_issue` is set: link failure now fails the request. Clients that rely on the old "workspace created even if link failed" behavior will see a regression — but that behavior was the bug.
+
+- `ApiResponse.error` is `#[serde(skip_serializing_if = "Option::is_none")]` → existing clients see no change.
+- All new MCP tools are additive. `start_workspace` gains an *optional* `task_id` field — no break.
+- `get_execution` response gains `status` + `error` fields — additive.
+- Task CRUD endpoints are net-new — no existing client code paths affected.
+- UI changes are additive (new breadcrumb component, new optional toggle).
 
 ### 8.4 Push gate compliance
-Per user policy: read-only by default; show diff before commit; **wait for explicit authorization before push**. Each PR pauses at `git push` for sign-off.
 
-## 9. Out of scope: S5 (deferred)
-
-S5 — MCP transport stability — was originally framed as "10s heartbeat + 3-attempt reconnect backoff + disconnect events". On inspection:
-
-- `rmcp` 1.2 stdio transport already includes protocol-level keepalive.
-- The actual production symptom (what is failing? when? in which client?) was not specified.
-- "Heartbeat" / "reconnect" are *solutions*, not *problems*. Without a symptom we'd be designing speculative infrastructure.
-
-**Defer until** the user describes one of:
-- MCP client (Claude Code / Cursor) reports the server died — under what trigger?
-- Backend died but MCP didn't notice — what observable failure mode?
-- MCP process became orphaned (parent died) and consumed resources — verified leak?
-- Other concrete symptom?
-
-Once described, S5 gets its own mini-spec.
-
-## 10. Decision log
-
-| ID | Decision | Alternatives | Status |
-|----|----------|--------------|--------|
-| D1 | `error_kind` is `Option<String>` on the wire | TS-RS enum | Accepted |
-| D2 | Extend `ApiError::Executor` rather than add `ExecutorWithContext` | Parallel variant | Accepted |
-| D3 | Stderr tail size: 2 KiB | 4 KiB / 1 KiB | Accepted |
-| D4 | `error_kind` defaults to `error_type` for non-executor variants | Tighten all 200+ at once | Accepted (incremental) |
-| D5 | `delete_tag` accepts ID only | Name lookup | Accepted (v1) |
-| D6 | `Stalled` threshold: 5 min | 1 min / 10 min | Accepted (constant, tunable) |
-| D7 | Last-activity proxied from `ExecutionProcess.updated_at` (no new endpoint, one new `/latest-execution` route) | Per-log-line via MsgStore endpoint; SSE replay | Accepted (v1) |
-| D8 | S3 rollback uses DB transaction wrapping creation + link | MCP compensation; deferred link | Accepted |
-| D9 | `batch_start` default mode: `best_effort` | `all_or_nothing` | Accepted |
-| D10 | `batch_start` default parallelism: 4 (cap 8) | unbounded | Accepted |
-| D11 | `subscribe_session_events` is blocking-single-shot | true streaming | Accepted (v1) |
-
-## 11. Items most likely to draw a flip request
-
-All D-numbers in §10 are owner-callable; these are the ones where I'd most expect the user to push back, listed for explicit acknowledgement:
-
-- **D5** — `delete_tag` ID-only. If you want `delete_tag_by_name`, say so and I'll add it as a sibling tool.
-- **D6** — `Stalled` threshold of 5 min. If your agents are typically slow (large diffs / long planning), this needs to go up; if they should produce continuous output, lower.
-- **D9** — `batch_start` default `best_effort`. If you want strict `all_or_nothing` rollback, that's a meaningfully bigger PR (server-side compensation across N workspaces).
-- **D11** — `subscribe_session_events` is blocking-single-shot, not true streaming. If you actually need streaming-per-event delivery to the MCP client, that requires lower-level rmcp protocol work.
-
-If none of these need flipping, ack the spec and we go straight to writing-plans.
+Per user policy: read-only by default; show diff before commit; **wait for explicit authorization before push**. Each PR pauses at `git push` for sign-off. No exceptions.
 
 ---
 
-## Appendix A: Files touched (per PR)
+## 9. Decision log
 
-| PR | Files |
-|----|-------|
-| 1 (S1) | `crates/utils/src/response.rs`, `crates/server/src/error.rs`, `crates/services/src/services/container.rs`, `crates/server/src/routes/sessions/mod.rs`, `crates/server/src/routes/workspaces/create.rs`, `shared/types.ts` (regen) |
-| 2 (S2a tags) | `crates/mcp/src/task_server/tools/tags.rs` (new), `crates/mcp/src/task_server/mod.rs` |
-| 3 (S2b status) | `crates/server/src/routes/sessions/mod.rs` (new `/latest-execution` route), `crates/mcp/src/task_server/tools/sessions.rs` (extend with `get_session_status`), `shared/types.ts` (regen) |
-| 4 (S3 atomicity) | `crates/server/src/routes/workspaces/create.rs`, `crates/services/src/services/...` (link helper), `crates/mcp/src/task_server/tools/task_attempts.rs` (drop post-call link) |
-| 5 (S4a batch) | `crates/mcp/src/task_server/tools/batch.rs` (new), `crates/mcp/src/task_server/mod.rs` |
-| 6 (S4b subscribe) | `crates/mcp/src/task_server/tools/subscribe.rs` (new), `crates/mcp/Cargo.toml` (potentially `reqwest-eventsource`), `crates/mcp/src/task_server/mod.rs` |
+| ID  | Decision                                                                              | Status   |
+|-----|---------------------------------------------------------------------------------------|----------|
+| D1  | Executor errors keep HTTP 500; manager switches on `error.kind`, not status           | Accepted |
+| D2  | Five canonical `kind` values, not 13; extend later if a consumer needs split          | Accepted |
+| D3  | `read_session_messages` default `last_n = 20`                                         | Accepted |
+| D4  | `final_assistant_message` is a top-level convenience field, full text                 | Accepted |
+| D5  | `include_reasoning = false` by default to control token cost                          | Accepted |
+| D6  | Atomicity via DB transaction in the new `/api/tasks/start` only — not retrofit existing endpoints | Accepted |
+| D7  | Concurrency limit enforced server-side, not MCP-side                                  | Accepted |
+| D8  | `list_tasks` defaults to caller workspace's parent scope                              | Accepted |
+| D9  | Two-step path (`create_task` + `start_workspace`) does not auto-cleanup on failure    | Accepted |
+| D10 | UI is read-only in this campaign; editing UI deferred                                 | Accepted |
+
+---
+
+## 10. Items most likely to draw a flip request
+
+These decisions are owner-callable; flagging the ones where pushback is most plausible:
+
+- **D2** — five `kind` values may feel too coarse if you have a specific consumer needing `auth_required` separated from a more granular sub-kind. Easy to extend.
+- **D3** — `last_n = 20` could be too small if your manager prompts expect long final messages with intermediate summaries. Tunable per-call already.
+- **D6** — accepting that orphan windows in *other* endpoints remain unfixed is a deliberate trade-off; if you want full server-side atomicity across all workspace creations, that's a meaningfully bigger PR.
+- **D10** — shipping read-only UI means humans cannot rename a manager-created task from the UI. If the manager mis-titles things, only re-running through MCP fixes it. Acceptable for v1.
+
+If none of these need flipping, ack the spec and we go to writing-plans.
+
+---
+
+## Appendix A: Manager prompt pattern (reference)
+
+A reference fragment showing how a manager prompt uses these tools end-to-end. **Not part of any PR** — purely for spec reviewers to validate that the API surface composes naturally.
+
+```
+You are an orchestrator session in Vibe Kanban. Your workspace ID is {self_workspace_id}.
+
+On startup, recover state:
+  1. tasks = list_tasks()                                          # defaults to parent_workspace_id == self
+  2. for t in tasks where t.status == in_progress:
+       workspaces = list_workspaces(task_id=t.id)
+       latest = workspaces[0]                                      # already sorted desc by created_at
+       e = get_execution(latest.id)
+       if e.status in (Completed, Failed):
+         resolve t (update_task_status accordingly)
+
+For each new piece of work:
+  1. result = create_and_start_task(
+       task: { project_id, title: "...", description: "...", parent_workspace_id: {self} },
+       workspace: { repos: [...], executor_config: {...}, prompt: t.description }
+     )
+  2. record (task_id, workspace_id) for polling
+
+Polling loop:
+  for (tid, wid) in pending:
+    e = get_execution(wid)
+    if e.status == Running: continue
+    if e.status == Completed:
+      msgs = read_session_messages(wid)              # default last_n=20
+      summary = msgs.final_assistant_message
+      update_task_status(tid, done)
+    if e.status == Failed:
+      if e.error.retryable and not e.error.human_intervention_required:
+        retry up to 2 more times
+      else:
+        update_task_status(tid, cancelled)
+        report e.error.kind + e.error.stderr_tail to user
+
+Back-pressure:
+  on parent_concurrency_exceeded: wait for next pending child to finish, then retry
+```
+
+---
+
+## Appendix B: Files touched (per PR)
+
+| PR    | Files |
+|-------|-------|
+| PR-X1 | `crates/utils/src/response.rs`, `crates/server/src/error.rs`, `crates/services/src/services/container.rs`, `crates/server/src/routes/sessions/mod.rs`, `crates/server/src/routes/workspaces/create.rs`, `crates/mcp/src/task_server/tools/sessions.rs`, `shared/types.ts` (regen) |
+| PR-X2 | `crates/mcp/src/task_server/tools/sessions.rs`, (conditional) `crates/server/src/routes/sessions/mod.rs`, `shared/types.ts` (regen) |
+| PR-X3 | `crates/db/src/models/task.rs`, `crates/server/src/routes/tasks/` (new), `crates/server/src/routes/mod.rs`, `crates/services/src/services/task_concurrency.rs` (new), `crates/mcp/src/task_server/tools/tasks.rs` (new), `crates/mcp/src/task_server/tools/task_attempts.rs` (extend `start_workspace`), `crates/mcp/src/task_server/mod.rs`, `crates/api-types/src/lib.rs`, `shared/types.ts` (regen) |
+| PR-X4 | `packages/web-core/src/api/tasks.ts` (new), `packages/web-core/src/hooks/useTaskBreadcrumb.ts` (new), `packages/web-core/src/components/WorkspaceBreadcrumb.tsx` (new), `packages/web-core/src/components/WorkspaceList.tsx`, `packages/local-web/src/...` (wire breadcrumb into existing detail page) |
