@@ -1044,90 +1044,18 @@ pub trait ContainerService {
         }
     }
 
+    /// Thin wrapper around `start_workspace_with_context` that discards the
+    /// failure-context tuple element. Use `start_workspace_with_context`
+    /// directly when you need the stderr tail / program name on failure.
     async fn start_workspace(
         &self,
         workspace: &Workspace,
         executor_config: ExecutorConfig,
         prompt: String,
     ) -> Result<ExecutionProcess, ContainerError> {
-        // Create container
-        self.create(workspace).await?;
-
-        let repos = WorkspaceRepo::find_repos_for_workspace(&self.db().pool, workspace.id).await?;
-
-        let workspace = Workspace::find_by_id(&self.db().pool, workspace.id)
-            .await?
-            .ok_or(SqlxError::RowNotFound)?;
-
-        // Create a session for this workspace
-        let session = Session::create(
-            &self.db().pool,
-            &CreateSession {
-                executor: Some(executor_config.executor.to_string()),
-                name: None,
-            },
-            Uuid::new_v4(),
-            workspace.id,
-        )
-        .await?;
-
-        let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
-
-        let all_parallel = repos_with_setup.iter().all(|r| r.parallel_setup_script);
-
-        let cleanup_action = self.cleanup_actions_for_repos(&repos);
-
-        let working_dir = session
-            .agent_working_dir
-            .as_ref()
-            .filter(|dir| !dir.is_empty())
-            .cloned();
-
-        let coding_action = ExecutorAction::new(
-            ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
-                prompt,
-                executor_config: executor_config.clone(),
-                working_dir,
-            }),
-            cleanup_action.map(Box::new),
-        );
-
-        let execution_process = if all_parallel {
-            // All parallel: start each setup independently, then start coding agent
-            for repo in &repos_with_setup {
-                if let Some(action) = Self::setup_action_for_repo(repo)
-                    && let Err(e) = self
-                        .start_execution(
-                            &workspace,
-                            &session,
-                            &action,
-                            &ExecutionProcessRunReason::SetupScript,
-                        )
-                        .await
-                {
-                    tracing::warn!(?e, "Failed to start setup script in parallel mode");
-                }
-            }
-            self.start_execution(
-                &workspace,
-                &session,
-                &coding_action,
-                &ExecutionProcessRunReason::CodingAgent,
-            )
-            .await?
-        } else {
-            // Any sequential: chain ALL setups → coding agent via next_action
-            let main_action = Self::build_sequential_setup_chain(&repos_with_setup, coding_action);
-            self.start_execution(
-                &workspace,
-                &session,
-                &main_action,
-                &ExecutionProcessRunReason::SetupScript,
-            )
-            .await?
-        };
-
-        Ok(execution_process)
+        self.start_workspace_with_context(workspace, executor_config, prompt)
+            .await
+            .0
     }
 
     /// Core implementation shared by `start_execution` and `start_execution_with_context`.
@@ -1557,8 +1485,10 @@ pub trait ContainerService {
         );
 
         if all_parallel {
-            // All parallel: start each setup independently (failures are warnings only),
-            // then start the coding agent with context.
+            // All parallel: start each setup independently, then start the coding agent
+            // with context. Setup-script spawn failures here are intentionally swallowed
+            // into `tracing::warn!` logs — only the terminal coding-agent spawn below
+            // surfaces an `ExecutorFailureContext` to API callers.
             for repo in &repos_with_setup {
                 if let Some(action) = Self::setup_action_for_repo(repo)
                     && let Err(e) = self
@@ -1597,6 +1527,10 @@ pub trait ContainerService {
 /// Context attached to an executor failure, surfaced to API callers.
 #[derive(Debug, Clone, Default)]
 pub struct ExecutorFailureContext {
+    /// Last ≤2048 bytes of the aborted process's stderr (UTF-8-safe left truncation).
+    /// `None` if no stderr was buffered before the MsgStore was cleaned up.
     pub stderr_tail: Option<String>,
+    /// Program name derived from the executor error, when extractable
+    /// (currently only from `ExecutorError::ExecutableNotFound`).
     pub program: Option<String>,
 }

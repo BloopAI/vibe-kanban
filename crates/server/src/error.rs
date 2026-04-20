@@ -54,11 +54,12 @@ pub enum ApiError {
     Container(ContainerError),
     #[error(transparent)]
     Executor(#[from] ExecutorError),
-    /// Executor error with a pre-built envelope carrying stderr tail and program name.
-    /// Use this variant when the caller has already collected failure context via
-    /// `start_execution_with_context` or `start_workspace_with_context`.
+    /// Executor failure with captured context (stderr tail + program) to
+    /// surface through the MCP / HTTP error envelope.
     ///
-    /// `message` is the `Display` string of the original error.
+    /// `message` is the `Display` string of the original `ExecutorError`.
+    /// (`ExecutorError` is not `Clone` because it wraps `std::io::Error`;
+    /// the envelope's `kind` field preserves the typed classification.)
     #[error("{message}")]
     ExecutorWithContext {
         message: String,
@@ -265,6 +266,25 @@ pub fn executor_error_envelope(
         human_intervention_required: human,
         stderr_tail,
         program,
+    }
+}
+
+/// Map a `ContainerError` into an `ApiError`, attaching executor failure
+/// context (stderr tail + program) when the underlying error is an
+/// `ExecutorError`. All other container errors fall through to the default
+/// `From<ContainerError> for ApiError` conversion.
+pub(crate) fn map_container_err_with_context(
+    e: ContainerError,
+    ctx: Option<services::services::container::ExecutorFailureContext>,
+) -> ApiError {
+    if let ContainerError::ExecutorError(ref exe_err) = e {
+        let ctx = ctx.unwrap_or_default();
+        ApiError::ExecutorWithContext {
+            message: exe_err.to_string(),
+            envelope: executor_error_envelope(exe_err, ctx.stderr_tail, ctx.program),
+        }
+    } else {
+        ApiError::from(e)
     }
 }
 
