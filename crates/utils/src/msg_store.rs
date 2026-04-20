@@ -67,6 +67,10 @@ impl MsgStore {
         self.push(LogMsg::Stdout(s.into()));
     }
 
+    pub fn push_stderr<S: Into<String>>(&self, s: S) {
+        self.push(LogMsg::Stderr(s.into()));
+    }
+
     pub fn push_patch(&self, patch: json_patch::Patch) {
         self.push(LogMsg::JsonPatch(patch));
     }
@@ -177,17 +181,10 @@ impl MsgStore {
             return None;
         }
 
-        if combined.len() <= limit_bytes {
-            return Some(combined);
-        }
-
-        // Truncate from the left, respecting UTF-8 char boundaries.
-        let start = combined.len() - limit_bytes;
-        let mut boundary = start;
-        while !combined.is_char_boundary(boundary) && boundary < combined.len() {
-            boundary += 1;
-        }
-        Some(format!("\u{2026}{}", &combined[boundary..]))
+        Some(crate::text::truncate_left_to_char_boundary(
+            &combined,
+            limit_bytes,
+        ))
     }
 
     /// Forward a stream of typed log messages into this store.
@@ -206,5 +203,46 @@ impl MsgStore {
                 }
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod collect_stderr_tail_tests {
+    use super::*;
+
+    #[test]
+    fn returns_none_when_history_is_empty() {
+        let store = MsgStore::new();
+        assert_eq!(store.collect_stderr_tail(2048), None);
+    }
+
+    #[test]
+    fn returns_none_when_only_stdout() {
+        let store = MsgStore::new();
+        store.push_stdout("normal output".to_string());
+        assert_eq!(store.collect_stderr_tail(2048), None);
+    }
+
+    #[test]
+    fn returns_full_text_when_below_limit() {
+        let store = MsgStore::new();
+        store.push_stderr("line one".to_string());
+        store.push_stderr("line two".to_string());
+        let out = store.collect_stderr_tail(2048).unwrap();
+        assert!(out.contains("line one"));
+        assert!(out.contains("line two"));
+        assert!(
+            !out.starts_with('…'),
+            "short content should not be truncated"
+        );
+    }
+
+    #[test]
+    fn truncates_when_above_limit_with_ellipsis() {
+        let store = MsgStore::new();
+        store.push_stderr("x".repeat(3000));
+        let out = store.collect_stderr_tail(2048).unwrap();
+        assert!(out.starts_with('…'));
+        assert!(out.len() <= 2048 + 6);
     }
 }
