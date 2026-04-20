@@ -50,7 +50,7 @@
     "remote:prepare-db:check": "cd crates/remote && bash scripts/prepare-db.sh --check",
     "prepare:tauri-sidecars": "node scripts/prepare-tauri-sidecars.js",
     "tauri:dev": "set -a && { [ ! -f .env ] || . ./.env; } && set +a && export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export VK_ALLOWED_ORIGINS=\"http://localhost:${FRONTEND_PORT}\" && export DISABLE_WORKTREE_CLEANUP=1 && export RUST_LOG=debug && export VITE_VK_SHARED_API_BASE=${VK_SHARED_API_BASE:-} && export VK_LOCAL_ONLY=${VK_LOCAL_ONLY:-1} && pnpm run prepare:tauri-sidecars && cd crates/tauri-app && cargo tauri dev --config '{\"build\":{\"devUrl\":\"http://localhost:'\"${FRONTEND_PORT}\"'\"}}'",
-    "tauri:build": "pnpm run prepare:tauri-sidecars && cd crates/tauri-app && cargo tauri build"
+    "tauri:build": "pnpm --filter @vibe/local-web run build && pnpm run prepare:tauri-sidecars && cd crates/tauri-app && cargo tauri build"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",
