@@ -241,9 +241,14 @@ async fn resolve_base_url(log_prefix: &str) -> anyhow::Result<String> {
         return Ok(url);
     }
 
+    // Default to `localhost` (not `127.0.0.1`) to match the hostname the
+    // embedded server binds to in `server::startup::start_with_bind`.
+    // On modern macOS `localhost` resolves to `::1` first, so the server
+    // ends up listening only on IPv6; an IPv4 literal here would fail to
+    // connect. Env overrides still win for users with custom setups.
     let host = std::env::var(HOST_ENV)
         .or_else(|_| std::env::var("HOST"))
-        .unwrap_or_else(|_| "127.0.0.1".to_string());
+        .unwrap_or_else(|_| "localhost".to_string());
 
     let port = match std::env::var(PORT_ENV)
         .or_else(|_| std::env::var("BACKEND_PORT"))

@@ -1,5 +1,23 @@
 # Repository Guidelines
 
+> `CLAUDE.md` is a symlink to this file — edit `AGENTS.md` directly.
+
+## Product & Architecture (Big Picture)
+Vibe Kanban is a kanban-style orchestrator for coding agents. Users create *tasks* and spawn *task attempts*, each of which runs inside a *workspace* (a git worktree with its own dev server) where an *executor* drives a coding agent (Claude Code, Codex, Gemini CLI, Cursor, Amp, etc.). Reviewers then inspect diffs and open PRs.
+
+Crate roles worth knowing before editing:
+- `server` — HTTP API + binaries; the main backend entrypoint.
+- `executors` — per-agent adapters (spawn, stream logs, parse tool calls); add a new agent here.
+- `workspace-manager` / `worktree-manager` — lifecycle of agent workspaces and git worktrees.
+- `local-deployment` vs `remote` — local desktop app vs cloud/self-hosted server; both depend on `deployment` and share `api-types`.
+- `relay-*` — tunnel/relay stack that lets the local app reach a remote instance.
+- `mcp`, `desktop-bridge`, `tauri-app` — MCP server, IDE bridge, Tauri shell.
+- `packages/web-core` is shared between `local-web` and `remote-web`; put cross-surface UI there, not in either shell.
+
+## Prerequisites
+- Rust (stable, pinned via `rust-toolchain.toml`), Node ≥20, pnpm ≥8.
+- `cargo install cargo-watch sqlx-cli` — required for `backend:dev:watch` and SQLx offline prep.
+
 ## Project Structure & Module Organization
 - `crates/`: Rust workspace crates — `server` (API + bins), `db` (SQLx models/migrations), `executors`, `services`, `utils`, `git` (Git operations), `api-types` (shared API types for local + remote), `review` (PR review tool), `deployment`, `local-deployment`, `remote`.
 - `packages/local-web/`: Local React + TypeScript app entrypoint (Vite, Tailwind). Shell source in `packages/local-web/src`.
