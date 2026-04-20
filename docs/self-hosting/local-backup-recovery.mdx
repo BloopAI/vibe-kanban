@@ -134,6 +134,12 @@ The backup also mirrors the archive to the Desktop machine:
 
 The `latest` path is the one agents should prefer for fast restore.
 
+Important local-disk rule:
+
+- only the newest unpacked timestamped backup directory is kept locally
+- older local runs are kept as compressed archives only
+- this is intentional because the extracted directories are the biggest source of backup bloat
+
 ## Scheduled backups
 
 The current scheduler is a user crontab entry:
@@ -173,9 +179,14 @@ Timestamped backups age out automatically using this retention ladder:
 
 This pruning runs for:
 
-- local timestamped backup directories
 - local timestamped backup archives
 - Desktop mirrored timestamped archives
+
+For local extracted directories:
+
+- keep only the newest timestamped extracted backup directory
+- delete older extracted directories automatically after archiving
+- rely on the retained `.tar.gz` archives for older restores
 
 The stable `latest` pointers are not pruned.
 

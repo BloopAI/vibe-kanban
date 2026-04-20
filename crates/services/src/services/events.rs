@@ -163,19 +163,11 @@ impl EventService {
                                         }
                                     }
                                 }
+                                // Scratch create/update notifications are emitted directly
+                                // from the scratch API route to avoid an extra DB round-trip
+                                // and global row refetch on every UI preference write.
                                 (HookTables::Scratch, _) => {
-                                    match Scratch::find_by_rowid(&db.pool, rowid).await {
-                                        Ok(Some(scratch)) => RecordTypes::Scratch(scratch),
-                                        Ok(None) => RecordTypes::DeletedScratch {
-                                            rowid,
-                                            scratch_id: None,
-                                            scratch_type: None,
-                                        },
-                                        Err(e) => {
-                                            tracing::error!("Failed to fetch scratch: {:?}", e);
-                                            return;
-                                        }
-                                    }
+                                    return;
                                 }
                             };
 

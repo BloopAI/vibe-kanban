@@ -322,6 +322,7 @@ pub type CancellationToken = tokio_util::sync::CancellationToken;
 #[derive(Debug)]
 pub struct SpawnedChild {
     pub child: AsyncGroupChild,
+    pub transient_unit_name: Option<String>,
     /// Executor → Container: signals when executor wants to exit
     pub exit_signal: Option<ExecutorExitSignal>,
     /// Container → Executor: signals when container wants to cancel the execution
@@ -332,6 +333,7 @@ impl From<AsyncGroupChild> for SpawnedChild {
     fn from(child: AsyncGroupChild) -> Self {
         Self {
             child,
+            transient_unit_name: None,
             exit_signal: None,
             cancel: None,
         }

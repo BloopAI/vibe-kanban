@@ -79,6 +79,7 @@ use crate::{
     logs::utils::patch,
     model_selector::{ModelInfo, ModelSelectorConfig, PermissionPolicy, ReasoningOption},
     profile::ExecutorConfig,
+    systemd_run::{self, StdinMode},
     stdout_dup::create_stdout_pipe_writer,
 };
 
@@ -634,24 +635,43 @@ impl Codex {
     {
         let (program_path, args) = command_parts.into_resolved().await?;
 
-        let mut process = Command::new(program_path);
-        process
-            .kill_on_drop(true)
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .current_dir(current_dir)
-            .env("NPM_CONFIG_LOGLEVEL", "error")
-            .env("NODE_NO_WARNINGS", "1")
-            .env("NO_COLOR", "1")
-            .env("RUST_LOG", "error")
-            .args(&args);
+        let effective_env = env.clone().with_profile(&self.cmd);
+        let mut transient_unit_name = None;
+        let mut child = if systemd_run::enabled() {
+            let mut env_vars = effective_env.vars.clone();
+            env_vars.insert("NPM_CONFIG_LOGLEVEL".to_string(), "error".to_string());
+            env_vars.insert("NODE_NO_WARNINGS".to_string(), "1".to_string());
+            env_vars.insert("NO_COLOR".to_string(), "1".to_string());
+            env_vars.insert("RUST_LOG".to_string(), "error".to_string());
+            let unit_name = systemd_run::build_unit_name("codex");
+            transient_unit_name = Some(unit_name.clone());
+            systemd_run::spawn_transient_unit(
+                &unit_name,
+                "VK Codex execution",
+                current_dir,
+                &program_path,
+                &args,
+                &env_vars,
+                StdinMode::Piped,
+            )?
+        } else {
+            let mut process = Command::new(program_path);
+            process
+                .kill_on_drop(true)
+                .stdin(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .current_dir(current_dir)
+                .env("NPM_CONFIG_LOGLEVEL", "error")
+                .env("NODE_NO_WARNINGS", "1")
+                .env("NO_COLOR", "1")
+                .env("RUST_LOG", "error")
+                .args(&args);
 
-        env.clone()
-            .with_profile(&self.cmd)
-            .apply_to_command(&mut process);
+            effective_env.apply_to_command(&mut process);
 
-        let mut child = process.group_spawn_no_window()?;
+            process.group_spawn_no_window()?
+        };
 
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {
             ExecutorError::Io(std::io::Error::other("Codex app server missing stdout"))
@@ -739,6 +759,7 @@ impl Codex {
 
         Ok(SpawnedChild {
             child,
+            transient_unit_name,
             exit_signal: Some(exit_signal_rx),
             cancel: Some(cancel),
         })

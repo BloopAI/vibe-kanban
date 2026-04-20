@@ -236,21 +236,24 @@ def collect_local_backup_sets(backup_root: Path):
 
 def prune_local_backups(backup_root: Path, now: datetime.datetime):
     sets = collect_local_backup_sets(backup_root)
-    keep = select_retained_timestamps(list(sets.keys()), now)
+    keep_archives = select_retained_timestamps(list(sets.keys()), now)
+    newest_ts = max(sets.keys()) if sets else None
     removed = []
     for ts, parts in sorted(sets.items()):
-        if ts in keep:
-            continue
-        for kind in ("dir", "tar"):
-            path = parts.get(kind)
-            if not path:
-                continue
-            if path.is_dir() and not path.is_symlink():
-                shutil.rmtree(path)
-            elif path.exists() and not path.is_symlink():
-                path.unlink()
-            removed.append(str(path))
-    return keep, removed
+        dir_path = parts.get("dir")
+        tar_path = parts.get("tar")
+
+        # Keep only the newest unpacked directory locally. Older runs are restored
+        # from archives, so retaining every extracted copy just burns disk.
+        if dir_path and ts != newest_ts and dir_path.is_dir() and not dir_path.is_symlink():
+            shutil.rmtree(dir_path)
+            removed.append(str(dir_path))
+
+        # Retain archives by ladder policy.
+        if tar_path and ts not in keep_archives and tar_path.exists() and not tar_path.is_symlink():
+            tar_path.unlink()
+            removed.append(str(tar_path))
+    return keep_archives, removed
 
 
 def parse_desktop_target(target: str):

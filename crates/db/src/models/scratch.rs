@@ -318,13 +318,13 @@ impl TryFrom<ScratchRow> for Scratch {
 }
 
 /// Request body for creating a scratch (id comes from URL path, type from payload)
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct CreateScratch {
     pub payload: ScratchPayload,
 }
 
 /// Request body for updating a scratch
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct UpdateScratch {
     pub payload: ScratchPayload,
 }

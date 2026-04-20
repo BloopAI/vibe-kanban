@@ -4,10 +4,16 @@ use axum::{
     response::{IntoResponse, Json as ResponseJson},
     routing::get,
 };
+use chrono::Utc;
 use db::models::scratch::{CreateScratch, Scratch, ScratchType, UpdateScratch};
 use deployment::Deployment;
 use futures_util::{StreamExt, TryStreamExt};
 use serde::Deserialize;
+use std::{
+    collections::HashMap,
+    sync::{Arc, OnceLock},
+};
+use tokio::sync::Mutex;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -22,6 +28,53 @@ use crate::{
 pub struct ScratchPath {
     scratch_type: ScratchType,
     id: Uuid,
+}
+
+#[derive(Clone)]
+struct PendingUiPreferencesWrite {
+    payload: UpdateScratch,
+}
+
+static UI_PREFERENCES_WRITE_BUFFER: OnceLock<
+    Arc<Mutex<HashMap<Uuid, PendingUiPreferencesWrite>>>,
+> = OnceLock::new();
+
+fn ui_preferences_write_buffer() -> &'static Arc<Mutex<HashMap<Uuid, PendingUiPreferencesWrite>>> {
+    UI_PREFERENCES_WRITE_BUFFER.get_or_init(|| Arc::new(Mutex::new(HashMap::new())))
+}
+
+async fn enqueue_ui_preferences_flush(
+    deployment: DeploymentImpl,
+    id: Uuid,
+    scratch_type: ScratchType,
+) {
+    tokio::time::sleep(std::time::Duration::from_millis(750)).await;
+
+    let pending = {
+        let mut pending = ui_preferences_write_buffer().lock().await;
+        pending.remove(&id)
+    };
+
+    let Some(pending) = pending else {
+        return;
+    };
+
+    match Scratch::update(&deployment.db().pool, id, &scratch_type, &pending.payload).await {
+        Ok(scratch) => {
+            deployment
+                .events()
+                .msg_store()
+                .push_patch(services::services::events::scratch_patch::replace(&scratch));
+        }
+        Err(err) => {
+            tracing::error!(
+                scratch_id = %id,
+                scratch_type = %scratch_type,
+                ?err,
+                "Failed to flush queued UI preferences scratch update"
+            );
+        }
+    }
 }
 
 pub async fn list_scratch(
@@ -62,6 +115,10 @@ pub async fn create_scratch(
         .map_err(|e| ApiError::BadRequest(e.to_string()))?;
 
     let scratch = Scratch::create(&deployment.db().pool, id, &payload).await?;
+    deployment
+        .events()
+        .msg_store()
+        .push_patch(services::services::events::scratch_patch::add(&scratch));
     Ok(ResponseJson(ApiResponse::success(scratch)))
 }
 
@@ -85,8 +142,50 @@ pub async fn update_scratch(
         .validate_type(scratch_type)
         .map_err(|e| ApiError::BadRequest(e.to_string()))?;
 
+    if matches!(scratch_type, ScratchType::UiPreferences) {
+        let existing = Scratch::find_by_id(&deployment.db().pool, id, &scratch_type).await?;
+        let now = Utc::now();
+        let scratch = Scratch {
+            id,
+            payload: payload.payload.clone(),
+            created_at: existing.as_ref().map(|s| s.created_at).unwrap_or(now),
+            updated_at: now,
+        };
+
+        let should_spawn = {
+            let mut pending = ui_preferences_write_buffer().lock().await;
+            let should_spawn = !pending.contains_key(&id);
+            pending.insert(
+                id,
+                PendingUiPreferencesWrite {
+                    payload: payload.clone(),
+                },
+            );
+            should_spawn
+        };
+
+        deployment
+            .events()
+            .msg_store()
+            .push_patch(services::services::events::scratch_patch::replace(&scratch));
+
+        if should_spawn {
+            tokio::spawn(enqueue_ui_preferences_flush(
+                deployment.clone(),
+                id,
+                scratch_type,
+            ));
+        }
+
+        return Ok(ResponseJson(ApiResponse::success(scratch)));
+    }
+
     // Upsert: creates if not exists, updates if exists
     let scratch = Scratch::update(&deployment.db().pool, id, &scratch_type, &payload).await?;
+    deployment
+        .events()
+        .msg_store()
+        .push_patch(services::services::events::scratch_patch::replace(&scratch));
     Ok(ResponseJson(ApiResponse::success(scratch)))
 }
 

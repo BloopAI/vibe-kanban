@@ -11,6 +11,7 @@ use crate::{
     approvals::ExecutorApprovalService,
     env::ExecutionEnv,
     executors::{ExecutorError, SpawnedChild},
+    systemd_run::{self, StdinMode},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -53,7 +54,7 @@ impl Executable for ScriptRequest {
         };
 
         let (shell_cmd, shell_arg) = get_shell_command();
-        let mut command = Command::new(shell_cmd);
+        let mut command = Command::new(&shell_cmd);
         command
             .kill_on_drop(true)
             .stdin(std::process::Stdio::null())
@@ -66,8 +67,26 @@ impl Executable for ScriptRequest {
         // Apply environment variables
         env.apply_to_command(&mut command);
 
-        let child = command.group_spawn_no_window()?;
-
-        Ok(child.into())
+        if systemd_run::enabled() {
+            let unit_name = systemd_run::build_unit_name("script");
+            let child = systemd_run::spawn_transient_unit(
+                &unit_name,
+                "VK script execution",
+                &effective_dir,
+                Path::new(&shell_cmd),
+                &[shell_arg.to_string(), self.script.clone()],
+                &env.vars,
+                StdinMode::Null,
+            )?;
+            Ok(SpawnedChild {
+                child,
+                transient_unit_name: Some(unit_name),
+                exit_signal: None,
+                cancel: None,
+            })
+        } else {
+            let child = command.group_spawn_no_window()?;
+            Ok(child.into())
+        }
     }
 }

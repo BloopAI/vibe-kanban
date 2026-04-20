@@ -60,6 +60,15 @@ fn is_local_auth_disabled() -> bool {
     matches!(normalized.as_str(), "1" | "true" | "yes" | "on")
 }
 
+fn is_pr_monitor_disabled() -> bool {
+    let Ok(value) = std::env::var("VK_DISABLE_PR_MONITOR") else {
+        return false;
+    };
+
+    let normalized = value.trim().to_ascii_lowercase();
+    matches!(normalized.as_str(), "1" | "true" | "yes" | "on")
+}
+
 #[derive(Clone)]
 pub struct LocalDeployment {
     config: Arc<RwLock<Config>>,
@@ -267,7 +276,9 @@ impl Deployment for LocalDeployment {
             None => None,
         };
         let pr_sync_notify = Arc::new(Notify::new());
-        {
+        if is_pr_monitor_disabled() {
+            tracing::info!("PR monitor disabled by VK_DISABLE_PR_MONITOR");
+        } else {
             let db = db.clone();
             let analytics = analytics.as_ref().map(|s| AnalyticsContext {
                 user_id: user_id.clone(),
