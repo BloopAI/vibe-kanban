@@ -3,16 +3,16 @@ use ts_rs::TS;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ApiErrorEnvelope {
-    /// 稳定的机器可读 kind。manager 据此分支。
+    /// Stable machine-readable error kind. Managers branch on this.
     pub kind: String,
-    /// 是否可以原样重试。
+    /// Whether the request can safely be retried as-is.
     pub retryable: bool,
-    /// 自动重试是否无效(认证失败、缺二进制等)。
+    /// True when automatic retry will not help (missing auth, missing binary, etc.).
     pub human_intervention_required: bool,
-    /// executor stderr 的最后 ~2 KiB,用于诊断展示。
+    /// Last ~2 KiB of the executor's stderr, for diagnostic display.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stderr_tail: Option<String>,
-    /// executor 程序名(如 "claude"、"codex")。
+    /// Executor program name (e.g. `"claude"`, `"codex"`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub program: Option<String>,
 }
