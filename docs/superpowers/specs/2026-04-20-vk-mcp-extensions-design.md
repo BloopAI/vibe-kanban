@@ -1,6 +1,6 @@
 # VK MCP 编排能力扩展 — 主设计文档
 
-**状态:** Draft v4(round 3 整体检查后:对齐 VK 已有的 `NormalizedEntry` 体系、补 task 删除一致性方案、明确 D12 实现路径、补事务化 helper)
+**状态:** Draft v4.1(round 4 claim 验证:修正 `stream_normalized_logs` 返回类型、去除不必要的 serde 改造、`McpServer` struct 命名、WorkspaceSummary 字段类型、§2 D12 交叉引用)
 **日期:** 2026-04-20
 **作者:** Claude(协作:phuongmumma35@hotmail.com)
 **前置 PR:** `0095e565` "MCP error transparency"(PR1 — 在 MCP 反序列化侧扩展了 `ApiResponseEnvelope.error_kind` + 分类器)
@@ -32,7 +32,7 @@ VK MCP 服务(`crates/mcp/`)目前暴露 22 个 tool(workspace 启动、session 
 
 **额外的阻塞性问题(v2 漏了):**
 
-5. **Orchestrator 模式 scope 检查会挡住 manager → child 访问。** `scope_allows_workspace`(`crates/mcp/src/task_server/tools/mod.rs:322-337`)在 Orchestrator 模式下严格拒绝 scope 外的 workspace。manager scope 是自己,child workspace 是别的 ID,所以 `get_execution(child)` 会被直接拒绝。**必须放宽 scope 规则**让 manager 能访问自己派生的 children(见 D11)。
+5. **Orchestrator 模式 scope 检查会挡住 manager → child 访问。** `scope_allows_workspace`(`crates/mcp/src/task_server/tools/mod.rs:322-337`)在 Orchestrator 模式下严格拒绝 scope 外的 workspace。manager scope 是自己,child workspace 是别的 ID,所以 `get_execution(child)` 会被直接拒绝。**必须放宽 scope 规则**让 manager 能访问自己派生的 children(见 D12)。
 
 ## 3. Scope — Tier A++(4 个 PR)
 
@@ -263,22 +263,29 @@ manager 拿到的 `total_count` 也是 *过滤后* 的计数(否则 `last_n` 窗
 **实现路径:**
 
 1. **服务端新路由** `GET /api/sessions/{session_id}/messages?last_n=&from_index=&include_thinking=`
-   - 通过 `session_id` 找到最新 `ExecutionProcess`
-   - 调用 `ContainerService::stream_normalized_logs(execution_id)` 拿到完整的 `NormalizedEntry` 流(底层从 `ExecutionProcessLogs.logs` JSONL 重建)
+   - 通过 path 参数 `session_id` 按 `Session.id` 加载(`crates/db/src/models/session.rs:23-31`)
+   - 找最新 `ExecutionProcess where session_id == session.id`(`crates/db/src/models/execution_process.rs:563-579` 已有 helper)
+   - 调用 `ContainerService::stream_normalized_logs(&execution_id).await`(`crates/services/src/services/container.rs:830-833`)
+     - 返回签名:`Option<BoxStream<'static, Result<LogMsg, io::Error>>>`
+     - **注意:流元素是 `LogMsg`,不是 `NormalizedEntry`。** 需要 `collect` 并从中提取 `LogMsg::JsonPatch(patch)` 子集,然后按顺序 apply patch 到一个维护中的 `NormalizedConversation` 状态,得到最终 `Vec<NormalizedEntry>`。这是服务端从 patch 流重建对话快照的标准做法,前端 WebSocket 消费者也是这么做的(`packages/web-core/src/features/workspace-chat/model/hooks/useConversationHistory.ts:99-104`)。若前端侧已有纯函数版本可共享,复用之;否则在 `crates/utils/src/log_msg.rs` 附近提供一个小 helper `fn rebuild_entries(stream: Vec<LogMsg>) -> Vec<NormalizedEntry>`。
    - 过滤掉 D5a 永久剔除的 entry types;若 `include_thinking == false`,再剔除 `Thinking`
    - 在过滤后的列表上应用分页(`from_index` 优先于 `last_n`)
    - 提取最后一条 `entry_type == AssistantMessage` 作为 `final_assistant_message`
 
-2. **MCP tool 是薄包装** — 把 workspace_id 解析到 latest session_id,然后调上面的路由。
+2. **`SessionMessage` 序列化:** `entry_type` 字段取 `NormalizedEntryType` 已有的 serde tag(`#[serde(tag = "type", rename_all = "snake_case")]`,见 `crates/executors/src/logs/mod.rs:71-72`)所产生的 discriminant 字符串。带内部字段的变体(`ToolUse { tool_name, action_type, status }`、`ErrorMessage { error_type }`)把这些字段合并进 `SessionMessage.metadata`,跟原有 `NormalizedEntry.metadata` 并到同一个 JSON 对象;如果 key 冲突以 entry 原始 metadata 优先(保守,避免破坏现有约定)。
 
-3. **复用现成基础设施** — 该路径已有 WebSocket 端点 `/api/execution-processes/{id}/normalized-logs/ws`(`crates/server/src/routes/execution_processes.rs:138-165`)在为前端服务,本 PR 提供的是同一数据源的 REST + 分页快照视图,不引入新的存储或解析层。
+3. **MCP tool 是薄包装** — 把 workspace_id 解析到 latest session_id,然后调上面的路由。
+
+4. **复用现成基础设施** — 该路径已有 WebSocket 端点 `/api/execution-processes/{id}/normalized-logs/ws`(`crates/server/src/routes/execution_processes.rs:138-165`)在为前端服务,本 PR 提供的是同一数据源的 REST + 分页快照视图,不引入新的存储或解析层。
 
 ### 5.3 PR 边界
 
 - `crates/mcp/src/task_server/tools/sessions.rs` — 新 tool `read_session_messages`
-- `crates/server/src/routes/sessions/mod.rs` — 新路由 `GET /api/sessions/{id}/messages?last_n=&from_index=&include_thinking=`;handler 内部调 `ContainerService::stream_normalized_logs`
-- `crates/executors/src/logs/mod.rs` — 为 `NormalizedEntryType` 增加稳定的 discriminant 序列化(如果现有 serde tag 不满足 manager 用的 snake_case 契约)
+- `crates/server/src/routes/sessions/mod.rs` — 新路由 `GET /api/sessions/{id}/messages?last_n=&from_index=&include_thinking=`;handler 内部调 `ContainerService::stream_normalized_logs` 并重建 `Vec<NormalizedEntry>`
+- `crates/utils/src/log_msg.rs` 或相邻位置 — 新增纯函数 `rebuild_entries(Vec<LogMsg>) -> Vec<NormalizedEntry>` 复用前端的 patch-apply 语义(如果已有共享实现,直接复用而非新增)
 - `shared/types.ts` 重新生成
+
+> ℹ️ **不需要改 `crates/executors/src/logs/mod.rs`。** 代码核查:`NormalizedEntryType` 已经带 `#[serde(tag = "type", rename_all = "snake_case")]`(line 71-72),产生的 discriminant 就是 `user_message` / `assistant_message` / `tool_use` / `thinking` 等 — 契约现成。
 - 测试:
   - 单元:D5a 过滤(`Loading` / `TokenUsageInfo` / `NextAction` 不出现在输出中)
   - 单元:`include_thinking` toggle(on → Thinking 出现;off → 不出现)
@@ -409,9 +416,9 @@ update_task_status(task_id, status) // status ∈ {todo, in_progress, in_review,
 delete_task(task_id)
 
 // 扩展(已存在)
-start_workspace(..., task_id?)      // 可选 task_id,把新 attempt 绑定到已有 task
-list_workspaces(..., task_id?)      // 加 task_id filter(`crates/mcp/src/task_server/tools/workspaces.rs:102`)
-                                    // 同时 WorkspaceSummary 加 task_id 字段(否则结果分不清)
+start_workspace(..., task_id?: Uuid)      // 可选 task_id,把新 attempt 绑定到已有 task
+list_workspaces(..., task_id?: Uuid)      // 加 task_id filter(`crates/mcp/src/task_server/tools/workspaces.rs:102`)
+                                          // 同时 WorkspaceSummary 加 task_id: Option<Uuid> 字段(否则结果分不清)
 ```
 
 **D8 — `list_tasks` 默认按调用方 workspace context 过滤。** 当 MCP 服务有已知的调用方 workspace(Orchestrator 模式 — 见 `crates/mcp/src/task_server/tools/context.rs`),不带参数的 `list_tasks` 过滤为 `parent_workspace_id == caller`。manager 自然只看到自己的 todo。显式 `parent_workspace_id` 参数覆盖默认。当 MCP 服务没有已知调用方 workspace 且没有显式参数时,返回错误 `kind: "missing_parent_workspace_id"`(强制显式 scope,而不是无差别返回所有 task)。
@@ -429,29 +436,37 @@ list_workspaces(..., task_id?)      // 加 task_id filter(`crates/mcp/src/task_s
 
 **实现路径 — 走 HTTP,不在 MCP crate 引入 db 句柄。**
 
-代码核查发现:`McpServer`(`crates/mcp/`)没有持有 `SqlitePool`;它通过 HTTP client 向 server 发请求。把 db 句柄塞进 MCP crate 会破坏现有的 MCP→server 单向依赖契约,且 MCP 目前依赖 `db` 只是为了模型类型,而不是连接池。
+代码核查发现:MCP 服务结构 `McpServer`(`crates/mcp/src/task_server/mod.rs:50-56`)只持有 `reqwest::Client` 而没有 `SqlitePool`;把 db 句柄塞进 MCP crate 会破坏现有的 MCP→server 单向依赖契约,且 MCP 目前依赖 `db` 只是为了模型类型。因此 scope 检查通过 HTTP 两次查询完成。
 
-因此 scope 检查通过 HTTP 两次查询完成:
+**新增薄包装 `ApiClient`**(或等价:扩展 trait `McpHttpExt`,按 VK 现有 tool 文件的惯例选择):把裸 `reqwest::Client` 包一层,集中提供 `get_workspace(uuid) -> ApiResult<Workspace>` 和 `get_task(uuid) -> ApiResult<Task>`。理由:(1) 现有 MCP tool 代码里每个 HTTP 调用都在手写 `client.get(url).send().await` + 反序列化 `ApiResponseEnvelope`,这是明显重复;(2) D12 之后至少新增两个调用点,抽一次成本合理;(3) 便于 mock / 测试(参考已有 `response_classification` 测试模式)。
 
 ```rust
-// crates/mcp/src/task_server/tools/mod.rs(改造后)
+// crates/mcp/src/task_server/tools/mod.rs(改造后,示意)
 pub async fn check_scope_allows_workspace(
-    ctx: &ServerContext,
+    server: &McpServer,
+    scope_cache: &mut HashMap<Uuid, bool>,   // 按 tool-call 生命周期创建
     target: Uuid,
 ) -> bool {
-    let Some(scoped) = ctx.scoped_workspace_id else { return true; };
+    let Some(scoped) = server.scoped_workspace_id() else { return true; };
     if target == scoped { return true; }
+    if let Some(cached) = scope_cache.get(&target) { return *cached; }
+
     // 放宽规则 2:target 是 scoped 的 child?
-    let Ok(ws) = ctx.client.get_workspace(target).await else { return false; };
-    let Some(task_id) = ws.task_id else { return false; };
-    let Ok(task) = ctx.client.get_task(task_id).await else { return false; };
-    task.parent_workspace_id == Some(scoped)
+    let allowed = async {
+        let ws = server.api().get_workspace(target).await.ok()?;
+        let task_id = ws.task_id?;
+        let task = server.api().get_task(task_id).await.ok()?;
+        Some(task.parent_workspace_id == Some(scoped))
+    }.await.unwrap_or(false);
+
+    scope_cache.insert(target, allowed);
+    allowed
 }
 ```
 
-两次 HTTP RTT(workspace + task)在 LLM tool-loop 节奏下约 10 ms,可忽略。**缓存:** 单次 tool call 生命周期内用 `HashMap<Uuid, bool>` memoize(例如 `get_execution(w)` → 在跨 workspace 检查后,`workspace_id` 已经解析过一次,不再重复查)。**不做** 进程级全局缓存:避免 task 删除/重父后 TTL 问题,本 PR 保守。
+两次 HTTP RTT(workspace + task)在 LLM tool-loop 节奏下约 10 ms,可忽略。**缓存:** 单次 tool call 生命周期内用 `HashMap<Uuid, bool>` memoize,由 caller 穿入(避免全局锁)。**不做** 进程级全局缓存:避免 task 删除/重父后 TTL 问题,本 PR 保守。
 
-**调用方影响:** 所有现有 `scope_allows_workspace` 调用点改为 `.await`。代码核查实际共 **8 处生产调用 + 1 处测试调用**(`workspaces.rs` 与 `sessions.rs` 中),全部改为异步。函数重命名 `scope_allows_workspace` → `check_scope_allows_workspace` 以反映语义(网络调用不再是纯函数)。
+**调用方影响:** 所有现有 `scope_allows_workspace` 调用点改为 `.await`。代码核查实际共 **8 处生产调用 + 1 处测试调用**(`workspaces.rs` 与 `sessions.rs` 中),全部改为异步。函数重命名 `scope_allows_workspace` → `check_scope_allows_workspace` 以反映语义(网络调用不再是纯函数)。调用签名新增 `scope_cache: &mut HashMap<Uuid, bool>` 参数,由每个 tool handler 在入口构造空的 HashMap 穿入 — 保证缓存仅限单 tool call 生命周期。
 
 **安全语义:** manager A 不能访问 manager B 派生的 children。manager A 能访问 A 自己直接派生的 child(目前只支持一层,不支持 manager → child → grandchild 递归;见 §10 D12 翻转条目)。Standalone(非 Orchestrator)模式行为不变。
 
@@ -465,10 +480,10 @@ pub async fn check_scope_allows_workspace(
 - `crates/services/src/services/task_concurrency.rs`(新)— 计数器 + 上限检查(独立提取以便测试)
 - `crates/mcp/src/task_server/tools/tasks.rs`(新)— 5 个新 tool
 - `crates/mcp/src/task_server/tools/task_attempts.rs` — 给 `start_workspace` 加可选 `task_id`
-- `crates/mcp/src/task_server/tools/workspaces.rs` — 给 `list_workspaces` 加可选 `task_id` filter;给 `WorkspaceSummary` 加 `task_id: Option<String>` 字段
-- `crates/mcp/src/task_server/tools/mod.rs` — `scope_allows_workspace` 改为 async(`check_scope_allows_workspace`)+ 加 D12 的 parent-child 关系检查(通过 HTTP,memoize 至 tool-call 生命周期内);全部 8 处生产 + 1 处测试调用点改 `.await`
-- `crates/mcp/src/task_server/http_client.rs`(或等价位置)— 新增 `get_workspace(uuid)` / `get_task(uuid)` 方法,供 D12 检查使用
-- `crates/mcp/src/task_server/mod.rs` — 注册新 tool router
+- `crates/mcp/src/task_server/tools/workspaces.rs` — 给 `list_workspaces` 加可选 `task_id` filter;给 `WorkspaceSummary` 加 `task_id: Option<Uuid>` 字段(TS 端 regen 为 `string | null`)
+- `crates/mcp/src/task_server/tools/mod.rs` — `scope_allows_workspace` 改为 async(`check_scope_allows_workspace`)+ 新签名携带 `scope_cache` + D12 的 parent-child 关系检查;全部 8 处生产 + 1 处测试调用点改 `.await` 并在入口构造 HashMap
+- `crates/mcp/src/task_server/api_client.rs`(新,或按 crate 惯例命名)— `ApiClient` 薄包装 `reqwest::Client`,集中提供 `get_workspace(uuid)` / `get_task(uuid)` 及后续可能的方法;解构已有的零散 `client.get(...)` 调用到此处(可选的后续清理,本 PR 最小化只搬 D12 需要的两个)
+- `crates/mcp/src/task_server/mod.rs` — `McpServer` 增加 `api(&self) -> &ApiClient` 访问器;注册新 tool router
 - `crates/api-types/src/lib.rs` — `TaskCreate`、`TaskUpdate`、`CreateAndStartTaskRequest`、`CreateAndStartTaskResponse`
 - `shared/types.ts` 重新生成
 - 测试:
