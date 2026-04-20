@@ -403,6 +403,12 @@ impl LocalDeployment {
     }
 
     pub async fn get_login_status(&self) -> LoginStatus {
+        // In local-first mode (no cloud configured), the user is always the
+        // local operator — no credentials or cloud auth needed.
+        if self.remote_client.is_err() {
+            return LoginStatus::LoggedIn { profile: None };
+        }
+
         if self.auth_context.get_credentials().await.is_none() {
             self.auth_context.clear_profile().await;
             self.auth_context.clear_remote_auth_degraded_slug().await;
