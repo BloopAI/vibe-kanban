@@ -28,7 +28,6 @@
           "browser-testing",
           "issue-management",
           "reviewing-code",
-          "remote-access",
           {
             "group": "Supported Coding Agents",
             "expanded": true,
@@ -77,8 +76,6 @@
             ]
           },
           "settings/projects-repositories",
-          "settings/organization-settings",
-          "settings/remote-projects",
           "settings/agent-configurations",
           "settings/mcp-servers"
         ]
@@ -87,6 +84,7 @@
         "group": "Self-Hosting",
         "pages": [
           "self-hosting/local-development",
+          "self-hosting/daemon-mode",
           "self-hosting/deploy-docker",
           "self-hosting/self-hosted-remote-access"
         ]
@@ -149,10 +147,6 @@
     {
       "source": "/workspaces/preview",
       "destination": "/browser-testing"
-    },
-    {
-      "source": "/remote-control",
-      "destination": "/remote-access"
     }
   ],
   "footer": {

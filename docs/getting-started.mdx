@@ -8,12 +8,17 @@ Agent Kanban keeps you organised while running multiple coding agents in paralle
 
 ## 1. Launch Agent Kanban
 
-Start the Agent Kanban client and open the UI in your browser:
-
+Start Agent Kanban with a single command — no sign-in or account required:
 
 ```bash
 npx vibe-kanban
 ```
+
+This downloads the latest release, starts the backend server, and opens the UI in your browser automatically. All data is stored locally in a SQLite database on your machine.
+
+<Info>
+Running on a remote server or want Agent Kanban to start automatically on boot? See the [Daemon Mode](/self-hosting/daemon-mode) guide.
+</Info>
 
 ## 2. Confirm your preferences
 
@@ -24,28 +29,16 @@ The first time you run Agent Kanban, you'll be asked to set your preferred:
 - Notification preferences
 
 <Info>
-These preferences can be changed at any time from the settings dialog
+These preferences can be changed at any time from the settings dialog.
 </Info>
 
 <Frame>
   <img src="/images/onboarding-basic-setup.png" alt="Placeholder image for preferences setup: coding agent, IDE, and sound notifications." />
 </Frame>
 
-## 3. Sign-in to Agent Kanban
+## 3. Navigate the kanban board
 
-You can use a GitHub or Google account.
-
-<Frame>
-  <img src="/images/onboarding-sign-in.png" alt="Agent Kanban onboarding screen showing Sign in to continue with GitHub and Google buttons" />
-</Frame>
-
-<Info>
-If you want to skip sign-in for now, click **More options** → **I understand, continue without signing in**. You'll still be able to create workspaces, but the kanban board, issues, and team features will be unavailable.
-</Info>
-
-## 4. Navigate the kanban board
-
-After you sign in, we automatically create a personal organisation and an initial project for you, and take you straight there.
+After setup, you land on your first project's kanban board. You can create additional projects at any time from the projects page.
 
 <Frame>
   <img src="/images/onboarding-projects.png" alt="The projects page" />
@@ -53,36 +46,36 @@ After you sign in, we automatically create a personal organisation and an initia
 
 **Navigating the kanban board:**
 
-1. The app bar, used for navigating between projects, the workspaces page (we'll come onto this later) and user settings
+1. The app bar, used for navigating between projects, the workspaces page, and user settings
 2. Issues appear as cards on the kanban board
-3. The 'new issue' button, for creating issues
-4. The right hand panel where details for the currently selected or draft issue is shown
+3. The **New issue** button for creating issues
+4. The right-hand panel where details for the currently selected or draft issue are shown
 
-## 5. Create an issue
+## 4. Create an issue
 
-**Issues** are a core concept of Agent Kanban, they represent a bug, feature or piece of work to be done. At a minimum, issues consist of a title and description, but you can also add priorities, tags and even connect issues together with parent/child relationships.
+**Issues** are a core concept of Agent Kanban — they represent a bug, feature, or piece of work to be done. At a minimum, issues consist of a title and description, but you can also add priorities, tags, and even connect issues together with parent/child relationships.
 
 <Frame>
   <img src="/images/onboarding-create-issue.png" alt="Create issue" />
 </Frame>
 
-When you've filled out the details press 'create issue'.
+When you've filled out the details press **Create issue**.
 
-## 6. Create a workspace
+## 5. Create a workspace
 
-**Workspaces** are another core concept of Agent Kanban, they represent a space to work on an issue with a coding agent. When you create a workspace, Agent Kanban automatically creates git worktrees for your selected repositories, and launches your coding agent.
+**Workspaces** are another core concept of Agent Kanban — they represent a space to work on an issue with a coding agent. When you create a workspace, Agent Kanban automatically creates git worktrees for your selected repositories and launches your coding agent.
 
 <Frame>
   <img src="/images/onboarding-create-workspace.png" alt="The create workspace button" />
 </Frame>
 
-To create a workspace, make sure the issue you created is selected and click the 'create' button in the workspaces window.
+To create a workspace, make sure the issue you created is selected and click the **Create** button in the workspaces panel.
 
 <Frame>
   <img src="/images/onboarding-workspaces-repo.png" alt="Workspaces repos" />
 </Frame>
 
-When you create a workspace, you'll need to specify repositories you'd like to work on, as well as the branches of those repositories to base the git worktrees on.
+When you create a workspace, you'll need to specify the repositories you'd like to work on and the branches to base the git worktrees on.
 
 <Frame>
   <img src="/images/onboarding-workspaces-prompt.png" alt="Workspaces prompt" />
@@ -94,17 +87,17 @@ You'll also need to specify your desired coding agent configuration (e.g. model,
   <img src="/images/onboarding-workspaces-logs.png" alt="Workspaces logs" />
 </Frame>
 
-Upon creation, the coding agent will immediately begin executing with the given prompt.
+Upon creation, the coding agent immediately begins executing with the given prompt.
 
 <Info>
-  You can connect multiple workspaces to an issue, this is useful for working on larger features and allows you to run multiple coding agents in parallel.
+  You can connect multiple workspaces to an issue — useful for working on larger features and running multiple coding agents in parallel.
 
   Workspaces don't *have* to be connected to an issue, which is useful for quick actions like asking questions about a codebase.
 </Info>
 
-## 7. Reviewing a workspace
+## 6. Reviewing a workspace
 
-So far we've been viewing the workspace side-by-side with our kanban board. However, if we want more room to review the code changes or test them in a browser, we can open the workspace in the **workspaces view**.
+So far you've been viewing the workspace side-by-side with the kanban board. If you want more room to review the code changes or test them in a browser, open the workspace in the **workspaces view**.
 
 <Frame>
   <img src="/images/onboarding-workspaces-open.png" alt="Workspaces open" />
@@ -120,7 +113,7 @@ Depending on what you'd like to do, you can view code changes or preview changes
 
 You can also navigate back to either your project (1) or the parent issue (2).
 
-## 8. Merging a workspace
+## 7. Merging a workspace
 
 When you're ready to merge the changes in a workspace, you can either open a GitHub pull request or merge the workspace branch locally.
 
@@ -131,7 +124,7 @@ When you're ready to merge the changes in a workspace, you can either open a Git
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Previewing changes" icon="browser" href="/workspaces/preview">
+  <Card title="Previewing changes" icon="browser" href="/browser-testing">
     Set up a dev server, preview your app, and click-to-component to jump straight to source
   </Card>
 

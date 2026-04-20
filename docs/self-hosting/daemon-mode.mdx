@@ -1,0 +1,133 @@
+---
+title: "Daemon Mode"
+description: "Run Agent Kanban as a persistent background service that survives reboots"
+---
+
+Daemon mode installs Agent Kanban as a system service so it starts automatically on login or boot, runs in the background without a terminal, and restarts automatically if it crashes.
+
+This is ideal for:
+
+- Remote servers accessed over SSH
+- Developer machines where you always want Agent Kanban available
+- Shared workstations where the service should run continuously
+
+<Info>
+Daemon mode is supported on **macOS** (via `launchd`) and **Linux** (via `systemd --user`). Windows users should use WSL or Docker instead.
+</Info>
+
+## Installing the daemon
+
+Run the following command once. It copies the Agent Kanban binary to a stable location (`~/.vibe-kanban/daemon/`), writes the appropriate service file, and starts the service immediately:
+
+```bash
+npx vibe-kanban daemon install
+```
+
+By default, the daemon listens on `127.0.0.1:3748`. You can customise both the host and port:
+
+```bash
+# Listen on all interfaces (accessible from other machines on the network)
+npx vibe-kanban daemon install --host 0.0.0.0 --port 8080
+```
+
+After installation, the daemon starts immediately and will restart on login/boot.
+
+<Note>
+**Linux only:** To keep the daemon running after you log out (e.g. on a headless server), enable lingering for your user:
+
+```bash
+loginctl enable-linger $USER
+```
+
+Without this, the systemd user session — and your daemon — is stopped when your SSH session ends.
+</Note>
+
+## Checking the status
+
+```bash
+npx vibe-kanban daemon status
+```
+
+Example output:
+
+```
+Status: running
+  URL:  http://127.0.0.1:3748
+  Logs: /Users/you/.vibe-kanban/daemon.log
+```
+
+## Viewing logs
+
+```bash
+# Show the last 100 lines (default)
+npx vibe-kanban daemon logs
+
+# Show more lines
+npx vibe-kanban daemon logs --lines 500
+```
+
+Logs are written to `~/.vibe-kanban/daemon.log`.
+
+## Stopping and starting
+
+```bash
+# Stop the daemon (the service remains installed and will restart on next login/boot)
+npx vibe-kanban daemon stop
+
+# Start the daemon again manually
+npx vibe-kanban daemon start
+```
+
+## Uninstalling the daemon
+
+```bash
+npx vibe-kanban daemon uninstall
+```
+
+This stops the service and removes the service file. The binary in `~/.vibe-kanban/daemon/` is left in place and can be removed manually if you wish.
+
+## Reinstalling (e.g. to change port or host)
+
+Use `--force` to reinstall over an existing daemon without uninstalling first:
+
+```bash
+npx vibe-kanban daemon install --host 0.0.0.0 --port 9000 --force
+```
+
+## Command reference
+
+| Command | Description |
+|---------|-------------|
+| `daemon install` | Install and start the daemon |
+| `daemon uninstall` | Stop and remove the daemon |
+| `daemon status` | Show running state and URL |
+| `daemon start` | Start a previously stopped daemon |
+| `daemon stop` | Stop the daemon (keeps it installed) |
+| `daemon logs` | Tail the daemon log file |
+
+### Options for `daemon install`
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--port <number>` | `3748` | Port for the Agent Kanban server |
+| `--host <address>` | `127.0.0.1` | Interface to bind to. Use `0.0.0.0` to accept remote connections |
+| `--force` | `false` | Overwrite an existing installation |
+
+### Options for `daemon logs`
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--lines <number>` | `100` | Number of log lines to display |
+
+## How it works
+
+When you run `daemon install`, Agent Kanban:
+
+1. Copies the server binary from the npx cache to `~/.vibe-kanban/daemon/vibe-kanban` so the service file remains valid across npx cache updates.
+2. Writes a service file:
+   - **macOS**: `~/Library/LaunchAgents/com.vibekanban.daemon.plist`
+   - **Linux**: `~/.config/systemd/user/vibe-kanban.service`
+3. Registers and starts the service with `launchctl load` (macOS) or `systemctl --user enable --now` (Linux).
+4. Sets `VIBE_KANBAN_NO_BROWSER=1` so the server does not attempt to open a browser window.
+
+The service is configured to restart automatically if it exits unexpectedly (`KeepAlive` on macOS, `Restart=always` on Linux).

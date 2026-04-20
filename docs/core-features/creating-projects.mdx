@@ -1,52 +1,73 @@
 ---
 title: "Creating Projects"
-description: "Learn how to create and configure projects in Agent Kanban"
+description: "Learn how to create and manage multiple kanban projects in Agent Kanban"
 ---
 
-Before you can create tasks and execute coding agents, you must create a project.
+Projects are the top-level containers for your issues and coding work. Each project has its own kanban board with statuses, issues, and tags. You can create as many projects as you need — all data is stored locally.
+
+## The projects page
+
+The projects page is your home screen in Agent Kanban. It shows all your projects as cards and lets you create, rename, reorder, or delete them.
+
+You can reach it at any time by clicking the **Agent Kanban** logo or project name in the app bar.
+
+## Creating a project
+
+On the projects page, click the **New project** button (or the **+** icon in the app bar).
 
 <Frame>
-<img src="/images/vk-create-project.png" alt="Create project dialog showing options to create from existing git repository or blank project" />
+  <img src="/images/vk-create-project.png" alt="Create project dialog showing options to create from existing git repository or blank project" />
 </Frame>
 
-## Creating Your Project
-Click the **Create Project** button to choose from two options:
-- **From existing git repository**: Browse your file system and select from a list of git repositories sorted by recent activity
-- **Create blank project**: Generate a new git repository from scratch
-Each project represents a git repository. After creation, you can configure it with setup scripts, dev server scripts, and other settings.
+Choose from two options:
 
+- **From existing git repository** — Browse your file system and select from a list of git repositories sorted by recent activity
+- **Create blank project** — Generate a new empty project
 
 <Note>
-After creating a project, you need to press the settings button in the top right to configure project scripts and settings.
+After creating a project, press the settings button in the top-right corner to configure project scripts and other settings.
 </Note>
 
-## Project Settings
+## Renaming a project
 
-Once you've created a project, you can access the project settings by clicking the settings button in the top right corner. From here, you can configure various aspects of your project.
+Hover over a project card on the projects page to reveal the edit (<Icon icon="pencil-simple" />) and delete (<Icon icon="trash" />) actions. Click the edit icon to rename the project or change its colour.
 
-### Setup Scripts
+## Reordering projects
 
-Setup scripts will be run before the coding agent is executed. This is useful for installing dependencies, for example you might run `npm install` or `cargo build`. This will save you time as your agent won't need to figure out that these commands haven't already been run.
+Drag and drop project cards on the projects page to reorder them. The order is saved automatically.
 
-<Note>
-Each time a coding agent is executed it runs in a [git worktree](https://git-scm.com/docs/git-worktree) which is unlikely to contain your dependencies, configs, .env etc.
-</Note>
-
-### Dev Server Scripts
-
-The dev server script is run when you press the "Start Dev Server" button from the [Preview](/core-features/testing-your-application) section. It's useful for quickly reviewing work after a coding agent has run.
-
-### Cleanup Scripts
-
-Cleanup scripts run after a coding agent finishes it's turn. You can use these to tidy up the workspace, remove temporary files, or perform any post-execution cleanup. For example, you might run `npm run format` to ensure your code is formatted correctly. Treat it like a git pre-commit hook.
-
-
-### Copy Files
-
-Comma-separated list of files to copy from the original project directory to the worktree. These files will be copied after the worktree is created but before the setup script runs. Useful for environment-specific files like `.env`, configuration files, and local settings.
+## Deleting a project
 
 <Warning>
-Make sure these files are gitignored or they could get committed!
+Deleting a project permanently removes all its issues, statuses, tags, and data. This cannot be undone.
 </Warning>
 
+Hover over a project card and click the delete icon (<Icon icon="trash" />), then confirm the deletion.
 
+## Project settings
+
+Once you've created a project, open the project settings by clicking the settings icon in the top-right corner of the kanban board. From here you can configure:
+
+### Setup scripts
+
+Setup scripts run before the coding agent starts in a workspace. Use them to install dependencies or run builds, for example `npm install` or `cargo build`. This saves time because the agent won't need to figure out that these commands haven't run yet.
+
+<Note>
+Each workspace runs in a [git worktree](https://git-scm.com/docs/git-worktree), which won't contain your dependencies, `.env` files, or local configs by default.
+</Note>
+
+### Dev server scripts
+
+The dev server script runs when you press the **Start Dev Server** button from the [Preview](/browser-testing) section. Use it to quickly review work after an agent run.
+
+### Cleanup scripts
+
+Cleanup scripts run after a coding agent finishes its turn. Use them to tidy up the workspace, remove temporary files, or run a formatter. Think of it as a git pre-commit hook — for example, `npm run format` to ensure code is formatted correctly.
+
+### Copy files
+
+A comma-separated list of files to copy from the original project directory into the worktree. Files are copied after the worktree is created but before the setup script runs. Useful for environment-specific files such as `.env`, configuration files, and local settings.
+
+<Warning>
+Make sure these files are gitignored, or they could be committed accidentally.
+</Warning>
