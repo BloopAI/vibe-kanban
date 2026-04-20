@@ -506,6 +506,7 @@ impl McpServer {
             })
     }
 
+    #[allow(dead_code)] // Retained for potential future callers (e.g. log formatting).
     fn execution_process_status_label(status: &ExecutionProcessStatus) -> &'static str {
         match status {
             ExecutionProcessStatus::Running => "running",
