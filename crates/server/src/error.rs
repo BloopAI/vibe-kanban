@@ -682,6 +682,7 @@ impl From<RelayPairingClientError> for ApiError {
 
 #[cfg(test)]
 mod tests {
+    use axum::response::IntoResponse;
     use executors::executors::ExecutorError;
 
     use super::*;
@@ -760,15 +761,12 @@ mod tests {
         );
     }
 
-    use axum::response::IntoResponse;
-    use http_body_util::BodyExt;
-
     #[tokio::test]
     async fn executor_error_response_carries_envelope() {
         let err: ApiError = ExecutorError::AuthRequired("expired".into()).into();
         let response = err.into_response();
         let (parts, body) = response.into_parts();
-        let bytes = body.collect().await.unwrap().to_bytes();
+        let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(parts.status, axum::http::StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(json["success"], false);
@@ -782,9 +780,12 @@ mod tests {
         let err: ApiError = ApiError::BadRequest("bad".into());
         let response = err.into_response();
         let (_, body) = response.into_parts();
-        let bytes = body.collect().await.unwrap().to_bytes();
+        let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         // envelope optional; BadRequest does not populate it
-        assert!(json.get("error").map_or(true, |v| v.is_null()));
+        assert!(
+            json.get("error").is_none(),
+            "expected `error` key to be absent due to skip_serializing_if, got: {json}"
+        );
     }
 }
