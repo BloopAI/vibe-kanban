@@ -236,6 +236,7 @@ pub fn executor_error_envelope(
         AuthRequired(_) => ("auth_required", false, true),
         FollowUpNotSupported(_) => ("follow_up_not_supported", false, false),
         SpawnError(_) | Io(_) => ("spawn_failed", true, false),
+        SetupHelperNotSupported => ("internal", false, true),
         _ => ("internal", true, false),
     };
     let program = program.or_else(|| match err {
@@ -725,5 +726,20 @@ mod tests {
         );
         assert_eq!(env.stderr_tail.as_deref(), Some("last stderr line"));
         assert_eq!(env.program.as_deref(), Some("claude"));
+    }
+
+    #[test]
+    fn classifies_setup_helper_not_supported_as_permanent() {
+        let err = ExecutorError::SetupHelperNotSupported;
+        let env = executor_error_envelope(&err, None, None);
+        assert_eq!(env.kind, "internal");
+        assert!(
+            !env.retryable,
+            "setup helper gap is permanent, not retryable"
+        );
+        assert!(
+            env.human_intervention_required,
+            "operator must switch executor — human intervention required"
+        );
     }
 }
