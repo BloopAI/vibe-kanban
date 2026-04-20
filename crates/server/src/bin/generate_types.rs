@@ -74,6 +74,7 @@ fn generate_types_content() -> String {
         utils::approvals::ApprovalResponse::decl(),
         utils::diff::Diff::decl(),
         utils::diff::DiffChangeKind::decl(),
+        utils::response::ApiErrorEnvelope::decl(),
         utils::response::ApiResponse::<()>::decl(),
         api_types::LoginStatus::decl(),
         api_types::ProfileResponse::decl(),

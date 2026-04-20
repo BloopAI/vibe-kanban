@@ -240,7 +240,29 @@ additions: number | null, deletions: number | null, repoId: string | null, };
 
 export type DiffChangeKind = "added" | "deleted" | "modified" | "renamed" | "copied" | "permissionChange";
 
-export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_data: E | null, message: string | null, };
+export type ApiErrorEnvelope = { 
+/**
+ * Stable machine-readable error kind. Managers branch on this.
+ */
+kind: string, 
+/**
+ * Whether the request can safely be retried as-is.
+ */
+retryable: boolean, 
+/**
+ * True when automatic retry will not help (missing auth, missing binary, etc.).
+ */
+human_intervention_required: boolean, 
+/**
+ * Last ~2 KiB of the executor's stderr, for diagnostic display.
+ */
+stderr_tail: string | null, 
+/**
+ * Executor program name (e.g. `"claude"`, `"codex"`).
+ */
+program: string | null, };
+
+export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_data: E | null, message: string | null, error?: ApiErrorEnvelope | null, };
 
 export type LoginStatus = { "status": "loggedout" } | { "status": "loggedin", profile: ProfileResponse | null, };
 
