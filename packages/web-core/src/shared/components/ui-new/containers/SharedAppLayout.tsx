@@ -169,6 +169,37 @@ export function SharedAppLayout() {
     });
   }, [kanbanProjects, navigate, queryClient]);
 
+  const handleProjectsDragEnd = useCallback(
+    async (result: import('@hello-pangea/dnd').DropResult) => {
+      if (!result.destination) return;
+      const from = result.source.index;
+      const to = result.destination.index;
+      if (from === to) return;
+
+      // Optimistically reorder in the query cache
+      const reordered = [...kanbanProjects];
+      const [moved] = reordered.splice(from, 1);
+      reordered.splice(to, 0, moved);
+      queryClient.setQueryData(
+        ['kanban-projects'],
+        reordered.map((p, i) => ({ ...p, sort_order: i }))
+      );
+
+      // Persist new sort_order for each affected project
+      await Promise.all(
+        reordered.map((p, i) =>
+          kanbanProjectsApi.update(p.id, {
+            name: null,
+            color: null,
+            sort_order: i,
+          })
+        )
+      );
+      await queryClient.invalidateQueries({ queryKey: ['kanban-projects'] });
+    },
+    [kanbanProjects, queryClient]
+  );
+
   return (
     <SyncErrorProvider>
       <div
@@ -203,7 +234,7 @@ export function SharedAppLayout() {
               onHostClick={handleHostClick}
               onPairHostClick={handlePairHostClick}
               onProjectClick={handleProjectClick}
-              onProjectsDragEnd={() => {}}
+              onProjectsDragEnd={(r) => void handleProjectsDragEnd(r)}
               isSavingProjectOrder={false}
               isWorkspacesActive={isWorkspacesActive}
               isExportActive={false}
