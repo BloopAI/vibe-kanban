@@ -175,6 +175,7 @@ struct ErrorInfo {
     status: StatusCode,
     error_type: &'static str,
     message: Option<String>,
+    envelope: Option<utils::response::ApiErrorEnvelope>,
 }
 
 impl ErrorInfo {
@@ -183,6 +184,7 @@ impl ErrorInfo {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             error_type,
             message: Some("An internal error occurred. Please try again.".into()),
+            envelope: None,
         }
     }
 
@@ -191,6 +193,7 @@ impl ErrorInfo {
             status: StatusCode::NOT_FOUND,
             error_type,
             message: Some(msg.into()),
+            envelope: None,
         }
     }
 
@@ -199,6 +202,7 @@ impl ErrorInfo {
             status: StatusCode::BAD_REQUEST,
             error_type,
             message: Some(msg.into()),
+            envelope: None,
         }
     }
 
@@ -207,6 +211,7 @@ impl ErrorInfo {
             status: StatusCode::CONFLICT,
             error_type,
             message: Some(msg.into()),
+            envelope: None,
         }
     }
 
@@ -215,6 +220,7 @@ impl ErrorInfo {
             status,
             error_type,
             message: Some(msg.into()),
+            envelope: None,
         }
     }
 }
@@ -294,6 +300,7 @@ fn remote_client_error(err: &RemoteClientError) -> ErrorInfo {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             error_type: "RemoteClientError",
             message: Some("Failed to persist credentials locally. Please retry.".into()),
+            envelope: None,
         },
         RemoteClientError::Api(code) => {
             let (status, msg) = match code {
@@ -479,6 +486,7 @@ impl IntoResponse for ApiError {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
                 error_type: "FileError",
                 message: Some("Failed to process file. Please try again.".into()),
+                envelope: None,
             },
 
             ApiError::EditorOpen(EditorOpenError::LaunchFailed { .. }) => {
@@ -528,7 +536,12 @@ impl IntoResponse for ApiError {
 
             ApiError::Deployment(_) => ErrorInfo::internal("DeploymentError"),
             ApiError::Container(_) => ErrorInfo::internal("ContainerError"),
-            ApiError::Executor(_) => ErrorInfo::internal("ExecutorError"),
+            ApiError::Executor(e) => ErrorInfo {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                error_type: "ExecutorError",
+                message: Some(e.to_string()),
+                envelope: Some(executor_error_envelope(e, None, None)),
+            },
             ApiError::CommandBuilder(_) => ErrorInfo::internal("CommandBuildError"),
             ApiError::Database(_) => ErrorInfo::internal("DatabaseError"),
             ApiError::Worktree(err) => ErrorInfo::with_status(
@@ -568,7 +581,11 @@ impl IntoResponse for ApiError {
         let message = info
             .message
             .unwrap_or_else(|| format!("{}: {}", info.error_type, self));
-        let response = ApiResponse::<()>::error(&message);
+        let response = if let Some(envelope) = info.envelope {
+            ApiResponse::<()>::error_with_envelope(&message, envelope)
+        } else {
+            ApiResponse::<()>::error(&message)
+        };
         (info.status, Json(response)).into_response()
     }
 }
@@ -741,5 +758,33 @@ mod tests {
             env.human_intervention_required,
             "operator must switch executor — human intervention required"
         );
+    }
+
+    use axum::response::IntoResponse;
+    use http_body_util::BodyExt;
+
+    #[tokio::test]
+    async fn executor_error_response_carries_envelope() {
+        let err: ApiError = ExecutorError::AuthRequired("expired".into()).into();
+        let response = err.into_response();
+        let (parts, body) = response.into_parts();
+        let bytes = body.collect().await.unwrap().to_bytes();
+        let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(parts.status, axum::http::StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(json["success"], false);
+        assert_eq!(json["error"]["kind"], "auth_required");
+        assert_eq!(json["error"]["retryable"], false);
+        assert_eq!(json["error"]["human_intervention_required"], true);
+    }
+
+    #[tokio::test]
+    async fn non_executor_error_has_no_envelope() {
+        let err: ApiError = ApiError::BadRequest("bad".into());
+        let response = err.into_response();
+        let (_, body) = response.into_parts();
+        let bytes = body.collect().await.unwrap().to_bytes();
+        let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        // envelope optional; BadRequest does not populate it
+        assert!(json.get("error").map_or(true, |v| v.is_null()));
     }
 }

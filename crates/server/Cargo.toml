@@ -72,6 +72,7 @@ dotenv = "0.15"
 
 [dev-dependencies]
 tempfile = "3"
+http-body-util = "0.1"
 
 [features]
 default = []
