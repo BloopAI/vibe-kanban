@@ -13,13 +13,15 @@ use codex_app_server_protocol::{
     CommandExecutionRequestApprovalResponse, ConfigBatchWriteParams, ConfigEdit, ConfigReadParams,
     ConfigReadResponse, ConfigWriteResponse, DynamicToolCallOutputContentItem,
     DynamicToolCallResponse, FileChangeApprovalDecision, FileChangeRequestApprovalResponse,
-    GetAccountParams, GetAccountRateLimitsResponse, GetAccountResponse, InitializeCapabilities,
-    InitializeParams, InitializeResponse, ItemCompletedNotification, JSONRPCError,
-    JSONRPCNotification, JSONRPCRequest, JSONRPCResponse, ListMcpServerStatusParams,
-    ListMcpServerStatusResponse, McpServerStatusDetail, RequestId, ReviewStartParams,
-    ReviewStartResponse, ReviewTarget, ServerRequest, ThreadCompactStartParams,
-    ThreadCompactStartResponse, ThreadForkParams, ThreadForkResponse, ThreadItem, ThreadReadParams,
-    ThreadReadResponse, ThreadStartParams, ThreadStartResponse, ToolRequestUserInputAnswer,
+    GetAccountParams, GetAccountRateLimitsResponse, GetAccountResponse, GrantedPermissionProfile,
+    InitializeCapabilities, InitializeParams, InitializeResponse, ItemCompletedNotification,
+    JSONRPCError, JSONRPCErrorError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse,
+    ListMcpServerStatusParams, ListMcpServerStatusResponse, McpServerElicitationAction,
+    McpServerElicitationRequestResponse, McpServerStatusDetail, PermissionGrantScope,
+    PermissionsRequestApprovalResponse, RequestId, ReviewStartParams, ReviewStartResponse,
+    ReviewTarget, ServerRequest, ThreadCompactStartParams, ThreadCompactStartResponse,
+    ThreadForkParams, ThreadForkResponse, ThreadItem, ThreadReadParams, ThreadReadResponse,
+    ThreadStartParams, ThreadStartResponse, ToolRequestUserInputAnswer,
     ToolRequestUserInputQuestion, ToolRequestUserInputResponse, TurnCompletedNotification,
     TurnStartParams, TurnStartResponse, TurnStatus, UserInput,
 };
@@ -429,15 +431,46 @@ impl AppServerClient {
                 send_server_response(peer, request_id, response).await?;
                 Ok(())
             }
-            ServerRequest::ChatgptAuthTokensRefresh { .. }
-            | ServerRequest::McpServerElicitationRequest { .. }
-            | ServerRequest::PermissionsRequestApproval { .. } => {
-                tracing::warn!("received unhandled v2 server request: {:?}", request);
-                let response = JSONRPCResponse {
-                    id: request.id().clone(),
-                    result: Value::Null,
+            ServerRequest::McpServerElicitationRequest { request_id, .. } => {
+                // Codex sends elicitations to gate MCP tool calls when the session
+                // isn't configured for fully-auto approval. In vibe-kanban the outer
+                // orchestrator already authorised the run, so auto-accept with no
+                // content; codex treats Accept + empty content as AcceptOnce.
+                let response = McpServerElicitationRequestResponse {
+                    action: McpServerElicitationAction::Accept,
+                    content: None,
+                    meta: None,
                 };
-                peer.send(&response).await
+                send_server_response(peer, request_id, response).await
+            }
+            ServerRequest::PermissionsRequestApproval { request_id, params } => {
+                // Mirror the behaviour of accepting the requested permissions for
+                // the current turn. Vibe-kanban gates the overall attempt already;
+                // declining here just dead-ends the turn with no user feedback.
+                let response = PermissionsRequestApprovalResponse {
+                    permissions: GrantedPermissionProfile {
+                        network: params.permissions.network,
+                        file_system: params.permissions.file_system,
+                    },
+                    scope: PermissionGrantScope::Turn,
+                };
+                send_server_response(peer, request_id, response).await
+            }
+            ServerRequest::ChatgptAuthTokensRefresh { request_id, .. } => {
+                // Vibe-kanban does not broker ChatGPT auth; respond with an error
+                // so codex surfaces the re-auth requirement instead of hanging on
+                // a malformed `null` result.
+                tracing::warn!("codex requested ChatGPT auth token refresh; responding with error");
+                let error = JSONRPCError {
+                    id: request_id,
+                    error: JSONRPCErrorError {
+                        code: -32601,
+                        message: "ChatGPT auth token refresh is not supported by this client"
+                            .to_string(),
+                        data: None,
+                    },
+                };
+                peer.send(&error).await
             }
             ServerRequest::ApplyPatchApproval { .. }
             | ServerRequest::ExecCommandApproval { .. } => {
