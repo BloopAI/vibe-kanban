@@ -13,7 +13,9 @@ pub struct WorkspaceCreateParams {
     pub name: Option<String>,
     /// Optional parent task this workspace derives from.
     pub task_id: Option<Uuid>,
-    /// Branch name to persist on the workspace row.
+    /// Branch name to persist on the workspace row. Also used as the
+    /// per-repo `target_branch` fallback when a repo in `repo_ids` has no
+    /// `default_target_branch` configured.
     pub branch: String,
     /// Repos to link via `workspace_repos`. Each repo's `target_branch`
     /// defaults to the repo's own `default_target_branch`, falling back
@@ -94,6 +96,32 @@ mod tests {
         .await?;
         tx.commit().await?;
         assert_eq!(ws.name.as_deref(), Some("hello"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn create_in_tx_returns_repo_not_found_when_repo_missing() -> Result<(), anyhow::Error> {
+        let db = DBService::new_in_memory().await?;
+        let pool = &db.pool;
+
+        let mut tx = pool.begin().await?;
+        let missing = Uuid::new_v4();
+        let res = create_in_tx(
+            &mut tx,
+            WorkspaceCreateParams {
+                name: None,
+                task_id: None,
+                branch: "main".into(),
+                repo_ids: vec![missing],
+            },
+        )
+        .await;
+        match res {
+            Err(WorkspaceServiceError::RepoNotFound(id)) => {
+                assert_eq!(id, missing)
+            }
+            other => panic!("expected RepoNotFound, got {other:?}"),
+        }
         Ok(())
     }
 }
