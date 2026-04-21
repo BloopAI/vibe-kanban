@@ -49,21 +49,12 @@ use crate::{
 ///
 /// All optional fields are reserved for future extensions (e.g. enforcing a
 /// specific Cursor model in the auto-generated mcp.json snippet).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct CursorMcp {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
-}
-
-impl Default for CursorMcp {
-    fn default() -> Self {
-        Self {
-            append_prompt: AppendPrompt::default(),
-            cmd: CmdOverrides::default(),
-        }
-    }
 }
 
 /// Resolve the absolute path to the `vibe-kanban-mcp` binary. Shared with
@@ -120,15 +111,12 @@ impl StandardCodingAgentExecutor for CursorMcp {
             .apply_to_command(&mut command);
 
         let child = command.group_spawn_no_window().map_err(|err| {
-            ExecutorError::SpawnError(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "Failed to spawn vibe-kanban-mcp session placeholder ({}): {}. \
+            ExecutorError::SpawnError(std::io::Error::other(format!(
+                "Failed to spawn vibe-kanban-mcp session placeholder ({}): {}. \
                      Ensure the `vibe-kanban-mcp` binary is on PATH or set `VK_MCP_BINARY`.",
-                    binary.display(),
-                    err
-                ),
-            ))
+                binary.display(),
+                err
+            )))
         })?;
 
         Ok(child.into())
