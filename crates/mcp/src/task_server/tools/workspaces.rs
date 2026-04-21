@@ -6,7 +6,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::McpServer;
+use super::{McpServer, ToolError, check_scope_allows_workspace};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListWorkspacesRequest {
@@ -182,8 +182,18 @@ impl McpServer {
             Ok(id) => id,
             Err(error_result) => return Ok(Self::tool_error(error_result)),
         };
-        if let Err(error_result) = self.scope_allows_workspace_sync(workspace_id) {
-            return Ok(Self::tool_error(error_result));
+        let mut scope_cache = std::collections::HashMap::new();
+        if !check_scope_allows_workspace(self, &mut scope_cache, workspace_id).await {
+            return Ok(Self::tool_error(ToolError::new(
+                "Operation is outside the configured workspace scope",
+                Some(format!(
+                    "requested workspace_id={}, configured workspace_id={}",
+                    workspace_id,
+                    self.scoped_workspace_id()
+                        .map(|id| id.to_string())
+                        .unwrap_or_else(|| "<none>".to_string())
+                )),
+            )));
         }
 
         let url = self.url(&format!("/api/workspaces/{}", workspace_id));
@@ -222,8 +232,18 @@ impl McpServer {
             Ok(id) => id,
             Err(error_result) => return Ok(Self::tool_error(error_result)),
         };
-        if let Err(error_result) = self.scope_allows_workspace_sync(workspace_id) {
-            return Ok(Self::tool_error(error_result));
+        let mut scope_cache = std::collections::HashMap::new();
+        if !check_scope_allows_workspace(self, &mut scope_cache, workspace_id).await {
+            return Ok(Self::tool_error(ToolError::new(
+                "Operation is outside the configured workspace scope",
+                Some(format!(
+                    "requested workspace_id={}, configured workspace_id={}",
+                    workspace_id,
+                    self.scoped_workspace_id()
+                        .map(|id| id.to_string())
+                        .unwrap_or_else(|| "<none>".to_string())
+                )),
+            )));
         }
 
         let delete_remote = delete_remote.unwrap_or(false);

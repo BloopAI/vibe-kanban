@@ -191,8 +191,6 @@ use std::collections::HashMap;
 ///
 /// Decisions are stored in `scope_cache` keyed by `target` so a caller can
 /// re-check the same workspace within a request without extra round-trips.
-// Task 3.12 will migrate all call-sites; suppress dead_code until then.
-#[allow(dead_code)]
 pub(crate) async fn check_scope_allows_workspace(
     server: &McpServer,
     scope_cache: &mut HashMap<Uuid, bool>,
@@ -364,23 +362,6 @@ impl McpServer {
         Err(ToolError::message(
             "workspace_id is required (not available from current MCP context)",
         ))
-    }
-
-    fn scope_allows_workspace_sync(&self, workspace_id: Uuid) -> Result<(), ToolError> {
-        if matches!(self.mode(), McpMode::Orchestrator)
-            && let Some(scoped_workspace_id) = self.scoped_workspace_id()
-            && scoped_workspace_id != workspace_id
-        {
-            return Err(ToolError::new(
-                "Operation is outside the configured workspace scope",
-                Some(format!(
-                    "requested workspace_id={}, configured workspace_id={}",
-                    workspace_id, scoped_workspace_id
-                )),
-            ));
-        }
-
-        Ok(())
     }
 
     // Expands @tagname references in text by replacing them with tag content.
@@ -643,8 +624,8 @@ mod tests {
         assert_eq!(server.resolve_workspace_id(None).unwrap(), workspace_id);
     }
 
-    #[test]
-    fn orchestrator_scope_requires_context_when_missing() {
+    #[tokio::test]
+    async fn orchestrator_scope_requires_context_when_missing() {
         install_rustls_provider();
         let client = reqwest::Client::new();
         let server = McpServer {
@@ -661,7 +642,9 @@ mod tests {
 
         assert_eq!(server.orchestrator_session_id(), None);
         assert!(server.resolve_workspace_id(None).is_err());
-        assert!(server.scope_allows_workspace_sync(Uuid::new_v4()).is_ok());
+        // No scoped workspace configured → check always returns true (no scope restriction).
+        let mut cache = std::collections::HashMap::new();
+        assert!(super::check_scope_allows_workspace(&server, &mut cache, Uuid::new_v4()).await);
     }
 
     #[test]
