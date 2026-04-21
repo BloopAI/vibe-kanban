@@ -220,7 +220,7 @@ impl McpServer {
             Ok(id) => id,
             Err(error_result) => return Ok(Self::tool_error(error_result)),
         };
-        if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
+        if let Err(error_result) = self.scope_allows_workspace_sync(workspace_id) {
             return Ok(Self::tool_error(error_result));
         }
 
@@ -264,7 +264,7 @@ impl McpServer {
             Ok(id) => id,
             Err(error_result) => return Ok(Self::tool_error(error_result)),
         };
-        if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
+        if let Err(error_result) = self.scope_allows_workspace_sync(workspace_id) {
             return Ok(Self::tool_error(error_result));
         }
 
@@ -297,7 +297,7 @@ impl McpServer {
             Ok(value) => value,
             Err(error_result) => return Ok(Self::tool_error(error_result)),
         };
-        if let Err(error_result) = self.scope_allows_workspace(session.workspace_id) {
+        if let Err(error_result) = self.scope_allows_workspace_sync(session.workspace_id) {
             return Ok(Self::tool_error(error_result));
         }
 
@@ -336,7 +336,7 @@ impl McpServer {
             Ok(value) => value,
             Err(error_result) => return Ok(Self::tool_error(error_result)),
         };
-        if let Err(error_result) = self.scope_allows_workspace(session.workspace_id) {
+        if let Err(error_result) = self.scope_allows_workspace_sync(session.workspace_id) {
             return Ok(Self::tool_error(error_result));
         }
         if self.orchestrator_session_id() == Some(session_id) {
@@ -399,7 +399,7 @@ impl McpServer {
             Ok(value) => value,
             Err(error_result) => return Ok(Self::tool_error(error_result)),
         };
-        if let Err(error_result) = self.scope_allows_workspace(session.workspace_id) {
+        if let Err(error_result) = self.scope_allows_workspace_sync(session.workspace_id) {
             return Ok(Self::tool_error(error_result));
         }
 
@@ -443,7 +443,7 @@ impl McpServer {
             Ok(id) => id,
             Err(error_result) => return Ok(Self::tool_error(error_result)),
         };
-        if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
+        if let Err(error_result) = self.scope_allows_workspace_sync(workspace_id) {
             return Ok(Self::tool_error(error_result));
         }
 

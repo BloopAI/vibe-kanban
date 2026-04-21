@@ -178,6 +178,53 @@ fn envelope_to_error<T>(env: ApiResponseEnvelope<T>, status: reqwest::StatusCode
     err
 }
 
+use std::collections::HashMap;
+
+/// Async, memoised scope check for orchestrator mode.
+///
+/// Returns `true` if `target` is allowed under the server's configured scope:
+/// - Non-orchestrator mode: always allowed.
+/// - No scoped workspace set: always allowed.
+/// - Same workspace as scope: allowed (no HTTP needed).
+/// - Child workspace (target's task points back to scope): allowed after HTTP lookup.
+/// - Anything else: denied.
+///
+/// Decisions are stored in `scope_cache` keyed by `target` so a caller can
+/// re-check the same workspace within a request without extra round-trips.
+// Task 3.12 will migrate all call-sites; suppress dead_code until then.
+#[allow(dead_code)]
+pub(crate) async fn check_scope_allows_workspace(
+    server: &McpServer,
+    scope_cache: &mut HashMap<Uuid, bool>,
+    target: Uuid,
+) -> bool {
+    if !matches!(server.mode(), McpMode::Orchestrator) {
+        return true;
+    }
+    let scoped = match server.scoped_workspace_id() {
+        Some(x) => x,
+        None => return true,
+    };
+    if target == scoped {
+        return true;
+    }
+    if let Some(cached) = scope_cache.get(&target) {
+        return *cached;
+    }
+
+    let allowed = async {
+        let ws = server.api().get_workspace(target).await.ok()?;
+        let tid = ws.task_id?;
+        let t = server.api().get_task(tid).await.ok()?;
+        Some(t.parent_workspace_id == Some(scoped))
+    }
+    .await
+    .unwrap_or(false);
+
+    scope_cache.insert(target, allowed);
+    allowed
+}
+
 mod context;
 mod issue_assignees;
 mod issue_relationships;
@@ -319,7 +366,7 @@ impl McpServer {
         ))
     }
 
-    fn scope_allows_workspace(&self, workspace_id: Uuid) -> Result<(), ToolError> {
+    fn scope_allows_workspace_sync(&self, workspace_id: Uuid) -> Result<(), ToolError> {
         if matches!(self.mode(), McpMode::Orchestrator)
             && let Some(scoped_workspace_id) = self.scoped_workspace_id()
             && scoped_workspace_id != workspace_id
@@ -337,6 +384,7 @@ impl McpServer {
     }
 
     // Expands @tagname references in text by replacing them with tag content.
+
     async fn expand_tags(&self, text: &str) -> String {
         let tag_pattern = match Regex::new(r"@([^\s@]+)") {
             Ok(re) => re,
@@ -521,9 +569,9 @@ mod tests {
 
     fn install_rustls_provider() {
         RUSTLS_PROVIDER.call_once(|| {
-            rustls::crypto::aws_lc_rs::default_provider()
-                .install_default()
-                .expect("Failed to install rustls crypto provider");
+            // Ignore error: another thread may have already installed the default
+            // provider (e.g. the check_scope_tests module), which is fine.
+            let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
         });
     }
 
@@ -613,7 +661,7 @@ mod tests {
 
         assert_eq!(server.orchestrator_session_id(), None);
         assert!(server.resolve_workspace_id(None).is_err());
-        assert!(server.scope_allows_workspace(Uuid::new_v4()).is_ok());
+        assert!(server.scope_allows_workspace_sync(Uuid::new_v4()).is_ok());
     }
 
     #[test]
@@ -800,5 +848,162 @@ mod tests {
             assert!(value.get("error_data").is_none());
             assert!(value.get("body_tail").is_none());
         }
+    }
+}
+
+#[cfg(test)]
+mod check_scope_tests {
+    use std::collections::HashMap;
+
+    use httpmock::MockServer;
+    use uuid::Uuid;
+
+    use super::{McpServer, check_scope_allows_workspace};
+
+    fn install_rustls() {
+        static ONCE: std::sync::Once = std::sync::Once::new();
+        ONCE.call_once(|| {
+            let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+        });
+    }
+
+    fn ws_envelope(id: Uuid, task_id: Option<Uuid>) -> serde_json::Value {
+        serde_json::json!({
+            "success": true,
+            "data": {
+                "id": id.to_string(),
+                "task_id": task_id.map(|t| t.to_string()),
+                "container_ref": null,
+                "branch": "main",
+                "setup_completed_at": null,
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
+                "archived": false,
+                "pinned": false,
+                "name": null,
+                "worktree_deleted": false
+            }
+        })
+    }
+
+    fn task_envelope(id: Uuid, parent: Option<Uuid>) -> serde_json::Value {
+        serde_json::json!({
+            "success": true,
+            "data": {
+                "id": id.to_string(),
+                "project_id": Uuid::new_v4().to_string(),
+                "title": "t",
+                "description": null,
+                "status": "todo",
+                "parent_workspace_id": parent.map(|p| p.to_string()),
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z"
+            }
+        })
+    }
+
+    #[tokio::test]
+    async fn same_workspace_passes_without_http() {
+        install_rustls();
+        let mock_server = MockServer::start();
+        // Register a catch-all that would fail the test if hit
+        let catch_all = mock_server.mock(|when, then| {
+            when.any_request();
+            then.status(500);
+        });
+
+        let server = McpServer::new_orchestrator(&mock_server.base_url())
+            .with_scope_for_test(Uuid::new_v4());
+        let target = server.scoped_workspace_id().unwrap();
+        let mut cache = HashMap::new();
+        assert!(check_scope_allows_workspace(&server, &mut cache, target).await);
+        assert_eq!(catch_all.hits(), 0);
+    }
+
+    #[tokio::test]
+    async fn child_of_scoped_is_allowed() {
+        install_rustls();
+        let mock_server = MockServer::start();
+        let parent = Uuid::new_v4();
+        let task_id = Uuid::new_v4();
+        let child = Uuid::new_v4();
+
+        let ws_mock = mock_server.mock(|when, then| {
+            when.path(format!("/api/workspaces/{child}"));
+            then.status(200)
+                .json_body(ws_envelope(child, Some(task_id)));
+        });
+        let task_mock = mock_server.mock(|when, then| {
+            when.path(format!("/api/tasks/{task_id}"));
+            then.status(200)
+                .json_body(task_envelope(task_id, Some(parent)));
+        });
+
+        let server =
+            McpServer::new_orchestrator(&mock_server.base_url()).with_scope_for_test(parent);
+        let mut cache = HashMap::new();
+        assert!(check_scope_allows_workspace(&server, &mut cache, child).await);
+        ws_mock.assert_hits(1);
+        task_mock.assert_hits(1);
+    }
+
+    #[tokio::test]
+    async fn unrelated_workspace_is_rejected() {
+        install_rustls();
+        let mock_server = MockServer::start();
+        let scope = Uuid::new_v4();
+        let task_id = Uuid::new_v4();
+        let child = Uuid::new_v4();
+        let other_parent = Uuid::new_v4(); // different from scope
+
+        mock_server.mock(|when, then| {
+            when.path(format!("/api/workspaces/{child}"));
+            then.status(200)
+                .json_body(ws_envelope(child, Some(task_id)));
+        });
+        mock_server.mock(|when, then| {
+            when.path(format!("/api/tasks/{task_id}"));
+            then.status(200)
+                .json_body(task_envelope(task_id, Some(other_parent)));
+        });
+
+        let server =
+            McpServer::new_orchestrator(&mock_server.base_url()).with_scope_for_test(scope);
+        let mut cache = HashMap::new();
+        assert!(!check_scope_allows_workspace(&server, &mut cache, child).await);
+    }
+
+    #[tokio::test]
+    async fn cache_short_circuits_second_call() {
+        install_rustls();
+        let mock_server = MockServer::start();
+        let parent = Uuid::new_v4();
+        let task_id = Uuid::new_v4();
+        let child = Uuid::new_v4();
+
+        // Each mock endpoint only responds successfully once; httpmock serves
+        // the same response every time, but we assert hits == 1 after two calls.
+        let ws_mock = mock_server.mock(|when, then| {
+            when.path(format!("/api/workspaces/{child}"));
+            then.status(200)
+                .json_body(ws_envelope(child, Some(task_id)));
+        });
+        let task_mock = mock_server.mock(|when, then| {
+            when.path(format!("/api/tasks/{task_id}"));
+            then.status(200)
+                .json_body(task_envelope(task_id, Some(parent)));
+        });
+
+        let server =
+            McpServer::new_orchestrator(&mock_server.base_url()).with_scope_for_test(parent);
+        let mut cache = HashMap::new();
+
+        // First call — performs HTTP.
+        assert!(check_scope_allows_workspace(&server, &mut cache, child).await);
+        // Second call — must be served from cache.
+        assert!(check_scope_allows_workspace(&server, &mut cache, child).await);
+
+        ws_mock.assert_hits(1);
+        task_mock.assert_hits(1);
     }
 }

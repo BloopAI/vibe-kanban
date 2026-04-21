@@ -112,6 +112,20 @@ impl McpServer {
         &self.mode
     }
 
+    #[cfg(test)]
+    pub(crate) fn with_scope_for_test(mut self, workspace_id: Uuid) -> Self {
+        self.context = Some(McpContext {
+            organization_id: None,
+            project_id: None,
+            issue_id: None,
+            orchestrator_session_id: None,
+            workspace_id,
+            workspace_branch: "main".to_string(),
+            workspace_repos: vec![],
+        });
+        self
+    }
+
     async fn fetch_context_at_startup(&self) -> anyhow::Result<Option<McpContext>> {
         let current_dir = std::env::current_dir().context("Failed to resolve current directory")?;
         let canonical_path = current_dir.canonicalize().unwrap_or(current_dir);
