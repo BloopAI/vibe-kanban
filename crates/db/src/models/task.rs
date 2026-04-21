@@ -32,6 +32,7 @@ pub struct Task {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Deserialize, TS)]
 pub struct CreateTask {
     pub project_id: Uuid,
     pub title: String,
@@ -88,9 +89,13 @@ impl Task {
     }
 }
 
+#[derive(Debug, Deserialize, TS, Default)]
 pub struct UpdateTask {
+    #[serde(default)]
     pub title: Option<String>,
+    #[serde(default)]
     pub description: Option<Option<String>>, // None = no change; Some(None) = set NULL
+    #[serde(default)]
     pub status: Option<TaskStatus>,
 }
 
