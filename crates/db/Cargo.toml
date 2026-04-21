@@ -22,7 +22,6 @@ futures = "0.3.32"
 
 [dev-dependencies]
 tokio = { workspace = true }
-anyhow = { workspace = true }
 
 [features]
 # Expose `DBService::new_in_memory` to downstream crates' `#[cfg(test)]`

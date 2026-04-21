@@ -32,7 +32,7 @@ pub struct Task {
     pub updated_at: DateTime<Utc>,
 }
 
-pub struct TaskCreateParams {
+pub struct CreateTask {
     pub project_id: Uuid,
     pub title: String,
     pub description: Option<String>,
@@ -40,22 +40,28 @@ pub struct TaskCreateParams {
 }
 
 impl Task {
-    pub async fn create(pool: &SqlitePool, params: TaskCreateParams) -> Result<Self, sqlx::Error> {
+    pub async fn create(pool: &SqlitePool, params: CreateTask) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
-        sqlx::query!(
+        sqlx::query_as!(
+            Task,
             r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, created_at, updated_at)
-               VALUES ($1, $2, $3, $4, 'todo', $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"#,
+               VALUES ($1, $2, $3, $4, 'todo', $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+               RETURNING id as "id!: Uuid",
+                         project_id as "project_id!: Uuid",
+                         title,
+                         description,
+                         status as "status!: TaskStatus",
+                         parent_workspace_id as "parent_workspace_id: Uuid",
+                         created_at as "created_at!: DateTime<Utc>",
+                         updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             params.project_id,
             params.title,
             params.description,
             params.parent_workspace_id
         )
-        .execute(pool)
-        .await?;
-        Self::find_by_id(pool, id)
-            .await?
-            .ok_or(sqlx::Error::RowNotFound)
+        .fetch_one(pool)
+        .await
     }
 
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
@@ -88,14 +94,14 @@ mod tests {
     use crate::DBService;
 
     #[tokio::test]
-    async fn create_inserts_task() -> anyhow::Result<()> {
+    async fn create_inserts_task() -> sqlx::Result<()> {
         let db = DBService::new_in_memory().await?;
         let pool = &db.pool;
         let project_id = seed_project(pool).await;
 
         let task = Task::create(
             pool,
-            TaskCreateParams {
+            CreateTask {
                 project_id,
                 title: "todo-1".into(),
                 description: Some("desc".into()),
@@ -107,7 +113,8 @@ mod tests {
         assert_eq!(task.status, TaskStatus::Todo);
 
         let back = Task::find_by_id(pool, task.id).await?.expect("persisted");
-        assert_eq!(back.id, task.id);
+        assert_eq!(back.title, task.title);
+        assert_eq!(back.description, task.description);
         Ok(())
     }
 
