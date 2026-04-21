@@ -1,7 +1,6 @@
 //! Rebuild a `Vec<NormalizedEntry>` from a sequence of `LogMsg` values
 //! (the same data layer the WebSocket conversation stream exposes).
 
-use json_patch::Patch;
 use workspace_utils::log_msg::LogMsg;
 
 use crate::logs::{NormalizedConversation, NormalizedEntry};
@@ -23,7 +22,7 @@ pub fn rebuild_entries(msgs: &[LogMsg]) -> Vec<NormalizedEntry> {
 
 #[cfg(test)]
 mod tests {
-    use json_patch::PatchOperation;
+    use json_patch::{Patch, PatchOperation};
     use workspace_utils::log_msg::LogMsg;
 
     use super::*;
@@ -79,5 +78,24 @@ mod tests {
         let out = rebuild_entries(&msgs);
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].content, "a");
+    }
+
+    #[test]
+    fn malformed_patch_is_silently_skipped() {
+        // Replace on a path that doesn't exist yet — json-patch returns error,
+        // rebuild_entries must swallow it and continue with subsequent patches.
+        let bad = Patch(vec![PatchOperation::Replace(
+            json_patch::ReplaceOperation {
+                path: "/entries/99/content".try_into().unwrap(),
+                value: serde_json::json!("nope"),
+            },
+        )]);
+        let good = Patch(vec![PatchOperation::Add(json_patch::AddOperation {
+            path: "/entries/0".try_into().unwrap(),
+            value: serde_json::to_value(mk_entry("ok")).unwrap(),
+        })]);
+        let out = rebuild_entries(&[LogMsg::JsonPatch(bad), LogMsg::JsonPatch(good)]);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].content, "ok");
     }
 }
