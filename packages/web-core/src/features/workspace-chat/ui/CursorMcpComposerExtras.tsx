@@ -83,7 +83,9 @@ export function CursorMcpLobbyPicker({ onPick }: LobbyPickerProps) {
             {t('cursorMcpLobby.panelHint')}
           </div>
           {isLoading ? (
-            <div className="px-2 py-2 text-xs text-mid">{t('cursorMcpLobby.loading')}</div>
+            <div className="px-2 py-2 text-xs text-mid">
+              {t('cursorMcpLobby.loading')}
+            </div>
           ) : lobby.length === 0 ? (
             <div className="px-2 py-2 text-xs text-mid leading-snug">
               {bridges.length === 0
