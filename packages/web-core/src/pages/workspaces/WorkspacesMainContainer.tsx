@@ -23,6 +23,9 @@ import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryU
 import { ApprovalFeedbackProvider } from '@/features/workspace-chat/model/contexts/ApprovalFeedbackContext';
 import { forwardWheelToScroller } from '@/features/workspace-chat/ui/forwardWheelToScroller';
 import { useDiffStats } from '@/shared/stores/useWorkspaceDiffStore';
+import { useTaskBreadcrumb } from '@/shared/hooks/useTaskBreadcrumb';
+import { WorkspaceBreadcrumb } from '@/shared/components/WorkspaceBreadcrumb';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 /**
  * Isolated component that reads diffStats from WorkspaceContext.
@@ -130,6 +133,13 @@ export const WorkspacesMainContainer = forwardRef<
     return createWorkspaceWithSession(selectedWorkspace, selectedSession);
   }, [selectedWorkspace, selectedSession]);
 
+  const { task, parentWorkspace } = useTaskBreadcrumb(
+    selectedWorkspace
+      ? { id: selectedWorkspace.id, task_id: selectedWorkspace.task_id }
+      : null
+  );
+  const appNavigation = useAppNavigation();
+
   const handleScrollToPreviousMessage = useCallback(() => {
     conversationListRef.current?.scrollToPreviousUserMessage();
   }, []);
@@ -207,6 +217,15 @@ export const WorkspacesMainContainer = forwardRef<
       onWheel={(e) => forwardWheelToScroller(e, conversationListRef)}
     >
       <div className="w-chat max-w-full h-full">
+        {(task || parentWorkspace) && (
+          <div className="px-4 pt-2">
+            <WorkspaceBreadcrumb
+              task={task}
+              parentWorkspace={parentWorkspace}
+              onSelectWorkspace={(id) => appNavigation.goToWorkspace(id)}
+            />
+          </div>
+        )}
         {selectedSession?.executor === 'CURSOR_MCP' && (
           <div className="px-2 pt-2">
             <CursorMcpStatusBanner sessionId={selectedSession.id} />
