@@ -75,6 +75,7 @@ import {
   AbortConflictsRequest,
   ContinueRebaseRequest,
   Session,
+  Task,
   Workspace,
   StartReviewRequest,
   ReviewError,
@@ -883,6 +884,14 @@ export const workspacesApi = {
       CreateWorkspaceFromPrResponse,
       CreateFromPrError
     >(response);
+  },
+};
+
+// Tasks APIs
+export const tasksApi = {
+  get: async (taskId: string): Promise<Task> => {
+    const response = await makeRequest(`/api/tasks/${taskId}`);
+    return handleApiResponse<Task>(response);
   },
 };
 
