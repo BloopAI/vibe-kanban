@@ -10,7 +10,7 @@ use axum::{
 };
 use db::models::{
     coding_agent_turn::CodingAgentTurn,
-    execution_process::{ExecutionProcess, ExecutionProcessRunReason},
+    execution_process::{ExecutionProcess, ExecutionProcessError, ExecutionProcessRunReason},
     requests::UpdateSession,
     scratch::{Scratch, ScratchType},
     session::{CreateSession, Session, SessionError},
@@ -25,7 +25,7 @@ use executors::{
     executors::BaseCodingAgent,
     logs::{
         NormalizedEntry, NormalizedEntryType,
-        messages::{PageParams, filter, final_assistant_message, page},
+        messages::{PageParams, final_assistant_message, page},
         rebuild::rebuild_entries,
     },
     profile::ExecutorConfig,
@@ -420,7 +420,7 @@ pub struct MessagesQuery {
     #[serde(default)]
     pub from_index: Option<u32>,
     #[serde(default)]
-    pub include_thinking: Option<bool>,
+    pub include_thinking: bool,
 }
 
 #[derive(Debug, serde::Serialize, TS)]
@@ -443,13 +443,21 @@ pub struct SessionMessagesResponse {
 /// GET /api/sessions/{session_id}/messages
 ///
 /// Returns a paginated slice of normalized conversation entries for the latest
-/// execution process on the given session. See `executors::logs::messages` for
-/// the filter/pagination contract the handler delegates to.
+/// execution process on the given session. See [`executors::logs::messages`]
+/// for the filter/pagination contract the handler delegates to
+/// ([`DEFAULT_LAST_N`](executors::logs::messages::DEFAULT_LAST_N),
+/// [`MAX_LAST_N`](executors::logs::messages::MAX_LAST_N)).
+///
+/// Returns `404` when no non-dropped execution process exists for the session.
 ///
 /// End-to-end coverage lands in Task 2.4 via the MCP `read_session_messages`
 /// tool (exercised against a running server). Unit tests for the two pure
 /// helpers live at the bottom of this file; no `test_support` scaffold for
 /// integration-testing a live axum app exists in the server crate yet.
+#[tracing::instrument(
+    skip(deployment),
+    fields(session_id = %session.id, last_n = ?query.last_n, from_index = ?query.from_index)
+)]
 pub async fn get_session_messages(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
@@ -457,45 +465,61 @@ pub async fn get_session_messages(
 ) -> Result<ResponseJson<ApiResponse<SessionMessagesResponse>>, ApiError> {
     let pool = &deployment.db().pool;
 
+    // 404 when the session has no execution process attached yet — reuse the
+    // existing ExecutionProcessNotFound variant so the status code matches the
+    // rest of the execution-process API surface.
     let execution_id = ExecutionProcess::find_latest_by_session_id(pool, session.id)
         .await?
-        .ok_or_else(|| ApiError::BadRequest(format!("no execution for session {}", session.id)))?
+        .ok_or(ApiError::ExecutionProcess(
+            ExecutionProcessError::ExecutionProcessNotFound,
+        ))?
         .id;
 
+    // NOTE: We buffer the entire historical LogMsg stream before calling
+    // rebuild_entries, because JSON patches are order-dependent and
+    // rebuild_entries takes `&[LogMsg]`. For very long-lived sessions this
+    // buffer is O(all_patches). Streaming replay would require a new
+    // rebuild_entries signature — punted to a future task.
     let container = deployment.container();
     let mut msgs: Vec<LogMsg> = Vec::new();
     if let Some(mut stream) = container.stream_normalized_logs(&execution_id).await {
         while let Some(item) = stream.next().await {
             match item {
                 Ok(m) => msgs.push(m),
-                Err(_) => break,
+                Err(e) => {
+                    // JSON patches are order-dependent, so on a stream error
+                    // we stop reading rather than produce a nonsense replay.
+                    tracing::warn!(
+                        execution_id = %execution_id,
+                        error = %e,
+                        "historical log stream errored; truncating replay at current position"
+                    );
+                    break;
+                }
             }
         }
     }
     let entries: Vec<NormalizedEntry> = rebuild_entries(&msgs);
 
-    let include_thinking = query.include_thinking.unwrap_or(false);
     let params = PageParams {
         last_n: query.last_n,
         from_index: query.from_index,
-        include_thinking,
+        include_thinking: query.include_thinking,
     };
     let page = page(&entries, &params);
 
-    let final_msg = {
-        let filtered_all: Vec<NormalizedEntry> = filter(&entries, include_thinking)
-            .into_iter()
-            .cloned()
-            .collect();
-        final_assistant_message(&filtered_all)
-    };
+    // `final_assistant_message` only matches AssistantMessage entries, which
+    // are never D5a-filtered and are unaffected by `include_thinking`. Compute
+    // it over the unfiltered vector directly to avoid walking + cloning the
+    // filtered-all slice a second time.
+    let final_msg = final_assistant_message(&entries);
 
     let messages = page
         .entries
         .iter()
         .enumerate()
         .map(|(i, e)| SessionMessage {
-            index: page.start_index + i as u32,
+            index: page.start_index.saturating_add(i as u32),
             entry_type: entry_type_discriminant(&e.entry_type),
             content: e.content.clone(),
             timestamp: e.timestamp.clone(),

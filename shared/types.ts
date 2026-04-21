@@ -382,6 +382,12 @@ export type CreateFollowUpAttempt = { prompt: string, executor_config: ExecutorC
 
 export type ResetProcessRequest = { process_id: string, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
+export type MessagesQuery = { last_n: number | null, from_index: number | null, include_thinking: boolean, };
+
+export type SessionMessage = { index: number, entry_type: string, content: string, timestamp: string | null, metadata: JsonValue | null, };
+
+export type SessionMessagesResponse = { messages: Array<SessionMessage>, total_count: number, has_more: boolean, final_assistant_message: string | null, };
+
 export type ChangeTargetBranchRequest = { repo_id: string, new_target_branch: string, };
 
 export type ChangeTargetBranchResponse = { repo_id: string, new_target_branch: string, status: [number, number], };
