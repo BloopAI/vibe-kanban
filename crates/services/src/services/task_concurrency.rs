@@ -49,6 +49,10 @@ impl TaskConcurrency {
     }
 
     /// True iff `running_children(pool, parent) < limit()`.
+    ///
+    /// Best-effort: not atomic with child creation. Two concurrent callers can
+    /// both observe room and both spawn, temporarily exceeding the limit by
+    /// one. This is intentional — the spec treats the cap as a soft limit.
     pub async fn check_room(pool: &SqlitePool, parent: Uuid) -> Result<bool, sqlx::Error> {
         let running = Self::running_children(pool, parent).await?;
         Ok(running < Self::limit())
@@ -223,6 +227,41 @@ mod tests {
 
         let n = TaskConcurrency::running_children(pool, parent).await?;
         assert_eq!(n, 2);
+        Ok(())
+    }
+
+    // The guard is held across awaits inside `check_room`, which is fine here:
+    // the mutex only serialises env-var access across tests in this module,
+    // and the lock is never contended across threads in a way that could
+    // deadlock — tokio's current-thread test runtime always polls this future
+    // to completion on the thread that took the lock.
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn check_room_returns_false_when_at_limit() -> sqlx::Result<()> {
+        let _guard = ENV_LOCK.lock().unwrap();
+        // SAFETY: serialised by ENV_LOCK; no other thread reads this env var
+        // concurrently.
+        unsafe {
+            std::env::set_var("VK_MAX_CHILDREN_PER_PARENT", "1");
+        }
+
+        let db = DBService::new_in_memory().await.expect("in-memory db");
+        let pool = &db.pool;
+
+        let project_id = seed_project(pool).await;
+        let parent = seed_bare_workspace(pool).await;
+        let task_id = seed_task(pool, project_id, parent).await;
+        let ws_id = seed_child_workspace(pool, task_id).await;
+        let sess_id = seed_session(pool, ws_id).await;
+        seed_ep(pool, sess_id, "running").await;
+
+        assert!(!TaskConcurrency::check_room(pool, parent).await?);
+
+        // SAFETY: serialised by ENV_LOCK; belt-and-suspenders cleanup so the
+        // next lock acquirer sees a clean env even if the guard outlives us.
+        unsafe {
+            std::env::remove_var("VK_MAX_CHILDREN_PER_PARENT");
+        }
         Ok(())
     }
 }
