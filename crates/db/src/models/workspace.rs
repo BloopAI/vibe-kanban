@@ -329,6 +329,28 @@ impl Workspace {
         .await?)
     }
 
+    pub async fn create_in_tx(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        data: &CreateWorkspace,
+        id: Uuid,
+        task_id: Option<Uuid>,
+    ) -> Result<Self, WorkspaceError> {
+        Ok(sqlx::query_as!(
+            Workspace,
+            r#"INSERT INTO workspaces (id, task_id, container_ref, branch, setup_completed_at, name)
+               VALUES ($1, $2, $3, $4, $5, $6)
+               RETURNING id as "id!: Uuid", task_id as "task_id: Uuid", container_ref, branch, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name, worktree_deleted as "worktree_deleted!: bool""#,
+            id,
+            task_id,
+            Option::<String>::None,
+            data.branch,
+            Option::<DateTime<Utc>>::None,
+            data.name,
+        )
+        .fetch_one(&mut **tx)
+        .await?)
+    }
+
     pub async fn update_branch_name(
         pool: &SqlitePool,
         workspace_id: Uuid,
@@ -695,7 +717,8 @@ mod tests {
     };
     use uuid::Uuid;
 
-    use super::Workspace;
+    use super::{CreateWorkspace, Workspace, WorkspaceError};
+    use crate::DBService;
 
     #[test]
     fn best_matching_container_ref_prefers_deepest_match() {
@@ -771,5 +794,28 @@ mod tests {
             Workspace::extract_first_prompt_from_executor_action(&action),
             Some("resume adopted Cursor MCP chat".to_string())
         );
+    }
+
+    #[tokio::test]
+    async fn workspace_create_in_tx_rolls_back_on_abort() -> Result<(), WorkspaceError> {
+        let db = DBService::new_in_memory().await.expect("in-memory db");
+        let pool = &db.pool;
+
+        let mut tx = pool.begin().await?;
+        let ws_id = Uuid::new_v4();
+        Workspace::create_in_tx(
+            &mut tx,
+            &CreateWorkspace {
+                branch: "main".into(),
+                name: Some("t".into()),
+            },
+            ws_id,
+            None, // task_id
+        )
+        .await?;
+        drop(tx);
+
+        assert!(Workspace::find_by_id(pool, ws_id).await?.is_none());
+        Ok(())
     }
 }

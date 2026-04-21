@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool, Type};
+use sqlx::{FromRow, Sqlite, SqlitePool, Transaction, Type};
 use strum_macros::{Display, EnumString};
 use ts_rs::TS;
 use uuid::Uuid;
@@ -147,6 +147,28 @@ impl Task {
     }
 }
 
+impl Task {
+    pub async fn create_in_tx(
+        tx: &mut Transaction<'_, Sqlite>,
+        params: CreateTask,
+    ) -> Result<Self, sqlx::Error> {
+        let id = Uuid::new_v4();
+        sqlx::query_as!(
+            Task,
+            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, 'todo', $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            id,
+            params.project_id,
+            params.title,
+            params.description,
+            params.parent_workspace_id,
+        )
+        .fetch_one(&mut **tx)
+        .await
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -255,6 +277,31 @@ mod tests {
         .await
         .unwrap();
         id
+    }
+
+    #[tokio::test]
+    async fn create_in_tx_rolls_back_on_abort() -> sqlx::Result<()> {
+        let db = DBService::new_in_memory().await.expect("in-memory db");
+        let pool = &db.pool;
+        let project_id = seed_project(pool).await;
+
+        let mut tx = pool.begin().await?;
+        Task::create_in_tx(
+            &mut tx,
+            CreateTask {
+                project_id,
+                title: "t".into(),
+                description: None,
+                parent_workspace_id: None,
+            },
+        )
+        .await?;
+        // drop tx without commit
+        drop(tx);
+
+        let all = Task::find_all(pool).await?;
+        assert!(all.iter().all(|t| t.title != "t"));
+        Ok(())
     }
 
     async fn seed_workspace_with_task(pool: &sqlx::SqlitePool, task_id: Uuid) -> Uuid {
