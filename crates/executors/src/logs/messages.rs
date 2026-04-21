@@ -7,14 +7,26 @@ pub const DEFAULT_LAST_N: u32 = 20;
 pub const MAX_LAST_N: u32 = 200;
 
 /// D5a: entry types never surfaced to external readers.
+///
+/// Written as an exhaustive match rather than `matches!` so that adding a new
+/// `NormalizedEntryType` variant forces an explicit D5a decision at compile
+/// time.
 fn is_permanently_filtered(entry_type: &NormalizedEntryType) -> bool {
-    matches!(
-        entry_type,
-        NormalizedEntryType::Loading
-            | NormalizedEntryType::TokenUsageInfo(_)
-            | NormalizedEntryType::NextAction { .. }
-            | NormalizedEntryType::UserAnsweredQuestions { .. }
-    )
+    match entry_type {
+        // D5a: hide from external readers (transient UI / meta signals).
+        NormalizedEntryType::Loading => true,
+        NormalizedEntryType::TokenUsageInfo(_) => true,
+        NormalizedEntryType::NextAction { .. } => true,
+        NormalizedEntryType::UserAnsweredQuestions { .. } => true,
+        // Surfaced to external readers (conversation content).
+        NormalizedEntryType::UserMessage
+        | NormalizedEntryType::UserFeedback { .. }
+        | NormalizedEntryType::AssistantMessage
+        | NormalizedEntryType::ToolUse { .. }
+        | NormalizedEntryType::SystemMessage
+        | NormalizedEntryType::ErrorMessage { .. }
+        | NormalizedEntryType::Thinking => false,
+    }
 }
 
 pub fn filter(entries: &[NormalizedEntry], include_thinking: bool) -> Vec<&NormalizedEntry> {
@@ -46,7 +58,7 @@ pub fn page<'a>(entries: &'a [NormalizedEntry], params: &PageParams) -> Page<'a>
     let (start, end) = if let Some(from) = params.from_index {
         let from = from.min(total);
         let n = params.last_n.unwrap_or(DEFAULT_LAST_N).min(MAX_LAST_N);
-        (from, (from + n).min(total))
+        (from, from.saturating_add(n).min(total))
     } else {
         let n = params.last_n.unwrap_or(DEFAULT_LAST_N).min(MAX_LAST_N);
         let start = total.saturating_sub(n);
@@ -186,5 +198,62 @@ mod tests {
     fn final_assistant_message_handles_no_assistant() {
         let entries = vec![mk(NormalizedEntryType::UserMessage, "alone")];
         assert!(final_assistant_message(&entries).is_none());
+    }
+
+    #[test]
+    fn empty_input_yields_empty_page() {
+        let entries: Vec<NormalizedEntry> = vec![];
+        let page = page(
+            &entries,
+            &PageParams {
+                last_n: Some(5),
+                from_index: None,
+                include_thinking: false,
+            },
+        );
+        assert_eq!(page.total_count, 0);
+        assert_eq!(page.entries.len(), 0);
+        assert!(!page.has_more);
+        assert_eq!(page.start_index, 0);
+    }
+
+    #[test]
+    fn from_index_past_total_clamps_to_empty_slice() {
+        let entries: Vec<_> = (0..5)
+            .map(|i| mk(NormalizedEntryType::UserMessage, &format!("{i}")))
+            .collect();
+        let page = page(
+            &entries,
+            &PageParams {
+                last_n: Some(3),
+                from_index: Some(99),
+                include_thinking: false,
+            },
+        );
+        assert_eq!(page.total_count, 5);
+        assert_eq!(page.entries.len(), 0);
+        assert_eq!(page.start_index, 5);
+        // has_more == start > 0; start = 5 (after clamp), so true.
+        assert!(page.has_more);
+    }
+
+    #[test]
+    fn last_n_zero_returns_no_entries() {
+        let entries: Vec<_> = (0..5)
+            .map(|i| mk(NormalizedEntryType::UserMessage, &format!("{i}")))
+            .collect();
+        let page = page(
+            &entries,
+            &PageParams {
+                last_n: Some(0),
+                from_index: None,
+                include_thinking: false,
+            },
+        );
+        assert_eq!(page.total_count, 5);
+        assert_eq!(page.entries.len(), 0);
+        // tail mode with n=0 → start = total - 0 = total, end = total.
+        assert_eq!(page.start_index, 5);
+        assert!(page.has_more);
     }
 }
