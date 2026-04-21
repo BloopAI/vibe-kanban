@@ -57,3 +57,38 @@ pub struct UpdateWorkspace {
 pub struct UpdateSession {
     pub name: Option<String>,
 }
+
+/// Atomic "seed a task + workspace + kick off execution" request used by
+/// the MCP bridge (`POST /api/tasks/start`). Mirrors a subset of
+/// `CreateAndStartWorkspaceRequest` but keyed to a freshly created Task.
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct StartTaskRequest {
+    pub task: StartTaskTaskSpec,
+    pub workspace: StartTaskWorkspaceSpec,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct StartTaskTaskSpec {
+    pub project_id: Uuid,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_workspace_id: Option<Uuid>,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct StartTaskWorkspaceSpec {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    pub repos: Vec<WorkspaceRepoInput>,
+    pub executor_config: ExecutorConfig,
+    pub prompt: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct StartTaskResponse {
+    pub task_id: Uuid,
+    pub workspace_id: Uuid,
+    pub execution_id: Uuid,
+}

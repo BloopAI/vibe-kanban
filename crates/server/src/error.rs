@@ -91,6 +91,9 @@ pub enum ApiError {
     Forbidden(String),
     #[error("Too many requests: {0}")]
     TooManyRequests(String),
+    /// 429 with a structured envelope `kind` (e.g. "parent_concurrency_exceeded").
+    #[error("Too many requests: {message}")]
+    TooManyRequestsWithKind { message: String, kind: String },
     #[error("Payload too large")]
     PayloadTooLarge,
     #[error("Bad gateway: {0}")]
@@ -551,6 +554,18 @@ impl IntoResponse for ApiError {
                 "TooManyRequests",
                 msg.clone(),
             ),
+            ApiError::TooManyRequestsWithKind { message, kind } => ErrorInfo {
+                status: StatusCode::TOO_MANY_REQUESTS,
+                error_type: "TooManyRequests",
+                message: Some(message.clone()),
+                envelope: Some(utils::response::ApiErrorEnvelope {
+                    kind: kind.clone(),
+                    retryable: true,
+                    human_intervention_required: false,
+                    stderr_tail: None,
+                    program: None,
+                }),
+            },
             ApiError::PayloadTooLarge => ErrorInfo::with_status(
                 StatusCode::PAYLOAD_TOO_LARGE,
                 "PayloadTooLarge",

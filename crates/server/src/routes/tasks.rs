@@ -2,11 +2,19 @@ use axum::{
     Json, Router,
     extract::{Path, Query, State},
     response::Json as ResponseJson,
-    routing::get,
+    routing::{get, post},
 };
-use db::models::task::{CreateTask, Task, UpdateTask};
+use db::models::{
+    requests::{StartTaskRequest, StartTaskResponse},
+    task::{CreateTask, Task, UpdateTask},
+};
 use deployment::Deployment;
 use serde::Deserialize;
+use services::services::{
+    container::ContainerService,
+    task_concurrency::TaskConcurrency,
+    workspace::{self as ws_service, WorkspaceCreateParams},
+};
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -69,9 +77,121 @@ pub async fn delete_task(
     }
 }
 
+/// Atomically seed a Task + Workspace (+ optional parent concurrency check),
+/// then attach requested repos and start execution post-commit.
+///
+/// D6: Task and Workspace rows are created inside a single sqlx transaction;
+/// if either insert fails, neither row is persisted.
+/// D7: Parent concurrency is enforced pre-tx via `TaskConcurrency::check_room`;
+/// the limit is soft (see `check_room` docs for the TOCTOU note).
+async fn start_task(
+    State(deployment): State<DeploymentImpl>,
+    Json(body): Json<StartTaskRequest>,
+) -> Result<ResponseJson<ApiResponse<StartTaskResponse>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    // D7 pre-tx concurrency gate (only applies when a parent is named).
+    if let Some(parent) = body.task.parent_workspace_id
+        && !TaskConcurrency::check_room(pool, parent).await?
+    {
+        return Err(ApiError::TooManyRequestsWithKind {
+            message: format!("Parent workspace {parent} has reached its child concurrency limit"),
+            kind: "parent_concurrency_exceeded".into(),
+        });
+    }
+
+    // Derive the git branch name the same way bare workspace creation does,
+    // so worktree layouts stay consistent.
+    let workspace_id_hint = Uuid::new_v4();
+    let branch_label = body
+        .workspace
+        .name
+        .as_deref()
+        .filter(|n| !n.is_empty())
+        .unwrap_or("workspace");
+    let git_branch_name = deployment
+        .container()
+        .git_branch_from_workspace(&workspace_id_hint, branch_label)
+        .await;
+
+    // D6 atomic tx: create task + bare workspace (no repo rows — those
+    // require git setup and are attached post-commit via workspace_manager).
+    let mut tx = pool.begin().await?;
+    let task = Task::create_in_tx(
+        &mut tx,
+        CreateTask {
+            project_id: body.task.project_id,
+            title: body.task.title,
+            description: body.task.description,
+            parent_workspace_id: body.task.parent_workspace_id,
+        },
+    )
+    .await?;
+    let workspace = ws_service::create_in_tx(
+        &mut tx,
+        WorkspaceCreateParams {
+            name: body.workspace.name.filter(|n| !n.is_empty()),
+            task_id: Some(task.id),
+            branch: git_branch_name,
+            repo_ids: vec![],
+        },
+    )
+    .await
+    .map_err(|e| match e {
+        ws_service::WorkspaceServiceError::Workspace(w) => ApiError::Workspace(w),
+        ws_service::WorkspaceServiceError::Db(d) => ApiError::Database(d),
+        ws_service::WorkspaceServiceError::RepoNotFound(id) => {
+            ApiError::BadRequest(format!("repo {id} not found"))
+        }
+    })?;
+    tx.commit().await?;
+
+    // Post-commit: attach repos via workspace_manager (git checks + worktree setup).
+    let mut managed = deployment
+        .workspace_manager()
+        .load_managed_workspace(workspace.clone())
+        .await?;
+    for repo_ref in &body.workspace.repos {
+        managed
+            .add_repository(repo_ref, deployment.git())
+            .await
+            .map_err(ApiError::from)?;
+    }
+
+    // Post-commit: kick off execution.
+    let (result, failure_ctx) = deployment
+        .container()
+        .start_workspace_with_context(
+            &workspace,
+            body.workspace.executor_config.clone(),
+            body.workspace.prompt,
+        )
+        .await;
+    let execution_process =
+        result.map_err(|e| crate::error::map_container_err_with_context(e, failure_ctx))?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "task_started",
+            serde_json::json!({
+                "task_id": task.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
+                "executor": &body.workspace.executor_config.executor,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(StartTaskResponse {
+        task_id: task.id,
+        workspace_id: workspace.id,
+        execution_id: execution_process.id,
+    })))
+}
+
 pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
         .route("/tasks", get(list_tasks).post(create_task))
+        .route("/tasks/start", post(start_task))
         .route(
             "/tasks/{id}",
             get(get_task).put(update_task).delete(delete_task),
