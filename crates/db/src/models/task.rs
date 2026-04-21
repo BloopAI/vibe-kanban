@@ -95,6 +95,26 @@ pub struct UpdateTask {
 }
 
 impl Task {
+    /// D13: atomically clear `workspaces.task_id` references, then delete the
+    /// task. A sibling workspace must outlive the task it was derived from
+    /// (we only clear the FK, never cascade-delete the workspace).
+    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
+        let mut tx = pool.begin().await?;
+        sqlx::query!("UPDATE workspaces SET task_id = NULL WHERE task_id = ?", id)
+            .execute(&mut *tx)
+            .await?;
+        let rows = sqlx::query!("DELETE FROM tasks WHERE id = ?", id)
+            .execute(&mut *tx)
+            .await?;
+        if rows.rows_affected() == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+}
+
+impl Task {
     pub async fn update(
         pool: &SqlitePool,
         id: Uuid,
@@ -192,6 +212,38 @@ mod tests {
         Ok(())
     }
 
+    #[tokio::test]
+    async fn delete_cascades_workspace_task_id_to_null() -> sqlx::Result<()> {
+        let db = DBService::new_in_memory().await.expect("in-memory db");
+        let pool = &db.pool;
+        let project_id = seed_project(pool).await;
+
+        let task = Task::create(
+            pool,
+            CreateTask {
+                project_id,
+                title: "parent".into(),
+                description: None,
+                parent_workspace_id: None,
+            },
+        )
+        .await?;
+        let ws_id = seed_workspace_with_task(pool, task.id).await;
+
+        Task::delete(pool, task.id).await?;
+
+        // task removed
+        assert!(Task::find_by_id(pool, task.id).await?.is_none());
+        // workspace preserved, task_id cleared
+        let ws_task_id: Option<Uuid> =
+            sqlx::query_scalar(r#"SELECT task_id FROM workspaces WHERE id = ?"#)
+                .bind(ws_id)
+                .fetch_one(pool)
+                .await?;
+        assert_eq!(ws_task_id, None);
+        Ok(())
+    }
+
     async fn seed_project(pool: &sqlx::SqlitePool) -> Uuid {
         let id = Uuid::new_v4();
         sqlx::query(
@@ -199,6 +251,21 @@ mod tests {
              VALUES (?1, 'p', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
         )
         .bind(id)
+        .execute(pool)
+        .await
+        .unwrap();
+        id
+    }
+
+    async fn seed_workspace_with_task(pool: &sqlx::SqlitePool, task_id: Uuid) -> Uuid {
+        let id = Uuid::new_v4();
+        sqlx::query(
+            "INSERT INTO workspaces \
+             (id, task_id, branch, created_at, updated_at, archived, pinned, worktree_deleted) \
+         VALUES (?, ?, 'main', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 0)",
+        )
+        .bind(id)
+        .bind(task_id)
         .execute(pool)
         .await
         .unwrap();
