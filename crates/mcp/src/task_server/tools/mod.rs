@@ -543,6 +543,7 @@ mod tests {
             "get_context".to_string(),
             "get_execution".to_string(),
             "list_sessions".to_string(),
+            "read_session_messages".to_string(),
             "run_session_prompt".to_string(),
             "update_session".to_string(),
             "update_workspace".to_string(),

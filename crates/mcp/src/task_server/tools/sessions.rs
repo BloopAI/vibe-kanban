@@ -145,9 +145,64 @@ struct GetExecutionResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "Option<serde_json::Value>")]
     error: Option<utils::response::ApiErrorEnvelope>,
-    /// Deprecated — always `null`. Use `read_session_messages` (coming in PR-X2).
+    /// Deprecated — always `null`. Use `read_session_messages`.
     #[schemars(description = "DEPRECATED — always null. Use read_session_messages instead.")]
     final_message: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct ReadSessionMessagesRequest {
+    #[schemars(
+        description = "Workspace ID to read messages from. Optional when running inside a scoped orchestrator MCP."
+    )]
+    workspace_id: Option<Uuid>,
+    #[schemars(
+        description = "Session ID to read from. If omitted, the most recently used session in the workspace is used."
+    )]
+    session_id: Option<Uuid>,
+    #[schemars(description = "Return only the last N messages (server clamps to its maximum)")]
+    last_n: Option<u32>,
+    #[schemars(description = "Return messages starting from this (0-based) index")]
+    from_index: Option<u32>,
+    #[schemars(description = "If true, include thinking/reasoning entries in the output")]
+    include_thinking: Option<bool>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct SessionMessageSummary {
+    index: u32,
+    entry_type: String,
+    content: String,
+    timestamp: Option<String>,
+    #[schemars(with = "Option<serde_json::Value>")]
+    metadata: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct ReadSessionMessagesResponse {
+    #[schemars(description = "Session ID the messages were read from")]
+    session_id: String,
+    messages: Vec<SessionMessageSummary>,
+    total_count: u32,
+    has_more: bool,
+    final_assistant_message: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RestSessionMessagesResponse {
+    messages: Vec<RestSessionMessage>,
+    total_count: u32,
+    has_more: bool,
+    final_assistant_message: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RestSessionMessage {
+    index: u32,
+    entry_type: String,
+    content: String,
+    timestamp: Option<String>,
+    metadata: Option<serde_json::Value>,
 }
 
 #[tool_router(router = session_tools_router, vis = "pub")]
@@ -370,6 +425,94 @@ impl McpServer {
             final_message: None,
         })
     }
+
+    #[tool(
+        description = "Read normalized conversation messages for a session. If `session_id` is omitted, the most recently used session in `workspace_id` is selected. Server defaults apply to paging when `last_n`/`from_index` are not provided; `include_thinking` defaults to false."
+    )]
+    async fn read_session_messages(
+        &self,
+        Parameters(ReadSessionMessagesRequest {
+            workspace_id,
+            session_id,
+            last_n,
+            from_index,
+            include_thinking,
+        }): Parameters<ReadSessionMessagesRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let workspace_id = match self.resolve_workspace_id(workspace_id) {
+            Ok(id) => id,
+            Err(error_result) => return Ok(Self::tool_error(error_result)),
+        };
+        if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
+            return Ok(Self::tool_error(error_result));
+        }
+
+        let session_id = match session_id {
+            Some(id) => id,
+            None => {
+                let list_url = self.url(&format!("/api/sessions?workspace_id={workspace_id}"));
+                let sessions: Vec<Session> = match self.send_json(self.client.get(&list_url)).await
+                {
+                    Ok(value) => value,
+                    Err(error_result) => return Ok(Self::tool_error(error_result)),
+                };
+                // Server returns sessions ordered by `last_used DESC`, so the first
+                // element is the most recently used session.
+                match sessions.into_iter().next() {
+                    Some(session) => session.id,
+                    None => {
+                        return Self::err(
+                            format!("No sessions found for workspace_id={workspace_id}"),
+                            Some(
+                                "Create a session first via `create_session`, or pass an explicit `session_id`."
+                                    .to_string(),
+                            ),
+                        );
+                    }
+                }
+            }
+        };
+
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(value) = last_n {
+            query_params.push(("last_n".to_string(), value.to_string()));
+        }
+        if let Some(value) = from_index {
+            query_params.push(("from_index".to_string(), value.to_string()));
+        }
+        if let Some(value) = include_thinking {
+            query_params.push(("include_thinking".to_string(), value.to_string()));
+        }
+
+        let path = format!("/api/sessions/{session_id}/messages");
+        let url = self.url(&path);
+        let request = self.client.get(&url).query(&query_params);
+
+        let response: RestSessionMessagesResponse = match self.send_json(request).await {
+            Ok(value) => value,
+            Err(error_result) => return Ok(Self::tool_error(error_result)),
+        };
+
+        let messages = response
+            .messages
+            .into_iter()
+            .map(|message| SessionMessageSummary {
+                index: message.index,
+                entry_type: message.entry_type,
+                content: message.content,
+                timestamp: message.timestamp,
+                metadata: message.metadata,
+            })
+            .collect::<Vec<_>>();
+
+        Self::success(&ReadSessionMessagesResponse {
+            session_id: session_id.to_string(),
+            messages,
+            total_count: response.total_count,
+            has_more: response.has_more,
+            final_assistant_message: response.final_assistant_message,
+        })
+    }
 }
 
 impl McpServer {
@@ -463,6 +606,139 @@ mod get_execution_tests {
         assert!(
             v.get("error").is_none(),
             "error should be omitted when None: {json}"
+        );
+    }
+}
+
+#[cfg(test)]
+mod read_session_messages_tests {
+    use super::*;
+
+    #[test]
+    fn request_deserialises_with_defaults() {
+        let workspace_id = Uuid::new_v4();
+        let value = serde_json::json!({ "workspace_id": workspace_id });
+        let req: ReadSessionMessagesRequest = serde_json::from_value(value).unwrap();
+        assert_eq!(req.workspace_id, Some(workspace_id));
+        assert!(req.session_id.is_none());
+        assert!(req.last_n.is_none());
+        assert!(req.from_index.is_none());
+        assert!(req.include_thinking.is_none());
+    }
+
+    #[test]
+    fn request_accepts_explicit_session_id() {
+        let session_id = Uuid::new_v4();
+        let value = serde_json::json!({
+            "session_id": session_id,
+            "last_n": 25,
+            "include_thinking": true,
+        });
+        let req: ReadSessionMessagesRequest = serde_json::from_value(value).unwrap();
+        assert!(req.workspace_id.is_none());
+        assert_eq!(req.session_id, Some(session_id));
+        assert_eq!(req.last_n, Some(25));
+        assert!(req.from_index.is_none());
+        assert_eq!(req.include_thinking, Some(true));
+    }
+
+    #[test]
+    fn response_serialises_empty_state() {
+        let resp = ReadSessionMessagesResponse {
+            session_id: "abc".into(),
+            messages: Vec::new(),
+            total_count: 0,
+            has_more: false,
+            final_assistant_message: None,
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(v["session_id"], "abc");
+        assert!(v["messages"].is_array());
+        assert_eq!(v["messages"].as_array().unwrap().len(), 0);
+        assert_eq!(v["total_count"], 0);
+        assert_eq!(v["has_more"], false);
+        assert!(v["final_assistant_message"].is_null());
+    }
+
+    #[test]
+    fn response_round_trips_messages() {
+        let resp = ReadSessionMessagesResponse {
+            session_id: "s1".into(),
+            messages: vec![SessionMessageSummary {
+                index: 3,
+                entry_type: "assistant_message".into(),
+                content: "hello".into(),
+                timestamp: Some("2026-04-21T00:00:00Z".into()),
+                metadata: Some(serde_json::json!({ "model": "claude" })),
+            }],
+            total_count: 1,
+            has_more: true,
+            final_assistant_message: Some("hello".into()),
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(v["session_id"], "s1");
+        assert_eq!(v["total_count"], 1);
+        assert_eq!(v["has_more"], true);
+        assert_eq!(v["final_assistant_message"], "hello");
+        let messages = v["messages"].as_array().unwrap();
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0]["index"], 3);
+        assert_eq!(messages[0]["entry_type"], "assistant_message");
+        assert_eq!(messages[0]["content"], "hello");
+        assert_eq!(messages[0]["timestamp"], "2026-04-21T00:00:00Z");
+        assert_eq!(messages[0]["metadata"]["model"], "claude");
+    }
+
+    #[test]
+    fn rest_response_deserialises() {
+        let value = serde_json::json!({
+            "messages": [
+                {
+                    "index": 0,
+                    "entry_type": "user_message",
+                    "content": "hi",
+                    "timestamp": null,
+                    "metadata": null,
+                },
+                {
+                    "index": 1,
+                    "entry_type": "assistant_message",
+                    "content": "hello back",
+                    "timestamp": "2026-04-21T01:02:03Z",
+                    "metadata": { "tokens": 7 },
+                }
+            ],
+            "total_count": 2,
+            "has_more": false,
+            "final_assistant_message": "hello back",
+        });
+        let parsed: RestSessionMessagesResponse = serde_json::from_value(value).unwrap();
+        assert_eq!(parsed.total_count, 2);
+        assert!(!parsed.has_more);
+        assert_eq!(
+            parsed.final_assistant_message.as_deref(),
+            Some("hello back")
+        );
+        assert_eq!(parsed.messages.len(), 2);
+        assert_eq!(parsed.messages[0].index, 0);
+        assert_eq!(parsed.messages[0].entry_type, "user_message");
+        assert_eq!(parsed.messages[0].content, "hi");
+        assert!(parsed.messages[0].timestamp.is_none());
+        assert!(parsed.messages[0].metadata.is_none());
+        assert_eq!(parsed.messages[1].index, 1);
+        assert_eq!(
+            parsed.messages[1].timestamp.as_deref(),
+            Some("2026-04-21T01:02:03Z")
+        );
+        assert_eq!(
+            parsed.messages[1]
+                .metadata
+                .as_ref()
+                .and_then(|m| m.get("tokens"))
+                .and_then(|v| v.as_u64()),
+            Some(7)
         );
     }
 }
