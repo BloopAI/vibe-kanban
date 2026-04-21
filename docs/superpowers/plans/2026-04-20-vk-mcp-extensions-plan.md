@@ -1710,7 +1710,7 @@ git commit -m "feat(db): add Task::create"
         let task = Task::create(&pool, CreateTask {
             project_id, title: "a".into(), description: None, parent_workspace_id: None
         }).await?;
-        Task::update(&pool, task.id, TaskUpdateParams {
+        Task::update(&pool, task.id, UpdateTask {
             title: Some("b".into()),
             description: Some(Some("desc".into())),
             status: Some(TaskStatus::InProgress),
@@ -1728,14 +1728,14 @@ git commit -m "feat(db): add Task::create"
 - [ ] **Step 3: 实现**
 
 ```rust
-pub struct TaskUpdateParams {
+pub struct UpdateTask {
     pub title: Option<String>,
     pub description: Option<Option<String>>, // None = no change; Some(None) = set NULL
     pub status: Option<TaskStatus>,
 }
 
 impl Task {
-    pub async fn update(pool: &SqlitePool, id: Uuid, params: TaskUpdateParams) -> Result<(), sqlx::Error> {
+    pub async fn update(pool: &SqlitePool, id: Uuid, params: UpdateTask) -> Result<(), sqlx::Error> {
         // Build dynamic UPDATE; simpler: fetch, apply, write back.
         let mut task = Self::find_by_id(pool, id).await?.ok_or(sqlx::Error::RowNotFound)?;
         if let Some(t) = params.title { task.title = t; }
@@ -2143,7 +2143,7 @@ use axum::{Router, extract::{State, Path, Query}, routing::{get, post, put, dele
 use serde::Deserialize;
 use uuid::Uuid;
 use utils::response::ApiResponse;
-use db::models::task::{Task, CreateTask, TaskUpdateParams, TaskStatus};
+use db::models::task::{Task, CreateTask, UpdateTask, TaskStatus};
 use crate::{error::ApiError, DeploymentImpl};
 
 pub fn router(_dep: &DeploymentImpl) -> Router<DeploymentImpl> {
@@ -2190,7 +2190,7 @@ struct UpdateBody {
 async fn update_task(State(dep): State<DeploymentImpl>, Path(id): Path<Uuid>, Json(body): Json<UpdateBody>)
     -> Result<ResponseJson<ApiResponse<()>>, ApiError>
 {
-    Task::update(&dep.db().pool, id, TaskUpdateParams {
+    Task::update(&dep.db().pool, id, UpdateTask {
         title: body.title,
         description: body.description,
         status: body.status,
