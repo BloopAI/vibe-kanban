@@ -93,20 +93,22 @@ struct CursorMcpAdoptionContext {
     bridge_session_id: String,
 }
 
+type CursorMcpAdoptionResolution = (
+    Option<String>,
+    Option<String>,
+    Option<CursorMcpAdoptionContext>,
+);
+
+// `ApiError` is the project-wide error type; boxing it just for this helper
+// would cascade through every caller. The size is accepted here.
+#[allow(clippy::result_large_err)]
 fn resolve_cursor_mcp_adoption_context(
     executor: BaseCodingAgent,
     requested_name: Option<String>,
     prompt: &str,
     lobby: Option<&CursorMcpLobbySession>,
     adopt_bridge_session_id: Option<&str>,
-) -> Result<
-    (
-        Option<String>,
-        Option<String>,
-        Option<CursorMcpAdoptionContext>,
-    ),
-    ApiError,
-> {
+) -> Result<CursorMcpAdoptionResolution, ApiError> {
     let normalized_name = normalize_optional_name(requested_name);
     let normalized_prompt = normalize_prompt(prompt);
     let adopt_bridge_session_id = adopt_bridge_session_id

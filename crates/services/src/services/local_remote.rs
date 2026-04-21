@@ -299,30 +299,30 @@ impl LocalRemote {
         let mut filtered: Vec<Issue> = all
             .into_iter()
             .filter(|i| {
-                if let Some(sid) = req.status_id {
-                    if i.status_id != sid {
-                        return false;
-                    }
+                if let Some(sid) = req.status_id
+                    && i.status_id != sid
+                {
+                    return false;
                 }
-                if let Some(ids) = &req.status_ids {
-                    if !ids.contains(&i.status_id) {
-                        return false;
-                    }
+                if let Some(ids) = &req.status_ids
+                    && !ids.contains(&i.status_id)
+                {
+                    return false;
                 }
-                if let Some(p) = req.priority {
-                    if i.priority != Some(p) {
-                        return false;
-                    }
+                if let Some(p) = req.priority
+                    && i.priority != Some(p)
+                {
+                    return false;
                 }
-                if let Some(parent) = req.parent_issue_id {
-                    if i.parent_issue_id != Some(parent) {
-                        return false;
-                    }
+                if let Some(parent) = req.parent_issue_id
+                    && i.parent_issue_id != Some(parent)
+                {
+                    return false;
                 }
-                if let Some(simple) = &req.simple_id {
-                    if &i.simple_id != simple {
-                        return false;
-                    }
+                if let Some(simple) = &req.simple_id
+                    && &i.simple_id != simple
+                {
+                    return false;
                 }
                 if let Some(s) = &req.search {
                     let needle = s.to_lowercase();

@@ -650,14 +650,14 @@ impl CursorMcpService {
             }
         }
 
-        if let Some(bridge_id) = self.heal_bridge_mapping_for_vk(vk_session_id).await {
-            if let Some(lobby_arc) = self.lobby_state.get(&bridge_id) {
-                let mut lobby = lobby_arc.lock().await;
-                if !lobby.queue.is_empty() {
-                    let mut vk = state_arc.lock().await;
-                    while let Some(rid) = lobby.queue.pop_front() {
-                        vk.queue.push_back(rid);
-                    }
+        if let Some(bridge_id) = self.heal_bridge_mapping_for_vk(vk_session_id).await
+            && let Some(lobby_arc) = self.lobby_state.get(&bridge_id)
+        {
+            let mut lobby = lobby_arc.lock().await;
+            if !lobby.queue.is_empty() {
+                let mut vk = state_arc.lock().await;
+                while let Some(rid) = lobby.queue.pop_front() {
+                    vk.queue.push_back(rid);
                 }
             }
         }
@@ -1376,8 +1376,10 @@ mod tests {
     async fn inbox_snapshot_lists_lobby_and_bridges() {
         let svc = fresh_service().await;
         let (_h, _rx) = svc.register_bridge().await;
-        let _ = svc
-            .enqueue_wait(
+        // The returned `oneshot::Receiver` is the reply channel; this test
+        // only exercises the snapshot side-effects so we discard it explicitly.
+        drop(
+            svc.enqueue_wait(
                 "snap-A".into(),
                 Some("host-a".into()),
                 "r1".into(),
@@ -1385,9 +1387,10 @@ mod tests {
                 None,
                 None,
             )
-            .await;
-        let _ = svc
-            .enqueue_wait(
+            .await,
+        );
+        drop(
+            svc.enqueue_wait(
                 "snap-B".into(),
                 Some("host-b".into()),
                 "r2".into(),
@@ -1395,7 +1398,8 @@ mod tests {
                 None,
                 None,
             )
-            .await;
+            .await,
+        );
         let snap = svc.inbox_snapshot().await;
         assert_eq!(snap.bridges.len(), 1);
         assert_eq!(snap.lobby.len(), 2);
