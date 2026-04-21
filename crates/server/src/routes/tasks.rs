@@ -62,8 +62,11 @@ pub async fn delete_task(
     State(deployment): State<DeploymentImpl>,
     Path(id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    Task::delete(&deployment.db().pool, id).await?;
-    Ok(ResponseJson(ApiResponse::success(())))
+    match Task::delete(&deployment.db().pool, id).await {
+        Ok(()) => Ok(ResponseJson(ApiResponse::success(()))),
+        Err(sqlx::Error::RowNotFound) => Err(ApiError::BadRequest(format!("task {id} not found"))),
+        Err(e) => Err(e.into()),
+    }
 }
 
 pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {

@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_with::rust::double_option;
 use sqlx::{FromRow, Sqlite, SqlitePool, Transaction, Type};
 use strum_macros::{Display, EnumString};
 use ts_rs::TS;
@@ -93,7 +94,8 @@ impl Task {
 pub struct UpdateTask {
     #[serde(default)]
     pub title: Option<String>,
-    #[serde(default)]
+    #[serde(default, with = "double_option")]
+    #[ts(optional, type = "string | null")]
     pub description: Option<Option<String>>, // None = no change; Some(None) = set NULL
     #[serde(default)]
     pub status: Option<TaskStatus>,
