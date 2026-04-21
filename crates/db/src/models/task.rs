@@ -148,6 +148,31 @@ impl Task {
 }
 
 impl Task {
+    pub async fn find_by_parent_workspace_id(
+        pool: &SqlitePool,
+        parent: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Task,
+            r#"SELECT id as "id!: Uuid",
+                      project_id as "project_id!: Uuid",
+                      title,
+                      description,
+                      status as "status!: TaskStatus",
+                      parent_workspace_id as "parent_workspace_id: Uuid",
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM tasks
+               WHERE parent_workspace_id = ?
+               ORDER BY created_at ASC"#,
+            parent
+        )
+        .fetch_all(pool)
+        .await
+    }
+}
+
+impl Task {
     pub async fn create_in_tx(
         tx: &mut Transaction<'_, Sqlite>,
         params: CreateTask,
@@ -317,5 +342,49 @@ mod tests {
         .await
         .unwrap();
         id
+    }
+
+    #[tokio::test]
+    async fn find_by_parent_returns_only_matching() -> sqlx::Result<()> {
+        let db = DBService::new_in_memory().await.expect("in-memory db");
+        let pool = &db.pool;
+        let project_id = seed_project(pool).await;
+        let parent = Uuid::new_v4();
+
+        sqlx::query(
+            "INSERT INTO workspaces \
+                 (id, branch, created_at, updated_at, archived, pinned, worktree_deleted) \
+             VALUES (?, 'main', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 0)",
+        )
+        .bind(parent)
+        .execute(pool)
+        .await
+        .unwrap();
+
+        let _a = Task::create(
+            pool,
+            CreateTask {
+                project_id,
+                title: "a".into(),
+                description: None,
+                parent_workspace_id: Some(parent),
+            },
+        )
+        .await?;
+        let _b = Task::create(
+            pool,
+            CreateTask {
+                project_id,
+                title: "b".into(),
+                description: None,
+                parent_workspace_id: None,
+            },
+        )
+        .await?;
+
+        let list = Task::find_by_parent_workspace_id(pool, parent).await?;
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].title, "a");
+        Ok(())
     }
 }
