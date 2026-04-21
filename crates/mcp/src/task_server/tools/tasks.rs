@@ -195,6 +195,36 @@ impl McpServer {
         Ok(())
     }
 
+    /// For tools that operate on an existing `Task`, verify the task's
+    /// `parent_workspace_id` lies within the orchestrator scope.
+    ///
+    /// - Non-Orchestrator mode → always allowed.
+    /// - Orchestrator without a `scoped_workspace_id` → allowed (no scope set yet).
+    /// - Orchestrator with scope AND task has no parent → denied (D12 only
+    ///   relaxes for parent→child; top-level tasks stay out-of-scope).
+    /// - Orchestrator with scope AND task has parent →
+    ///   `check_scope_allows_workspace(parent)`.
+    async fn require_parent_in_scope(
+        &self,
+        task: &db::models::task::Task,
+        scope_cache: &mut std::collections::HashMap<Uuid, bool>,
+    ) -> Result<(), ToolError> {
+        if !matches!(self.mode(), McpMode::Orchestrator) {
+            return Ok(());
+        }
+        if self.scoped_workspace_id().is_none() {
+            return Ok(());
+        }
+        let parent = match task.parent_workspace_id {
+            Some(p) => p,
+            None => return Err(self.scope_denied_error(task.id)),
+        };
+        if !check_scope_allows_workspace(self, scope_cache, parent).await {
+            return Err(self.scope_denied_error(task.id));
+        }
+        Ok(())
+    }
+
     fn parse_task_status(raw: &str) -> Result<TaskStatus, ToolError> {
         let normalized = raw.trim().to_ascii_lowercase();
         // `TaskStatus` is `#[strum(serialize_all = "lowercase")]`, so the
@@ -440,25 +470,15 @@ impl McpServer {
         &self,
         Parameters(McpGetTaskRequest { task_id }): Parameters<McpGetTaskRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let url = self.url(&format!("/api/tasks/{task_id}"));
-        let task: Task = match self.send_json(self.client.get(&url)).await {
+        let task_url = self.url(&format!("/api/tasks/{task_id}"));
+        let task: Task = match self.send_json(self.client.get(&task_url)).await {
             Ok(value) => value,
             Err(error) => return Ok(Self::tool_error(error)),
         };
 
-        if matches!(self.mode(), McpMode::Orchestrator) && self.scoped_workspace_id().is_some() {
-            match task.parent_workspace_id {
-                Some(parent) => {
-                    if let Err(error) = self.enforce_parent_scope(parent).await {
-                        return Ok(Self::tool_error(error));
-                    }
-                }
-                None => {
-                    return Ok(Self::tool_error(ToolError::message(
-                        "Task is not associated with a parent workspace and is out of scope",
-                    )));
-                }
-            }
+        let mut scope_cache = std::collections::HashMap::new();
+        if let Err(e) = self.require_parent_in_scope(&task, &mut scope_cache).await {
+            return Ok(Self::tool_error(e));
         }
 
         Self::success(&Self::task_summary(task))
@@ -477,31 +497,20 @@ impl McpServer {
         };
 
         // Fetch first for scope enforcement.
-        let get_url = self.url(&format!("/api/tasks/{task_id}"));
-        let task: Task = match self.send_json(self.client.get(&get_url)).await {
+        let task_url = self.url(&format!("/api/tasks/{task_id}"));
+        let task: Task = match self.send_json(self.client.get(&task_url)).await {
             Ok(value) => value,
             Err(error) => return Ok(Self::tool_error(error)),
         };
 
-        if matches!(self.mode(), McpMode::Orchestrator) && self.scoped_workspace_id().is_some() {
-            match task.parent_workspace_id {
-                Some(parent) => {
-                    if let Err(error) = self.enforce_parent_scope(parent).await {
-                        return Ok(Self::tool_error(error));
-                    }
-                }
-                None => {
-                    return Ok(Self::tool_error(ToolError::message(
-                        "Task is not associated with a parent workspace and is out of scope",
-                    )));
-                }
-            }
+        let mut scope_cache = std::collections::HashMap::new();
+        if let Err(e) = self.require_parent_in_scope(&task, &mut scope_cache).await {
+            return Ok(Self::tool_error(e));
         }
 
-        let url = self.url(&format!("/api/tasks/{task_id}"));
         let payload = serde_json::json!({ "status": new_status });
         if let Err(error) = self
-            .send_empty_json(self.client.put(&url).json(&payload))
+            .send_empty_json(self.client.put(&task_url).json(&payload))
             .await
         {
             return Ok(Self::tool_error(error));
@@ -522,29 +531,18 @@ impl McpServer {
         Parameters(McpDeleteTaskRequest { task_id }): Parameters<McpDeleteTaskRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         // Fetch first for scope enforcement.
-        let get_url = self.url(&format!("/api/tasks/{task_id}"));
-        let task: Task = match self.send_json(self.client.get(&get_url)).await {
+        let task_url = self.url(&format!("/api/tasks/{task_id}"));
+        let task: Task = match self.send_json(self.client.get(&task_url)).await {
             Ok(value) => value,
             Err(error) => return Ok(Self::tool_error(error)),
         };
 
-        if matches!(self.mode(), McpMode::Orchestrator) && self.scoped_workspace_id().is_some() {
-            match task.parent_workspace_id {
-                Some(parent) => {
-                    if let Err(error) = self.enforce_parent_scope(parent).await {
-                        return Ok(Self::tool_error(error));
-                    }
-                }
-                None => {
-                    return Ok(Self::tool_error(ToolError::message(
-                        "Task is not associated with a parent workspace and is out of scope",
-                    )));
-                }
-            }
+        let mut scope_cache = std::collections::HashMap::new();
+        if let Err(e) = self.require_parent_in_scope(&task, &mut scope_cache).await {
+            return Ok(Self::tool_error(e));
         }
 
-        let url = self.url(&format!("/api/tasks/{task_id}"));
-        if let Err(error) = self.send_empty_json(self.client.delete(&url)).await {
+        if let Err(error) = self.send_empty_json(self.client.delete(&task_url)).await {
             return Ok(Self::tool_error(error));
         }
 
