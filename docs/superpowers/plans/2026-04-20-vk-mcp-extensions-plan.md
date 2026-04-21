@@ -1629,7 +1629,7 @@ mod tests {
     #[sqlx::test]
     async fn create_inserts_task(pool: SqlitePool) -> sqlx::Result<()> {
         let project_id = seed_project(&pool).await;
-        let task = Task::create(&pool, TaskCreateParams {
+        let task = Task::create(&pool, CreateTask {
             project_id,
             title: "todo-1".into(),
             description: Some("desc".into()),
@@ -1654,14 +1654,14 @@ mod tests {
 - [ ] **Step 2: 跑失败**
 
 Run: `cargo test -p db task::tests::create_inserts_task`
-Expected: FAIL — `Task::create` / `TaskCreateParams` 未定义
+Expected: FAIL — `Task::create` / `CreateTask` 未定义
 
 - [ ] **Step 3: 实现**
 
 在 `crates/db/src/models/task.rs` 追加:
 
 ```rust
-pub struct TaskCreateParams {
+pub struct CreateTask {
     pub project_id: Uuid,
     pub title: String,
     pub description: Option<String>,
@@ -1669,7 +1669,7 @@ pub struct TaskCreateParams {
 }
 
 impl Task {
-    pub async fn create(pool: &SqlitePool, params: TaskCreateParams) -> Result<Self, sqlx::Error> {
+    pub async fn create(pool: &SqlitePool, params: CreateTask) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
         sqlx::query!(
             r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, created_at, updated_at)
@@ -1707,7 +1707,7 @@ git commit -m "feat(db): add Task::create"
     #[sqlx::test]
     async fn update_changes_fields(pool: SqlitePool) -> sqlx::Result<()> {
         let project_id = seed_project(&pool).await;
-        let task = Task::create(&pool, TaskCreateParams {
+        let task = Task::create(&pool, CreateTask {
             project_id, title: "a".into(), description: None, parent_workspace_id: None
         }).await?;
         Task::update(&pool, task.id, TaskUpdateParams {
@@ -1770,7 +1770,7 @@ git commit -m "feat(db): add Task::update"
     #[sqlx::test]
     async fn delete_cascades_workspace_task_id_to_null(pool: SqlitePool) -> sqlx::Result<()> {
         let project_id = seed_project(&pool).await;
-        let task = Task::create(&pool, TaskCreateParams {
+        let task = Task::create(&pool, CreateTask {
             project_id, title: "parent".into(), description: None, parent_workspace_id: None
         }).await?;
         let ws_id = seed_workspace_with_task(&pool, task.id).await;
@@ -1840,7 +1840,7 @@ git commit -m "feat(db): Task::delete with transactional workspace.task_id casca
     async fn create_in_tx_rolls_back_on_abort(pool: SqlitePool) -> sqlx::Result<()> {
         let project_id = seed_project(&pool).await;
         let mut tx = pool.begin().await?;
-        Task::create_in_tx(&mut tx, TaskCreateParams {
+        Task::create_in_tx(&mut tx, CreateTask {
             project_id, title: "t".into(), description: None, parent_workspace_id: None
         }).await?;
         // drop tx without commit
@@ -1861,7 +1861,7 @@ use sqlx::{Sqlite, Transaction};
 impl Task {
     pub async fn create_in_tx(
         tx: &mut Transaction<'_, Sqlite>,
-        params: TaskCreateParams,
+        params: CreateTask,
     ) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
         sqlx::query!(
@@ -1906,8 +1906,8 @@ git commit -m "feat(db): add Task::create_in_tx and Workspace::create_in_tx"
         let project_id = seed_project(&pool).await;
         let parent = Uuid::new_v4();
         sqlx::query!("INSERT INTO workspaces (id, branch, created_at, updated_at, archived, pinned, worktree_deleted) VALUES (?, 'main', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 0)", parent).execute(&pool).await.unwrap();
-        let _a = Task::create(&pool, TaskCreateParams { project_id, title: "a".into(), description: None, parent_workspace_id: Some(parent) }).await?;
-        let _b = Task::create(&pool, TaskCreateParams { project_id, title: "b".into(), description: None, parent_workspace_id: None }).await?;
+        let _a = Task::create(&pool, CreateTask { project_id, title: "a".into(), description: None, parent_workspace_id: Some(parent) }).await?;
+        let _b = Task::create(&pool, CreateTask { project_id, title: "b".into(), description: None, parent_workspace_id: None }).await?;
 
         let list = Task::find_by_parent_workspace_id(&pool, parent).await?;
         assert_eq!(list.len(), 1);
@@ -2143,7 +2143,7 @@ use axum::{Router, extract::{State, Path, Query}, routing::{get, post, put, dele
 use serde::Deserialize;
 use uuid::Uuid;
 use utils::response::ApiResponse;
-use db::models::task::{Task, TaskCreateParams, TaskUpdateParams, TaskStatus};
+use db::models::task::{Task, CreateTask, TaskUpdateParams, TaskStatus};
 use crate::{error::ApiError, DeploymentImpl};
 
 pub fn router(_dep: &DeploymentImpl) -> Router<DeploymentImpl> {
@@ -2163,7 +2163,7 @@ struct CreateBody {
 async fn create_task(State(dep): State<DeploymentImpl>, Json(body): Json<CreateBody>)
     -> Result<ResponseJson<ApiResponse<Task>>, ApiError>
 {
-    let task = Task::create(&dep.db().pool, TaskCreateParams {
+    let task = Task::create(&dep.db().pool, CreateTask {
         project_id: body.project_id,
         title: body.title,
         description: body.description,
@@ -2363,7 +2363,7 @@ async fn start_task(
 
     // D6 atomic tx: create task + workspace + links.
     let mut tx = pool.begin().await?;
-    let task = Task::create_in_tx(&mut tx, TaskCreateParams {
+    let task = Task::create_in_tx(&mut tx, CreateTask {
         project_id: body.task.project_id,
         title: body.task.title,
         description: body.task.description,
