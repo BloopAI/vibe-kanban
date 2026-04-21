@@ -4,6 +4,7 @@ use workspace_utils::approvals::{ApprovalStatus, QuestionStatus};
 
 use crate::logs::utils::shell_command_parsing::CommandCategory;
 
+pub mod messages;
 pub mod plain_text_processor;
 pub mod rebuild;
 pub mod stderr_processor;
@@ -106,7 +107,7 @@ pub struct AnsweredQuestion {
     pub answer: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
 pub struct TokenUsageInfo {
     pub total_tokens: u32,
     pub model_context_window: u32,
