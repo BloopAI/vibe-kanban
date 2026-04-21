@@ -5,6 +5,7 @@ use workspace_utils::approvals::{ApprovalStatus, QuestionStatus};
 use crate::logs::utils::shell_command_parsing::CommandCategory;
 
 pub mod plain_text_processor;
+pub mod rebuild;
 pub mod stderr_processor;
 pub mod utils;
 
@@ -51,7 +52,7 @@ pub struct CommandRunResult {
     pub output: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
 pub struct NormalizedConversation {
     pub entries: Vec<NormalizedEntry>,
     pub session_id: Option<String>,
