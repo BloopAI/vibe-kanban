@@ -1,5 +1,6 @@
 use db::models::requests::{
     CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, LinkedIssueInfo,
+    StartTaskRequest, StartTaskResponse, StartTaskTaskSpec, StartTaskWorkspaceSpec,
     WorkspaceRepoInput,
 };
 use executors::profile::ExecutorConfig;
@@ -10,7 +11,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::McpServer;
+use super::{McpServer, ToolError};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpWorkspaceRepoInput {
@@ -40,6 +41,14 @@ struct StartWorkspaceRequest {
         description = "Optional issue ID to link the workspace to. When provided, the workspace will be associated with this remote issue."
     )]
     issue_id: Option<Uuid>,
+    #[schemars(
+        description = "Optional parent workspace ID. When provided, the workspace is created atomically together with a new task via /api/tasks/start (D6) that is nested under the given parent workspace. Must not be combined with `issue_id`. Requires `project_id`."
+    )]
+    parent_workspace_id: Option<Uuid>,
+    #[schemars(
+        description = "Project ID for the task row when `parent_workspace_id` is set. Required whenever `parent_workspace_id` is provided."
+    )]
+    project_id: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -101,6 +110,8 @@ impl McpServer {
             variant,
             repositories,
             issue_id,
+            parent_workspace_id,
+            project_id,
         }): Parameters<StartWorkspaceRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         if repositories.is_empty() {
@@ -110,6 +121,12 @@ impl McpServer {
         let executor_trimmed = executor.trim();
         if executor_trimmed.is_empty() {
             return Self::err("Executor must not be empty.", None::<&str>);
+        }
+
+        if parent_workspace_id.is_some() && issue_id.is_some() {
+            return Ok(Self::tool_error(ToolError::message(
+                "parent_workspace_id and issue_id cannot be combined",
+            )));
         }
 
         let prompt = prompt.and_then(|prompt| {
@@ -147,6 +164,63 @@ impl McpServer {
                 target_branch: r.branch,
             })
             .collect();
+
+        // Parent-workspace branch: route through /api/tasks/start (atomic tx).
+        if let Some(parent) = parent_workspace_id {
+            let workspace_prompt = match prompt {
+                Some(prompt) => prompt,
+                None => {
+                    return Self::err(
+                        "`prompt` is required when `parent_workspace_id` is set.",
+                        None::<&str>,
+                    );
+                }
+            };
+            let project_id = match project_id {
+                Some(id) => id,
+                None => {
+                    return Ok(Self::tool_error(
+                        ToolError::message(
+                            "`project_id` is required when `parent_workspace_id` is set",
+                        )
+                        .with_error_kind("missing_project_id"),
+                    ));
+                }
+            };
+
+            let payload = StartTaskRequest {
+                task: StartTaskTaskSpec {
+                    project_id,
+                    title: name.clone(),
+                    description: None,
+                    parent_workspace_id: Some(parent),
+                },
+                workspace: StartTaskWorkspaceSpec {
+                    name: Some(name),
+                    repos: workspace_repos,
+                    executor_config: ExecutorConfig {
+                        executor: base_executor,
+                        variant,
+                        model_id: None,
+                        agent_id: None,
+                        reasoning_id: None,
+                        permission_policy: None,
+                    },
+                    prompt: workspace_prompt,
+                },
+            };
+
+            let url = self.url("/api/tasks/start");
+            let response: StartTaskResponse =
+                match self.send_json(self.client.post(&url).json(&payload)).await {
+                    Ok(value) => value,
+                    Err(e) => return Ok(Self::tool_error(e)),
+                };
+
+            return McpServer::success(&StartWorkspaceResponse {
+                workspace_id: response.workspace_id.to_string(),
+            });
+        }
 
         let (linked_issue, issue_prompt) = if let Some(issue_id) = issue_id {
             let issue_url = self.url(&format!("/api/remote/issues/{issue_id}"));

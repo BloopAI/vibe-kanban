@@ -255,6 +255,7 @@ mod remote_projects;
 mod repos;
 mod sessions;
 mod task_attempts;
+mod tasks;
 mod workspaces;
 
 impl McpServer {
@@ -278,6 +279,7 @@ impl McpServer {
             + Self::session_tools_router();
         router.remove_route("list_workspaces");
         router.remove_route("delete_workspace");
+        router += Self::tasks_tools_router();
         router
     }
 }
@@ -591,12 +593,18 @@ mod tests {
         let actual = tool_names(McpServer::orchestrator_mode_router());
         let expected = BTreeSet::from([
             "create_session".to_string(),
+            "create_task".to_string(),
+            "create_and_start_task".to_string(),
+            "delete_task".to_string(),
             "get_context".to_string(),
             "get_execution".to_string(),
+            "get_task".to_string(),
             "list_sessions".to_string(),
+            "list_tasks".to_string(),
             "read_session_messages".to_string(),
             "run_session_prompt".to_string(),
             "update_session".to_string(),
+            "update_task_status".to_string(),
             "update_workspace".to_string(),
         ]);
 

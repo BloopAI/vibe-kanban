@@ -18,6 +18,10 @@ struct McpListWorkspacesRequest {
     branch: Option<String>,
     #[schemars(description = "Case-insensitive substring match against workspace name")]
     name_search: Option<String>,
+    #[schemars(
+        description = "Filter to workspaces associated with this task_id (exact match). Useful for discovering child workspaces under a parent task."
+    )]
+    task_id: Option<Uuid>,
     #[schemars(description = "Maximum number of workspaces to return (default: 50)")]
     limit: Option<i32>,
     #[schemars(description = "Number of results to skip before returning rows (default: 0)")]
@@ -36,6 +40,10 @@ struct WorkspaceSummary {
     pinned: bool,
     #[schemars(description = "Optional workspace display name")]
     name: Option<String>,
+    #[schemars(
+        description = "Optional task ID the workspace is associated with. Cleared when the owning task is deleted."
+    )]
+    task_id: Option<String>,
     #[schemars(description = "Creation timestamp")]
     created_at: String,
     #[schemars(description = "Last update timestamp")]
@@ -106,6 +114,7 @@ impl McpServer {
             pinned,
             branch,
             name_search,
+            task_id,
             limit,
             offset,
         }): Parameters<McpListWorkspacesRequest>,
@@ -134,6 +143,9 @@ impl McpServer {
                     .unwrap_or(false)
             });
         }
+        if let Some(task_filter) = task_id {
+            workspaces.retain(|w| w.task_id == Some(task_filter));
+        }
 
         // Keep ordering deterministic after filtering.
         workspaces.sort_by(|a, b| b.created_at.cmp(&a.created_at));
@@ -152,6 +164,7 @@ impl McpServer {
                 archived: workspace.archived,
                 pinned: workspace.pinned,
                 name: workspace.name,
+                task_id: workspace.task_id.map(|id| id.to_string()),
                 created_at: workspace.created_at.to_rfc3339(),
                 updated_at: workspace.updated_at.to_rfc3339(),
             })
