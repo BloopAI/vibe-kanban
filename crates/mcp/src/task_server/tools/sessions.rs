@@ -427,7 +427,7 @@ impl McpServer {
     }
 
     #[tool(
-        description = "Read normalized conversation messages for a session. If `session_id` is omitted, the most recently used session in `workspace_id` is selected. Server defaults apply to paging when `last_n`/`from_index` are not provided; `include_thinking` defaults to false."
+        description = "Read normalized conversation messages for a session. If `session_id` is omitted, the most recently used session in `workspace_id` is selected. Paging: `last_n` defaults to 20 (server max 200); `from_index` is 0-based and overrides `last_n` when set. `include_thinking` (default false) controls whether reasoning/thinking entries are included. Returns `{ session_id, messages[], total_count, has_more, final_assistant_message }`."
     )]
     async fn read_session_messages(
         &self,
@@ -456,8 +456,9 @@ impl McpServer {
                     Ok(value) => value,
                     Err(error_result) => return Ok(Self::tool_error(error_result)),
                 };
-                // Server returns sessions ordered by `last_used DESC`, so the first
-                // element is the most recently used session.
+                // Server orders sessions by `COALESCE(last_used, created_at) DESC`,
+                // so the first element is the most recently used session (or, for
+                // sessions that have no execution yet, the most recently created).
                 match sessions.into_iter().next() {
                     Some(session) => session.id,
                     None => {
