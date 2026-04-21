@@ -39,18 +39,16 @@ describe('tasksApi.get', () => {
   it('throws when envelope reports failure', async () => {
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(
-            JSON.stringify({
-              success: false,
-              data: null,
-              message: 'not found',
-            }),
-            { status: 404, headers: { 'Content-Type': 'application/json' } }
-          )
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            success: false,
+            data: null,
+            message: 'not found',
+          }),
+          { status: 404, headers: { 'Content-Type': 'application/json' } }
         )
+      )
     );
     await expect(tasksApi.get('abc')).rejects.toThrow(/not found/);
   });
