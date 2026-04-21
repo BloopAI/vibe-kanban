@@ -88,6 +88,45 @@ impl Task {
     }
 }
 
+pub struct UpdateTask {
+    pub title: Option<String>,
+    pub description: Option<Option<String>>, // None = no change; Some(None) = set NULL
+    pub status: Option<TaskStatus>,
+}
+
+impl Task {
+    pub async fn update(
+        pool: &SqlitePool,
+        id: Uuid,
+        params: UpdateTask,
+    ) -> Result<(), sqlx::Error> {
+        let mut task = Self::find_by_id(pool, id)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)?;
+        if let Some(t) = params.title {
+            task.title = t;
+        }
+        if let Some(d) = params.description {
+            task.description = d;
+        }
+        if let Some(s) = params.status {
+            task.status = s;
+        }
+        sqlx::query!(
+            r#"UPDATE tasks
+               SET title = ?, description = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+               WHERE id = ?"#,
+            task.title,
+            task.description,
+            task.status,
+            id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -115,6 +154,41 @@ mod tests {
         let back = Task::find_by_id(pool, task.id).await?.expect("persisted");
         assert_eq!(back.title, task.title);
         assert_eq!(back.description, task.description);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn update_changes_fields() -> sqlx::Result<()> {
+        let db = DBService::new_in_memory().await.expect("in-memory db");
+        let pool = &db.pool;
+        let project_id = seed_project(pool).await;
+
+        let task = Task::create(
+            pool,
+            CreateTask {
+                project_id,
+                title: "a".into(),
+                description: None,
+                parent_workspace_id: None,
+            },
+        )
+        .await?;
+
+        Task::update(
+            pool,
+            task.id,
+            UpdateTask {
+                title: Some("b".into()),
+                description: Some(Some("desc".into())),
+                status: Some(TaskStatus::InProgress),
+            },
+        )
+        .await?;
+
+        let back = Task::find_by_id(pool, task.id).await?.expect("persisted");
+        assert_eq!(back.title, "b");
+        assert_eq!(back.description.as_deref(), Some("desc"));
+        assert_eq!(back.status, TaskStatus::InProgress);
         Ok(())
     }
 
