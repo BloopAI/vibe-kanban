@@ -180,6 +180,28 @@ fn envelope_to_error<T>(env: ApiResponseEnvelope<T>, status: reqwest::StatusCode
 
 use std::collections::HashMap;
 
+impl McpServer {
+    /// Build the "scope denied" `ToolError` with consistent wording and
+    /// the diagnostic `requested={…} configured={…}` detail line.
+    ///
+    /// Only call this on the path where `check_scope_allows_workspace`
+    /// returned `false` — at which point `scoped_workspace_id()` is known
+    /// to be `Some(_)` (the only `false` branch that short-circuits on
+    /// `None` returns `true`). We still render `<none>` defensively.
+    fn scope_denied_error(&self, requested: Uuid) -> ToolError {
+        ToolError::new(
+            "Operation is outside the configured workspace scope",
+            Some(format!(
+                "requested workspace_id={}, configured workspace_id={}",
+                requested,
+                self.scoped_workspace_id()
+                    .map(|id| id.to_string())
+                    .unwrap_or_else(|| "<none>".to_string())
+            )),
+        )
+    }
+}
+
 /// Async, memoised scope check for orchestrator mode.
 ///
 /// Returns `true` if `target` is allowed under the server's configured scope:

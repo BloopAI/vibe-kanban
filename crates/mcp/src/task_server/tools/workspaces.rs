@@ -6,7 +6,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{McpServer, ToolError, check_scope_allows_workspace};
+use super::{McpServer, check_scope_allows_workspace};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListWorkspacesRequest {
@@ -184,16 +184,7 @@ impl McpServer {
         };
         let mut scope_cache = std::collections::HashMap::new();
         if !check_scope_allows_workspace(self, &mut scope_cache, workspace_id).await {
-            return Ok(Self::tool_error(ToolError::new(
-                "Operation is outside the configured workspace scope",
-                Some(format!(
-                    "requested workspace_id={}, configured workspace_id={}",
-                    workspace_id,
-                    self.scoped_workspace_id()
-                        .map(|id| id.to_string())
-                        .unwrap_or_else(|| "<none>".to_string())
-                )),
-            )));
+            return Ok(Self::tool_error(self.scope_denied_error(workspace_id)));
         }
 
         let url = self.url(&format!("/api/workspaces/{}", workspace_id));
@@ -234,16 +225,7 @@ impl McpServer {
         };
         let mut scope_cache = std::collections::HashMap::new();
         if !check_scope_allows_workspace(self, &mut scope_cache, workspace_id).await {
-            return Ok(Self::tool_error(ToolError::new(
-                "Operation is outside the configured workspace scope",
-                Some(format!(
-                    "requested workspace_id={}, configured workspace_id={}",
-                    workspace_id,
-                    self.scoped_workspace_id()
-                        .map(|id| id.to_string())
-                        .unwrap_or_else(|| "<none>".to_string())
-                )),
-            )));
+            return Ok(Self::tool_error(self.scope_denied_error(workspace_id)));
         }
 
         let delete_remote = delete_remote.unwrap_or(false);

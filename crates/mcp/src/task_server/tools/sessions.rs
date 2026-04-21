@@ -9,7 +9,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{McpServer, ToolError, check_scope_allows_workspace};
+use super::{McpServer, check_scope_allows_workspace};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct CreateSessionRequest {
@@ -222,16 +222,7 @@ impl McpServer {
         };
         let mut scope_cache = std::collections::HashMap::new();
         if !check_scope_allows_workspace(self, &mut scope_cache, workspace_id).await {
-            return Ok(Self::tool_error(ToolError::new(
-                "Operation is outside the configured workspace scope",
-                Some(format!(
-                    "requested workspace_id={}, configured workspace_id={}",
-                    workspace_id,
-                    self.scoped_workspace_id()
-                        .map(|id| id.to_string())
-                        .unwrap_or_else(|| "<none>".to_string())
-                )),
-            )));
+            return Ok(Self::tool_error(self.scope_denied_error(workspace_id)));
         }
 
         let payload = CreateSessionPayload {
@@ -276,16 +267,7 @@ impl McpServer {
         };
         let mut scope_cache = std::collections::HashMap::new();
         if !check_scope_allows_workspace(self, &mut scope_cache, workspace_id).await {
-            return Ok(Self::tool_error(ToolError::new(
-                "Operation is outside the configured workspace scope",
-                Some(format!(
-                    "requested workspace_id={}, configured workspace_id={}",
-                    workspace_id,
-                    self.scoped_workspace_id()
-                        .map(|id| id.to_string())
-                        .unwrap_or_else(|| "<none>".to_string())
-                )),
-            )));
+            return Ok(Self::tool_error(self.scope_denied_error(workspace_id)));
         }
 
         let url = self.url(&format!("/api/sessions?workspace_id={workspace_id}"));
@@ -319,16 +301,9 @@ impl McpServer {
         };
         let mut scope_cache = std::collections::HashMap::new();
         if !check_scope_allows_workspace(self, &mut scope_cache, session.workspace_id).await {
-            return Ok(Self::tool_error(ToolError::new(
-                "Operation is outside the configured workspace scope",
-                Some(format!(
-                    "requested workspace_id={}, configured workspace_id={}",
-                    session.workspace_id,
-                    self.scoped_workspace_id()
-                        .map(|id| id.to_string())
-                        .unwrap_or_else(|| "<none>".to_string())
-                )),
-            )));
+            return Ok(Self::tool_error(
+                self.scope_denied_error(session.workspace_id),
+            ));
         }
 
         let payload = UpdateSessionPayload {
@@ -368,16 +343,9 @@ impl McpServer {
         };
         let mut scope_cache = std::collections::HashMap::new();
         if !check_scope_allows_workspace(self, &mut scope_cache, session.workspace_id).await {
-            return Ok(Self::tool_error(ToolError::new(
-                "Operation is outside the configured workspace scope",
-                Some(format!(
-                    "requested workspace_id={}, configured workspace_id={}",
-                    session.workspace_id,
-                    self.scoped_workspace_id()
-                        .map(|id| id.to_string())
-                        .unwrap_or_else(|| "<none>".to_string())
-                )),
-            )));
+            return Ok(Self::tool_error(
+                self.scope_denied_error(session.workspace_id),
+            ));
         }
         if self.orchestrator_session_id() == Some(session_id) {
             return Self::err(
@@ -441,16 +409,9 @@ impl McpServer {
         };
         let mut scope_cache = std::collections::HashMap::new();
         if !check_scope_allows_workspace(self, &mut scope_cache, session.workspace_id).await {
-            return Ok(Self::tool_error(ToolError::new(
-                "Operation is outside the configured workspace scope",
-                Some(format!(
-                    "requested workspace_id={}, configured workspace_id={}",
-                    session.workspace_id,
-                    self.scoped_workspace_id()
-                        .map(|id| id.to_string())
-                        .unwrap_or_else(|| "<none>".to_string())
-                )),
-            )));
+            return Ok(Self::tool_error(
+                self.scope_denied_error(session.workspace_id),
+            ));
         }
 
         let is_finished = execution_process.status != ExecutionProcessStatus::Running;
@@ -495,16 +456,7 @@ impl McpServer {
         };
         let mut scope_cache = std::collections::HashMap::new();
         if !check_scope_allows_workspace(self, &mut scope_cache, workspace_id).await {
-            return Ok(Self::tool_error(ToolError::new(
-                "Operation is outside the configured workspace scope",
-                Some(format!(
-                    "requested workspace_id={}, configured workspace_id={}",
-                    workspace_id,
-                    self.scoped_workspace_id()
-                        .map(|id| id.to_string())
-                        .unwrap_or_else(|| "<none>".to_string())
-                )),
-            )));
+            return Ok(Self::tool_error(self.scope_denied_error(workspace_id)));
         }
 
         let session_id = match session_id {
