@@ -197,6 +197,34 @@ impl Repo {
         .await
     }
 
+    pub async fn find_by_id_in_tx(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        id: Uuid,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Repo,
+            r#"SELECT id as "id!: Uuid",
+                      path,
+                      name,
+                      display_name,
+                      setup_script,
+                      cleanup_script,
+                      archive_script,
+                      copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool",
+                      dev_server_script,
+                      default_target_branch,
+                      default_working_dir,
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM repos
+               WHERE id = $1"#,
+            id
+        )
+        .fetch_optional(&mut **tx)
+        .await
+    }
+
     pub async fn find_by_ids(pool: &SqlitePool, ids: &[Uuid]) -> Result<Vec<Self>, sqlx::Error> {
         if ids.is_empty() {
             return Ok(Vec::new());
