@@ -491,6 +491,22 @@ export type CreateAndStartWorkspaceRequest = { name: string | null, repos: Array
 
 export type CreateAndStartWorkspaceResponse = { workspace: Workspace, execution_process: ExecutionProcess, };
 
+export type StartTaskRequest = { task: StartTaskTaskSpec, workspace: StartTaskWorkspaceSpec, };
+
+export type StartTaskTaskSpec = { project_id: string, title: string, description?: string | null, parent_workspace_id?: string | null, };
+
+export type StartTaskWorkspaceSpec = { name?: string | null, repos: Array<WorkspaceRepoInput>, executor_config: ExecutorConfig, prompt: string, };
+
+export type StartTaskResponse = { task_id: string, workspace_id: string, execution_id: string, };
+
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, created_at: string, updated_at: string, };
+
+export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
+
+export type CreateTask = { project_id: string, title: string, description: string | null, parent_workspace_id: string | null, };
+
+export type UpdateTask = { title: string | null, description?: string | null, status: TaskStatus | null, };
+
 export type UnifiedPrComment = { "comment_type": "general", id: string, author: string, author_association: string | null, body: string, created_at: string, url: string | null, } | { "comment_type": "review", id: bigint, author: string, author_association: string | null, body: string, created_at: string, url: string | null, path: string, line: bigint | null, side: string | null, diff_hunk: string | null, };
 
 export type ProviderKind = "git_hub" | "azure_dev_ops" | "unknown";
