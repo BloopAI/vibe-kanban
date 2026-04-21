@@ -9,6 +9,12 @@ use uuid::Uuid;
 /// Input to [`create_in_tx`]: pure data, no git or container state.
 #[derive(Debug, Clone)]
 pub struct WorkspaceCreateParams {
+    /// Optional caller-provided workspace id. When `Some`, this exact UUID is
+    /// used for the new row — callers pass this when they need to derive
+    /// per-workspace identifiers (e.g. a git branch name) BEFORE the row
+    /// exists, so that the derived string and the persisted id stay in sync.
+    /// When `None`, a fresh v4 UUID is generated.
+    pub id: Option<Uuid>,
     /// Optional human-friendly workspace name (nullable in DB).
     pub name: Option<String>,
     /// Optional parent task this workspace derives from.
@@ -40,7 +46,7 @@ pub async fn create_in_tx(
     tx: &mut Transaction<'_, Sqlite>,
     params: WorkspaceCreateParams,
 ) -> Result<Workspace, WorkspaceServiceError> {
-    let id = Uuid::new_v4();
+    let id = params.id.unwrap_or_else(Uuid::new_v4);
     let ws = Workspace::create_in_tx(
         tx,
         &CreateWorkspace {
@@ -87,6 +93,7 @@ mod tests {
         let ws = create_in_tx(
             &mut tx,
             WorkspaceCreateParams {
+                id: None,
                 name: Some("hello".into()),
                 task_id: None,
                 branch: "main".into(),
@@ -100,6 +107,29 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn creates_workspace_with_caller_provided_id_in_tx() -> Result<(), anyhow::Error> {
+        let db = DBService::new_in_memory().await?;
+        let pool = &db.pool;
+
+        let explicit = Uuid::new_v4();
+        let mut tx = pool.begin().await?;
+        let ws = create_in_tx(
+            &mut tx,
+            WorkspaceCreateParams {
+                id: Some(explicit),
+                name: None,
+                task_id: None,
+                branch: "feature/test".into(),
+                repo_ids: vec![],
+            },
+        )
+        .await?;
+        tx.commit().await?;
+        assert_eq!(ws.id, explicit);
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn create_in_tx_returns_repo_not_found_when_repo_missing() -> Result<(), anyhow::Error> {
         let db = DBService::new_in_memory().await?;
         let pool = &db.pool;
@@ -109,6 +139,7 @@ mod tests {
         let res = create_in_tx(
             &mut tx,
             WorkspaceCreateParams {
+                id: None,
                 name: None,
                 task_id: None,
                 branch: "main".into(),

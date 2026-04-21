@@ -101,7 +101,9 @@ async fn start_task(
     }
 
     // Derive the git branch name the same way bare workspace creation does,
-    // so worktree layouts stay consistent.
+    // so worktree layouts stay consistent. The hint UUID is threaded into
+    // `create_in_tx` (via `WorkspaceCreateParams.id`) so the persisted row's
+    // id matches the short-uuid baked into `git_branch_name`.
     let workspace_id_hint = Uuid::new_v4();
     let branch_label = body
         .workspace
@@ -130,6 +132,7 @@ async fn start_task(
     let workspace = ws_service::create_in_tx(
         &mut tx,
         WorkspaceCreateParams {
+            id: Some(workspace_id_hint),
             name: body.workspace.name.filter(|n| !n.is_empty()),
             task_id: Some(task.id),
             branch: git_branch_name,
