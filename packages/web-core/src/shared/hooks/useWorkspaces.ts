@@ -25,6 +25,7 @@ export interface SidebarWorkspace {
   isRunning?: boolean;
   isPinned?: boolean;
   isArchived?: boolean;
+  isTaskLinked?: boolean;
   hasPendingApproval?: boolean;
   hasRunningDevServer?: boolean;
   hasUnseenActivity?: boolean;
@@ -71,6 +72,7 @@ function toSidebarWorkspace(
     isRunning: ws.is_running,
     isPinned: ws.pinned,
     isArchived: ws.archived,
+    isTaskLinked: ws.task_id != null,
     // Additional data from summary
     hasPendingApproval: summary?.has_pending_approval,
     hasRunningDevServer: summary?.has_running_dev_server,

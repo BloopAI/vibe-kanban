@@ -27,6 +27,7 @@ export interface WorkspacesSidebarWorkspace {
   linesRemoved?: number;
   isRunning?: boolean;
   isPinned?: boolean;
+  isTaskLinked?: boolean;
   hasPendingApproval?: boolean;
   hasRunningDevServer?: boolean;
   hasUnseenActivity?: boolean;
@@ -152,6 +153,7 @@ function WorkspaceList({
           isActive={selectedWorkspaceId === workspace.id}
           isRunning={workspace.isRunning}
           isPinned={workspace.isPinned}
+          isTaskLinked={workspace.isTaskLinked}
           hasPendingApproval={workspace.hasPendingApproval}
           hasRunningDevServer={workspace.hasRunningDevServer}
           hasUnseenActivity={workspace.hasUnseenActivity}
@@ -345,6 +347,7 @@ export function WorkspacesSidebar({
                   isActive={selectedWorkspaceId === workspace.id}
                   isRunning={workspace.isRunning}
                   isPinned={workspace.isPinned}
+                  isTaskLinked={workspace.isTaskLinked}
                   hasPendingApproval={workspace.hasPendingApproval}
                   hasRunningDevServer={workspace.hasRunningDevServer}
                   hasUnseenActivity={workspace.hasUnseenActivity}
@@ -462,6 +465,7 @@ export function WorkspacesSidebar({
                 isActive={selectedWorkspaceId === workspace.id}
                 isRunning={workspace.isRunning}
                 isPinned={workspace.isPinned}
+                isTaskLinked={workspace.isTaskLinked}
                 hasPendingApproval={workspace.hasPendingApproval}
                 hasRunningDevServer={workspace.hasRunningDevServer}
                 hasUnseenActivity={workspace.hasUnseenActivity}

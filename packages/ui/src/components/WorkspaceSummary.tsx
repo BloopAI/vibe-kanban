@@ -7,6 +7,7 @@ import {
   CircleIcon,
   GitPullRequestIcon,
   DotsThreeIcon,
+  NetworkIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/cn';
@@ -36,6 +37,7 @@ export interface WorkspaceSummaryProps {
   isActive?: boolean;
   isRunning?: boolean;
   isPinned?: boolean;
+  isTaskLinked?: boolean;
   hasPendingApproval?: boolean;
   hasRunningDevServer?: boolean;
   hasUnseenActivity?: boolean;
@@ -59,6 +61,7 @@ export function WorkspaceSummary({
   isActive = false,
   isRunning = false,
   isPinned = false,
+  isTaskLinked = false,
   hasPendingApproval = false,
   hasRunningDevServer = false,
   hasUnseenActivity = false,
@@ -167,6 +170,14 @@ export function WorkspaceSummary({
             {prStatus === 'merged' && (
               <GitPullRequestIcon
                 className="size-icon-xs text-merged shrink-0"
+                weight="fill"
+              />
+            )}
+
+            {/* Task-linked indicator */}
+            {isTaskLinked && (
+              <NetworkIcon
+                className="size-icon-xs text-brand shrink-0"
                 weight="fill"
               />
             )}
