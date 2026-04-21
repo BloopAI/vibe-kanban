@@ -34,3 +34,6 @@ thiserror = { workspace = true }
 tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"] }
 futures-util = { version = "0.3", features = ["sink"] }
 dashmap = "6.1"
+
+[dev-dependencies]
+httpmock = "0.7"

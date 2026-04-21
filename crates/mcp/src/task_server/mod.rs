@@ -1,3 +1,4 @@
+pub mod api_client;
 mod handler;
 mod tools;
 
@@ -53,12 +54,15 @@ pub struct McpServer {
     tool_router: ToolRouter<McpServer>,
     context: Option<McpContext>,
     mode: McpMode,
+    api_client: api_client::ApiClient,
 }
 
 impl McpServer {
     pub fn new_global(base_url: &str) -> Self {
+        let client = reqwest::Client::new();
         Self {
-            client: reqwest::Client::new(),
+            api_client: api_client::ApiClient::new(client.clone(), base_url),
+            client,
             base_url: base_url.to_string(),
             tool_router: Self::global_mode_router(),
             context: None,
@@ -67,13 +71,19 @@ impl McpServer {
     }
 
     pub fn new_orchestrator(base_url: &str) -> Self {
+        let client = reqwest::Client::new();
         Self {
-            client: reqwest::Client::new(),
+            api_client: api_client::ApiClient::new(client.clone(), base_url),
+            client,
             base_url: base_url.to_string(),
             tool_router: Self::orchestrator_mode_router(),
             context: None,
             mode: McpMode::Orchestrator,
         }
+    }
+
+    pub fn api(&self) -> &api_client::ApiClient {
+        &self.api_client
     }
 
     fn url(&self, path: &str) -> String {

@@ -566,8 +566,13 @@ mod tests {
         install_rustls_provider();
         let session_id = Uuid::new_v4();
         let workspace_id = Uuid::new_v4();
+        let client = reqwest::Client::new();
         let server = McpServer {
-            client: reqwest::Client::new(),
+            api_client: crate::task_server::api_client::ApiClient::new(
+                client.clone(),
+                "http://127.0.0.1:3000",
+            ),
+            client,
             base_url: "http://127.0.0.1:3000".to_string(),
             tool_router: ToolRouter::default(),
             context: Some(McpContext {
@@ -593,8 +598,13 @@ mod tests {
     #[test]
     fn orchestrator_scope_requires_context_when_missing() {
         install_rustls_provider();
+        let client = reqwest::Client::new();
         let server = McpServer {
-            client: reqwest::Client::new(),
+            api_client: crate::task_server::api_client::ApiClient::new(
+                client.clone(),
+                "http://127.0.0.1:3000",
+            ),
+            client,
             base_url: "http://127.0.0.1:3000".to_string(),
             tool_router: ToolRouter::default(),
             context: None,
