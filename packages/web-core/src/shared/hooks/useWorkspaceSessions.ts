@@ -57,14 +57,22 @@ export function useWorkspaceSessions(
     prevWorkspaceIdRef.current = workspaceId;
 
     if (sessions.length > 0) {
-      // Sessions are ordered by most recently used, so first is the most recently used
-      // Always select first session when sessions are available for this workspace
-      // Only preserve new session mode within the same workspace
+      // Sessions are ordered by most recently used, so first is the most recently
+      // used. Preserve the current selection within the same workspace when it
+      // still exists, and only auto-jump to the latest session when the previous
+      // selection is no longer valid or the workspace itself changed.
       setSelection((prev) => {
         if (prev?.mode === 'new' && !workspaceChanged) return prev;
+        if (
+          prev?.mode === 'existing' &&
+          !workspaceChanged &&
+          sessions.some((session) => session.id === prev.sessionId)
+        ) {
+          return prev;
+        }
         return { mode: 'existing', sessionId: sessions[0].id };
       });
-    } else {
+    } else if (workspaceChanged) {
       setSelection(undefined);
     }
   }, [workspaceId, sessions]);

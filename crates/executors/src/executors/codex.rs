@@ -31,6 +31,40 @@ pub(crate) fn resolve_model(model: Option<&str>) -> (Option<&str>, bool) {
     }
 }
 
+fn host_blocks_unprivileged_userns() -> bool {
+    if let Ok(value) = env::var("VK_ASSUME_USERNS_BLOCKED") {
+        let value = value.trim().to_ascii_lowercase();
+        if matches!(value.as_str(), "1" | "true" | "yes" | "on") {
+            return true;
+        }
+        if matches!(value.as_str(), "0" | "false" | "no" | "off") {
+            return false;
+        }
+    }
+
+    std::fs::read_to_string("/proc/sys/kernel/apparmor_restrict_unprivileged_userns")
+        .map(|value| value.trim() == "1")
+        .unwrap_or(false)
+}
+
+fn effective_sandbox_mode(requested: Option<&SandboxMode>) -> Option<V2SandboxMode> {
+    let requested = match requested {
+        None | Some(SandboxMode::Auto) => V2SandboxMode::WorkspaceWrite,
+        Some(SandboxMode::ReadOnly) => V2SandboxMode::ReadOnly,
+        Some(SandboxMode::WorkspaceWrite) => V2SandboxMode::WorkspaceWrite,
+        Some(SandboxMode::DangerFullAccess) => V2SandboxMode::DangerFullAccess,
+    };
+
+    if host_blocks_unprivileged_userns() && requested != V2SandboxMode::DangerFullAccess {
+        tracing::warn!(
+            "Host blocks unprivileged user namespaces; forcing Codex sandbox to danger-full-access"
+        );
+        Some(V2SandboxMode::DangerFullAccess)
+    } else {
+        Some(requested)
+    }
+}
+
 pub(crate) fn fork_params_from(thread_id: String, params: ThreadStartParams) -> ThreadForkParams {
     ThreadForkParams {
         thread_id,
@@ -79,8 +113,8 @@ use crate::{
     logs::utils::patch,
     model_selector::{ModelInfo, ModelSelectorConfig, PermissionPolicy, ReasoningOption},
     profile::ExecutorConfig,
-    systemd_run::{self, StdinMode},
     stdout_dup::create_stdout_pipe_writer,
+    systemd_run::{self, StdinMode},
 };
 
 /// Sandbox policy modes for Codex
@@ -429,8 +463,11 @@ impl StandardCodingAgentExecutor for Codex {
 }
 
 impl Codex {
-    pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.116.0"
+    pub fn base_command() -> String {
+        std::env::var("VK_CODEX_BASE_COMMAND")
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| "codex".to_string())
     }
 
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
@@ -444,12 +481,7 @@ impl Codex {
     }
 
     fn build_thread_start_params(&self, cwd: &Path) -> ThreadStartParams {
-        let sandbox = match self.sandbox.as_ref() {
-            None | Some(SandboxMode::Auto) => Some(V2SandboxMode::WorkspaceWrite), // match the Auto preset in codex
-            Some(SandboxMode::ReadOnly) => Some(V2SandboxMode::ReadOnly),
-            Some(SandboxMode::WorkspaceWrite) => Some(V2SandboxMode::WorkspaceWrite),
-            Some(SandboxMode::DangerFullAccess) => Some(V2SandboxMode::DangerFullAccess),
-        };
+        let sandbox = effective_sandbox_mode(self.sandbox.as_ref());
 
         let approval_policy = match self.ask_for_approval.as_ref() {
             None if matches!(self.sandbox.as_ref(), None | Some(SandboxMode::Auto)) => {
@@ -639,6 +671,20 @@ impl Codex {
         let mut transient_unit_name = None;
         let mut child = if systemd_run::enabled() {
             let mut env_vars = effective_env.vars.clone();
+            for key in [
+                "PATH",
+                "HOME",
+                "CODEX_HOME",
+                "SHELL",
+                "BASH_ENV",
+                "VK_CODEX_BASE_COMMAND",
+            ] {
+                if !env_vars.contains_key(key)
+                    && let Ok(value) = std::env::var(key)
+                {
+                    env_vars.insert(key.to_string(), value);
+                }
+            }
             env_vars.insert("NPM_CONFIG_LOGLEVEL".to_string(), "error".to_string());
             env_vars.insert("NODE_NO_WARNINGS".to_string(), "1".to_string());
             env_vars.insert("NO_COLOR".to_string(), "1".to_string());

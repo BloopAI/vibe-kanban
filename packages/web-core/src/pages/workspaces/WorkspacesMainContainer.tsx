@@ -199,6 +199,7 @@ export const WorkspacesMainContainer = forwardRef<
   const entriesProviderKey = workspaceWithSession
     ? `${workspaceWithSession.id}-${selectedSessionId ?? 'new'}`
     : 'empty';
+  const streamScopeKey = entriesProviderKey;
 
   const conversationContent = workspaceWithSession ? (
     <div
@@ -208,7 +209,7 @@ export const WorkspacesMainContainer = forwardRef<
       <div className="w-chat max-w-full h-full">
         <RetryUiProvider workspaceId={workspaceWithSession.id}>
           <ConversationList
-            key={entriesProviderKey}
+            key={streamScopeKey}
             ref={conversationListRef}
             attempt={workspaceWithSession}
             repos={repos}
@@ -251,7 +252,7 @@ export const WorkspacesMainContainer = forwardRef<
 
   return (
     <ApprovalFeedbackProvider>
-      <EntriesProvider key={entriesProviderKey}>
+      <EntriesProvider key={streamScopeKey}>
         <MessageEditProvider>
           <WorkspacesMain
             workspaceWithSession={

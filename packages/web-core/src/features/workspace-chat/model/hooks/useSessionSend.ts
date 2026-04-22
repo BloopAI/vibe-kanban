@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ExecutorConfig } from 'shared/types';
 import { sessionsApi } from '@/shared/lib/api';
+import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import { useCreateSession } from './useCreateSession';
 
 interface UseSessionSendOptions {
@@ -43,6 +45,7 @@ export function useSessionSend({
   onSelectSession,
   executorConfig,
 }: UseSessionSendOptions): UseSessionSendResult {
+  const queryClient = useQueryClient();
   const { mutateAsync: createSession, isPending: isCreatingSession } =
     useCreateSession();
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
@@ -92,6 +95,9 @@ export function useSessionSend({
             force_when_dirty: null,
             perform_git_reset: null,
           });
+          void queryClient.invalidateQueries({
+            queryKey: workspaceSummaryKeys.all,
+          });
           return true;
         } catch (e: unknown) {
           const err = e as { message?: string };
@@ -109,6 +115,7 @@ export function useSessionSend({
       createSession,
       onSelectSession,
       executorConfig,
+      queryClient,
     ]
   );
 

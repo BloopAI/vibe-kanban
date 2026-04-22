@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use tokio::io::AsyncWriteExt;
+use futures::{StreamExt, stream::BoxStream};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio_stream::wrappers::LinesStream;
 use uuid::Uuid;
 
 use crate::{assets::asset_dir, log_msg::LogMsg};
@@ -54,6 +56,17 @@ impl ExecutionLogWriter {
 
 pub async fn read_execution_log_file(path: &Path) -> std::io::Result<String> {
     tokio::fs::read_to_string(path).await
+}
+
+pub async fn stream_execution_log_file(
+    path: &Path,
+) -> std::io::Result<BoxStream<'static, std::io::Result<String>>> {
+    let file = tokio::fs::File::open(path).await?;
+    let reader = BufReader::new(file);
+
+    Ok(LinesStream::new(reader.lines())
+        .map(|line| line.map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err)))
+        .boxed())
 }
 
 pub fn parse_log_jsonl_lossy(execution_id: Uuid, jsonl: &str) -> Vec<LogMsg> {

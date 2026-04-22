@@ -7,7 +7,9 @@ import { Download, File, HelpCircle, X } from 'lucide-react';
 import {
   useWorkspaceId,
   useSessionId,
+  useHostId,
   useLocalAttachments,
+  scopeLocalApiPath,
   type LocalAttachmentMetadata,
 } from './WorkspaceContext';
 import {
@@ -96,6 +98,7 @@ function toMetadataFromLocalAttachment(
 }
 
 function useAttachmentMetadata(
+  hostId: string | null,
   workspaceId: string | undefined,
   sessionId: string | undefined,
   src: string,
@@ -122,7 +125,10 @@ function useAttachmentMetadata(
       if (!workspaceId || !sessionId) return null;
 
       const response = await fetch(
-        `/api/workspaces/${workspaceId}/attachments/metadata?path=${encodeURIComponent(src)}&session_id=${sessionId}`
+        scopeLocalApiPath(
+          `/api/workspaces/${workspaceId}/attachments/metadata?path=${encodeURIComponent(src)}&session_id=${sessionId}`,
+          hostId
+        )
       );
       const payload = await response.json();
       return payload.data as AttachmentMetadataLike | null;
@@ -166,6 +172,7 @@ export function createAttachmentNode(options: CreateAttachmentNodeOptions) {
     const { src, label } = data;
     const workspaceId = useWorkspaceId();
     const sessionId = useSessionId();
+    const hostId = useHostId();
     const localAttachments = useLocalAttachments();
     const [editor] = useLexicalComposerContext();
 
@@ -183,14 +190,17 @@ export function createAttachmentNode(options: CreateAttachmentNodeOptions) {
     );
 
     const { data: metadata } = useAttachmentMetadata(
+      hostId,
       workspaceId,
       sessionId,
       src,
       localAttachments
     );
 
-    const resolvedUrl =
-      metadata?.proxy_url ?? (isAttachment ? attachmentUrl : null);
+    const resolvedUrl = scopeLocalApiPath(
+      metadata?.proxy_url ?? (isAttachment ? attachmentUrl : null) ?? '',
+      hostId
+    );
     const displayName = truncatePath(
       metadata?.file_name || label || src || t('kanban.previewFile')
     );
@@ -215,15 +225,18 @@ export function createAttachmentNode(options: CreateAttachmentNodeOptions) {
         event.preventDefault();
         event.stopPropagation();
 
-        let nextUrl = resolvedUrl;
+        let nextUrl = resolvedUrl || null;
         if (!nextUrl && attachmentId) {
-          nextUrl = await options.fetchAttachmentUrl(attachmentId, 'file');
+          nextUrl = scopeLocalApiPath(
+            await options.fetchAttachmentUrl(attachmentId, 'file'),
+            hostId
+          );
         }
 
         if (!nextUrl) return;
         window.open(nextUrl, '_blank', 'noopener,noreferrer');
       },
-      [attachmentId, resolvedUrl]
+      [attachmentId, hostId, resolvedUrl]
     );
 
     const handleDelete = useCallback(

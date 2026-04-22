@@ -1,0 +1,31 @@
+{
+  "generated_at_utc": "2026-04-22T13:02:53Z",
+  "canonical_repo": "/home/mcp/_vibe_kanban_repo",
+  "canonical_branch": "staging",
+  "canonical_head": "f93eab2825ee17bb3cfa485c90d03488eecf2d67",
+  "canonical_repo_dirty": true,
+  "live_service": "vibe-kanban.service",
+  "live_service_wrapper": "/home/mcp/.local/bin/vibe-kanban-serve",
+  "live_binary": "/home/mcp/.local/bin/vibe-kanban-server-cleanfix",
+  "live_binary_sha256": "4a5e3356b9c7dc4dff3b5e82d5e451ce58d789d8db48420bbe207517d2e70ba4",
+  "live_state_dir": "/home/mcp/.local/share/vibe-kanban",
+  "workspace_root": "/home/mcp/code/worktrees",
+  "notes": [
+    "Production is copy-deployed from the built server binary, not run directly from the repo checkout.",
+    "The canonical VK source repo is /home/mcp/_vibe_kanban_repo.",
+    "Worktree paths under /home/mcp/code/worktrees are not the canonical source repo.",
+    "crates/server/build.rs now tracks packages/local-web/dist so frontend rebuilds invalidate the embedded frontend binary correctly.",
+    "Finished-process normalized chat replay now serves a fully normalized finite history stream, avoiding the temp MsgStore snapshot/live race that could leave chats blank.",
+    "Large finished transcripts now replay incrementally from disk and the frontend paints partial historic chat while replay is still loading, which fixes blank opens in workspaces like FR:: Garmin Sync Down.",
+    "Duplicate attachment hash collisions now reuse the existing attachment record instead of returning a 500 from /api/attachments/upload.",
+    "Workspace summary responses now use a short 2s in-process cache keyed by archived state to reduce repeated identical query bursts against SQLite.",
+    "Workspace chat session selection now stays pinned to the current existing session during same-workspace follow-up refreshes instead of falling back to the empty conversation state.",
+    "Editor attachment and image nodes now scope local metadata/proxy/file URLs through the current host path, which should remove the first-screen attachment mismatch.",
+    "Session/workspace/scratch event websockets now fail closed on broadcast lag so the client can reconnect and replay fresh state instead of freezing on stale chat/process status.",
+    "Issue-route workspace creation now passes explicit linked issue/project context into submit, avoiding dropped issue links when the draft bootstrap state is stale.",
+    "Workspace create-and-start now retries local linked-issue task resolution briefly before giving up, which covers freshly created issues that are not discoverable on the first lookup.",
+    "The three broken live workspace links from 2026-04-22 were repaired through the normal workspace link API and now point at their correct issues again.",
+    "Normalized chat log websocket delivery now batches patches for 50ms and coalesces repeated writes to the same entry path before sending them to the browser.",
+    "The live normalized-log replay for process d928142b-d587-4a16-9e23-013d1a6df622 dropped from roughly 3872 websocket patch messages / 5.07 GB over 20s to roughly 60 patch messages / 109.6 MB after the server-side coalescing change."
+  ]
+}

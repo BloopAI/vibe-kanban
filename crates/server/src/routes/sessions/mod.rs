@@ -25,7 +25,10 @@ use executors::{
     profile::ExecutorConfig,
 };
 use serde::Deserialize;
-use services::services::container::ContainerService;
+use services::services::{
+    container::ContainerService,
+    events::{execution_process_patch, workspace_patch},
+};
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -218,6 +221,24 @@ pub async fn follow_up(
             &ExecutionProcessRunReason::CodingAgent,
         )
         .await?;
+
+    // Push immediate live updates for the session/workspace streams.
+    // The DB hook path can lag or miss the very first process add on some
+    // follow-up sends, which leaves the open workspace looking idle until a
+    // later refresh. Emit the source-of-truth process/workspace updates here
+    // right after spawn so the existing websocket subscribers update at once.
+    deployment
+        .events()
+        .msg_store()
+        .push_patch(execution_process_patch::add(&execution_process));
+    if let Some(workspace_with_status) =
+        Workspace::find_by_id_with_status(pool, workspace.id).await?
+    {
+        deployment
+            .events()
+            .msg_store()
+            .push_patch(workspace_patch::replace(&workspace_with_status));
+    }
 
     // Clear the draft follow-up scratch on successful spawn
     // This ensures the scratch is wiped even if the user navigates away quickly

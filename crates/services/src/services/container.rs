@@ -811,7 +811,7 @@ pub trait ContainerService {
             if matches!(process_status, Some(ExecutionProcessStatus::Running)) {
                 return Some(
                     store
-                        .history_plus_stream()
+                        .history_plus_stream_strict()
                         .filter(|msg| {
                             future::ready(matches!(
                                 msg,
@@ -837,18 +837,24 @@ pub trait ContainerService {
             }
         }
 
-        let messages = execution_process::load_raw_log_messages(&self.db().pool, *id).await?;
-
-        let stream = futures::stream::iter(
-            messages
-                .into_iter()
-                .filter(|m| matches!(m, LogMsg::Stdout(_) | LogMsg::Stderr(_)))
-                .chain(std::iter::once(LogMsg::Finished))
-                .map(Ok::<_, std::io::Error>),
-        )
-        .boxed();
-
-        Some(stream)
+        execution_process::stream_raw_log_messages(&self.db().pool, *id)
+            .await
+            .map(|stream| {
+                stream
+                    .filter_map(|msg| async move {
+                        match msg {
+                            Ok(LogMsg::Stdout(content)) => Some(Ok(LogMsg::Stdout(content))),
+                            Ok(LogMsg::Stderr(content)) => Some(Ok(LogMsg::Stderr(content))),
+                            Ok(LogMsg::Finished) => None,
+                            Ok(_) => None,
+                            Err(err) => Some(Err(err)),
+                        }
+                    })
+                    .chain(futures::stream::once(async {
+                        Ok::<_, std::io::Error>(LogMsg::Finished)
+                    }))
+                    .boxed()
+            })
     }
 
     async fn stream_normalized_logs(
@@ -868,7 +874,7 @@ pub trait ContainerService {
             if matches!(process_status, Some(ExecutionProcessStatus::Running)) {
                 return Some(
                     store
-                        .history_plus_stream() // BoxStream<Result<LogMsg, io::Error>>
+                        .history_plus_stream_strict() // BoxStream<Result<LogMsg, io::Error>>
                         .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
                         .chain(futures::stream::once(async {
                             Ok::<_, std::io::Error>(LogMsg::Finished)
@@ -893,21 +899,6 @@ pub trait ContainerService {
                 return Some(stream);
             }
         }
-
-        let raw_messages = execution_process::load_raw_log_messages(&self.db().pool, *id).await?;
-
-        // Create temporary store and populate
-        // Include JsonPatch messages (already normalized) and Stdout/Stderr (need normalization)
-        let temp_store = Arc::new(MsgStore::new());
-        for msg in raw_messages {
-            if matches!(
-                msg,
-                LogMsg::Stdout(_) | LogMsg::Stderr(_) | LogMsg::JsonPatch(_)
-            ) {
-                temp_store.push(msg);
-            }
-        }
-        temp_store.push_finished();
 
         let process = match ExecutionProcess::find_by_id(&self.db().pool, *id).await {
             Ok(Some(process)) => process,
@@ -942,14 +933,6 @@ pub trait ContainerService {
                 }
             };
 
-        if let Err(err) = self.ensure_container_exists(&workspace).await {
-            tracing::warn!(
-                "Failed to recreate worktree before log normalization for workspace {}: {}",
-                workspace.id,
-                err
-            );
-        }
-
         let current_dir = self.workspace_to_current_dir(&workspace);
 
         let executor_action = if let Ok(executor_action) = process.executor_action() {
@@ -961,6 +944,14 @@ pub trait ContainerService {
             );
             return None;
         };
+
+        let raw_stream = execution_process::stream_raw_log_messages(&self.db().pool, *id).await?;
+
+        // Historical replays should start emitting patches immediately, even
+        // for very large finished transcripts. Feed the persisted raw log file
+        // into a temporary MsgStore incrementally so the normalizer can stream
+        // patches as it parses, instead of waiting for a full-file read.
+        let temp_store = Arc::new(MsgStore::new());
 
         // Spawn normalizer on populated store and collect JoinHandles
         let handles = match executor_action.typ() {
@@ -1014,75 +1005,68 @@ pub trait ContainerService {
             }
         };
 
-        // Await all normalizer tasks, then push Ready so the dedup
-        // stream knows when to flush its buffer and terminate.
-        {
-            let store = temp_store.clone();
-            tokio::spawn(async move {
-                for handle in handles {
-                    let _ = handle.await;
-                }
-                store.push(LogMsg::Ready);
-            });
-        }
+        let output_finished = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let output_finished_task = output_finished.clone();
+        let temp_store_for_finish = temp_store.clone();
+        tokio::spawn(async move {
+            for handle in handles {
+                let _ = handle.await;
+            }
+            output_finished_task.store(true, std::sync::atomic::Ordering::SeqCst);
+            temp_store_for_finish.push_finished();
+        });
 
-        // Stream normalized patches, deduplicating consecutive patches
-        // that target the same path (only the final state matters for
-        // historical replay). The Ready sentinel flushes the buffer.
-        enum PatchOrDone {
-            Patch(Patch),
-            Done,
-        }
+        let temp_store_for_feed = temp_store.clone();
+        tokio::spawn(async move {
+            tokio::pin!(raw_stream);
 
-        let stream = temp_store
-            .history_plus_stream()
-            .filter_map(|msg| async move {
+            while let Some(msg) = raw_stream.next().await {
                 match msg {
-                    Ok(LogMsg::JsonPatch(patch)) => Some(PatchOrDone::Patch(patch)),
-                    Ok(LogMsg::Ready) => Some(PatchOrDone::Done),
-                    _ => None,
+                    Ok(msg @ (LogMsg::Stdout(_) | LogMsg::Stderr(_) | LogMsg::JsonPatch(_))) => {
+                        temp_store_for_feed.push(msg);
+                    }
+                    Ok(LogMsg::Finished) => {}
+                    Ok(_) => {}
+                    Err(e) => {
+                        temp_store_for_feed.push(LogMsg::Stderr(format!("stream error: {e}")));
+                    }
                 }
-            });
+            }
 
-        let deduped = futures::stream::unfold(
-            (stream.boxed(), None::<Patch>, HashSet::<String>::new()),
-            |(mut stream, buffered, mut sent_paths)| async move {
-                match stream.next().await {
-                    Some(PatchOrDone::Patch(patch)) => {
-                        let Some(prev) = buffered else {
-                            // First patch — just buffer it
-                            return Some((None, (stream, Some(patch), sent_paths)));
-                        };
-                        if patch_entry_path(&patch) == patch_entry_path(&prev)
-                            && is_add_or_replace(&patch)
-                            && is_add_or_replace(&prev)
+            temp_store_for_feed.push_finished();
+        });
+
+        Some(
+            temp_store
+                .history_plus_stream_strict()
+                .scan(HashSet::<String>::new(), move |sent_paths, msg| {
+                    let output_finished = output_finished.clone();
+                    future::ready(match msg {
+                        Ok(LogMsg::JsonPatch(patch)) => {
+                            let patch = match patch_entry_path(&patch) {
+                                Some(_) if is_add_or_replace(&patch) => {
+                                    fix_patch_ops(patch, sent_paths)
+                                }
+                                _ => patch,
+                            };
+                            Some(Some(Ok(LogMsg::JsonPatch(patch))))
+                        }
+                        Ok(LogMsg::Finished)
+                            if output_finished.load(std::sync::atomic::Ordering::SeqCst) =>
                         {
-                            // Same path, both add/replace — replace buffer
-                            Some((None, (stream, Some(patch), sent_paths)))
-                        } else {
-                            // Different — emit prev, buffer new
-                            let prev = fix_patch_ops(prev, &mut sent_paths);
-                            Some((Some(prev), (stream, Some(patch), sent_paths)))
+                            None
                         }
-                    }
-                    Some(PatchOrDone::Done) | None => {
-                        // Sentinel or stream end: flush buffer and terminate
-                        if let Some(prev) = buffered {
-                            let prev = fix_patch_ops(prev, &mut sent_paths);
-                            return Some((Some(prev), (stream, None, sent_paths)));
-                        }
-                        None
-                    }
-                }
-            },
+                        Ok(LogMsg::Finished) => Some(None),
+                        Ok(_) => Some(None),
+                        Err(e) => Some(Some(Err(e))),
+                    })
+                })
+                .filter_map(future::ready)
+                .chain(futures::stream::once(async {
+                    Ok::<_, std::io::Error>(LogMsg::Finished)
+                }))
+                .boxed(),
         )
-        .filter_map(|opt| async move { opt })
-        .map(|p| Ok::<_, std::io::Error>(LogMsg::JsonPatch(p)))
-        .chain(futures::stream::once(async {
-            Ok::<_, std::io::Error>(LogMsg::Finished)
-        }));
-
-        Some(deduped.boxed())
     }
 
     async fn start_workspace(
