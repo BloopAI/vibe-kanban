@@ -34,10 +34,15 @@ function truncateBranchLabel(branch: string) {
 
 interface CreateChatBoxContainerProps {
   onWorkspaceCreated: (workspaceId: string) => void;
+  forcedLinkedIssue?: {
+    issueId: string;
+    remoteProjectId: string;
+  } | null;
 }
 
 export function CreateChatBoxContainer({
   onWorkspaceCreated,
+  forcedLinkedIssue = null,
 }: CreateChatBoxContainerProps) {
   const { t } = useTranslation('common');
   const { profiles, config } = useUserSystem();
@@ -225,6 +230,7 @@ export function CreateChatBoxContainer({
     setHasAttemptedSubmit(true);
     if (!canSubmit || !executorConfig) return;
 
+    const effectiveLinkedIssue = forcedLinkedIssue ?? linkedIssue;
     const { title } = splitMessageToTitleDescription(message);
     const data = {
       executor_config: executorConfig,
@@ -234,18 +240,18 @@ export function CreateChatBoxContainer({
         repo_id: r.id,
         target_branch: targetBranches[r.id]!,
       })),
-      linked_issue: linkedIssue
+      linked_issue: effectiveLinkedIssue
         ? {
-            remote_project_id: linkedIssue.remoteProjectId,
-            issue_id: linkedIssue.issueId,
+            remote_project_id: effectiveLinkedIssue.remoteProjectId,
+            issue_id: effectiveLinkedIssue.issueId,
           }
         : null,
       attachment_ids: getAttachmentIds(),
     };
-    const linkToIssue = linkedIssue
+    const linkToIssue = effectiveLinkedIssue
       ? {
-          remoteProjectId: linkedIssue.remoteProjectId,
-          issueId: linkedIssue.issueId,
+          remoteProjectId: effectiveLinkedIssue.remoteProjectId,
+          issueId: effectiveLinkedIssue.issueId,
         }
       : undefined;
 
@@ -258,9 +264,12 @@ export function CreateChatBoxContainer({
       onWorkspaceCreated(result.workspace.id);
     }
 
-    if (linkedIssue?.remoteProjectId) {
-      saveProjectRepoDefaults(linkedIssue.remoteProjectId, data.repos).catch(
-        (err) => console.warn('Failed to save project repo defaults:', err)
+    if (effectiveLinkedIssue?.remoteProjectId) {
+      saveProjectRepoDefaults(
+        effectiveLinkedIssue.remoteProjectId,
+        data.repos
+      ).catch((err) =>
+        console.warn('Failed to save project repo defaults:', err)
       );
     }
 
@@ -278,6 +287,7 @@ export function CreateChatBoxContainer({
     clearAttachments,
     clearDraft,
     linkedIssue,
+    forcedLinkedIssue,
   ]);
 
   // Determine error to display

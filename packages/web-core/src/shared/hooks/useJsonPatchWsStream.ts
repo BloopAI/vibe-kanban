@@ -170,16 +170,14 @@ export const useJsonPatchWsStream = <T extends object>(
             // that was already received.
           };
 
-          ws.onclose = (evt) => {
+          ws.onclose = () => {
             setIsConnected(false);
             wsRef.current = null;
 
-            // Do not reconnect if we received a finished message or clean close
-            if (
-              cancelled ||
-              finishedRef.current ||
-              (evt?.code === 1000 && evt?.wasClean)
-            ) {
+            // Only an explicit finished message is terminal for these streams.
+            // A clean close without finished can still happen during server
+            // restarts or idle transport churn, and the UI must reconnect.
+            if (cancelled || finishedRef.current) {
               return;
             }
 

@@ -1,7 +1,7 @@
 use db::models::{execution_process::ExecutionProcess, scratch::Scratch, workspace::Workspace};
 use futures::StreamExt;
 use serde_json::json;
-use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 use utils::log_msg::LogMsg;
 use uuid::Uuid;
 
@@ -12,6 +12,12 @@ use super::{
 };
 
 impl EventService {
+    fn lagged_broadcast_error(n: u64) -> std::io::Error {
+        std::io::Error::other(format!(
+            "EventService broadcast lagged; {n} messages dropped"
+        ))
+    }
+
     /// Stream execution processes for a specific session with initial snapshot (raw LogMsg format for WebSocket)
     pub async fn stream_execution_processes_for_session_raw(
         &self,
@@ -132,7 +138,9 @@ impl EventService {
                             None
                         }
                         Ok(other) => Some(Ok(other)), // Pass through non-patch messages
-                        Err(_) => None,               // Filter out broadcast errors
+                        Err(BroadcastStreamRecvError::Lagged(n)) => {
+                            Some(Err(Self::lagged_broadcast_error(n)))
+                        }
                     }
                 }
             });
@@ -214,7 +222,9 @@ impl EventService {
                             None
                         }
                         Ok(other) => Some(Ok(other)),
-                        Err(_) => None,
+                        Err(BroadcastStreamRecvError::Lagged(n)) => {
+                            Some(Err(Self::lagged_broadcast_error(n)))
+                        }
                     }
                 }
             });
@@ -306,7 +316,9 @@ impl EventService {
                         None
                     }
                     Ok(other) => Some(Ok(other)),
-                    Err(_) => None,
+                    Err(BroadcastStreamRecvError::Lagged(n)) => {
+                        Some(Err(Self::lagged_broadcast_error(n)))
+                    }
                 }
             },
         );

@@ -462,6 +462,7 @@ export const ConversationList = forwardRef<
 
   const conversationVirtualizer = useConversationVirtualizer({
     rows: virtualizedRows,
+    contentVersion: dataVersion,
     totalRowCount: conversationRows.length,
     scrollContainerRef: tanstackScrollRef,
     onAtBottomChange,

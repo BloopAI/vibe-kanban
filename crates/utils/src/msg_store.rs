@@ -129,6 +129,25 @@ impl MsgStore {
         Box::pin(hist.chain(live))
     }
 
+    /// History then live, but treat broadcast lag as a stream error instead of
+    /// silently dropping messages. Patch-based websocket consumers should use
+    /// this so they can reconnect and rebuild from a full replay.
+    pub fn history_plus_stream_strict(
+        &self,
+    ) -> futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>> {
+        let (history, rx) = (self.get_history(), self.get_receiver());
+
+        let hist = futures::stream::iter(history.into_iter().map(Ok::<_, std::io::Error>));
+        let live = BroadcastStream::new(rx).map(|res| match res {
+            Ok(msg) => Ok(msg),
+            Err(BroadcastStreamRecvError::Lagged(n)) => Err(std::io::Error::other(format!(
+                "MsgStore broadcast lagged; {n} messages dropped"
+            ))),
+        });
+
+        Box::pin(hist.chain(live))
+    }
+
     pub fn stdout_chunked_stream(
         &self,
     ) -> futures::stream::BoxStream<'static, Result<String, std::io::Error>> {

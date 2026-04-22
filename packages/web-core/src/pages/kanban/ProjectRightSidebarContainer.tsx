@@ -328,13 +328,15 @@ function WorkspaceSessionPanel({
     setIsAtBottom(atBottom);
   }, []);
 
+  const streamScopeKey = `${workspaceId}-${selectedSessionId ?? 'new'}`;
+
   return (
     <ExecutionProcessesProvider
-      key={`${workspaceId}-${selectedSessionId ?? 'new'}`}
+      key={streamScopeKey}
       sessionId={selectedSessionId}
     >
       <ApprovalFeedbackProvider>
-        <EntriesProvider key={`${workspaceId}-${selectedSessionId ?? 'new'}`}>
+        <EntriesProvider key={streamScopeKey}>
           <MessageEditProvider>
             <div className="relative flex h-full flex-1 flex-col bg-primary">
               <div className="flex items-center justify-between px-base py-half border-b shrink-0">
@@ -383,7 +385,7 @@ function WorkspaceSessionPanel({
                   <div className="w-chat max-w-full h-full">
                     <RetryUiProvider workspaceId={workspaceWithSession.id}>
                       <ConversationList
-                        key={`${workspaceId}-${selectedSessionId ?? 'new'}`}
+                        key={streamScopeKey}
                         ref={conversationListRef}
                         attempt={workspaceWithSession}
                         onAtBottomChange={handleAtBottomChange}
@@ -642,7 +644,17 @@ export function ProjectRightSidebarContainer() {
           key={rightPanelState.draftId}
           draftId={rightPanelState.draftId}
         >
-          <CreateChatBoxContainer onWorkspaceCreated={handleWorkspaceCreated} />
+          <CreateChatBoxContainer
+            onWorkspaceCreated={handleWorkspaceCreated}
+            forcedLinkedIssue={
+              linkedIssueId && projectId
+                ? {
+                    issueId: linkedIssueId,
+                    remoteProjectId: projectId,
+                  }
+                : null
+            }
+          />
         </CreateModeProvider>
       </WorkspaceCreatePanel>
     );

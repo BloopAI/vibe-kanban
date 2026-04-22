@@ -49,6 +49,9 @@ export interface ConversationVirtualizerOptions {
   /** The semantic row model driving the list (virtualized head only). */
   rows: ConversationRow[];
 
+  /** Incremented on every conversation timeline change, including tail growth. */
+  contentVersion: number;
+
   /**
    * Total number of conversation rows (virtualized + unvirtualized tail).
    * The bottom-lock correction must fire when ANY row is added — including
@@ -147,6 +150,7 @@ export interface ConversationVirtualizerResult {
  */
 export function useConversationVirtualizer({
   rows,
+  contentVersion,
   totalRowCount,
   scrollContainerRef,
   onAtBottomChange,
@@ -252,32 +256,29 @@ export function useConversationVirtualizer({
     );
   }, [isBottomScrollCorrectionActive, scrollContainerRef]);
 
-  const prevScrollTopRef = useRef(0);
-
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
 
-    prevScrollTopRef.current = el.scrollTop;
-
     const handleScroll = () => {
-      const currentScrollTop = el.scrollTop;
+      const nearBottom = isNearBottom(
+        el.scrollTop,
+        el.clientHeight,
+        el.scrollHeight
+      );
 
-      // Release bottom lock on any user-initiated upward scroll.
-      // Guards prevent false positives from programmatic scroll sources:
-      // - smoothScrollDeadlineRef: set during scrollToBottom('smooth')
-      // - shouldSuppressSizeAdjustment: set during interaction anchor corrections
-      // - 5px threshold: filters input-resize micro-adjustments
+      // Release bottom lock once the user moves away from the bottom.
+      // Guards prevent false positives from in-flight smooth scrolling and
+      // interaction anchor corrections.
       if (
         bottomLockedRef.current &&
-        prevScrollTopRef.current - currentScrollTop > 5 &&
+        !nearBottom &&
         performance.now() > smoothScrollDeadlineRef.current &&
         !shouldSuppressSizeAdjustment?.()
       ) {
         bottomLockedRef.current = false;
       }
 
-      prevScrollTopRef.current = currentScrollTop;
       syncIsAtBottom();
     };
 
@@ -311,6 +312,7 @@ export function useConversationVirtualizer({
     }
   }, [
     rows.length,
+    contentVersion,
     totalRowCount,
     totalSize,
     syncIsAtBottom,
