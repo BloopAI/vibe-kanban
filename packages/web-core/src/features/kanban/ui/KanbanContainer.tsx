@@ -533,12 +533,14 @@ type CollapsedKanbanColumnProps = {
   statusName: string;
   statusColor: string;
   onExpand: () => void;
+  isMobile: boolean;
 };
 
 function CollapsedKanbanColumn({
   statusName,
   statusColor,
   onExpand,
+  isMobile,
 }: CollapsedKanbanColumnProps) {
   const { t } = useTranslation('common');
 
@@ -553,8 +555,20 @@ function CollapsedKanbanColumn({
       })}
       title={statusName}
     >
-      <div className="sticky top-0 z-20 flex h-40 w-full shrink-0 items-start justify-center border-b bg-secondary/95 px-2 pt-4 backdrop-blur-sm">
-        <div className="[writing-mode:vertical-rl] flex items-center gap-2 whitespace-nowrap pt-2 text-center">
+      <div
+        className={cn(
+          'sticky top-0 z-20 flex w-full shrink-0 border-b bg-secondary/95 px-2 backdrop-blur-sm',
+          isMobile
+            ? 'items-center justify-start py-3'
+            : 'h-40 items-start justify-center pt-4'
+        )}
+      >
+        <div
+          className={cn(
+            'flex items-center gap-2 whitespace-nowrap text-center',
+            isMobile ? '[writing-mode:horizontal-tb]' : '[writing-mode:vertical-rl] pt-2'
+          )}
+        >
           <span className="text-sm font-medium leading-none text-normal">
             &gt;
           </span>
@@ -1542,6 +1556,7 @@ export function KanbanContainer() {
                           statusName={status.name}
                           statusColor={status.color}
                           onExpand={() => toggleCollapsedStatus(status.id)}
+                          isMobile={isMobile}
                         />
                       </KanbanCards>
                     ) : (

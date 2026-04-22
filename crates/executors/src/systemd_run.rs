@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    path::Path,
-    process::Stdio,
-};
+use std::{collections::HashMap, path::Path, process::Stdio};
 
 use command_group::AsyncGroupChild;
 use tokio::process::Command;

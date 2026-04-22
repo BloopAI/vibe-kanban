@@ -1,3 +1,8 @@
+use std::{
+    collections::HashMap,
+    sync::{Arc, OnceLock},
+};
+
 use axum::{
     Json, Router,
     extract::{Path, State, ws::Message},
@@ -9,10 +14,6 @@ use db::models::scratch::{CreateScratch, Scratch, ScratchType, UpdateScratch};
 use deployment::Deployment;
 use futures_util::{StreamExt, TryStreamExt};
 use serde::Deserialize;
-use std::{
-    collections::HashMap,
-    sync::{Arc, OnceLock},
-};
 use tokio::sync::Mutex;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -35,9 +36,8 @@ struct PendingUiPreferencesWrite {
     payload: UpdateScratch,
 }
 
-static UI_PREFERENCES_WRITE_BUFFER: OnceLock<
-    Arc<Mutex<HashMap<Uuid, PendingUiPreferencesWrite>>>,
-> = OnceLock::new();
+static UI_PREFERENCES_WRITE_BUFFER: OnceLock<Arc<Mutex<HashMap<Uuid, PendingUiPreferencesWrite>>>> =
+    OnceLock::new();
 
 fn ui_preferences_write_buffer() -> &'static Arc<Mutex<HashMap<Uuid, PendingUiPreferencesWrite>>> {
     UI_PREFERENCES_WRITE_BUFFER.get_or_init(|| Arc::new(Mutex::new(HashMap::new())))

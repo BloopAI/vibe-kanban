@@ -8,5 +8,5 @@ pub mod logs;
 pub mod mcp_config;
 pub mod model_selector;
 pub mod profile;
-pub mod systemd_run;
 pub mod stdout_dup;
+pub mod systemd_run;
