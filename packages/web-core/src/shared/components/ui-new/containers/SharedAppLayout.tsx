@@ -72,6 +72,9 @@ export function SharedAppLayout() {
   const isLeftSidebarVisible = useUiPreferencesStore(
     (s) => s.isLeftSidebarVisible
   );
+  const showLeftColumnLinks = useUiPreferencesStore(
+    (s) => s.showLeftColumnLinks
+  );
   const { isSignedIn } = useAuth();
   const { appVersion, loginStatus } = useUserSystem();
   const updateVersion = useAppUpdateStore((s) => s.updateVersion);
@@ -424,6 +427,10 @@ export function SharedAppLayout() {
               onCreateProject={handleCreateProject}
               onExportClick={handleExportClick}
               onWorkspacesClick={handleWorkspacesClick}
+              showRemoteSection={showLeftColumnLinks}
+              showExportButton={showLeftColumnLinks}
+              showProfileButton={showLeftColumnLinks}
+              showSocialLinks={showLeftColumnLinks}
               onHostClick={handleHostClick}
               onPairHostClick={handlePairHostClick}
               onProjectClick={handleProjectClick}
