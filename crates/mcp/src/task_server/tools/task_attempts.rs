@@ -34,6 +34,18 @@ struct StartWorkspaceRequest {
     executor: String,
     #[schemars(description = "Optional executor variant, if needed")]
     variant: Option<String>,
+    #[schemars(
+        description = "Optional model override (e.g. 'anthropic/claude-sonnet-4-20250514'). Forwarded to ExecutorConfig.model_id."
+    )]
+    model_id: Option<String>,
+    #[schemars(
+        description = "Optional agent mode override. Forwarded to ExecutorConfig.agent_id."
+    )]
+    agent_id: Option<String>,
+    #[schemars(
+        description = "Optional reasoning effort override (e.g. 'high', 'medium', 'low'). Forwarded to ExecutorConfig.reasoning_id."
+    )]
+    reasoning_id: Option<String>,
     #[schemars(description = "Repository selection for the workspace")]
     repositories: Vec<McpWorkspaceRepoInput>,
     #[schemars(
@@ -63,6 +75,15 @@ struct LinkWorkspaceIssueResponse {
     workspace_id: String,
     #[schemars(description = "The issue ID it was linked to")]
     issue_id: String,
+}
+
+fn trim_to_option(s: String) -> Option<String> {
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
 }
 
 fn build_workspace_prompt_from_issue(issue: &api_types::Issue) -> Option<String> {
@@ -99,6 +120,9 @@ impl McpServer {
             prompt,
             executor,
             variant,
+            model_id,
+            agent_id,
+            reasoning_id,
             repositories,
             issue_id,
         }): Parameters<StartWorkspaceRequest>,
@@ -183,9 +207,9 @@ impl McpServer {
             executor_config: ExecutorConfig {
                 executor: base_executor,
                 variant,
-                model_id: None,
-                agent_id: None,
-                reasoning_id: None,
+                model_id: model_id.and_then(trim_to_option),
+                agent_id: agent_id.and_then(trim_to_option),
+                reasoning_id: reasoning_id.and_then(trim_to_option),
                 permission_policy: None,
             },
             prompt: workspace_prompt,
