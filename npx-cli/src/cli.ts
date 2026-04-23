@@ -18,7 +18,7 @@ import {
   installAndLaunch,
   cleanOldDesktopVersions,
 } from "./desktop";
-import { installMacApp } from "./install-mac";
+import { installMacApp } from "./mac";
 
 const CLI_VERSION: string = require("../package.json").version;
 
