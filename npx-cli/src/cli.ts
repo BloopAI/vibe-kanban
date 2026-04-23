@@ -18,11 +18,13 @@ import {
   installAndLaunch,
   cleanOldDesktopVersions,
 } from "./desktop";
+import { installMacApp } from "./install-mac";
 
 const CLI_VERSION: string = require("../package.json").version;
 
 type RootOptions = {
   desktop?: boolean;
+  mac?: boolean;
 };
 
 // Resolve effective arch for our published 64-bit binaries only.
@@ -312,9 +314,14 @@ async function main(): Promise<void> {
   cli
     .command("[...args]", "Launch the local vibe-kanban app")
     .option("--desktop", "Launch the desktop app instead of browser mode")
+    .option("--mac", "Install Vibe Kanban as a macOS app in /Applications")
     .allowUnknownOptions()
     .action((_args: string[], options: RootOptions) => {
-      runOrExit(runMain(Boolean(options.desktop)));
+      if (options.mac) {
+        runOrExit(installMacApp());
+      } else {
+        runOrExit(runMain(Boolean(options.desktop)));
+      }
     });
 
   cli

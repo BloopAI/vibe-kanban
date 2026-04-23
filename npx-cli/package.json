@@ -30,6 +30,7 @@
   },
   "files": [
     "bin",
-    "dist"
+    "dist",
+    "assets"
   ]
 }
