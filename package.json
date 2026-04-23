@@ -56,6 +56,10 @@
     "remote:dev:clean": "cd crates/remote && docker compose --env-file .env.remote --profile relay --profile attachments down -v --remove-orphans",
     "remote:prepare-db": "cd crates/remote && bash scripts/prepare-db.sh",
     "remote:prepare-db:check": "cd crates/remote && bash scripts/prepare-db.sh --check",
+    "tailscale:preview:origin": "node scripts/tailscale-preview.js origin",
+    "tailscale:preview:env": "node scripts/tailscale-preview.js env",
+    "tailscale:preview:start": "node scripts/tailscale-preview.js start",
+    "tailscale:preview:stop": "node scripts/tailscale-preview.js stop",
     "tauri:dev": "set -a && [ -f .env ] && . ./.env && set +a && export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export VK_ALLOWED_ORIGINS=\"http://localhost:${FRONTEND_PORT}\" && export DISABLE_WORKTREE_CLEANUP=1 && export RUST_LOG=debug && export VITE_VK_SHARED_API_BASE=${VK_SHARED_API_BASE:-} && cd crates/tauri-app && cargo tauri dev --config '{\"build\":{\"devUrl\":\"http://localhost:'\"${FRONTEND_PORT}\"'\"}}'",
     "tauri:build": "cd crates/tauri-app && cargo tauri build"
   },
