@@ -108,7 +108,8 @@ For remote and cloud types, regenerate with `pnpm run remote:generate-types`. Do
 
 ## Agent Summary Standard
 
-- Use this structure only for the final user-facing completion message of a task:
+- Use this format only for the final user-facing completion message of a turn or task. Do not use it for intermediate progress updates.
+- Use this default section order:
   - `Validation`
   - `What changed`
   - `Why it matters`
@@ -121,9 +122,23 @@ For remote and cloud types, regenerate with `pnpm run remote:generate-types`. Do
   - `Preview URL`
   - `Branch`
   - `Worktree`
-- Keep the first four sections as short complete-sentence narrative.
-- Keep metadata lines compact with `::` separators.
-- Keep intermediate progress updates brief instead of reusing the full summary block.
+- Keep `Validation`, `What changed`, `Why it matters`, and `What's next` as short complete-sentence narrative.
+- Keep the metadata block compact:
+  - add exactly one blank line after `What's next`
+  - use one line each for `PR`, `Docs`, `Churn`, `Human Needed`, `Commit/Push`, `Preview URL`, `Branch`, and `Worktree`
+  - use `::` separators
+  - do not add blank lines inside the metadata block
+- Use:
+  - `Docs:: Current` or `Docs:: Not Current`
+  - `Churn:: Yes` or `Churn:: No`
+  - `Human Needed:: Yes` or `Human Needed:: No`
+- Use `Commit/Push::` on one line and include both states, for example `Commit/Push:: Committed and Pushed`.
+- If a PR does not exist yet, use `PR:: Not opened yet`.
+- When `PR::` or `Preview URL::` include a URL, format it as a clickable Markdown link.
+- Use one of:
+  - `Preview URL:: Not Generated`
+  - `Preview URL:: Updated [Open preview](https://...)`
+  - `Preview URL:: NotUpdated [Open preview](https://...)`
 
 ## Security & Config Tips
 
