@@ -35,8 +35,8 @@ This document defines the repo-specific safe path from feature work to local val
 
 Local validation should exercise the actual user-facing or operator-facing path that changed. Examples:
 
-- UI or workflow changes: run `pnpm run dev` or `pnpm run dev:qa`, then exercise the affected flow in the browser.
-- Backend changes: validate the affected API or task lifecycle through the local app.
+- UI or workflow changes: run `pnpm run preview:light` against the existing local backend, then exercise the affected flow in the browser.
+- Backend changes: run `pnpm run dev` when backend rebuilds or server-side behaviour must be exercised, then validate the affected API or task lifecycle through the local app.
 - Packaging or install changes: run the relevant local build path such as `pnpm run build:npx`.
 
 If part of the change could not be exercised locally, record that explicitly in the branch summary or handoff.
