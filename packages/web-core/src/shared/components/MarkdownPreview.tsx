@@ -183,7 +183,7 @@ export function MarkdownPreview({
                 /\n$/,
                 ''
               )}
-              className="absolute right-2 top-2 z-10 opacity-0 group-hover:opacity-100"
+              className="absolute right-2 top-2 z-10 opacity-100"
             />
             <pre
               className="text-xs rounded-sm bg-panel overflow-auto font-ibm-plex-mono p-base pr-12 pt-10"

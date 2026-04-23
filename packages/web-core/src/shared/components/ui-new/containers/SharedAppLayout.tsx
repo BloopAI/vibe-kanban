@@ -204,11 +204,17 @@ export function SharedAppLayout() {
     ? isLocalProjectsLoading
     : isLoading;
   const archivedProjects = useMemo(
-    () => allAppBarProjects.filter((project) => 'archived' in project && project.archived),
+    () =>
+      allAppBarProjects.filter(
+        (project) => 'archived' in project && project.archived
+      ),
     [allAppBarProjects]
   );
   const appBarProjects = useMemo(
-    () => allAppBarProjects.filter((project) => !('archived' in project) || !project.archived),
+    () =>
+      allAppBarProjects.filter(
+        (project) => !('archived' in project) || !project.archived
+      ),
     [allAppBarProjects]
   );
   const [orderedProjects, setOrderedProjects] =
@@ -393,7 +399,9 @@ export function SharedAppLayout() {
 
       await projectsApi.update(projectId, { archived: false });
       await queryClient.invalidateQueries({ queryKey: ['local-projects'] });
-      await queryClient.invalidateQueries({ queryKey: ['local-project', projectId] });
+      await queryClient.invalidateQueries({
+        queryKey: ['local-project', projectId],
+      });
       appNavigation.goToProject(projectId);
     },
     [appNavigation, isLocalAuthBypassed, queryClient]

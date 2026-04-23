@@ -566,7 +566,9 @@ function CollapsedKanbanColumn({
         <div
           className={cn(
             'flex items-center gap-2 whitespace-nowrap text-center',
-            isMobile ? '[writing-mode:horizontal-tb]' : '[writing-mode:vertical-rl] pt-2'
+            isMobile
+              ? '[writing-mode:horizontal-tb]'
+              : '[writing-mode:vertical-rl] pt-2'
           )}
         >
           <span className="text-sm font-medium leading-none text-normal">

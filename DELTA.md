@@ -279,3 +279,24 @@
 - Not complete / known gaps:
   - `pnpm run format` failed because `prettier` was unavailable in the worktree
   - `pnpm run generate-types` was started but not confirmed complete for the scratch type change
+
+## 2026-04-23T00:00:00Z | staging | codeblock-only copy regression follow-up
+
+- Intent: repair the staged codeblock copy feature after read-only codeblocks still lacked a usable copy affordance.
+- Root cause found:
+  - the read-only Lexical implementation depended on `querySelectorAll('code.block')`
+  - that selector was too brittle for the actual Lexical-rendered codeblock DOM
+  - markdown preview copy controls were also hover-only, making the affordance easy to miss
+- Completed locally:
+  - `ReadOnlyCodeBlockCopyPlugin` now tracks actual Lexical `CodeNode` instances through mutation and update listeners
+  - mounted copy button roots update when code text changes and clean up when codeblocks disappear
+  - codeblock copy buttons are visible by default in both Lexical read-only content and markdown preview rendering
+- Verified:
+  - `pnpm run format`
+  - `NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter @vibe/web-core run check`
+  - `pnpm --filter @vibe/ui run lint`
+  - local preview `http://127.0.0.1:3002/` returned HTTP 200
+  - tailnet preview `https://mcp-server.tail744c4.ts.net:18444/` returned HTTP 200
+- Not complete / known gaps:
+  - human UI smoke against an actual rendered codeblock is still needed
+  - full repo validation was not rerun for this targeted regression fix
