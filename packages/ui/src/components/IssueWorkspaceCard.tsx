@@ -4,6 +4,7 @@ import {
   GitPullRequestIcon,
   DotsThreeIcon,
   LinkBreakIcon,
+  PencilSimpleIcon,
   TrashIcon,
   PlayIcon,
   HandIcon,
@@ -48,6 +49,7 @@ export interface WorkspaceWithStats {
 export interface IssueWorkspaceCardProps {
   workspace: WorkspaceWithStats;
   onClick?: () => void;
+  onRename?: () => void;
   onUnlink?: () => void;
   onDelete?: () => void;
   showOwner?: boolean;
@@ -110,6 +112,7 @@ function IssueWorkspaceCardContainer({
 export function IssueWorkspaceCard({
   workspace,
   onClick,
+  onRename,
   onUnlink,
   onDelete,
   showOwner = true,
@@ -165,7 +168,7 @@ export function IssueWorkspaceCard({
               className="h-5 w-5 text-[10px] border-2 border-panel"
             />
           )}
-          {(onUnlink || onDelete) && (
+          {(onRename || onUnlink || onDelete) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -180,6 +183,17 @@ export function IssueWorkspaceCard({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {onRename && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRename();
+                    }}
+                  >
+                    <PencilSimpleIcon className="size-icon-xs" />
+                    {t('workspaces.rename.action')}
+                  </DropdownMenuItem>
+                )}
                 {onUnlink && (
                   <DropdownMenuItem
                     onClick={(e) => {
