@@ -1,0 +1,643 @@
+{
+  "settings": {
+    "common": {
+      "unsavedChanges": "• יש לך שינויים שלא נשמרו",
+      "discardChangesConfirm": "לבטל שינויים שלא נשמרו?"
+    },
+    "unsavedChanges": {
+      "title": "שינויים שלא נשמרו",
+      "message": "יש לך שינויים שלא נשמרו. האם אתה בטוח שברצונך לסגור מבלי לשמור?",
+      "discard": "בטל שינויים",
+      "cancel": "המשך עריכה"
+    },
+    "layout": {
+      "nav": {
+        "title": "הגדרות",
+        "machineSettings": "הגדרות מכונה",
+        "accountSettings": "הגדרות חשבון",
+        "pairOtherMachines": "שייך מכונות אחרות",
+        "selectHost": "בחר מארח",
+        "general": "כללי",
+        "generalDesc": "ערכת נושא, התראות והעדפות",
+        "projects": "פרויקטים",
+        "projectsDesc": "מאגרי פרויקטים והגדרות",
+        "repos": "מאגרים",
+        "reposDesc": "סקריפטים והגדרות מאגר",
+        "agents": "סוכנים",
+        "agentsDesc": "הגדרות סוכני קוד",
+        "mcp": "שרתי MCP",
+        "mcpDesc": "שרתי Model Context Protocol",
+        "organizations": "הגדרות ארגון",
+        "organizationsDesc": "ניהול חברי ארגון והרשאות",
+        "remote-projects": "פרויקטים",
+        "remote-projectsDesc": "ניהול פרויקטים",
+        "relay": "גישה מרחוק",
+        "relayDesc": "מנהרת ממסר ורישום"
+      }
+    },
+    "hostPicker": {
+      "thisMachine": "מכונה זו",
+      "localHost": "מארח מקומי",
+      "remoteHost": "מארח מרוחק",
+      "noHostAvailable": "אין מארח זמין להגדרות ספציפיות למכונה עדיין.",
+      "pairMachineHint": "שייך מכונה כדי לפתוח הגדרות מכונה.",
+      "selectMachineHint": "בחר מכונה כדי לפתוח הגדרות מכונה."
+    },
+    "general": {
+      "loading": "טוען הגדרות...",
+      "loadError": "טעינת ההגדרות נכשלה.",
+      "save": {
+        "button": "שמור הגדרות",
+        "success": "✓ ההגדרות נשמרו בהצלחה!",
+        "error": "שמירת ההגדרות נכשלה",
+        "unsavedChanges": "• יש לך שינויים שלא נשמרו",
+        "discard": "בטל"
+      },
+      "appearance": {
+        "title": "מראה",
+        "description": "התאם אישית את מראה האפליקציה.",
+        "theme": {
+          "label": "ערכת נושא",
+          "placeholder": "בחר ערכת נושא",
+          "helper": "בחר את ערכת הצבעים המועדפת עליך."
+        },
+        "language": {
+          "label": "שפה",
+          "placeholder": "בחר שפה",
+          "helper": "בחר את השפה המועדפת עליך. ברירת מחדל של הדפדפן עוקבת אחרי שפת המערכת שלך."
+        }
+      },
+      "taskExecution": {
+        "title": "סוכן קוד ברירת מחדל",
+        "description": "בחר את סוכן הקוד שישמש כברירת מחדל למשימות.",
+        "executor": {
+          "label": "הגדרת סוכן ברירת מחדל",
+          "placeholder": "בחר פרופיל",
+          "helper": "בחר את הגדרת הסוכן שתשמש כברירת מחדל בעת יצירת סביבת עבודה."
+        },
+        "variant": "DEFAULT",
+        "defaultLabel": "ברירת מחדל"
+      },
+      "editor": {
+        "title": "עורך",
+        "description": "הגדר את חוויית עריכת הקוד שלך.",
+        "type": {
+          "label": "סוג עורך",
+          "placeholder": "בחר עורך",
+          "helper": "בחר את ממשק עורך הקוד המועדף עליך."
+        },
+        "customCommand": {
+          "label": "פקודת עורך מותאמת אישית",
+          "placeholder": "לדוגמה: code, subl, vim",
+          "helper": "הזן את הפקודה להפעלת העורך המותאם אישית שלך. פקודה זו תשמש לפתיחת קבצים."
+        },
+        "remoteSsh": {
+          "host": {
+            "label": "מארח SSH מרוחק (אופציונלי)",
+            "placeholder": "לדוגמה: שם מארח או כתובת IP",
+            "helper": "הגדר זאת אם Vibe Kanban פועל על שרת מרוחק. כאשר מוגדר, לחיצה על \"פתח בעורך\" תייצר כתובת URL לפתיחת העורך דרך SSH במקום להפעיל פקודה מקומית."
+          },
+          "user": {
+            "label": "משתמש SSH מרוחק (אופציונלי)",
+            "placeholder": "לדוגמה: שם משתמש",
+            "helper": "שם משתמש SSH לחיבור המרוחק. אם לא הוגדר, VS Code ישתמש בהגדרות ה-SSH שלך או יבקש אותך."
+          }
+        },
+        "autoInstallExtension": {
+          "label": "התקנה אוטומטית של תוסף VS Code",
+          "helper": "התקן אוטומטית את תוסף Vibe Kanban בעת פתיחת פרויקט ב-VS Code או ב-Cursor. פעולה זו מתבצעת ברקע ואין לה השפעה אם התוסף כבר מותקן."
+        },
+        "availability": {
+          "checking": "בודק זמינות...",
+          "available": "זמין",
+          "notFound": "לא נמצא ב-PATH"
+        }
+      },
+      "github": {
+        "title": "אינטגרציה עם GitHub",
+        "cliSetup": {
+          "title": "הגדרת GitHub CLI",
+          "description": "נדרש אימות GitHub CLI כדי ליצור pull requests ולתקשר עם מאגרי GitHub.",
+          "setupWillTitle": "הגדרה זו תבצע:",
+          "steps": {
+            "checkInstalled": "בדיקה אם GitHub CLI (gh) מותקן",
+            "installHomebrew": "התקנה דרך Homebrew במידת הצורך (macOS)",
+            "authenticate": "אימות מול GitHub באמצעות OAuth"
+          },
+          "setupNote": "ההגדרה תרוץ בחלון הצ'אט. יהיה עליך להשלים את האימות בדפדפן שלך.",
+          "runSetup": "הפעל הגדרה",
+          "running": "מריץ...",
+          "errors": {
+            "brewMissing": "Homebrew אינו מותקן. התקן אותו כדי לאפשר הגדרה אוטומטית.",
+            "notSupported": "הגדרה אוטומטית אינה נתמכת בפלטפורמה זו. התקן GitHub CLI באופן ידני.",
+            "setupFailed": "הרצת הגדרת GitHub CLI נכשלה."
+          },
+          "help": {
+            "homebrew": {
+              "description": "התקנה אוטומטית דורשת Homebrew. התקן Homebrew מ-",
+              "brewSh": "brew.sh",
+              "manualInstall": "ולאחר מכן הפעל מחדש את ההגדרה. לחלופין, התקן GitHub CLI ידנית עם:",
+              "afterInstall": "לאחר ההתקנה, אמת עם:"
+            },
+            "manual": {
+              "description": "התקן GitHub CLI מה-",
+              "officialDocs": "תיעוד הרשמי",
+              "andAuthenticate": "ולאחר מכן אמת עם חשבון GitHub שלך."
+            }
+          }
+        }
+      },
+      "git": {
+        "title": "Git",
+        "description": "הגדר העדפות שמות ענפי Git",
+        "branchPrefix": {
+          "label": "קידומת ענף",
+          "placeholder": "vk",
+          "helper": "קידומת לשמות ענפים שנוצרים אוטומטית. השאר ריק ללא קידומת.",
+          "preview": "תצוגה מקדימה:",
+          "previewWithPrefix": "{{prefix}}/1a2b-task-name",
+          "previewNoPrefix": "1a2b-task-name",
+          "errors": {
+            "slash": "הקידומת אינה יכולה להכיל '/'.",
+            "startsWithDot": "הקידומת אינה יכולה להתחיל ב-'.'.",
+            "endsWithDot": "הקידומת אינה יכולה להסתיים ב-'.' או ב-'.lock'.",
+            "invalidSequence": "מכיל רצף לא חוקי (.., @{).",
+            "invalidChars": "מכיל תווים לא חוקיים.",
+            "controlChars": "מכיל תווי בקרה."
+          }
+        },
+        "workspaceDir": {
+          "label": "ספריית סביבת עבודה",
+          "placeholder": "~/",
+          "helper": "סביבות עבודה ייווצרו בתיקיית משנה .vibe-kanban-workspaces בתוך הנתיב הזה. השאר ריק לשימוש בברירת המחדל של המערכת. שינויים דורשים הפעלה מחדש של האפליקציה.",
+          "browse": "עיין",
+          "dialogTitle": "בחר ספריית סביבת עבודה",
+          "dialogDescription": "בחר ספרייה. סביבות עבודה ייווצרו בתיקיית משנה .vibe-kanban-workspaces בתוכה."
+        }
+      },
+      "pullRequests": {
+        "title": "Pull Requests",
+        "description": "הגדר התנהגות יצירת PR",
+        "autoDescription": {
+          "label": "יצירת תיאור PR אוטומטית כברירת מחדל",
+          "helper": "כאשר מופעל, סוכן ה-AI יעדכן אוטומטית את כותרת ותיאור ה-PR לאחר היצירה."
+        },
+        "customPrompt": {
+          "useCustom": "השתמש בפרומפט מותאם אישית",
+          "helper": "פרומפט מותאם אישית לסוכן ה-AI בעת יצירת תיאורי PR. השתמש ב-{pr_number} וב-{pr_url} כמשתני תבנית."
+        }
+      },
+      "commits": {
+        "title": "קומיטים",
+        "description": "הגדר התנהגות קומיטים עבור סביבות עבודה",
+        "reminder": {
+          "label": "תזכורת קומיט",
+          "helper": "בקש מסוכנים נתמכים לבצע קומיט לשינויים לפני העצירה."
+        },
+        "customPrompt": {
+          "useCustom": "השתמש בפרומפט מותאם אישית",
+          "helper": "פרומפט מותאם אישית לתזכורת הקומיט. סטטוס ה-git יצורף אוטומטית."
+        }
+      },
+      "notifications": {
+        "title": "התראות",
+        "description": "שלוט מתי וכיצד אתה מקבל התראות.",
+        "sound": {
+          "label": "התראות קוליות",
+          "helper": "הפעל צליל כאשר סביבות עבודה מסיימות לרוץ.",
+          "fileLabel": "צליל",
+          "filePlaceholder": "בחר צליל",
+          "fileHelper": "בחר את הצליל שיושמע כאשר משימות מסתיימות. לחץ על כפתור עוצמת הקול לתצוגה מקדימה."
+        },
+        "push": {
+          "label": "התראות Push",
+          "helper": "הצג התראות מערכת כאשר סביבות עבודה מסיימות לרוץ."
+        }
+      },
+      "messageInput": {
+        "title": "קלט הודעות",
+        "description": "הגדר כיצד הודעות נשלחות בשדה הצ'אט.",
+        "shortcut": {
+          "label": "שלח הודעה עם",
+          "helper": "בחר את קיצור המקלדת לשליחת הודעות.",
+          "enterLabel": "Enter (Shift+Enter לשורה חדשה)"
+        }
+      },
+      "privacy": {
+        "title": "פרטיות",
+        "description": "עזור לשפר את Vibe-Kanban על ידי שיתוף נתוני שימוש אנונימיים.",
+        "telemetry": {
+          "label": "אפשר טלמטריה",
+          "helper": "מאפשר מעקב אנונימי אחרי אירועי שימוש כדי לעזור לשפר את האפליקציה. לא נאספים פרומפטים או מידע על הפרויקט."
+        }
+      },
+      "taskTemplates": {
+        "title": "תגיות",
+        "description": "צור קטעי טקסט לשימוש חוזר שניתן להכניס לתיאורי משימות באמצעות @tag_name."
+      },
+      "tags": {
+        "manager": {
+          "title": "תגיות משימה",
+          "addTag": "הוסף תגית",
+          "noTags": "אין תגיות עדיין. צור קטעי טקסט לשימוש חוזר עבור תיאורי משימות נפוצים. השתמש ב-@tag_name בכל משימה.",
+          "table": {
+            "tagName": "שם תגית",
+            "content": "תוכן",
+            "actions": "פעולות"
+          },
+          "actions": {
+            "editTag": "ערוך תגית",
+            "deleteTag": "מחק תגית"
+          },
+          "deleteConfirm": "האם אתה בטוח שברצונך למחוק את התגית \"{{tagName}}\"?"
+        },
+        "dialog": {
+          "createTitle": "צור תגית",
+          "editTitle": "ערוך תגית",
+          "tagName": {
+            "label": "שם תגית",
+            "required": "*",
+            "hint": "השתמש בשם זה עם @ בתיאורי משימות: @{{tagName}}",
+            "placeholder": "לדוגמה: bug_fix, test_plan, api_docs",
+            "error": "שם התגית אינו יכול להכיל רווחים. השתמש בקווים תחתונים במקום (לדוגמה: my_tag)"
+          },
+          "content": {
+            "label": "תוכן",
+            "required": "*",
+            "hint": "טקסט שיוכנס כאשר תשתמש ב-@{{tagName}} בתיאורי משימות",
+            "placeholder": "הזן את הטקסט שיוכנס כאשר תשתמש בתגית זו"
+          },
+          "errors": {
+            "nameRequired": "שם התגית הוא שדה חובה",
+            "saveFailed": "שמירת התגית נכשלה"
+          },
+          "buttons": {
+            "cancel": "ביטול",
+            "create": "צור",
+            "update": "עדכן"
+          }
+        }
+      },
+      "safety": {
+        "title": "בטיחות והצהרות אחריות",
+        "description": "אפס אישורים עבור אזהרות בטיחות והתחלה.",
+        "disclaimer": {
+          "title": "אישור הצהרת אחריות",
+          "description": "אפס את הצהרת האחריות לבטיחות.",
+          "button": "אפס"
+        },
+        "onboarding": {
+          "title": "התחלה",
+          "description": "אפס את תהליך ההתחלה.",
+          "button": "אפס"
+        }
+      },
+      "beta": {
+        "title": "תכונות בטא",
+        "description": "נסה תכונות ניסיוניות לפני שהן משוחררות.",
+        "workspaces": {
+          "label": "אפשר בטא של סביבות עבודה",
+          "helper": "השתמש בממשק סביבות העבודה החדש בעת צפייה בסביבות עבודה. משימות ייפתחו תחילה בתצוגת משימה, וניסיונות ייפתחו בתצוגת סביבות העבודה החדשה."
+        }
+      }
+    },
+    "agents": {
+      "title": "הגדרות סוכני קוד",
+      "description": "התאם אישית את התנהגות סוכני הקוד עם הגדרות שונות.",
+      "loading": "טוען הגדרות סוכן...",
+      "selectAgent": "בחר סוכן",
+      "save": {
+        "button": "שמור הגדרות סוכן",
+        "success": "✓ הגדרות הסוכן נשמרו בהצלחה!",
+        "unsavedChanges": "• יש לך שינויים שלא נשמרו"
+      },
+      "availability": {
+        "checking": "בודק...",
+        "checkingAvailability": "בודק זמינות...",
+        "available": "הסוכן זמין",
+        "notFoundSimple": "הסוכן לא נמצא",
+        "loginDetected": "שימוש אחרון זוהה",
+        "loginDetectedTooltip": "נמצאו פרטי אימות אחרונים עבור סוכן זה",
+        "installationFound": "שימוש קודם זוהה",
+        "installationFoundTooltip": "נמצאה הגדרת סוכן. ייתכן שתצטרך להתחבר כדי להשתמש בו."
+      },
+      "editor": {
+        "formLabel": "ערוך JSON",
+        "agentLabel": "סוכן",
+        "agentPlaceholder": "בחר סוג מבצע",
+        "configLabel": "הגדרה",
+        "configPlaceholder": "בחר הגדרה",
+        "createNew": "צור חדש...",
+        "deleteTitle": "לא ניתן למחוק את ההגדרה האחרונה",
+        "deleteButton": "מחק את {{name}}",
+        "deleteText": "מחק",
+        "makeDefault": "הגדר כברירת מחדל",
+        "isDefault": "ברירת מחדל",
+        "jsonLabel": "הגדרת סוכן (JSON)",
+        "jsonPlaceholder": "טוען פרופילים...",
+        "jsonLoading": "טוען...",
+        "pathLabel": "מיקום קובץ ההגדרות:"
+      },
+      "errors": {
+        "deleteFailed": "מחיקת ההגדרה נכשלה. אנא נסה שוב.",
+        "saveFailed": "שמירת הגדרות הסוכן נכשלה. אנא נסה שוב.",
+        "saveConfigFailed": "שמירת ההגדרה נכשלה. אנא נסה שוב.",
+        "schemaNotFound": "הסכמה לא נמצאה עבור סוג המבצע: {{executor}}"
+      },
+      "tree": {
+        "search": "חפש הגדרות...",
+        "expandAll": "הרחב הכל",
+        "collapseAll": "כווץ הכל",
+        "noResults": "לא נמצאו הגדרות תואמות",
+        "noConfigs": "אין הגדרות זמינות",
+        "selectConfig": "בחר הגדרה מסרגל הצד כדי לצפות ולערוך את הגדרותיה."
+      },
+      "deleteConfigDialog": {
+        "title": "למחוק הגדרה?",
+        "description": "פעולה זו תסיר לצמיתות את \"{{configName}}\" מהמבצע {{executorType}}. לא ניתן לבטל פעולה זו."
+      }
+    },
+    "mcp": {
+      "title": "הגדרות שרת MCP",
+      "description": "הגדר שרתי Model Context Protocol כדי להרחיב את יכולות סוכן הקוד עם כלים ומשאבים מותאמים אישית.",
+      "loading": "טוען הגדרות MCP...",
+      "applying": "מחיל הגדרות...",
+      "labels": {
+        "agent": "סוכן",
+        "agentPlaceholder": "בחר מבצע",
+        "agentHelper": "בחר עבור איזה סוכן להגדיר שרתי MCP.",
+        "serverConfig": "הגדרת שרת (JSON)",
+        "popularServers": "שרתים פופולריים",
+        "serverHelper": "לחץ על כרטיס להכנסת שרת MCP זה ל-JSON למעלה.",
+        "saveLocation": "השינויים יישמרו ב:"
+      },
+      "loadingStates": {
+        "jsonEditor": "טוען...",
+        "configuration": "טוען הגדרת שרת MCP נוכחית..."
+      },
+      "errors": {
+        "loadFailed": "טעינת ההגדרות נכשלה.",
+        "invalidJson": "פורמט JSON לא חוקי",
+        "validationError": "שגיאת אימות",
+        "saveFailed": "שמירת שרתי MCP נכשלה",
+        "applyFailed": "החלת הגדרות שרת MCP נכשלה",
+        "addServerFailed": "הוספת שרת מוגדר מראש נכשלה",
+        "mcpError": "שגיאת הגדרת MCP: {{error}}",
+        "notSupported": "MCP אינו נתמך",
+        "supportMessage": "כדי להשתמש בשרתי MCP, אנא בחר מבצע אחר שתומך ב-MCP (Claude, Amp, Gemini, Codex, או Opencode) למעלה."
+      },
+      "save": {
+        "button": "שמור הגדרות MCP",
+        "success": "ההגדרות נשמרו!",
+        "successMessage": "✓ הגדרות MCP נשמרו בהצלחה!",
+        "loading": "טוען הגדרת שרת MCP נוכחית...",
+        "unsavedChanges": "• יש לך שינויים שלא נשמרו"
+      }
+    },
+    "projects": {
+      "title": "הגדרות פרויקט",
+      "description": "הגדר סקריפטים והגדרות ספציפיות לפרויקט.",
+      "loading": "טוען פרויקטים...",
+      "loadError": "טעינת הפרויקטים נכשלה.",
+      "selector": {
+        "label": "בחר פרויקט",
+        "placeholder": "בחר פרויקט להגדרה",
+        "helper": "בחר פרויקט לצפייה ועריכת הגדרותיו.",
+        "noProjects": "אין פרויקטים זמינים"
+      },
+      "general": {
+        "title": "הגדרות כלליות",
+        "description": "הגדר מידע בסיסי על הפרויקט.",
+        "name": {
+          "label": "שם הפרויקט",
+          "placeholder": "הזן שם פרויקט",
+          "helper": "שם תצוגה עבור פרויקט זה."
+        },
+        "repoPath": {
+          "label": "נתיב מאגר Git",
+          "placeholder": "/path/to/your/existing/repo",
+          "helper": "הנתיב המוחלט למאגר ה-git שלך בדיסק."
+        }
+      },
+      "save": {
+        "button": "שמור הגדרות פרויקט",
+        "saving": "שומר...",
+        "success": "✓ הגדרות הפרויקט נשמרו בהצלחה!",
+        "error": "שמירת הגדרות הפרויקט נכשלה",
+        "unsavedChanges": "• יש לך שינויים שלא נשמרו",
+        "discard": "בטל",
+        "confirmSwitch": "יש לך שינויים שלא נשמרו. האם אתה בטוח שברצונך לעבור לפרויקט אחר? השינויים שלך יאבדו."
+      },
+      "repositories": {
+        "title": "מאגרים",
+        "description": "נהל את מאגרי ה-git בפרויקט זה",
+        "noRepositories": "לא הוגדרו מאגרים",
+        "addRepository": "הוסף מאגר"
+      }
+    },
+    "repos": {
+      "title": "הגדרות מאגר",
+      "description": "הגדר סקריפטים שרצים כאשר מאגר זה משמש בסביבות עבודה.",
+      "loading": "טוען מאגרים...",
+      "loadError": "טעינת המאגרים נכשלה.",
+      "addRepo": {
+        "button": "הוסף מאגר",
+        "dialogTitle": "בחר מאגר Git",
+        "dialogDescription": "בחר מאגר git קיים לרישום.",
+        "error": "רישום המאגר נכשל"
+      },
+      "selector": {
+        "label": "בחר מאגר",
+        "placeholder": "בחר מאגר להגדרה",
+        "helper": "בחר מאגר לצפייה ועריכת הגדרותיו.",
+        "noRepos": "אין מאגרים זמינים"
+      },
+      "general": {
+        "title": "הגדרות כלליות",
+        "description": "הגדר מידע בסיסי על המאגר.",
+        "displayName": {
+          "label": "שם תצוגה",
+          "placeholder": "הזן שם תצוגה",
+          "helper": "שם ידידותי עבור מאגר זה."
+        },
+        "path": {
+          "label": "נתיב המאגר"
+        },
+        "defaultWorkingDir": {
+          "label": "ספריית עבודה ברירת מחדל",
+          "placeholder": "לדוגמה: packages/frontend",
+          "helper": "תת-ספרייה יחסית לשורש המאגר שבה סוכן הקוד פועל עבור סביבות עבודה של מאגר יחיד. מוגדר בעת יצירת סביבת העבודה. השאר ריק לשימוש בשורש המאגר."
+        },
+        "defaultTargetBranch": {
+          "label": "ענף יעד ברירת מחדל",
+          "placeholder": "בחר ענף",
+          "helper": "ענף הבסיס לסביבות עבודה חדשות. עצי עבודה מסתעפים מענף זה ו-PR יכוון אליו.",
+          "search": "חפש ענפים",
+          "noBranches": "לא נמצאו ענפים",
+          "loading": "טוען ענפים...",
+          "useCurrent": "השתמש בענף הנוכחי"
+        }
+      },
+      "scripts": {
+        "title": "סקריפטים והגדרות",
+        "description": "הגדר שרת פיתוח, הגדרה, ניקוי, והעתקת קבצים עבור מאגר זה. סקריפטים אלה רצים בכל פעם שהמאגר משמש בסביבת עבודה כלשהי.",
+        "setup": {
+          "label": "סקריפט הגדרה",
+          "helper": "סקריפט זה רץ מתוך עץ העבודה לאחר יצירתו ולפני שסוכן הקוד מתחיל. השתמש בו למשימות הגדרה כגון התקנת תלויות או הכנת הסביבה.",
+          "parallelLabel": "הפעל סקריפט הגדרה במקביל לסוכן הקוד",
+          "parallelHelper": "כאשר מופעל, סקריפט ההגדרה רץ בו-זמנית עם סוכן הקוד במקום להמתין לסיום ההגדרה תחילה."
+        },
+        "cleanup": {
+          "label": "סקריפט ניקוי",
+          "helper": "סקריפט זה רץ מתוך עץ העבודה לאחר ביצוע סוכן הקוד, רק אם בוצעו שינויים. השתמש בו למשימות בקרת איכות כגון הרצת לינטרים, מפרמטים, בדיקות, או שלבי אימות אחרים."
+        },
+        "archive": {
+          "label": "סקריפט ארכיון",
+          "helper": "סקריפט זה רץ מתוך עץ העבודה כאשר סביבת העבודה מועברת לארכיון. השתמש בו למשימות ניקוי כגון עצירת שירותים, שחרור משאבים, או שמירת מצב."
+        },
+        "copyFiles": {
+          "label": "העתקת קבצים",
+          "helper": "רשימה מופרדת בפסיקים של קבצים להעתקה מספריית המאגר המקורית לעץ העבודה. שימושי לקבצי סביבה כמו .env. ודא שקבצים אלה מכוסים ב-gitignore!",
+          "placeholder": "נתיבי קבצים או תבניות glob (לדוגמה: .env, config/*.json)"
+        },
+        "devServer": {
+          "label": "סקריפט שרת פיתוח",
+          "helper": "מפעיל שרת פיתוח עבור מאגר זה. סקריפטים מבוצעים מתוך ספריית עץ העבודה של המאגר."
+        }
+      },
+      "linkedProjects": {
+        "title": "פרויקטים מקושרים",
+        "description": "פרויקטים המשתמשים במאגר זה בהגדרת סביבת העבודה הברירת מחדל שלהם.",
+        "loading": "בודק פרויקטים…",
+        "none": "אין פרויקטים מקושרים"
+      },
+      "remove": {
+        "title": "הסר מאגר",
+        "description": "נתק מאגר זה מ-Vibe Kanban. הקבצים בדיסק לא יימחקו.",
+        "button": "הסר",
+        "confirm": "הסר מאגר",
+        "dialogTitle": "להסיר את \"{{name}}\"?",
+        "dialogDescription": "פעולה זו תנתק את המאגר מ-Vibe Kanban. הקבצים שלך בדיסק לא יושפעו. תוכל להוסיף אותו מחדש בהמשך.",
+        "success": "המאגר הוסר בהצלחה.",
+        "error": "הסרת המאגר נכשלה."
+      },
+      "save": {
+        "button": "שמור הגדרות מאגר",
+        "success": "הגדרות המאגר נשמרו בהצלחה!",
+        "error": "שמירת הגדרות המאגר נכשלה",
+        "unsavedChanges": "יש לך שינויים שלא נשמרו",
+        "discard": "בטל",
+        "confirmSwitch": "יש לך שינויים שלא נשמרו. האם אתה בטוח שברצונך לעבור למאגר אחר? השינויים שלך יאבדו."
+      }
+    },
+    "relay": {
+      "title": "גישה מרחוק",
+      "description": "אפשר גישה למופע זה מהאינטרנט דרך מנהרת ממסר.",
+      "overview": {
+        "available": "זמין",
+        "unavailable": "לא זמין"
+      },
+      "enabled": {
+        "label": "אפשר גישה מרחוק",
+        "helper": "כאשר מופעל, ניתן לגשת למופע זה מרחוק דרך מנהרת ממסר."
+      },
+      "enrollmentCode": {
+        "label": "קוד שיוך",
+        "helper": "הזן קוד זה בדפדפן כדי לשייך למופע זה.",
+        "loginRequired": "התחבר כדי ליצור קוד שיוך.",
+        "fetchError": "אחזור קוד השיוך נכשל.",
+        "show": "הצג קוד שיוך"
+      },
+      "host": {
+        "label": "מארח"
+      },
+      "client": {
+        "label": "לקוח"
+      }
+    },
+    "remoteProjects": {
+      "title": "פרויקטים מרוחקים",
+      "description": "נהל פרויקטים מסונכרנים בענן על פני ארגונים.",
+      "loading": "טוען פרויקטים מרוחקים...",
+      "loadError": "טעינת הארגונים נכשלה",
+      "noProjects": "אין פרויקטים עדיין. צור אחד כדי להתחיל.",
+      "selectOrg": "בחר ארגון",
+      "createSuccess": "הפרויקט נוצר בהצלחה",
+      "deleteSuccess": "הפרויקט נמחק בהצלחה",
+      "nameRequired": "שם הפרויקט הוא שדה חובה",
+      "saveSuccess": "הפרויקט עודכן בהצלחה",
+      "saveError": "עדכון הפרויקט נכשל",
+      "columns": {
+        "organizations": "ארגונים",
+        "projects": "פרויקטים"
+      },
+      "actions": {
+        "addProject": "הוסף פרויקט"
+      },
+      "form": {
+        "name": {
+          "label": "שם הפרויקט",
+          "placeholder": "הזן שם פרויקט"
+        },
+        "color": {
+          "label": "צבע הפרויקט"
+        },
+        "statuses": {
+          "label": "סטטוסי פרויקט",
+          "description": "נהל עמודות קנבן עבור פרויקט זה."
+        },
+        "defaultRepos": {
+          "label": "מאגרים ברירת מחדל",
+          "description": "מאגרים שנוספים אוטומטית בעת יצירת סביבות עבודה מהנושאים של פרויקט זה.",
+          "empty": "לא הוגדרו מאגרים ברירת מחדל",
+          "addButton": "הוסף",
+          "addNew": "הוסף מאגר חדש...",
+          "branchLabel": "ענף",
+          "noBranches": "לא נמצאו ענפים עבור מאגר זה",
+          "fetchError": "לא ניתן לטעון מאגרים",
+          "saveError": "שמירת מאגרים ברירת מחדל נכשלה"
+        }
+      },
+      "loginRequired": {
+        "title": "נדרשת כניסה",
+        "description": "התחבר כדי לנהל את הפרויקטים המרוחקים שלך.",
+        "action": "התחבר"
+      }
+    }
+  },
+  "integrations": {
+    "github": {
+      "cliSetup": {
+        "title": "הגדרת GitHub CLI",
+        "description": "נדרש אימות GitHub CLI כדי ליצור pull requests ולתקשר עם מאגרי GitHub.",
+        "setupWillTitle": "הגדרה זו תבצע:",
+        "steps": {
+          "checkInstalled": "בדיקה אם GitHub CLI (gh) מותקן",
+          "installHomebrew": "התקנה דרך Homebrew במידת הצורך (macOS)",
+          "authenticate": "אימות מול GitHub באמצעות OAuth"
+        },
+        "setupNote": "ההגדרה תרוץ בחלון הצ'אט. יהיה עליך להשלים את האימות בדפדפן שלך.",
+        "runSetup": "הפעל הגדרה",
+        "running": "מריץ...",
+        "errors": {
+          "brewMissing": "Homebrew אינו מותקן. התקן אותו כדי לאפשר הגדרה אוטומטית.",
+          "notSupported": "הגדרה אוטומטית אינה נתמכת בפלטפורמה זו. התקן GitHub CLI באופן ידני.",
+          "setupFailed": "הרצת הגדרת GitHub CLI נכשלה."
+        },
+        "help": {
+          "homebrew": {
+            "description": "התקנה אוטומטית דורשת Homebrew. התקן Homebrew מ-",
+            "brewSh": "brew.sh",
+            "manualInstall": "ולאחר מכן הפעל מחדש את ההגדרה. לחלופין, התקן GitHub CLI ידנית עם:",
+            "afterInstall": "לאחר ההתקנה, אמת עם:"
+          },
+          "manual": {
+            "description": "התקן GitHub CLI מה-",
+            "officialDocs": "תיעוד הרשמי",
+            "andAuthenticate": "ולאחר מכן אמת עם חשבון GitHub שלך."
+          }
+        }
+      }
+    }
+  }
+}
