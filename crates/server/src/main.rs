@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use anyhow::{self, Error as AnyhowError};
 use axum::Router;
 use deployment::{Deployment, DeploymentError};
@@ -169,16 +171,25 @@ async fn main() -> Result<(), VibeKanbanError> {
     let proxy_server = axum::serve(proxy_listener, proxy_router)
         .with_graceful_shutdown(async move { proxy_shutdown.cancelled().await });
 
-    let main_handle = tokio::spawn(async move {
+    let mut main_handle = tokio::spawn(async move {
         if let Err(e) = main_server.await {
             tracing::error!("Main server error: {}", e);
         }
     });
-    let proxy_handle = tokio::spawn(async move {
+    let mut proxy_handle = tokio::spawn(async move {
         if let Err(e) = proxy_server.await {
             tracing::error!("Preview proxy error: {}", e);
         }
     });
+
+    // Capture abort handles up front so the post-`select!` shutdown path can
+    // observe completion and signal cancellation without re-polling the
+    // `JoinHandle`s. `JoinHandle::poll` panics if called after it has already
+    // returned `Ready` (which happens when the `_ = &mut handle` branch of
+    // the `select!` below fires), so we stay off the handles once `select!`
+    // has consumed them.
+    let main_abort = main_handle.abort_handle();
+    let proxy_abort = proxy_handle.abort_handle();
 
     relay_registration::spawn_relay(&deployment).await;
 
@@ -186,11 +197,60 @@ async fn main() -> Result<(), VibeKanbanError> {
         _ = shutdown_signal() => {
             tracing::info!("Shutdown signal received");
         }
-        _ = main_handle => {}
-        _ = proxy_handle => {}
+        _ = &mut main_handle => {}
+        _ = &mut proxy_handle => {}
     }
 
     shutdown_token.cancel();
+
+    // Bounded graceful shutdown.
+    //
+    // `axum::serve(...).with_graceful_shutdown(...)` waits for every in-flight
+    // connection to finish before dropping the listener. Long-lived streams
+    // (SSE, WebSocket, long-poll) do not drain on their own, so a single open
+    // stream can keep the listener socket alive indefinitely after the
+    // shutdown signal fires.
+    //
+    // On Windows, when the console delivers `CTRL_CLOSE_EVENT` (user closes
+    // the launcher window) the process is granted only ~5 seconds before
+    // `TerminateProcess` is invoked. If the listener is still alive at that
+    // point the AFD kernel state can linger under the dead PID, which blocks
+    // rebinding the same port until reboot.
+    //
+    // Give drain a bounded window; if it does not complete in time, abort
+    // the listener tasks and then give abort a short, bounded window to
+    // propagate — so a task that is slow to observe cancellation can't push
+    // total shutdown past the 5s grace window either.
+    //
+    // Completion is observed via `AbortHandle::is_finished()` polling rather
+    // than re-awaiting the `JoinHandle`s, because the `select!` above may
+    // have already consumed one of them to `Ready` and re-polling a finished
+    // `JoinHandle` panics.
+    const SHUTDOWN_DRAIN_TIMEOUT: Duration = Duration::from_secs(2);
+    const POST_ABORT_TIMEOUT: Duration = Duration::from_millis(500);
+    const COMPLETION_POLL_INTERVAL: Duration = Duration::from_millis(20);
+
+    if tokio::time::timeout(SHUTDOWN_DRAIN_TIMEOUT, async {
+        while !main_abort.is_finished() || !proxy_abort.is_finished() {
+            tokio::time::sleep(COMPLETION_POLL_INTERVAL).await;
+        }
+    })
+    .await
+    .is_err()
+    {
+        tracing::warn!(
+            "Graceful shutdown exceeded {:?}; aborting listeners",
+            SHUTDOWN_DRAIN_TIMEOUT
+        );
+        main_abort.abort();
+        proxy_abort.abort();
+        let _ = tokio::time::timeout(POST_ABORT_TIMEOUT, async {
+            while !main_abort.is_finished() || !proxy_abort.is_finished() {
+                tokio::time::sleep(COMPLETION_POLL_INTERVAL).await;
+            }
+        })
+        .await;
+    }
 
     perform_cleanup_actions(&deployment).await;
 
