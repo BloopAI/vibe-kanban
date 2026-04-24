@@ -75,21 +75,27 @@
   - `pnpm run check` could not complete because `tsc` was missing
   - original branch push/PR preview state has since changed; see current branch history and PR state instead of this older branch-note wording
 
-## 2026-04-24T00:00:00Z | vk/6d92-vk-archive-modal | archive-project modal follow-up
+## 2026-04-24T00:00:00Z | vk/7b9a-vk-worktree-clea | immediate post-merge worktree cleanup
 
-- Intent: correct the local-only archive-project UX so archived projects disappear from the left nav and are restored from a dedicated archive modal.
-- Completed locally:
-  - removed the inline archived-project list from the desktop AppBar project navigation
-  - removed the inline archived-project section from the mobile drawer project navigation
-  - added a dedicated archive action beneath project creation and wired it to a new archived-project restore modal
-  - added restore handling that unarchives the selected local project, refreshes local project queries, and navigates into the restored project
+- Intent: remove workspace worktree folders as soon as a tracked PR lands in `staging` instead of waiting for the archived-workspace retention window.
+- Completed:
+  - added a shared container helper that deletes archived worktrees for workspaces with merged tracked PRs targeting `staging`
+  - called that helper from both the background PR monitor and the attach-existing-PR route
+  - added a retry after archive-script completion so archive scripts can finish before the worktree is removed
+  - archived linked local workspaces and cleaned up their worktrees when their issues move into `In Staging`, including bulk issue updates
+  - documented the new behavior in `VK_WORKFLOW.md`
 - Files changed:
-  - `packages/ui/src/components/AppBar.tsx`
-  - `packages/web-core/src/shared/components/ui-new/containers/SharedAppLayout.tsx`
-  - `packages/web-core/src/shared/dialogs/kanban/ArchivedProjectsDialog.tsx`
+  - `crates/services/src/services/container.rs`
+  - `crates/services/src/services/pr_monitor.rs`
+  - `crates/local-deployment/src/container.rs`
+  - `crates/server/src/routes/local_compat.rs`
+  - `crates/server/src/routes/workspaces/pr.rs`
+  - `VK_WORKFLOW.md`
+  - `STREAM.md`
+  - `HANDOFF.md`
 - Verified:
-  - `cargo fmt --all` completed through `pnpm run format`
+  - added unit coverage for the merged-to-`staging` PR detection helper
+  - `cargo fmt --all` completed
 - Not complete / known gaps:
-  - `pnpm run format` stopped because `prettier` is not installed in this worktree
-  - `pnpm --filter @vibe/web-core run check` failed because `tsc` is not installed in this worktree
-  - human UI smoke test is still needed before trusting the corrected UX
+  - full test validation was not rerun after the final cleanup behavior adjustments
+  - pinned workspaces still keep the existing auto-archive exception

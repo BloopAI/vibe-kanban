@@ -185,10 +185,24 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
                 "PR #{} was merged, archiving workspace {}",
                 pr_number, workspace.id
             );
-            if !workspace.pinned
-                && let Err(e) = self.container.archive_workspace(workspace.id).await
-            {
-                error!("Failed to archive workspace {}: {}", workspace.id, e);
+            if !workspace.pinned {
+                match self.container.archive_workspace(workspace.id).await {
+                    Ok(()) => {
+                        if let Err(e) = self
+                            .container
+                            .maybe_delete_archived_worktree_for_merged_staging_pr(workspace.id)
+                            .await
+                        {
+                            error!(
+                                "Failed to delete merged staging worktree for workspace {}: {}",
+                                workspace.id, e
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to archive workspace {}: {}", workspace.id, e);
+                    }
+                }
             }
 
             if let Some(analytics) = &self.analytics {

@@ -47,6 +47,14 @@ Implications:
 - production changes should be deliberate, not accidental side effects of branch movement
 - do not assume the currently running binary matches GitHub or even the current repo commit unless you verify it
 
+## Post-merge Worktree Cleanup
+
+- When VK tracks a PR for a workspace and that PR is merged into `staging`, VK now archives the workspace and deletes its worktree folder immediately instead of waiting for the normal archived-workspace cleanup window.
+- If the workspace has an archive script, VK waits for that archive script to finish before deleting the worktree folder.
+- The workspace row remains in VK; reopening it recreates the worktree if needed.
+- This immediate cleanup path depends on tracked PR metadata, so untracked or non-`staging` merges still follow the regular cleanup schedule.
+- Pinned workspaces keep the existing exception because they are not auto-archived on merge.
+
 ## Agent Startup Checklist
 
 Give every new VK-fixing agent these files first:
