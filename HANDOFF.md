@@ -2,43 +2,46 @@
 
 ## What Changed This Session
 
-- Rebasing `vk/53b2-vk-needs-review` onto current `fork/staging` required manual conflict resolution in the app bar and shared layout/API files because `staging` added local project archive/order behavior since this branch was cut.
-- The rebased feature commit preserves the project-level `Needs Review` bubble on top of that newer `staging` app bar structure.
-- Branch-local continuity docs were refreshed after the rebase conflicts.
+- Reframed the archive-project follow-up onto a fresh branch from `fork/staging`.
+- Replaced the old inline archived-project navigation plan with a modal-based restore flow.
+- Updated the desktop and mobile project navigation paths so archived projects are meant to be reopened from a dedicated archive action instead of remaining visible in the nav.
 
 ## What Is True Right Now
 
-- The branch is in the middle of a rebase onto `fork/staging`, with only the branch-local docs commit left to finalize.
-- The rebased feature commit is now `c28fa269f` during the in-progress rebase.
-- Remaining work after the rebase completes is to force-push the branch and merge PR `#5`.
+- This worktree is on `vk/6d92-vk-archive-modal`, tracking `fork/staging`.
+- The corrected UX work is local in this worktree and not yet pushed.
+- The main code touchpoints are:
+  - `packages/ui/src/components/AppBar.tsx`
+  - `packages/web-core/src/shared/components/ui-new/containers/SharedAppLayout.tsx`
+  - `packages/web-core/src/shared/dialogs/kanban/ArchivedProjectsDialog.tsx`
 
 ## What The Next Agent Should Do
 
-- Finish `git rebase --continue`.
-- Force-push `vk/53b2-vk-needs-review`.
-- Merge PR `#5` into `staging`.
+- Run the relevant validation that this environment supports.
+- Commit and push the archive modal follow-up branch.
+- Open the new PR into `staging`.
 
 ## What The Next Agent Must Not Do
 
-- Do not drop the archive/order behavior that already exists on `staging` while preserving the `Needs Review` bubble.
-- Do not claim full formatter/typecheck success unless those commands are rerun in an environment with the missing frontend tools installed.
+- Do not reintroduce archived projects as a visible list in the left-column nav.
+- Do not expand this follow-up into remote/cloud project behavior.
+- Do not edit generated files for this UX-only correction.
 
 ## Verification Required Before Further Changes
 
 - `git status --short --branch`
-- `git log --oneline --decorate -3`
-- task-specific remote checks for push and PR merge state
+- `pnpm run format`
+- the narrowest relevant frontend check available in this worktree
+- human smoke test of archive modal open and restore behavior when possible
 
 ## Verification Status From This Session
 
-- The rebase conflict markers were resolved in:
-  - `packages/ui/src/components/AppBar.tsx`
-  - `packages/web-core/src/shared/components/ui-new/containers/SharedAppLayout.tsx`
-  - `packages/web-core/src/shared/lib/api.ts`
-- Full repo validation was not rerun during the rebase step.
+- `cargo fmt --all` completed as part of `pnpm run format`.
+- `pnpm run format` stopped in `packages/web-core` because `prettier` is not installed in this worktree.
+- `pnpm --filter @vibe/web-core run check` failed immediately because `tsc` is not installed in this worktree.
 
 ## Session Metadata
 
-- Branch: `vk/53b2-vk-needs-review`
-- Repo: `/home/mcp/code/worktrees/53b2-vk-needs-review/_vibe_kanban_repo`
-- Focus: rebase onto `fork/staging` and merge PR `#5`
+- Branch: `vk/6d92-vk-archive-modal`
+- Repo: `/home/mcp/code/worktrees/cc95-vk-archive-proje/_vibe_kanban_repo`
+- Focus: archive-project modal restore UX

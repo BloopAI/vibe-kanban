@@ -2,57 +2,61 @@
 
 ## Stream Identifier
 
-- Branch: `vk/53b2-vk-needs-review`
-- Repo: `/home/mcp/code/worktrees/53b2-vk-needs-review/_vibe_kanban_repo`
-- Base: `fork/staging`
-- Working mode: local VK UI polish
+- Branch: `vk/6d92-vk-archive-modal`
+- Repo: `/home/mcp/code/worktrees/cc95-vk-archive-proje/_vibe_kanban_repo`
+- Working mode: correct the local-only archived-project UX and ship it through a fresh PR into `staging`
+ - Base: `fork/staging`
 
 ## Objective
 
-- Add a project-level visual indicator in the left app bar when a project has linked workspaces that need review.
+- Remove archived projects from the left-column navigation and restore them through a dedicated archive action that opens a modal.
 
 ## In Scope
 
-- App bar project icon badge rendering
-- Project-level aggregation of workspace review-needed state
-- Branch-local continuity docs for this stream
+- Desktop AppBar archive entry point below the create-project button
+- Mobile drawer archive entry point for local-only mode
+- Archived-project restore modal for local projects
+- Continuity docs, commit, push, and PR for the corrected UX
 
 ## Out of Scope
 
-- Changing workspace-level review semantics
-- Remote deployment behavior changes
-- Broader kanban sidebar redesign
+- Reworking the project archive data model or server API
+- Remote/cloud project behavior
+- Unrelated sidebar cleanup
 
 ## Stream-Specific Decisions
 
-- Reuse existing workspace attention signals instead of inventing a new project review state.
-- Treat a workspace as needing review when it has pending approval or unseen completed activity.
-- Keep the change scoped to the app bar and lightweight supporting API helpers.
+- Archived projects must not render inline in the left-column project nav.
+- The archive affordance should live beneath the `+` project creation control in the project section.
+- Restoring an archived local project should immediately unarchive it, refresh cached local project queries, and navigate into that project.
+- The previous archive implementation in PR `#3` is considered functionally insufficient for the desired UX and is being superseded with a follow-up PR.
 
 ## Relevant Files / Modules
 
 - `packages/ui/src/components/AppBar.tsx`
 - `packages/web-core/src/shared/components/ui-new/containers/SharedAppLayout.tsx`
-- `packages/web-core/src/shared/lib/api.ts`
-- `HANDOFF.md`
-- `DELTA.md`
+- `packages/web-core/src/shared/dialogs/kanban/ArchivedProjectsDialog.tsx`
 
 ## Current Status
 
-- Completed:
-  - rebased the feature branch onto current `fork/staging`
-  - preserved the project-level `Needs Review` bubbles on top of the newer app bar/archive/order code
+- Confirmed:
+  - local archived projects are currently hidden from the active desktop project list but still appear as a secondary archived list in navigation
+  - mobile drawer also currently exposes archived projects inline
+  - a fresh branch has been created from `fork/staging`
+- In progress:
+  - replace inline archived navigation with a dedicated archive button and restore modal
 - Pending:
-  - force-push the rebased branch
-  - merge PR `#5`
+  - validation in this worktree
+  - commit, push, and open the replacement PR
 
 ## Risks / Regression Traps
 
-- Local and signed-in project lists use different workspace-to-project mapping paths; both must resolve the same attention semantics.
-- Missing local frontend dependencies may still block full formatter/typecheck runs in this worktree.
+- The archive action should stay local-only and must not appear to change remote project behavior.
+- Restoring a project must invalidate both the project list query and the individual local project query to avoid stale UI.
+- The new modal path should not break the existing create-project flow or project reorder handling.
 
 ## Next Safe Steps
 
-1. Finish the rebase by recording refreshed continuity docs.
-2. Force-push `vk/53b2-vk-needs-review`.
-3. Merge PR `#5` into `staging`.
+1. Finish wiring the modal-based archive restore flow and remove inline archived navigation.
+2. Run the narrowest relevant validation available in this worktree.
+3. Commit, push, and open a new PR into `staging`.
