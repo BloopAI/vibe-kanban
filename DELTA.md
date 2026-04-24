@@ -74,3 +74,22 @@
   - `pnpm run format` could not complete because `prettier` was missing
   - `pnpm run check` could not complete because `tsc` was missing
   - original branch push/PR preview state has since changed; see current branch history and PR state instead of this older branch-note wording
+
+## 2026-04-24T00:00:00Z | vk/6d92-vk-archive-modal | archive-project modal follow-up
+
+- Intent: correct the local-only archive-project UX so archived projects disappear from the left nav and are restored from a dedicated archive modal.
+- Completed locally:
+  - removed the inline archived-project list from the desktop AppBar project navigation
+  - removed the inline archived-project section from the mobile drawer project navigation
+  - added a dedicated archive action beneath project creation and wired it to a new archived-project restore modal
+  - added restore handling that unarchives the selected local project, refreshes local project queries, and navigates into the restored project
+- Files changed:
+  - `packages/ui/src/components/AppBar.tsx`
+  - `packages/web-core/src/shared/components/ui-new/containers/SharedAppLayout.tsx`
+  - `packages/web-core/src/shared/dialogs/kanban/ArchivedProjectsDialog.tsx`
+- Verified:
+  - `cargo fmt --all` completed through `pnpm run format`
+- Not complete / known gaps:
+  - `pnpm run format` stopped because `prettier` is not installed in this worktree
+  - `pnpm --filter @vibe/web-core run check` failed because `tsc` is not installed in this worktree
+  - human UI smoke test is still needed before trusting the corrected UX

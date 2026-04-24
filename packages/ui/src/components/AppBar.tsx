@@ -10,6 +10,7 @@ import {
   DownloadSimpleIcon,
   LinkIcon,
   PlusIcon,
+  ArchiveIcon,
   KanbanIcon,
   SpinnerIcon,
   StarIcon,
@@ -45,11 +46,12 @@ function getProjectInitials(name: string): string {
 
 interface AppBarProps {
   projects: AppBarProject[];
-  archivedProjects?: AppBarProject[];
   hosts?: AppBarHost[];
   onPairHostClick?: () => void;
   activeHostId?: string | null;
   onCreateProject: () => void;
+  onOpenArchivedProjects?: () => void;
+  hasArchivedProjects?: boolean;
   onExportClick?: () => void;
   onWorkspacesClick: () => void;
   onHostClick?: (hostId: string, status: AppBarHostStatus) => void;
@@ -59,7 +61,6 @@ interface AppBarProps {
   showProfileButton?: boolean;
   showSocialLinks?: boolean;
   onProjectClick: (projectId: string) => void;
-  onArchivedProjectClick?: (projectId: string) => void;
   onProjectsDragEnd: (result: DropResult) => void;
   isSavingProjectOrder?: boolean;
   isWorkspacesActive: boolean;
@@ -206,11 +207,12 @@ function getHostButtonClassName({
 
 export function AppBar({
   projects,
-  archivedProjects = [],
   hosts = [],
   onPairHostClick,
   activeHostId = null,
   onCreateProject,
+  onOpenArchivedProjects,
+  hasArchivedProjects = false,
   onExportClick,
   onWorkspacesClick,
   onHostClick,
@@ -220,7 +222,6 @@ export function AppBar({
   showProfileButton = true,
   showSocialLinks = true,
   onProjectClick,
-  onArchivedProjectClick,
   onProjectsDragEnd,
   isSavingProjectOrder,
   isWorkspacesActive,
@@ -323,18 +324,6 @@ export function AppBar({
     });
   }
 
-  if (archivedProjects.length > 0 && onArchivedProjectClick) {
-    projectSectionItems.push({
-      key: 'archived-project-list',
-      kind: 'project-list',
-      projects: archivedProjects,
-      activeProjectId,
-      onProjectClick: onArchivedProjectClick,
-      onProjectsDragEnd,
-      archived: true,
-    });
-  }
-
   if (isSignedIn) {
     projectSectionItems.push({
       key: 'create-project',
@@ -345,6 +334,17 @@ export function AppBar({
       className: 'bg-primary text-muted hover:text-normal hover:bg-tertiary',
       wrapperClassName: 'pt-base',
     });
+
+    if (hasArchivedProjects && onOpenArchivedProjects) {
+      projectSectionItems.push({
+        key: 'open-archived-projects',
+        kind: 'icon-button',
+        label: 'Archived projects',
+        icon: ArchiveIcon,
+        onClick: onOpenArchivedProjects,
+        className: 'bg-primary text-muted hover:text-normal hover:bg-tertiary',
+      });
+    }
   }
 
   if (projectSectionItems.length > 0) {

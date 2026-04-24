@@ -9,6 +9,7 @@ import {
   LayoutIcon,
   KanbanIcon,
   DownloadSimpleIcon,
+  ArchiveIcon,
 } from '@phosphor-icons/react';
 import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
 import { useIsMobile } from '@/shared/hooks/useIsMobile';
@@ -46,6 +47,7 @@ import {
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
+import { ArchivedProjectsDialog } from '@/shared/dialogs/kanban/ArchivedProjectsDialog';
 import { useCommandBarShortcut } from '@/shared/hooks/useCommandBarShortcut';
 import { useWorkspaceSidebarPreviewController } from '@/shared/hooks/useWorkspaceSidebarPreviewController';
 import { useShape } from '@/shared/integrations/electric/hooks';
@@ -508,6 +510,13 @@ export function SharedAppLayout() {
     [appNavigation, isLocalAuthBypassed, queryClient]
   );
 
+  const handleOpenArchivedProjects = useCallback(() => {
+    void ArchivedProjectsDialog.show({
+      projects: archivedProjects,
+      onResumeProject: handleRestoreArchivedProject,
+    });
+  }, [archivedProjects, handleRestoreArchivedProject]);
+
   const handleSignIn = useCallback(async () => {
     try {
       await OAuthDialog.show({});
@@ -567,10 +576,11 @@ export function SharedAppLayout() {
             {/* Desktop AppBar sidebar. */}
             <AppBar
               projects={orderedProjects}
-              archivedProjects={archivedProjects}
               hosts={remoteCloudHosts}
               activeHostId={activeHostId}
               onCreateProject={handleCreateProject}
+              onOpenArchivedProjects={handleOpenArchivedProjects}
+              hasArchivedProjects={archivedProjects.length > 0}
               onExportClick={handleExportClick}
               onWorkspacesClick={handleWorkspacesClick}
               showRemoteSection={showLeftColumnLinks}
@@ -580,7 +590,6 @@ export function SharedAppLayout() {
               onHostClick={handleHostClick}
               onPairHostClick={handlePairHostClick}
               onProjectClick={handleProjectClick}
-              onArchivedProjectClick={handleRestoreArchivedProject}
               onProjectsDragEnd={handleProjectsDragEnd}
               isSavingProjectOrder={isSavingProjectOrder}
               isWorkspacesActive={isWorkspacesActive}
@@ -745,30 +754,6 @@ export function SharedAppLayout() {
                     ))}
                   </div>
 
-                  {isLocalAuthBypassed && archivedProjects.length > 0 && (
-                    <div className="space-y-1">
-                      <p className="px-3 text-xs font-medium uppercase tracking-wide text-low">
-                        Archived
-                      </p>
-                      {archivedProjects.map((project) => (
-                        <button
-                          type="button"
-                          key={project.id}
-                          onClick={() => {
-                            void handleRestoreArchivedProject(project.id);
-                            setIsDrawerOpen(false);
-                          }}
-                          className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-low transition-colors hover:bg-secondary hover:text-normal cursor-pointer"
-                        >
-                          <span
-                            className="h-2.5 w-2.5 rounded-full shrink-0 opacity-60"
-                            style={{ backgroundColor: `hsl(${project.color})` }}
-                          />
-                          <span className="truncate">{project.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="px-4 py-6 text-center">
@@ -801,17 +786,32 @@ export function SharedAppLayout() {
             {/* Create Project button */}
             {isSignedIn && (
               <div className="p-3 border-t border-border">
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleCreateProject();
-                    setIsDrawerOpen(false);
-                  }}
-                  className="flex items-center gap-2 w-full px-3 py-2.5 rounded-md text-sm text-low hover:text-normal hover:bg-secondary cursor-pointer"
-                >
-                  <PlusIcon className="h-4 w-4" />
-                  Create Project
-                </button>
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleCreateProject();
+                      setIsDrawerOpen(false);
+                    }}
+                    className="flex items-center gap-2 w-full px-3 py-2.5 rounded-md text-sm text-low hover:text-normal hover:bg-secondary cursor-pointer"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                    Create Project
+                  </button>
+                  {isLocalAuthBypassed && archivedProjects.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDrawerOpen(false);
+                        handleOpenArchivedProjects();
+                      }}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 rounded-md text-sm text-low hover:text-normal hover:bg-secondary cursor-pointer"
+                    >
+                      <ArchiveIcon className="h-4 w-4" />
+                      Archived Projects
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
