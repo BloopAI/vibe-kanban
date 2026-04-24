@@ -753,7 +753,6 @@ export function SharedAppLayout() {
                       </button>
                     ))}
                   </div>
-
                 </div>
               ) : (
                 <div className="px-4 py-6 text-center">

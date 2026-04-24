@@ -33,6 +33,10 @@ pnpm run preview:light
 The command starts the frontend in the background, picks the first available
 port from `3002`, and prints the preview URL.
 
+When Tailscale is available on the host, the workflow also provisions a
+tailnet HTTPS route and prints that reachable review URL instead of a localhost
+address.
+
 Check the running preview:
 
 ```bash
@@ -84,6 +88,12 @@ Use `VK_PREVIEW_BACKEND_PORT` when the live backend is not on `4311`:
 VK_PREVIEW_BACKEND_PORT=3001 pnpm run preview:light
 ```
 
+Use `VK_PREVIEW_TAILNET_PORT` when you need a stable Tailscale review URL:
+
+```bash
+VK_PREVIEW_TAILNET_PORT=18460 pnpm run preview:light
+```
+
 ## Resource guardrails
 
 - Reuse the existing local Vibe Kanban backend instead of starting `pnpm run dev`
@@ -117,6 +127,15 @@ Or start searching from a different range:
 
 ```bash
 VK_PREVIEW_PORT_START=3040 pnpm run preview:light
+```
+</Accordion>
+
+<Accordion title="I need a reachable review URL, not localhost">
+If Tailscale is installed and running, `preview:light` prints a tailnet HTTPS
+URL automatically. To pin it to a specific external port, set:
+
+```bash
+VK_PREVIEW_TAILNET_PORT=18460 pnpm run preview:light
 ```
 </Accordion>
 

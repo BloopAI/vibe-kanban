@@ -556,7 +556,10 @@ function CollapsedKanbanColumn({
     <button
       type="button"
       onClick={onExpand}
-      className="group relative flex min-h-40 flex-1 overflow-hidden bg-secondary transition-colors hover:bg-secondary/80 focus:outline-none focus:ring-1 focus:ring-brand"
+      className={cn(
+        'group relative flex overflow-hidden bg-secondary transition-colors hover:bg-secondary/80 focus:outline-none focus:ring-1 focus:ring-brand',
+        isMobile ? 'min-h-0 flex-none' : 'min-h-40 flex-1'
+      )}
       aria-label={t('kanban.expandColumn', {
         defaultValue: 'Expand {{statusName}} column ({{count}} issues)',
         statusName,
@@ -963,11 +966,14 @@ export function KanbanContainer() {
     [statuses]
   );
 
-  // Filter statuses: visible (non-hidden) for kanban, hidden for tabs
-  const visibleStatuses = useMemo(
-    () => sortedStatuses.filter((s) => !s.hidden),
-    [sortedStatuses]
-  );
+  // Fail safe if persisted project status settings hide every column.
+  // The kanban board should stay usable rather than rendering an empty state.
+  const visibleStatuses = useMemo(() => {
+    const explicitVisibleStatuses = sortedStatuses.filter((s) => !s.hidden);
+    return explicitVisibleStatuses.length > 0
+      ? explicitVisibleStatuses
+      : sortedStatuses;
+  }, [sortedStatuses]);
   const kanbanGridTemplateColumns = useMemo(
     () =>
       visibleStatuses
@@ -987,10 +993,17 @@ export function KanbanContainer() {
     return map;
   }, [visibleStatuses]);
 
-  const hiddenStatuses = useMemo(
-    () => sortedStatuses.filter((s) => s.hidden),
-    [sortedStatuses]
-  );
+  const hiddenStatuses = useMemo(() => {
+    const explicitVisibleStatusIds = new Set(
+      sortedStatuses.filter((s) => !s.hidden).map((s) => s.id)
+    );
+
+    if (explicitVisibleStatusIds.size === 0) {
+      return [];
+    }
+
+    return sortedStatuses.filter((s) => !explicitVisibleStatusIds.has(s.id));
+  }, [sortedStatuses]);
 
   const defaultCreateStatusId = useMemo(() => {
     if (kanbanViewMode === 'kanban') {
@@ -1597,11 +1610,15 @@ export function KanbanContainer() {
                   <KanbanBoard
                     key={status.id}
                     className={cn(
-                      isCollapsed && !isMobile && '!min-w-16 !max-w-16'
+                      isCollapsed &&
+                        (isMobile ? '!min-h-0' : '!min-w-16 !max-w-16')
                     )}
                   >
                     {isCollapsed ? (
-                      <KanbanCards id={status.id} className="bg-secondary">
+                      <KanbanCards
+                        id={status.id}
+                        className={cn('bg-secondary', isMobile && '!flex-none')}
+                      >
                         <CollapsedKanbanColumn
                           statusName={status.name}
                           statusColor={status.color}
