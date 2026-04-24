@@ -182,6 +182,15 @@ async fn main() -> Result<(), VibeKanbanError> {
         }
     });
 
+    // Capture abort handles up front so the post-`select!` shutdown path can
+    // observe completion and signal cancellation without re-polling the
+    // `JoinHandle`s. `JoinHandle::poll` panics if called after it has already
+    // returned `Ready` (which happens when the `_ = &mut handle` branch of
+    // the `select!` below fires), so we stay off the handles once `select!`
+    // has consumed them.
+    let main_abort = main_handle.abort_handle();
+    let proxy_abort = proxy_handle.abort_handle();
+
     relay_registration::spawn_relay(&deployment).await;
 
     tokio::select! {
@@ -209,26 +218,38 @@ async fn main() -> Result<(), VibeKanbanError> {
     // rebinding the same port until reboot.
     //
     // Give drain a bounded window; if it does not complete in time, abort
-    // the listener tasks so their sockets are dropped before exit.
+    // the listener tasks and then give abort a short, bounded window to
+    // propagate — so a task that is slow to observe cancellation can't push
+    // total shutdown past the 5s grace window either.
+    //
+    // Completion is observed via `AbortHandle::is_finished()` polling rather
+    // than re-awaiting the `JoinHandle`s, because the `select!` above may
+    // have already consumed one of them to `Ready` and re-polling a finished
+    // `JoinHandle` panics.
     const SHUTDOWN_DRAIN_TIMEOUT: Duration = Duration::from_secs(2);
+    const POST_ABORT_TIMEOUT: Duration = Duration::from_millis(500);
+    const COMPLETION_POLL_INTERVAL: Duration = Duration::from_millis(20);
 
-    let drain = async {
-        let _ = (&mut main_handle).await;
-        let _ = (&mut proxy_handle).await;
-    };
-    if tokio::time::timeout(SHUTDOWN_DRAIN_TIMEOUT, drain)
-        .await
-        .is_err()
+    if tokio::time::timeout(SHUTDOWN_DRAIN_TIMEOUT, async {
+        while !main_abort.is_finished() || !proxy_abort.is_finished() {
+            tokio::time::sleep(COMPLETION_POLL_INTERVAL).await;
+        }
+    })
+    .await
+    .is_err()
     {
         tracing::warn!(
             "Graceful shutdown exceeded {:?}; aborting listeners",
             SHUTDOWN_DRAIN_TIMEOUT
         );
-        main_handle.abort();
-        proxy_handle.abort();
-        // Wait for abort to propagate so the listener sockets are dropped.
-        let _ = (&mut main_handle).await;
-        let _ = (&mut proxy_handle).await;
+        main_abort.abort();
+        proxy_abort.abort();
+        let _ = tokio::time::timeout(POST_ABORT_TIMEOUT, async {
+            while !main_abort.is_finished() || !proxy_abort.is_finished() {
+                tokio::time::sleep(COMPLETION_POLL_INTERVAL).await;
+            }
+        })
+        .await;
     }
 
     perform_cleanup_actions(&deployment).await;
