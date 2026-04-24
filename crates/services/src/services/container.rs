@@ -17,6 +17,8 @@ use db::{
         execution_process_repo_state::{
             CreateExecutionProcessRepoState, ExecutionProcessRepoState,
         },
+        merge::MergeStatus,
+        pull_request::PullRequest,
         repo::Repo,
         session::{CreateSession, Session, SessionError},
         workspace::{Workspace, WorkspaceError},
@@ -59,6 +61,7 @@ use worktree_manager::WorktreeError;
 
 use crate::services::{execution_process, notification::NotificationService};
 pub type ContainerRef = String;
+const IMMEDIATE_PR_MERGE_CLEANUP_TARGET_BRANCH: &str = "staging";
 
 #[derive(Debug, Error)]
 pub enum ContainerError {
@@ -193,6 +196,8 @@ pub trait ContainerService {
     async fn create(&self, workspace: &Workspace) -> Result<ContainerRef, ContainerError>;
 
     async fn kill_all_running_processes(&self) -> Result<(), ContainerError>;
+
+    async fn delete_worktree(&self, workspace: &Workspace) -> Result<(), ContainerError>;
 
     async fn delete(&self, workspace: &Workspace) -> Result<(), ContainerError>;
 
@@ -558,6 +563,52 @@ pub trait ContainerService {
         }
 
         Ok(())
+    }
+
+    /// Delete an archived workspace worktree immediately when no non-dev
+    /// processes are still running.
+    async fn maybe_delete_archived_worktree_if_safe(
+        &self,
+        workspace_id: Uuid,
+    ) -> Result<(), ContainerError> {
+        let pool = &self.db().pool;
+        let Some(workspace) = Workspace::find_by_id(pool, workspace_id).await? else {
+            return Ok(());
+        };
+
+        if !workspace.archived || workspace.worktree_deleted {
+            return Ok(());
+        }
+
+        if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
+            .await
+            .unwrap_or(true)
+        {
+            return Ok(());
+        }
+
+        self.delete(&workspace).await
+    }
+
+    /// Delete the workspace worktree immediately when a merged PR into `staging`
+    /// has archived the workspace and no non-dev processes are still running.
+    async fn maybe_delete_archived_worktree_for_merged_staging_pr(
+        &self,
+        workspace_id: Uuid,
+    ) -> Result<(), ContainerError> {
+        let pool = &self.db().pool;
+        let Some(workspace) = Workspace::find_by_id(pool, workspace_id).await? else {
+            return Ok(());
+        };
+
+        let pull_requests = PullRequest::find_by_workspace_id(pool, workspace.id).await?;
+        if !has_merged_pr_to_target_branch(&pull_requests, IMMEDIATE_PR_MERGE_CLEANUP_TARGET_BRANCH)
+        {
+            return Ok(());
+        }
+
+        self.maybe_delete_archived_worktree_if_safe(workspace_id)
+            .await
     }
 
     fn setup_actions_for_repos(&self, repos: &[Repo]) -> Option<ExecutorAction> {
@@ -1381,5 +1432,56 @@ pub trait ContainerService {
 
         tracing::debug!("Started next action: {:?}", next_action);
         Ok(())
+    }
+}
+
+fn has_merged_pr_to_target_branch(pull_requests: &[PullRequest], target_branch_name: &str) -> bool {
+    pull_requests.iter().any(|pr| {
+        pr.target_branch_name == target_branch_name && matches!(pr.pr_status, MergeStatus::Merged)
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::Utc;
+    use uuid::Uuid;
+
+    use super::*;
+
+    fn pr(target_branch_name: &str, pr_status: MergeStatus) -> PullRequest {
+        PullRequest {
+            id: Uuid::new_v4().to_string(),
+            workspace_id: Some(Uuid::new_v4()),
+            repo_id: Some(Uuid::new_v4()),
+            pr_url: "https://example.com/pr/1".to_string(),
+            pr_number: 1,
+            pr_status,
+            target_branch_name: target_branch_name.to_string(),
+            merged_at: None,
+            merge_commit_sha: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            synced_at: None,
+        }
+    }
+
+    #[test]
+    fn detects_merged_staging_prs() {
+        let pull_requests = vec![
+            pr("main", MergeStatus::Merged),
+            pr("staging", MergeStatus::Merged),
+        ];
+
+        assert!(has_merged_pr_to_target_branch(&pull_requests, "staging"));
+    }
+
+    #[test]
+    fn ignores_non_merged_or_non_staging_prs() {
+        let pull_requests = vec![
+            pr("staging", MergeStatus::Open),
+            pr("main", MergeStatus::Merged),
+        ];
+
+        assert!(!has_merged_pr_to_target_branch(&pull_requests, "staging"));
     }
 }

@@ -2,46 +2,48 @@
 
 ## What Changed This Session
 
-- Reframed the archive-project follow-up onto a fresh branch from `fork/staging`.
-- Replaced the old inline archived-project navigation plan with a modal-based restore flow.
-- Updated the desktop and mobile project navigation paths so archived projects are meant to be reopened from a dedicated archive action instead of remaining visible in the nav.
+- Implemented immediate worktree-folder deletion for workspaces whose tracked PRs are merged into `staging`.
+- Implemented automatic workspace archiving and worktree cleanup when a linked local issue is moved into `In Staging`.
+- Reused the existing archive-on-merge flow instead of adding a new background job.
+- Added a safe retry after archive-script completion so archive scripts can finish before the worktree is removed.
+- Refreshed the branch-local continuity docs and `VK_WORKFLOW.md` for the new behavior.
 
 ## What Is True Right Now
 
-- This worktree is on `vk/6d92-vk-archive-modal`, tracking `fork/staging`.
-- The corrected UX work is local in this worktree and not yet pushed.
-- The main code touchpoints are:
-  - `packages/ui/src/components/AppBar.tsx`
-  - `packages/web-core/src/shared/components/ui-new/containers/SharedAppLayout.tsx`
-  - `packages/web-core/src/shared/dialogs/kanban/ArchivedProjectsDialog.tsx`
+- `crates/services/src/services/container.rs` now exposes a generic safe-delete helper for archived worktrees and keeps the merged-PR-to-`staging` cleanup check as a narrower wrapper.
+- `crates/services/src/services/pr_monitor.rs` calls the merged-PR helper after merge detection archives the workspace.
+- `crates/server/src/routes/workspaces/pr.rs` calls the same merged-PR helper when attaching an already-merged PR.
+- `crates/server/src/routes/local_compat.rs` now archives linked local workspaces and requests immediate worktree cleanup when an issue transitions into `In Staging`, including bulk issue updates.
+- `crates/local-deployment/src/container.rs` retries deletion after archive-script completion, which covers workspaces whose archive script delayed cleanup.
+- Pinned workspaces still keep the existing behavior and do not auto-archive on merge.
+- The branch is currently mid-rebase onto `fork/staging`, and only the continuity docs conflicted.
 
 ## What The Next Agent Should Do
 
-- Run the relevant validation that this environment supports.
-- Commit and push the archive modal follow-up branch.
-- Open the new PR into `staging`.
+- Finish the rebase with the refreshed continuity docs.
+- Merge the rebased branch into the local `staging` checkout.
+- Push or open/update the PR only after the merge step the user requested is complete.
 
 ## What The Next Agent Must Not Do
 
-- Do not reintroduce archived projects as a visible list in the left-column nav.
-- Do not expand this follow-up into remote/cloud project behavior.
-- Do not edit generated files for this UX-only correction.
+- Do not remove the archive-script retry path; that would reintroduce a race where the worktree disappears mid-script.
+- Do not broaden the merged-PR cleanup path to non-`staging` PRs unless the user explicitly asks for that policy change.
+- Do not change pinned-workspace behavior without confirmation.
 
 ## Verification Required Before Further Changes
 
 - `git status --short --branch`
-- `pnpm run format`
-- the narrowest relevant frontend check available in this worktree
-- human smoke test of archive modal open and restore behavior when possible
+- `git rebase --continue`
+- merge verification on the local `staging` checkout
 
 ## Verification Status From This Session
 
-- `cargo fmt --all` completed as part of `pnpm run format`.
-- `pnpm run format` stopped in `packages/web-core` because `prettier` is not installed in this worktree.
-- `pnpm --filter @vibe/web-core run check` failed immediately because `tsc` is not installed in this worktree.
+- The branch rebased attempt started and only continuity-doc conflicts appeared.
+- `cargo fmt --all` had already been run before this rebase attempt.
+- Full tests were not rerun in this session.
 
 ## Session Metadata
 
-- Branch: `vk/6d92-vk-archive-modal`
-- Repo: `/home/mcp/code/worktrees/cc95-vk-archive-proje/_vibe_kanban_repo`
-- Focus: archive-project modal restore UX
+- Branch: `vk/7b9a-vk-worktree-clea`
+- Repo: `/home/mcp/code/worktrees/7b9a-vk-worktree-clea/_vibe_kanban_repo`
+- Focus: immediate worktree cleanup after PR merge into `staging` and on `In Staging` issue transitions

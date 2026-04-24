@@ -2,61 +2,71 @@
 
 ## Stream Identifier
 
-- Branch: `vk/6d92-vk-archive-modal`
-- Repo: `/home/mcp/code/worktrees/cc95-vk-archive-proje/_vibe_kanban_repo`
-- Working mode: correct the local-only archived-project UX and ship it through a fresh PR into `staging`
- - Base: `fork/staging`
+- Branch: `vk/7b9a-vk-worktree-clea`
+- Repo: `/home/mcp/code/worktrees/7b9a-vk-worktree-clea/_vibe_kanban_repo`
+- Base: `fork/staging`
+- Working mode: workspace lifecycle cleanup
 
 ## Objective
 
-- Remove archived projects from the left-column navigation and restore them through a dedicated archive action that opens a modal.
+- Delete workspace worktree folders as soon as a tracked PR into `staging` is merged, and archive linked workspaces plus clean up their worktrees automatically when an issue is moved into `In Staging`.
 
 ## In Scope
 
-- Desktop AppBar archive entry point below the create-project button
-- Mobile drawer archive entry point for local-only mode
-- Archived-project restore modal for local projects
-- Continuity docs, commit, push, and PR for the corrected UX
+- PR-merge monitoring paths that already archive workspaces
+- Safe immediate worktree deletion for merged-to-`staging` workspaces
+- Local issue status transitions into `In Staging`
+- Workflow documentation for the new behaviour
+- Branch-local continuity docs for this stream
 
 ## Out of Scope
 
-- Reworking the project archive data model or server API
-- Remote/cloud project behavior
-- Unrelated sidebar cleanup
+- Changing merge behavior for direct local merges
+- Altering the general archived-workspace retention policy for other cases
+- Changing pin semantics for merged workspaces
 
 ## Stream-Specific Decisions
 
-- Archived projects must not render inline in the left-column project nav.
-- The archive affordance should live beneath the `+` project creation control in the project section.
-- Restoring an archived local project should immediately unarchive it, refresh cached local project queries, and navigate into that project.
-- The previous archive implementation in PR `#3` is considered functionally insufficient for the desired UX and is being superseded with a follow-up PR.
+- Reuse the existing archive-on-merge flow instead of adding a separate post-merge job.
+- Only trigger immediate folder deletion for PRs merged into `staging`.
+- If an archive script is still running, defer deletion until that archive script exits.
+- Treat moving a local issue into `In Staging` as an explicit archive-and-cleanup signal for linked local workspaces.
+- Preserve the current pinned-workspace exception from auto-archiving.
 
 ## Relevant Files / Modules
 
-- `packages/ui/src/components/AppBar.tsx`
-- `packages/web-core/src/shared/components/ui-new/containers/SharedAppLayout.tsx`
-- `packages/web-core/src/shared/dialogs/kanban/ArchivedProjectsDialog.tsx`
+- `crates/services/src/services/container.rs`
+- `crates/services/src/services/pr_monitor.rs`
+- `crates/local-deployment/src/container.rs`
+- `crates/server/src/routes/local_compat.rs`
+- `crates/server/src/routes/workspaces/pr.rs`
+- `VK_WORKFLOW.md`
+- `HANDOFF.md`
+- `DELTA.md`
 
 ## Current Status
 
-- Confirmed:
-  - local archived projects are currently hidden from the active desktop project list but still appear as a secondary archived list in navigation
-  - mobile drawer also currently exposes archived projects inline
-  - a fresh branch has been created from `fork/staging`
+- Completed:
+  - added a shared container helper for safe immediate deletion of archived worktrees
+  - kept the merged-PR-to-`staging` cleanup path on top of that helper
+  - wired the PR monitor and attach-existing-PR route to clean up worktrees after archive-on-merge succeeds
+  - added a retry after archive-script completion so deletion waits for archive scripts to finish
+  - archived linked local workspaces and cleaned up their worktrees when a local issue transitions into `In Staging`, including bulk issue updates
+  - documented the new post-merge cleanup behaviour in `VK_WORKFLOW.md`
 - In progress:
-  - replace inline archived navigation with a dedicated archive button and restore modal
+  - rebasing the branch onto current `fork/staging`
 - Pending:
-  - validation in this worktree
-  - commit, push, and open the replacement PR
+  - finish the rebase
+  - merge this branch into `staging`
 
 ## Risks / Regression Traps
 
-- The archive action should stay local-only and must not appear to change remote project behavior.
-- Restoring a project must invalidate both the project list query and the individual local project query to avoid stale UI.
-- The new modal path should not break the existing create-project flow or project reorder handling.
+- Deleting the worktree before an archive script finishes would break archive-script execution; the retry path must remain in place.
+- The merged-PR cleanup path relies on tracked PR metadata; workspaces without tracked PR rows still fall back to the existing time-based cleanup path unless `In Staging` is used.
+- Pinned workspaces still skip archive-on-merge, so they do not use the merged-PR immediate deletion path.
 
 ## Next Safe Steps
 
-1. Finish wiring the modal-based archive restore flow and remove inline archived navigation.
-2. Run the narrowest relevant validation available in this worktree.
-3. Commit, push, and open a new PR into `staging`.
+1. Resolve the current continuity-doc rebase conflict by keeping this branch’s stream notes.
+2. Continue the rebase onto `fork/staging`.
+3. Merge the rebased branch into the local `staging` checkout.
