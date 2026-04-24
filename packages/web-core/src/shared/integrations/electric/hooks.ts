@@ -1,6 +1,9 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
-import { createShapeCollection } from '@/shared/lib/electric/collections';
+import {
+  createShapeCollection,
+  refreshShapeCollection,
+} from '@/shared/lib/electric/collections';
 import { useSyncErrorContext } from '@/shared/hooks/useSyncErrorContext';
 import type { MutationDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { SyncError } from '@/shared/lib/electric/types';
@@ -106,16 +109,17 @@ export function useShape<
 
   const handleError = useCallback((err: SyncError) => setError(err), []);
 
-  const retry = useCallback(() => {
-    setError(null);
-    setRetryKey((k) => k + 1);
-  }, []);
-
   const paramsKey = JSON.stringify(params);
   const stableParams = useMemo(
     () => JSON.parse(paramsKey) as Record<string, string>,
     [paramsKey]
   );
+
+  const retry = useCallback(() => {
+    setError(null);
+    refreshShapeCollection(shape, stableParams, mutation);
+    setRetryKey((k) => k + 1);
+  }, [shape, stableParams, mutation]);
 
   const streamId = useMemo(
     () => `${shape.table}:${paramsKey}`,
