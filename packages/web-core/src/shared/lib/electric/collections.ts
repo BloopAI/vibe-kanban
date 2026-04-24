@@ -820,3 +820,17 @@ export function createShapeCollection<TRow extends ElectricRow>(
   collectionCache.set(collectionId, collection);
   return collection;
 }
+
+export function refreshShapeCollection<TRow extends ElectricRow>(
+  shape: ShapeDefinition<TRow>,
+  params: Record<string, string>,
+  mutation?: MutationDefinition<unknown, unknown, unknown>
+): void {
+  const hasMutations = Boolean(mutation);
+  const collectionId = buildCollectionId(shape.table, params, hasMutations);
+  const sourceKey = buildSourceKey(shape.table, params);
+
+  invalidateFallbackCache(sourceKey);
+  refreshFallbackSource(sourceKey);
+  collectionCache.delete(collectionId);
+}
