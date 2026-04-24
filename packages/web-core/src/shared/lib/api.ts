@@ -758,6 +758,16 @@ export const workspacesApi = {
     );
   },
 
+  deleteWorktree: async (workspaceId: string): Promise<Workspace> => {
+    const response = await makeRequest(
+      `/api/workspaces/${workspaceId}/execution/worktree/delete`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<Workspace>(response);
+  },
+
   getPrComments: async (
     workspaceId: string,
     repoId: string
