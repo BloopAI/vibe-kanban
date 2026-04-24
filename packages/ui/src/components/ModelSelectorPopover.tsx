@@ -60,9 +60,7 @@ function getModelSortLabel(model: ModelListModel): string {
   return model.name || model.id;
 }
 
-function sortModelsAlphabetically(
-  models: ModelListModel[]
-): ModelListModel[] {
+function sortModelsAlphabetically(models: ModelListModel[]): ModelListModel[] {
   return [...models].sort((a, b) => {
     const labelComparison = getModelSortLabel(a).localeCompare(
       getModelSortLabel(b),
