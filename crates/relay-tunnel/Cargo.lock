@@ -34,7 +34,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "api-types"
-version = "0.1.43"
+version = "0.1.44"
 dependencies = [
  "chrono",
  "schemars",
@@ -1687,7 +1687,7 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
 name = "relay-control"
-version = "0.1.43"
+version = "0.1.44"
 dependencies = [
  "anyhow",
  "base64",
@@ -1701,7 +1701,7 @@ dependencies = [
 
 [[package]]
 name = "relay-protocol"
-version = "0.1.43"
+version = "0.1.44"
 dependencies = [
  "anyhow",
  "axum",
@@ -1748,7 +1748,7 @@ dependencies = [
 
 [[package]]
 name = "relay-tunnel-core"
-version = "0.1.43"
+version = "0.1.44"
 dependencies = [
  "anyhow",
  "axum",
@@ -1767,7 +1767,7 @@ dependencies = [
 
 [[package]]
 name = "relay-types"
-version = "0.1.43"
+version = "0.1.44"
 dependencies = [
  "chrono",
  "serde",
@@ -1778,7 +1778,7 @@ dependencies = [
 
 [[package]]
 name = "relay-ws"
-version = "0.1.43"
+version = "0.1.44"
 dependencies = [
  "anyhow",
  "axum",
@@ -3366,7 +3366,7 @@ checksum = "9edde0db4769d2dc68579893f2306b26c6ecfbe0ef499b013d731b7b9247e0b9"
 
 [[package]]
 name = "ws-bridge"
-version = "0.1.43"
+version = "0.1.44"
 dependencies = [
  "axum",
  "bytes",
