@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { OrgProvider } from '@/shared/providers/remote/OrgProvider';
@@ -106,10 +112,76 @@ function ProjectKanbanBoard() {
   );
 }
 
+const mobileKanbanScrollPositions = new Map<string, number>();
+
+function getPageScrollTop() {
+  if (typeof window === 'undefined') {
+    return 0;
+  }
+
+  return window.scrollY || document.scrollingElement?.scrollTop || 0;
+}
+
+function setPageScrollTop(top: number) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.scrollTo({ top, behavior: 'auto' });
+}
+
+function useMobileKanbanScrollRestoration(
+  projectId: string | null,
+  isPanelOpen: boolean,
+  isMobile: boolean
+) {
+  const previousIsPanelOpenRef = useRef(isPanelOpen);
+
+  useEffect(() => {
+    if (!isMobile || !projectId || isPanelOpen) {
+      return;
+    }
+
+    const saveScrollPosition = () => {
+      mobileKanbanScrollPositions.set(projectId, getPageScrollTop());
+    };
+
+    saveScrollPosition();
+    window.addEventListener('scroll', saveScrollPosition, { passive: true });
+
+    return () => {
+      saveScrollPosition();
+      window.removeEventListener('scroll', saveScrollPosition);
+    };
+  }, [isMobile, isPanelOpen, projectId]);
+
+  useLayoutEffect(() => {
+    if (!isMobile || !projectId) {
+      previousIsPanelOpenRef.current = isPanelOpen;
+      return;
+    }
+
+    const previousIsPanelOpen = previousIsPanelOpenRef.current;
+
+    if (!previousIsPanelOpen && isPanelOpen) {
+      mobileKanbanScrollPositions.set(projectId, getPageScrollTop());
+    }
+
+    if (previousIsPanelOpen && !isPanelOpen) {
+      const savedScrollTop = mobileKanbanScrollPositions.get(projectId);
+      if (typeof savedScrollTop === 'number') {
+        setPageScrollTop(savedScrollTop);
+      }
+    }
+
+    previousIsPanelOpenRef.current = isPanelOpen;
+  }, [isMobile, isPanelOpen, projectId]);
+}
+
 export function ProjectKanbanLayout({ projectName }: { projectName: string }) {
   const { issueId, isPanelOpen } = useCurrentKanbanRouteState();
   const isMobile = useIsMobile();
-  const { getIssue } = useProjectContext();
+  const { getIssue, projectId } = useProjectContext();
   const issue = issueId ? getIssue(issueId) : undefined;
   usePageTitle(issue?.title, projectName);
   const [kanbanLeftPanelSize, setKanbanLeftPanelSize] = usePaneSize(
@@ -118,6 +190,8 @@ export function ProjectKanbanLayout({ projectName }: { projectName: string }) {
   );
 
   const isRightPanelOpen = isPanelOpen;
+
+  useMobileKanbanScrollRestoration(projectId, isRightPanelOpen, isMobile);
 
   if (isMobile) {
     return isRightPanelOpen ? (
