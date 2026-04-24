@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use anyhow::{self, Error as AnyhowError};
 use axum::Router;
 use deployment::{Deployment, DeploymentError};
@@ -169,12 +171,12 @@ async fn main() -> Result<(), VibeKanbanError> {
     let proxy_server = axum::serve(proxy_listener, proxy_router)
         .with_graceful_shutdown(async move { proxy_shutdown.cancelled().await });
 
-    let main_handle = tokio::spawn(async move {
+    let mut main_handle = tokio::spawn(async move {
         if let Err(e) = main_server.await {
             tracing::error!("Main server error: {}", e);
         }
     });
-    let proxy_handle = tokio::spawn(async move {
+    let mut proxy_handle = tokio::spawn(async move {
         if let Err(e) = proxy_server.await {
             tracing::error!("Preview proxy error: {}", e);
         }
@@ -186,11 +188,48 @@ async fn main() -> Result<(), VibeKanbanError> {
         _ = shutdown_signal() => {
             tracing::info!("Shutdown signal received");
         }
-        _ = main_handle => {}
-        _ = proxy_handle => {}
+        _ = &mut main_handle => {}
+        _ = &mut proxy_handle => {}
     }
 
     shutdown_token.cancel();
+
+    // Bounded graceful shutdown.
+    //
+    // `axum::serve(...).with_graceful_shutdown(...)` waits for every in-flight
+    // connection to finish before dropping the listener. Long-lived streams
+    // (SSE, WebSocket, long-poll) do not drain on their own, so a single open
+    // stream can keep the listener socket alive indefinitely after the
+    // shutdown signal fires.
+    //
+    // On Windows, when the console delivers `CTRL_CLOSE_EVENT` (user closes
+    // the launcher window) the process is granted only ~5 seconds before
+    // `TerminateProcess` is invoked. If the listener is still alive at that
+    // point the AFD kernel state can linger under the dead PID, which blocks
+    // rebinding the same port until reboot.
+    //
+    // Give drain a bounded window; if it does not complete in time, abort
+    // the listener tasks so their sockets are dropped before exit.
+    const SHUTDOWN_DRAIN_TIMEOUT: Duration = Duration::from_secs(2);
+
+    let drain = async {
+        let _ = (&mut main_handle).await;
+        let _ = (&mut proxy_handle).await;
+    };
+    if tokio::time::timeout(SHUTDOWN_DRAIN_TIMEOUT, drain)
+        .await
+        .is_err()
+    {
+        tracing::warn!(
+            "Graceful shutdown exceeded {:?}; aborting listeners",
+            SHUTDOWN_DRAIN_TIMEOUT
+        );
+        main_handle.abort();
+        proxy_handle.abort();
+        // Wait for abort to propagate so the listener sockets are dropped.
+        let _ = (&mut main_handle).await;
+        let _ = (&mut proxy_handle).await;
+    }
 
     perform_cleanup_actions(&deployment).await;
 
