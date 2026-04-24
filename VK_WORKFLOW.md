@@ -31,12 +31,14 @@
 Production does not run directly from the repo checkout.
 
 The deploy flow is:
+
 1. edit code in `/home/mcp/_vibe_kanban_repo`
 2. build `/home/mcp/_vibe_kanban_repo/target/release/server`
 3. copy that binary to `/home/mcp/.local/bin/vibe-kanban-server-cleanfix`
 4. restart `vibe-kanban.service`
 
 Implications:
+
 - repo changes are not live until build + copy + restart happen
 - merging to `staging` does not automatically deploy production
 - worktrees are not production
@@ -44,18 +46,55 @@ Implications:
 ## Branch Rules
 
 - `staging` is the integration base for ongoing VK work
+- `main` is the production branch and the only valid base for direct live hotfixes
 - production changes should be deliberate, not accidental side effects of branch movement
 - do not assume the currently running binary matches GitHub or even the current repo commit unless you verify it
+
+## Hotfix Procedure
+
+Use this path when you must change the live VK service before the normal
+`staging -> main` promotion flow.
+
+1. Start from the latest `origin/main`, not `staging`.
+2. Create a dedicated `hotfix/<scope>` branch with the smallest possible scope.
+3. Reproduce and validate the fix in an isolated local or detached deploy worktree.
+4. Build and deploy from a clean worktree, never from a dirty canonical checkout.
+5. Record the deployed commit, binary hash, and validation in `LIVE_DEPLOYMENT.json`.
+6. Merge the hotfix into `main`.
+7. Backfill the exact fix into `staging` immediately so future rebases do not lose it.
+
+Rules:
+
+- Do not bundle unrelated cleanup into a hotfix.
+- Do not deploy directly from a feature branch or local-only rescue branch.
+- Do not leave a live-only fix sitting outside both `main` and `staging`.
+
+## Live Deploy Guardrails
+
+Before restarting `vibe-kanban.service`:
+
+- check whether live coding agents are still running
+- assume a restart will kill those runs
+- either wait for them to finish or explicitly accept that interruption
+
+Safe deploy rules:
+
+- prefer deploying from a clean detached worktree rooted at the intended branch head
+- do not deploy from `/home/mcp/_vibe_kanban_repo` when it is dirty
+- verify `/api/info`, `/`, and the current `/assets/index-*.js` after every swap
+- treat service restarts during active agent execution as destructive actions, not neutral maintenance
 
 ## Agent Startup Checklist
 
 Give every new VK-fixing agent these files first:
+
 - `/home/mcp/_vibe_kanban_repo/HANDOFF.md`
 - `/home/mcp/_vibe_kanban_repo/STATE.md`
 - `/home/mcp/_vibe_kanban_repo/DELTA.md`
 - `/home/mcp/_vibe_kanban_repo/VK_WORKFLOW.md`
 
 Then tell the agent:
+
 - canonical repo is `/home/mcp/_vibe_kanban_repo`
 - do not treat `/home/mcp/code/worktrees/...` as canonical unless the task is workspace-specific
 - production is copy-deployed from the built binary, not live-from-checkout

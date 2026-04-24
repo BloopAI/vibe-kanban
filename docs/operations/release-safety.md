@@ -11,6 +11,7 @@ This document defines the repo-specific safe path from feature work to local val
 - Task work happens on short-lived feature or fix branches.
 - Local validation happens before a PR into `staging`.
 - Production promotion happens by PR from `staging` into `main`.
+- Direct production fixes are allowed only on explicit `hotfix/*` branches rooted at the latest `origin/main`.
 
 ## Safe Path For Normal Changes
 
@@ -31,12 +32,38 @@ This document defines the repo-specific safe path from feature work to local val
 8. Open a single-purpose PR into `staging`.
 9. After `staging` accumulates validated work, open a promotion PR from `staging` into `main`.
 
+## Safe Path For Production Hotfixes
+
+Use this path only when you must repair the live VK service before the normal
+promotion flow can land the fix.
+
+1. Start from the latest `origin/main`.
+2. Create a single-purpose `hotfix/*` branch.
+3. Reproduce the production issue in a clean local or detached worktree.
+4. Run the narrowest relevant validation for the fix.
+5. Build and deploy from a clean worktree, not from a dirty canonical checkout.
+6. Verify the live service after deploy:
+   - `systemctl --user is-active vibe-kanban.service`
+   - `curl -s http://127.0.0.1:4311/api/info`
+   - `curl -I http://127.0.0.1:4311/`
+   - current frontend asset URL returns `200`
+7. Merge the hotfix into `main`.
+8. Backfill the same fix into `staging` immediately and verify that branch is not left behind production.
+
+## What Must Not Happen During Hotfixes
+
+- Do not deploy directly from `staging`, a feature branch, or a rescue branch when the intent is a production hotfix.
+- Do not rebuild or restart the live service from a dirty canonical repo.
+- Do not leave a production-only fix unmerged from both `main` and `staging`.
+- Do not restart `vibe-kanban.service` while active VK agents are running unless you explicitly accept killing those runs.
+
 ## What Counts As Local Validation
 
 Local validation should exercise the actual user-facing or operator-facing path that changed. Examples:
 
-- UI or workflow changes: run `pnpm run preview:light` against the existing local backend, then exercise the affected flow in the browser.
-- Backend changes: run `pnpm run dev` when backend rebuilds or server-side behaviour must be exercised, then validate the affected API or task lifecycle through the local app.
+- UI or workflow changes: prefer `pnpm run preview:light` for frontend smoke tests against the existing local backend, then exercise the affected flow in the browser.
+- Backend changes: use `pnpm run dev:qa` only when the behaviour cannot be validated through the existing local backend.
+- Backend changes: validate the affected API or task lifecycle through the local app.
 - Packaging or install changes: run the relevant local build path such as `pnpm run build:npx`.
 
 If part of the change could not be exercised locally, record that explicitly in the branch summary or handoff.
