@@ -773,11 +773,11 @@ impl LocalContainerService {
                     ctx.execution_process.run_reason,
                     ExecutionProcessRunReason::ArchiveScript
                 ) && let Err(e) = container
-                    .maybe_delete_archived_worktree_for_merged_staging_pr(ctx.workspace.id)
+                    .maybe_delete_archived_worktree_if_safe(ctx.workspace.id)
                     .await
                 {
                     tracing::error!(
-                        "Failed to delete merged staging worktree after archive script for workspace {}: {}",
+                        "Failed to delete archived worktree after archive script for workspace {}: {}",
                         ctx.workspace.id,
                         e
                     );

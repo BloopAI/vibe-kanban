@@ -563,9 +563,9 @@ pub trait ContainerService {
         Ok(())
     }
 
-    /// Delete the workspace worktree immediately when a merged PR into `staging`
-    /// has archived the workspace and no non-dev processes are still running.
-    async fn maybe_delete_archived_worktree_for_merged_staging_pr(
+    /// Delete an archived workspace worktree immediately when no non-dev
+    /// processes are still running.
+    async fn maybe_delete_archived_worktree_if_safe(
         &self,
         workspace_id: Uuid,
     ) -> Result<(), ContainerError> {
@@ -585,13 +585,28 @@ pub trait ContainerService {
             return Ok(());
         }
 
+        self.delete(&workspace).await
+    }
+
+    /// Delete the workspace worktree immediately when a merged PR into `staging`
+    /// has archived the workspace and no non-dev processes are still running.
+    async fn maybe_delete_archived_worktree_for_merged_staging_pr(
+        &self,
+        workspace_id: Uuid,
+    ) -> Result<(), ContainerError> {
+        let pool = &self.db().pool;
+        let Some(workspace) = Workspace::find_by_id(pool, workspace_id).await? else {
+            return Ok(());
+        };
+
         let pull_requests = PullRequest::find_by_workspace_id(pool, workspace.id).await?;
         if !has_merged_pr_to_target_branch(&pull_requests, IMMEDIATE_PR_MERGE_CLEANUP_TARGET_BRANCH)
         {
             return Ok(());
         }
 
-        self.delete(&workspace).await
+        self.maybe_delete_archived_worktree_if_safe(workspace_id)
+            .await
     }
 
     fn setup_actions_for_repos(&self, repos: &[Repo]) -> Option<ExecutorAction> {

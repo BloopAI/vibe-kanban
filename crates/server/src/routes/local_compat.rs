@@ -954,11 +954,11 @@ async fn archive_linked_workspaces_for_in_staging_issue(
 
         if let Err(e) = deployment
             .container()
-            .maybe_delete_archived_worktree_for_merged_staging_pr(workspace.id)
+            .maybe_delete_archived_worktree_if_safe(workspace.id)
             .await
         {
             tracing::error!(
-                "Failed to delete merged staging worktree for workspace {} after moving issue {} to In Staging: {}",
+                "Failed to delete archived worktree for workspace {} after moving issue {} to In Staging: {}",
                 workspace.id,
                 issue_id,
                 e
