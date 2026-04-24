@@ -1,6 +1,11 @@
 import { forwardRef, createElement } from 'react';
 import type { Icon, IconProps } from '@phosphor-icons/react';
-import type { ExecutorConfig, Merge, Workspace } from 'shared/types';
+import type {
+  ExecutorConfig,
+  Merge,
+  MergeStrategy,
+  Workspace,
+} from 'shared/types';
 import type { QueryClient } from '@tanstack/react-query';
 import {
   CopyIcon,
@@ -137,6 +142,111 @@ function invalidateWorkspaceQueries(
     queryKey: workspaceRecordKeys.byId(workspaceId),
   });
   queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+}
+
+// Helper that runs the standard pre-merge safety checks (open PR, conflicts,
+// behind-branch, user confirmation) before invoking workspacesApi.merge with
+// the requested strategy. All four merge actions (legacy GitMerge plus the
+// three strategy-specific actions) call into this so that the safety guards
+// stay in lock-step.
+async function performGuardedMerge(
+  ctx: ActionExecutorContext,
+  workspaceId: string,
+  repoId: string,
+  strategy: MergeStrategy,
+  dialog: {
+    title: string;
+    confirmText: string;
+    confirmMessage: string;
+  }
+) {
+  // Check for existing conflicts first
+  const branchStatus = await workspacesApi.getBranchStatus(workspaceId);
+  const repoStatus = branchStatus?.find((s) => s.repo_id === repoId);
+
+  // Check if repo has an open PR - cannot merge directly
+  const hasOpenPR = repoStatus?.merges?.some(
+    (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
+  );
+  if (hasOpenPR) {
+    await ConfirmDialog.show({
+      title: 'Cannot Merge',
+      message:
+        'This repository has an open pull request. Please close or merge the PR before merging directly.',
+      confirmText: 'OK',
+      showCancelButton: false,
+    });
+    return;
+  }
+
+  const hasConflicts =
+    repoStatus?.is_rebase_in_progress ||
+    (repoStatus?.conflicted_files?.length ?? 0) > 0;
+
+  if (hasConflicts && repoStatus) {
+    // Skip showing the dialog if a process is already running
+    // (e.g. an AI session is already resolving these conflicts)
+    const isRunning = ctx.activeWorkspaces.find(
+      (w) => w.id === workspaceId
+    )?.isRunning;
+    if (isRunning) return;
+
+    // Show resolve conflicts dialog
+    const workspace = await getWorkspace(ctx.queryClient, workspaceId);
+    const result = await ResolveConflictsDialog.show({
+      workspaceId,
+      conflictOp: repoStatus.conflict_op ?? 'merge',
+      sourceBranch: workspace.branch,
+      targetBranch: repoStatus.target_branch_name,
+      conflictedFiles: repoStatus.conflicted_files ?? [],
+      repoName: repoStatus.repo_name,
+    });
+
+    if (result.action === 'resolved') {
+      invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+    }
+    return;
+  }
+
+  // Check if branch is behind - only the Squash strategy needs to be
+  // rebased first. Rebase and Merge (--no-ff) handle a diverged base
+  // natively (Rebase replays task commits onto base, Merge records a
+  // merge commit with both histories), so prompting the user to rebase
+  // first would defeat the purpose of those strategies.
+  const commitsBehind = repoStatus?.commits_behind ?? 0;
+  if (commitsBehind > 0 && strategy === 'squash') {
+    // Prompt user to rebase first
+    const confirmRebase = await ConfirmDialog.show({
+      title: 'Rebase Required',
+      message: `Your branch is ${commitsBehind} commit${commitsBehind === 1 ? '' : 's'} behind the target branch. Would you like to rebase first?`,
+      confirmText: 'Rebase',
+      cancelText: 'Cancel',
+    });
+
+    if (confirmRebase === 'confirmed') {
+      // Open rebase dialog - it loads branches/status internally
+      await RebaseDialog.show({
+        workspaceId: workspaceId,
+        repoId,
+      });
+    }
+    return;
+  }
+
+  const confirmResult = await ConfirmDialog.show({
+    title: dialog.title,
+    message: dialog.confirmMessage,
+    confirmText: dialog.confirmText,
+    cancelText: 'Cancel',
+  });
+
+  if (confirmResult === 'confirmed') {
+    await workspacesApi.merge(workspaceId, {
+      repo_id: repoId,
+      strategy,
+    });
+    invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+  }
 }
 
 // Helper to find the next workspace to navigate to when removing current workspace
@@ -932,87 +1042,60 @@ export const Actions = {
     requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (ctx, workspaceId, repoId) => {
-      // Check for existing conflicts first
-      const branchStatus = await workspacesApi.getBranchStatus(workspaceId);
-      const repoStatus = branchStatus?.find((s) => s.repo_id === repoId);
-
-      // Check if repo has an open PR - cannot merge directly
-      const hasOpenPR = repoStatus?.merges?.some(
-        (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
-      );
-      if (hasOpenPR) {
-        await ConfirmDialog.show({
-          title: 'Cannot Merge',
-          message:
-            'This repository has an open pull request. Please close or merge the PR before merging directly.',
-          confirmText: 'OK',
-          showCancelButton: false,
-        });
-        return;
-      }
-
-      const hasConflicts =
-        repoStatus?.is_rebase_in_progress ||
-        (repoStatus?.conflicted_files?.length ?? 0) > 0;
-
-      if (hasConflicts && repoStatus) {
-        // Skip showing the dialog if a process is already running
-        // (e.g. an AI session is already resolving these conflicts)
-        const isRunning = ctx.activeWorkspaces.find(
-          (w) => w.id === workspaceId
-        )?.isRunning;
-        if (isRunning) return;
-
-        // Show resolve conflicts dialog
-        const workspace = await getWorkspace(ctx.queryClient, workspaceId);
-        const result = await ResolveConflictsDialog.show({
-          workspaceId,
-          conflictOp: repoStatus.conflict_op ?? 'merge',
-          sourceBranch: workspace.branch,
-          targetBranch: repoStatus.target_branch_name,
-          conflictedFiles: repoStatus.conflicted_files ?? [],
-          repoName: repoStatus.repo_name,
-        });
-
-        if (result.action === 'resolved') {
-          invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
-        }
-        return;
-      }
-
-      // Check if branch is behind - need to rebase first
-      const commitsBehind = repoStatus?.commits_behind ?? 0;
-      if (commitsBehind > 0) {
-        // Prompt user to rebase first
-        const confirmRebase = await ConfirmDialog.show({
-          title: 'Rebase Required',
-          message: `Your branch is ${commitsBehind} commit${commitsBehind === 1 ? '' : 's'} behind the target branch. Would you like to rebase first?`,
-          confirmText: 'Rebase',
-          cancelText: 'Cancel',
-        });
-
-        if (confirmRebase === 'confirmed') {
-          // Open rebase dialog - it loads branches/status internally
-          await RebaseDialog.show({
-            workspaceId: workspaceId,
-            repoId,
-          });
-        }
-        return;
-      }
-
-      const confirmResult = await ConfirmDialog.show({
+      await performGuardedMerge(ctx, workspaceId, repoId, 'squash', {
         title: 'Merge Branch',
-        message:
-          'Are you sure you want to merge this branch into the target branch?',
         confirmText: 'Merge',
-        cancelText: 'Cancel',
+        confirmMessage:
+          'Are you sure you want to merge this branch into the target branch?',
       });
+    },
+  },
 
-      if (confirmResult === 'confirmed') {
-        await workspacesApi.merge(workspaceId, { repo_id: repoId });
-        invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
-      }
+  GitMergeSquash: {
+    id: 'git-merge-squash',
+    label: 'Squash and merge',
+    icon: GitMergeIcon,
+    requiresTarget: ActionTargetType.GIT,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: async (ctx, workspaceId, repoId) => {
+      await performGuardedMerge(ctx, workspaceId, repoId, 'squash', {
+        title: 'Squash and merge',
+        confirmText: 'Squash and merge',
+        confirmMessage:
+          'Are you sure you want to squash and merge this branch into the target branch?',
+      });
+    },
+  },
+
+  GitMergeRebase: {
+    id: 'git-merge-rebase',
+    label: 'Rebase and merge',
+    icon: GitMergeIcon,
+    requiresTarget: ActionTargetType.GIT,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: async (ctx, workspaceId, repoId) => {
+      await performGuardedMerge(ctx, workspaceId, repoId, 'rebase', {
+        title: 'Rebase and merge',
+        confirmText: 'Rebase and merge',
+        confirmMessage:
+          'Are you sure you want to rebase and merge this branch into the target branch?',
+      });
+    },
+  },
+
+  GitMergeCommit: {
+    id: 'git-merge-commit',
+    label: 'Create a merge commit',
+    icon: GitMergeIcon,
+    requiresTarget: ActionTargetType.GIT,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: async (ctx, workspaceId, repoId) => {
+      await performGuardedMerge(ctx, workspaceId, repoId, 'merge', {
+        title: 'Create a merge commit',
+        confirmText: 'Create a merge commit',
+        confirmMessage:
+          'Are you sure you want to create a merge commit for this branch into the target branch?',
+      });
     },
   },
 

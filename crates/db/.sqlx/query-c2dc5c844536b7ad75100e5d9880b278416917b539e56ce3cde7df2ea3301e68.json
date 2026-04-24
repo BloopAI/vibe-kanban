@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO merges (id, workspace_id, repo_id, merge_type, merge_commit, created_at, target_branch_name, merge_strategy)\n            VALUES (?, ?, ?, 'direct', ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "c2dc5c844536b7ad75100e5d9880b278416917b539e56ce3cde7df2ea3301e68"
+}

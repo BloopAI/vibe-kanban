@@ -1,9 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { workspacesApi } from '@/shared/lib/api';
 import { repoBranchKeys } from '@/shared/hooks/useRepoBranches';
+import type { MergeStrategy } from 'shared/types';
 
 type MergeParams = {
   repoId: string;
+  strategy?: MergeStrategy;
 };
 
 export function useMerge(
@@ -18,6 +20,7 @@ export function useMerge(
       if (!workspaceId) return Promise.resolve();
       return workspacesApi.merge(workspaceId, {
         repo_id: params.repoId,
+        strategy: params.strategy ?? null,
       });
     },
     onSuccess: () => {
