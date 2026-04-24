@@ -2,67 +2,57 @@
 
 ## Stream Identifier
 
-- Branch: `staging`
-- Repo: `/home/mcp/code/worktrees/3714-vk-codeblock-onl/_vibe_kanban_repo`
-- Working mode: codeblock copy regression fix on staging with local-only VK validation and tailnet preview
+- Branch: `vk/53b2-vk-needs-review`
+- Repo: `/home/mcp/code/worktrees/53b2-vk-needs-review/_vibe_kanban_repo`
+- Base: `fork/staging`
+- Working mode: local VK UI polish
 
 ## Objective
 
-- Ship codeblock-only copy controls in chat/markdown rendering without disturbing the local-only VK runtime.
+- Add a project-level visual indicator in the left app bar when a project has linked workspaces that need review.
 
 ## In Scope
 
-- Codeblock-only copy affordance for rendered markdown/code blocks
-- Local validation against the running VK install
-- Branch PR and a Tailscale-accessible preview for review
+- App bar project icon badge rendering
+- Project-level aggregation of workspace review-needed state
+- Branch-local continuity docs for this stream
 
 ## Out of Scope
 
-- Reviving the old cloud-backed board model
-- Depending on `api.vibekanban.com` for local board state
-- Broad cleanup unrelated to codeblock copy behavior
+- Changing workspace-level review semantics
+- Remote deployment behavior changes
+- Broader kanban sidebar redesign
 
 ## Stream-Specific Decisions
 
-- `staging` is currently checked out after the feature branch was merged locally.
-- The local install must keep `shared_api_base` disabled.
-- The live local backend on `127.0.0.1:4311` remains the backend source for branch previewing.
-- The branch preview is served via Tailscale HTTPS at `https://mcp-server.tail744c4.ts.net:18444/`, proxied to the branch frontend on `127.0.0.1:3002`.
+- Reuse existing workspace attention signals instead of inventing a new project review state.
+- Treat a workspace as needing review when it has pending approval or unseen completed activity.
+- Keep the change scoped to the app bar and lightweight supporting API helpers.
 
 ## Relevant Files / Modules
 
-- `packages/web-core/src/shared/components/CodeBlockCopyButton.tsx`
-- `packages/web-core/src/shared/components/ReadOnlyCodeBlockCopyPlugin.tsx`
-- `packages/web-core/src/shared/components/MarkdownPreview.tsx`
-- `packages/web-core/src/shared/components/WYSIWYGEditor.tsx`
-- PR: `#3371`
-- tailnet preview: `https://mcp-server.tail744c4.ts.net:18444/`
+- `packages/ui/src/components/AppBar.tsx`
+- `packages/web-core/src/shared/components/ui-new/containers/SharedAppLayout.tsx`
+- `packages/web-core/src/shared/lib/api.ts`
+- `HANDOFF.md`
+- `DELTA.md`
 
 ## Current Status
 
-- Confirmed:
-  - original codeblock-only copy controls were committed and merged into local `staging`
-  - branch `vk/3714-vk-codeblock-onl` was pushed to `fork/vk/3714-vk-codeblock-onl`
-  - draft PR `#3371` was opened and later closed
-  - tailnet preview responds with HTTP 200 at `https://mcp-server.tail744c4.ts.net:18444/`
-  - local VK backend remains live on `127.0.0.1:4311`
-- In progress:
-  - regression fix replaces brittle read-only Lexical DOM scanning with CodeNode mutation/update tracking
-  - codeblock copy buttons are visible by default instead of hover-only
-  - fixed preview is running from this worktree on `127.0.0.1:3002`
+- Completed:
+  - rebased the feature branch onto current `fork/staging`
+  - preserved the project-level `Needs Review` bubbles on top of the newer app bar/archive/order code
 - Pending:
-  - commit and push regression fix to `fork/staging`
-  - human UI smoke test against the tailnet preview
+  - force-push the rebased branch
+  - merge PR `#5`
 
 ## Risks / Regression Traps
 
-- Stopping the Vite process on `3002` will break the Tailscale preview.
-- A stale Vite process can keep serving the pre-fix frontend even after the source is corrected.
-- The old read-only implementation used `querySelectorAll('code.block')`, which did not reliably match Lexical-rendered codeblocks.
-- Repointing the local runtime back to cloud/shared API config is still forbidden
-- Assuming the upstream GitHub repo still exposes `staging`; at time of verification only `main` was visible remotely
+- Local and signed-in project lists use different workspace-to-project mapping paths; both must resolve the same attention semantics.
+- Missing local frontend dependencies may still block full formatter/typecheck runs in this worktree.
 
 ## Next Safe Steps
 
-1. Use the Tailscale preview URL for human QA of the codeblock copy behavior.
-2. Commit and push the regression fix to `fork/staging`.
+1. Finish the rebase by recording refreshed continuity docs.
+2. Force-push `vk/53b2-vk-needs-review`.
+3. Merge PR `#5` into `staging`.
