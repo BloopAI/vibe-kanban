@@ -30,6 +30,18 @@ import {
   REMAINING_BATCH_SIZE,
 } from '@/shared/hooks/useConversationHistory/constants';
 
+function patchWithKey(
+  patch: PatchType,
+  executionProcessId: string,
+  index: number
+): PatchTypeWithKey {
+  return {
+    ...patch,
+    patchKey: `${executionProcessId}:${index}`,
+    executionProcessId,
+  };
+}
+
 export const useConversationHistory = ({
   onTimelineUpdated,
   scopeKey,
@@ -54,6 +66,41 @@ export const useConversationHistory = ({
   const [isLoadingHistoryState, setIsLoadingHistory] = useState(false);
   const [hasMoreHistoryState, setHasMoreHistory] = useState(false);
   const historyEntryLimitRef = useRef(MIN_INITIAL_ENTRIES);
+
+  const upsertProcessEntries = useCallback(
+    (
+      executionProcess: ExecutionProcess,
+      entries: PatchType[],
+      opts?: { ignoreShorterReplay?: boolean }
+    ) => {
+      const patchesWithKey = entries.map((entry, index) =>
+        patchWithKey(entry, executionProcess.id, index)
+      );
+
+      const existingEntries =
+        displayedExecutionProcesses.current[executionProcess.id]?.entries ?? [];
+
+      // When a running stream reconnects, the server replays from the start.
+      // Keep the already rendered transcript until replay catches back up so
+      // the chat does not jump backwards or appear to blank out mid-run.
+      if (
+        opts?.ignoreShorterReplay &&
+        patchesWithKey.length < existingEntries.length
+      ) {
+        return false;
+      }
+
+      mergeIntoDisplayed((state) => {
+        state[executionProcess.id] = {
+          executionProcess,
+          entries: patchesWithKey,
+        };
+      });
+
+      return true;
+    },
+    []
+  );
 
   // Derive whether this is the first turn (no follow-up processes exist)
   const isFirstTurn = useMemo(() => {
@@ -128,26 +175,12 @@ export const useConversationHistory = ({
               `Error loading entries for historic execution process ${executionProcess.id}`,
               err
             );
-            controller.close();
-            resolve([]);
           },
         });
       });
     },
     []
   );
-
-  const patchWithKey = (
-    patch: PatchType,
-    executionProcessId: string,
-    index: number
-  ) => {
-    return {
-      ...patch,
-      patchKey: `${executionProcessId}:${index}`,
-      executionProcessId,
-    };
-  };
 
   const flattenEntries = (
     executionProcessState: ExecutionProcessStateStore
@@ -223,7 +256,7 @@ export const useConversationHistory = ({
   // This emits its own events as they are streamed
   const loadRunningAndEmit = useCallback(
     (executionProcess: ExecutionProcess): Promise<void> => {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         let url = '';
         if (executionProcess.executor_action.typ.type === 'ScriptRequest') {
           url = `/api/execution-processes/${executionProcess.id}/raw-logs/ws`;
@@ -232,45 +265,32 @@ export const useConversationHistory = ({
         }
         const controller = streamJsonPatchEntries<PatchType>(url, {
           onEntries(entries) {
-            const patchesWithKey = entries.map((entry, index) =>
-              patchWithKey(entry, executionProcess.id, index)
-            );
-            mergeIntoDisplayed((state) => {
-              state[executionProcess.id] = {
-                executionProcess,
-                entries: patchesWithKey,
-              };
+            const updated = upsertProcessEntries(executionProcess, entries, {
+              ignoreShorterReplay: true,
             });
-            emitEntries(displayedExecutionProcesses.current, 'running', false);
+            if (updated) {
+              emitEntries(
+                displayedExecutionProcesses.current,
+                'running',
+                false
+              );
+            }
           },
           onFinished: () => {
             emitEntries(displayedExecutionProcesses.current, 'running', false);
             controller.close();
             resolve();
           },
-          onError: () => {
-            controller.close();
-            reject();
+          onError: (err) => {
+            console.warn(
+              `Error streaming entries for running execution process ${executionProcess.id}`,
+              err
+            );
           },
         });
       });
     },
-    [emitEntries]
-  );
-
-  // Sometimes it can take a few seconds for the stream to start, wrap the loadRunningAndEmit method
-  const loadRunningAndEmitWithBackoff = useCallback(
-    async (executionProcess: ExecutionProcess) => {
-      for (let i = 0; i < 20; i++) {
-        try {
-          await loadRunningAndEmit(executionProcess);
-          break;
-        } catch (_) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
-      }
-    },
-    [loadRunningAndEmit]
+    [emitEntries, upsertProcessEntries]
   );
 
   const loadHistoricEntries = useCallback(
@@ -546,7 +566,7 @@ export const useConversationHistory = ({
         !streamingProcessIdsRef.current.has(activeProcess.id)
       ) {
         streamingProcessIdsRef.current.add(activeProcess.id);
-        loadRunningAndEmitWithBackoff(activeProcess).finally(() => {
+        loadRunningAndEmit(activeProcess).finally(() => {
           streamingProcessIdsRef.current.delete(activeProcess.id);
         });
       }
@@ -556,7 +576,7 @@ export const useConversationHistory = ({
     idStatusKey,
     emitEntries,
     ensureProcessVisible,
-    loadRunningAndEmitWithBackoff,
+    loadRunningAndEmit,
   ]);
 
   useEffect(() => {
@@ -585,33 +605,24 @@ export const useConversationHistory = ({
       let anyUpdated = false;
 
       for (const process of processesToReload) {
-        let latestEntries: PatchTypeWithKey[] = [];
+        let latestEntries: PatchType[] = [];
         const entries = await loadEntriesForHistoricExecutionProcess(process, {
           onEntries: (partialEntries) => {
-            latestEntries = partialEntries.map((entry, index) =>
-              patchWithKey(entry, process.id, index)
-            );
+            latestEntries = partialEntries;
 
-            mergeIntoDisplayed((state) => {
-              state[process.id] = {
-                executionProcess: process,
-                entries: latestEntries,
-              };
-            });
-            emitEntries(displayedExecutionProcesses.current, 'running', false);
+            const updated = upsertProcessEntries(process, partialEntries);
+            if (updated) {
+              emitEntries(
+                displayedExecutionProcesses.current,
+                'running',
+                false
+              );
+            }
           },
         });
-        const entriesWithKey =
-          latestEntries.length > 0
-            ? latestEntries
-            : entries.map((e, idx) => patchWithKey(e, process.id, idx));
+        const entriesToUse = latestEntries.length > 0 ? latestEntries : entries;
 
-        mergeIntoDisplayed((state) => {
-          state[process.id] = {
-            executionProcess: process,
-            entries: entriesWithKey,
-          };
-        });
+        upsertProcessEntries(process, entriesToUse);
         anyUpdated = true;
       }
 
@@ -619,7 +630,7 @@ export const useConversationHistory = ({
         emitEntries(displayedExecutionProcesses.current, 'running', false);
       }
     })();
-  }, [idStatusKey, executionProcessesRaw, emitEntries]);
+  }, [idStatusKey, executionProcessesRaw, emitEntries, upsertProcessEntries]);
 
   // If an execution process is removed, remove it from the state
   useEffect(() => {

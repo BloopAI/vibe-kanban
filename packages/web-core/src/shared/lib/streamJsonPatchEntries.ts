@@ -55,7 +55,6 @@ export function streamJsonPatchEntries<E = unknown>(
   const subscribers = new Set<(entries: E[]) => void>();
   if (opts.onEntries) subscribers.add(opts.onEntries);
 
-  // --- rAF batching state ---
   let pendingOps: Operation[] = [];
   let rafId: number | null = null;
   let retryTimer: number | null = null;
@@ -104,7 +103,6 @@ export function streamJsonPatchEntries<E = unknown>(
     try {
       const msg = JSON.parse(event.data);
 
-      // Handle JsonPatch messages — accumulate ops for next rAF flush
       if (msg.JsonPatch) {
         const raw = msg.JsonPatch as Operation[];
         pendingOps.push(...raw);
@@ -113,7 +111,6 @@ export function streamJsonPatchEntries<E = unknown>(
         }
       }
 
-      // Handle Finished messages — flush synchronously before closing
       if (msg.finished !== undefined) {
         if (rafId !== null) {
           cancelAnimationFrame(rafId);
@@ -199,7 +196,6 @@ export function streamJsonPatchEntries<E = unknown>(
     },
     onChange(cb: (entries: E[]) => void): () => void {
       subscribers.add(cb);
-      // push current state immediately
       cb(snapshot.entries);
       return () => subscribers.delete(cb);
     },
@@ -217,19 +213,10 @@ export function streamJsonPatchEntries<E = unknown>(
   };
 }
 
-/**
- * Dedupe multiple ops that touch the same path within a batch.
- * Last write for a path wins, while preserving the overall left-to-right
- * order of the *kept* final operations.
- *
- * Example:
- *   add /entries/4, replace /entries/4  -> keep only the final replace
- */
 function dedupeOps(ops: Operation[]): Operation[] {
   const lastIndexByPath = new Map<string, number>();
   ops.forEach((op, i) => lastIndexByPath.set(op.path, i));
 
-  // Keep only the last op for each path, in ascending order of their final index
   const keptIndices = [...lastIndexByPath.values()].sort((a, b) => a - b);
   return keptIndices.map((i) => ops[i]!);
 }
