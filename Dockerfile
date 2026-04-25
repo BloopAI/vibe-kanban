@@ -19,6 +19,7 @@ RUN corepack enable
 RUN pnpm config set store-dir /pnpm/store
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY patches/ patches/
 COPY packages/local-web/package.json packages/local-web/package.json
 COPY packages/ui/package.json packages/ui/package.json
 COPY packages/web-core/package.json packages/web-core/package.json
@@ -66,19 +67,28 @@ RUN cargo --version >/dev/null
 
 COPY Cargo.toml Cargo.lock ./
 COPY crates/api-types/Cargo.toml crates/api-types/Cargo.toml
+COPY crates/client-info/Cargo.toml crates/client-info/Cargo.toml
 COPY crates/db/Cargo.toml crates/db/Cargo.toml
 COPY crates/deployment/Cargo.toml crates/deployment/Cargo.toml
+COPY crates/desktop-bridge/Cargo.toml crates/desktop-bridge/Cargo.toml
+COPY crates/embedded-ssh/Cargo.toml crates/embedded-ssh/Cargo.toml
 COPY crates/executors/Cargo.toml crates/executors/Cargo.toml
 COPY crates/git/Cargo.toml crates/git/Cargo.toml
 COPY crates/git-host/Cargo.toml crates/git-host/Cargo.toml
 COPY crates/local-deployment/Cargo.toml crates/local-deployment/Cargo.toml
 COPY crates/mcp/Cargo.toml crates/mcp/Cargo.toml
+COPY crates/preview-proxy/Cargo.toml crates/preview-proxy/Cargo.toml
+COPY crates/relay-client/Cargo.toml crates/relay-client/Cargo.toml
 COPY crates/relay-control/Cargo.toml crates/relay-control/Cargo.toml
 COPY crates/relay-hosts/Cargo.toml crates/relay-hosts/Cargo.toml
 COPY crates/relay-protocol/Cargo.toml crates/relay-protocol/Cargo.toml
+COPY crates/relay-tunnel/Cargo.toml crates/relay-tunnel/Cargo.toml
 COPY crates/relay-tunnel-core/Cargo.toml crates/relay-tunnel-core/Cargo.toml
+COPY crates/relay-types/Cargo.toml crates/relay-types/Cargo.toml
 COPY crates/relay-webrtc/Cargo.toml crates/relay-webrtc/Cargo.toml
 COPY crates/relay-ws/Cargo.toml crates/relay-ws/Cargo.toml
+COPY crates/remote/Cargo.toml crates/remote/Cargo.toml
+COPY crates/remote-info/Cargo.toml crates/remote-info/Cargo.toml
 COPY crates/review/Cargo.toml crates/review/Cargo.toml
 COPY crates/server/Cargo.toml crates/server/Cargo.toml
 COPY crates/server-info/Cargo.toml crates/server-info/Cargo.toml
@@ -91,23 +101,33 @@ COPY crates/worktree-manager/Cargo.toml crates/worktree-manager/Cargo.toml
 COPY crates/ws-bridge/Cargo.toml crates/ws-bridge/Cargo.toml
 
 COPY crates/api-types/ crates/api-types/
+COPY crates/client-info/ crates/client-info/
 COPY crates/db/ crates/db/
 COPY crates/deployment/ crates/deployment/
+COPY crates/desktop-bridge/ crates/desktop-bridge/
+COPY crates/embedded-ssh/ crates/embedded-ssh/
 COPY crates/executors/ crates/executors/
 COPY crates/git/ crates/git/
 COPY crates/git-host/ crates/git-host/
 COPY crates/local-deployment/ crates/local-deployment/
 COPY crates/mcp/ crates/mcp/
+COPY crates/preview-proxy/ crates/preview-proxy/
+COPY crates/relay-client/ crates/relay-client/
 COPY crates/relay-control/ crates/relay-control/
 COPY crates/relay-hosts/ crates/relay-hosts/
 COPY crates/relay-protocol/ crates/relay-protocol/
+COPY crates/relay-tunnel/ crates/relay-tunnel/
 COPY crates/relay-tunnel-core/ crates/relay-tunnel-core/
+COPY crates/relay-types/ crates/relay-types/
 COPY crates/relay-webrtc/ crates/relay-webrtc/
 COPY crates/relay-ws/ crates/relay-ws/
+COPY crates/remote/ crates/remote/
+COPY crates/remote-info/ crates/remote-info/
 COPY crates/review/ crates/review/
 COPY crates/server/ crates/server/
 COPY crates/server-info/ crates/server-info/
 COPY crates/services/ crates/services/
+COPY crates/tauri-app/ crates/tauri-app/
 COPY crates/trusted-key-auth/ crates/trusted-key-auth/
 COPY crates/utils/ crates/utils/
 COPY crates/workspace-manager/ crates/workspace-manager/
