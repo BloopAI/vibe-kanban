@@ -61,9 +61,7 @@ export function IssueWorkspacesSection({
                 key={workspace.id}
                 workspace={workspace}
                 onClick={
-                  onWorkspaceClick &&
-                  localWorkspaceId &&
-                  workspace.isOwnedByCurrentUser
+                  onWorkspaceClick && localWorkspaceId
                     ? () => onWorkspaceClick(localWorkspaceId)
                     : undefined
                 }
