@@ -23,6 +23,8 @@ pub enum HookTables {
     Workspaces,
     #[strum(to_string = "execution_processes")]
     ExecutionProcesses,
+    #[strum(to_string = "coding_agent_turns")]
+    CodingAgentTurns,
     #[strum(to_string = "scratch")]
     Scratch,
 }

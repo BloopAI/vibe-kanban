@@ -60,6 +60,18 @@ function toSidebarWorkspace(
   ws: WorkspaceWithStatus,
   summary?: WorkspaceSummary
 ): SidebarWorkspace {
+  const latestProcessStatus = summary?.latest_process_status ?? undefined;
+  const isSettled =
+    latestProcessStatus === 'completed' ||
+    latestProcessStatus === 'failed' ||
+    latestProcessStatus === 'killed';
+  const isRunning =
+    latestProcessStatus === 'running'
+      ? true
+      : isSettled
+        ? false
+        : ws.is_running;
+
   return {
     id: ws.id,
     name: ws.name ?? ws.branch, // Use name if available, fallback to branch
@@ -72,7 +84,7 @@ function toSidebarWorkspace(
     linesAdded: summary?.lines_added ?? undefined,
     linesRemoved: summary?.lines_removed ?? undefined,
     // Real data from stream
-    isRunning: ws.is_running,
+    isRunning,
     isPinned: ws.pinned,
     isArchived: ws.archived,
     // Additional data from summary
@@ -80,7 +92,7 @@ function toSidebarWorkspace(
     hasRunningDevServer: summary?.has_running_dev_server,
     hasUnseenActivity: summary?.has_unseen_turns,
     latestProcessCompletedAt: summary?.latest_process_completed_at ?? undefined,
-    latestProcessStatus: summary?.latest_process_status ?? undefined,
+    latestProcessStatus,
     prStatus: summary?.pr_status ?? undefined,
     prNumber:
       summary?.pr_number != null ? Number(summary.pr_number) : undefined,
@@ -171,7 +183,7 @@ export function useWorkspaces(): UseWorkspacesResult {
       queryFn: () => fetchWorkspaceSummariesByArchived(false, hostId),
       enabled: activeIsInitialized,
       staleTime: 60000,
-      refetchInterval: false,
+      refetchInterval: 10000,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
       placeholderData: keepPreviousData,
@@ -184,7 +196,7 @@ export function useWorkspaces(): UseWorkspacesResult {
       queryFn: () => fetchWorkspaceSummariesByArchived(true, hostId),
       enabled: archivedIsInitialized,
       staleTime: 60000,
-      refetchInterval: false,
+      refetchInterval: 10000,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
       placeholderData: keepPreviousData,
