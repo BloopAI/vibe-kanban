@@ -79,7 +79,7 @@ struct CachedWorkspaceSummaryResponse {
 static WORKSPACE_SUMMARY_CACHE: LazyLock<Mutex<HashMap<bool, CachedWorkspaceSummaryResponse>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-const WORKSPACE_SUMMARY_CACHE_TTL: Duration = Duration::from_secs(2);
+const WORKSPACE_SUMMARY_CACHE_TTL: Duration = Duration::from_secs(10);
 
 /// Fetch summary information for workspaces filtered by archived status.
 /// This endpoint returns data that cannot be efficiently included in the streaming endpoint.

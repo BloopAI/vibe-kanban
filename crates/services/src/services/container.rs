@@ -62,6 +62,8 @@ use worktree_manager::WorktreeError;
 use crate::services::{execution_process, notification::NotificationService};
 pub type ContainerRef = String;
 const IMMEDIATE_PR_MERGE_CLEANUP_TARGET_BRANCH: &str = "staging";
+const HISTORICAL_NORMALIZED_REPLAY_HISTORY_BYTES: usize = 8 * 1024 * 1024;
+const HISTORICAL_NORMALIZED_REPLAY_CHANNEL_CAPACITY: usize = 1024;
 
 #[derive(Debug, Error)]
 pub enum ContainerError {
@@ -1002,7 +1004,10 @@ pub trait ContainerService {
         // for very large finished transcripts. Feed the persisted raw log file
         // into a temporary MsgStore incrementally so the normalizer can stream
         // patches as it parses, instead of waiting for a full-file read.
-        let temp_store = Arc::new(MsgStore::new());
+        let temp_store = Arc::new(MsgStore::with_limits(
+            HISTORICAL_NORMALIZED_REPLAY_HISTORY_BYTES,
+            HISTORICAL_NORMALIZED_REPLAY_CHANNEL_CAPACITY,
+        ));
 
         // Spawn normalizer on populated store and collect JoinHandles
         let handles = match executor_action.typ() {
