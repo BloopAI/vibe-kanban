@@ -63,7 +63,7 @@ use crate::services::{execution_process, notification::NotificationService};
 pub type ContainerRef = String;
 const IMMEDIATE_PR_MERGE_CLEANUP_TARGET_BRANCH: &str = "staging";
 const HISTORICAL_NORMALIZED_REPLAY_HISTORY_BYTES: usize = 8 * 1024 * 1024;
-const HISTORICAL_NORMALIZED_REPLAY_CHANNEL_CAPACITY: usize = 8192;
+const HISTORICAL_NORMALIZED_REPLAY_CHANNEL_CAPACITY: usize = 1024;
 
 #[derive(Debug, Error)]
 pub enum ContainerError {
