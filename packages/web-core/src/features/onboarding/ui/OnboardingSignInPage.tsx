@@ -146,7 +146,11 @@ export function OnboardingSignInPage() {
       return;
     }
     appNavigation.goToRoot({ replace: true });
-  }, [appNavigation, config?.remote_onboarding_acknowledged, isLocalAuthBypassed]);
+  }, [
+    appNavigation,
+    config?.remote_onboarding_acknowledged,
+    isLocalAuthBypassed,
+  ]);
 
   const getOnboardingDestination = async (): Promise<OnboardingDestination> => {
     const firstProjectDestination =

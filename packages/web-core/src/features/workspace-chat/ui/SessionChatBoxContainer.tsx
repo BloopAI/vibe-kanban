@@ -442,7 +442,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   const { uploadFiles, localAttachments, clearUploadedAttachments } =
     useSessionAttachments(workspaceId, sessionId, handleInsertMarkdown);
-
   // Unified executor + variant + model selector options resolution
   const {
     executorConfig,
@@ -510,9 +509,15 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       cancelDebouncedSave();
       setLocalMessage('');
       clearUploadedAttachments();
-      if (isNewSessionMode) await clearDraft();
-      if (!isSlashCommand) {
-        reviewContext?.clearComments();
+      await clearDraft();
+      if (isNewSessionMode) {
+        if (!isSlashCommand) {
+          reviewContext?.clearComments();
+        }
+      } else {
+        if (!isSlashCommand) {
+          reviewContext?.clearComments();
+        }
       }
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {

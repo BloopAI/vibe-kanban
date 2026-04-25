@@ -58,6 +58,7 @@ import {
   Invitation,
   ListInvitationsResponse,
   OpenEditorResponse,
+  Project,
   OpenEditorRequest,
   PrError,
   Scratch,
@@ -100,8 +101,13 @@ import {
   OpenRemoteWorkspaceInEditorRequest,
   OpenRemoteEditorResponse,
   ProfileResponse,
+  WorkspaceSummary,
+  WorkspaceSummaryResponse,
 } from 'shared/types';
-import type { Project as RemoteProject } from 'shared/remote-types';
+import type {
+  Project as RemoteProject,
+  Workspace as RemoteWorkspace,
+} from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
 import { resolveHostRequestScope } from '@/shared/lib/hostRequestScope';
@@ -752,6 +758,16 @@ export const workspacesApi = {
     );
   },
 
+  deleteWorktree: async (workspaceId: string): Promise<Workspace> => {
+    const response = await makeRequest(
+      `/api/workspaces/${workspaceId}/execution/worktree/delete`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<Workspace>(response);
+  },
+
   getPrComments: async (
     workspaceId: string,
     repoId: string
@@ -768,6 +784,15 @@ export const workspacesApi = {
       method: 'PUT',
     });
     return handleApiResponse<void>(response);
+  },
+
+  listSummaries: async (archived: boolean): Promise<WorkspaceSummary[]> => {
+    const response = await makeRequest('/api/workspaces/summaries', {
+      method: 'POST',
+      body: JSON.stringify({ archived }),
+    });
+    const result = await handleApiResponse<WorkspaceSummaryResponse>(response);
+    return result.summaries;
   },
 
   /** Create a workspace directly from a pull request */
@@ -832,6 +857,12 @@ export const fileSystemApi = {
 };
 
 // Repo APIs
+export interface RepoNavigationEntry {
+  repo: Repo;
+  latest_workspace_id: string | null;
+  latest_workspace_name: string | null;
+}
+
 export const repoApi = {
   list: async (hostId?: string | null): Promise<Repo[]> => {
     const response = await makeHostAwareRequest('/api/repos', hostId);
@@ -841,6 +872,11 @@ export const repoApi = {
   listRecent: async (): Promise<Repo[]> => {
     const response = await makeRequest('/api/repos/recent');
     return handleApiResponse<Repo[]>(response);
+  },
+
+  listRecentNavigation: async (): Promise<RepoNavigationEntry[]> => {
+    const response = await makeRequest('/api/repos/recent-navigation');
+    return handleApiResponse<RepoNavigationEntry[]>(response);
   },
 
   getById: async (repoId: string, hostId?: string | null): Promise<Repo> => {
@@ -1470,6 +1506,39 @@ export const organizationsApi = {
       method: 'DELETE',
     });
     return handleRemoteResponse<void>(response);
+  },
+};
+
+export const projectsApi = {
+  list: async (): Promise<Project[]> => {
+    const response = await makeRequest('/api/projects');
+    return handleApiResponse<Project[]>(response);
+  },
+
+  getById: async (projectId: string): Promise<Project> => {
+    const response = await makeRequest(`/api/projects/${projectId}`);
+    return handleApiResponse<Project>(response);
+  },
+
+  update: async (
+    projectId: string,
+    data: { archived: boolean }
+  ): Promise<Project> => {
+    const response = await makeRequest(`/api/projects/${projectId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Project>(response);
+  },
+
+  listWorkspaces: async (projectId: string): Promise<RemoteWorkspace[]> => {
+    const response = await makeRequest(
+      `/v1/fallback/project_workspaces?project_id=${encodeURIComponent(projectId)}`
+    );
+    const result = await handleApiResponse<{ workspaces: RemoteWorkspace[] }>(
+      response
+    );
+    return result.workspaces;
   },
 };
 

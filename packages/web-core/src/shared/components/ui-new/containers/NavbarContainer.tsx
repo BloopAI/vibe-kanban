@@ -127,7 +127,9 @@ export function NavbarContainer({
   const { workspace: selectedWorkspace, isCreateMode } = useWorkspaceContext();
   const { workspaces } = useUserContext();
   const syncErrorContext = useSyncErrorContext();
-  const { remoteAuthDegraded } = useUserSystem();
+  const { remoteAuthDegraded, loginStatus } = useUserSystem();
+  const isLocalOnlySession =
+    loginStatus?.status === 'loggedin' && !loginStatus.profile;
   const appNavigation = useAppNavigation();
   const destination = useCurrentAppDestination();
   const projectDestination = useMemo(
@@ -199,7 +201,10 @@ export function NavbarContainer({
   const linkedProjectId = linkedRemoteWorkspace?.project_id ?? null;
   const linkedIssueId = linkedRemoteWorkspace?.issue_id ?? null;
   const shouldResolveBreadcrumbData =
-    !isOnProjectPage && !isCreateMode && !!linkedProjectId;
+    !isLocalOnlySession &&
+    !isOnProjectPage &&
+    !isCreateMode &&
+    !!linkedProjectId;
   const shouldResolveIssueBreadcrumb =
     shouldResolveBreadcrumbData && !!linkedIssueId;
 

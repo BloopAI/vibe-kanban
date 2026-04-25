@@ -537,7 +537,7 @@ function createHybridSync(args: {
 
   return (syncParams: SyncParams): SyncResult => {
     const runtime = getOrCreateSourceRuntime(args.sourceKey);
-    if (runtime.fallbackLocked) {
+    if (runtime.fallbackLocked || !getRemoteApiUrl()) {
       return fallbackSync(syncParams);
     }
 

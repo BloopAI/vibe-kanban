@@ -103,7 +103,10 @@
       {
         "group": "Self-Hosting",
         "pages": [
+          "self-hosting/local-backup-recovery",
+          "self-hosting/lightweight-agent-preview",
           "self-hosting/local-development",
+          "self-hosting/tailscale-previews",
           "self-hosting/deploy-docker"
         ]
       },

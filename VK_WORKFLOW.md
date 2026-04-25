@@ -84,6 +84,15 @@ Safe deploy rules:
 - verify `/api/info`, `/`, and the current `/assets/index-*.js` after every swap
 - treat service restarts during active agent execution as destructive actions, not neutral maintenance
 
+## Post-merge Worktree Cleanup
+
+- When VK tracks a PR for a workspace and that PR is merged into `staging`, VK now archives the workspace and deletes its worktree folder immediately instead of waiting for the normal archived-workspace cleanup window.
+- Moving a linked local issue into `In Staging` archives its linked local workspace and cleans up its worktree folder.
+- If the workspace has an archive script, VK waits for that archive script to finish before deleting the worktree folder.
+- The workspace row remains in VK; reopening it recreates the worktree if needed.
+- This immediate cleanup path depends on tracked PR metadata, so untracked or non-`staging` merges still follow the regular cleanup schedule.
+- Pinned workspaces keep the existing exception because they are not auto-archived on merge.
+
 ## Agent Startup Checklist
 
 Give every new VK-fixing agent these files first:

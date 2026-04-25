@@ -128,6 +128,50 @@ pub async fn get_recent_repos(
     Ok(ResponseJson(ApiResponse::success(repos)))
 }
 
+#[derive(Debug, Serialize, TS)]
+pub struct RepoNavigationEntry {
+    pub repo: Repo,
+    pub latest_workspace_id: Option<Uuid>,
+    pub latest_workspace_name: Option<String>,
+}
+
+#[derive(sqlx::FromRow)]
+struct LatestRepoWorkspaceRow {
+    workspace_id: Uuid,
+    workspace_name: String,
+}
+
+pub async fn get_recent_repo_navigation(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<RepoNavigationEntry>>>, ApiError> {
+    let repos = Repo::list_by_recent_workspace_usage(&deployment.db().pool).await?;
+    let mut entries = Vec::with_capacity(repos.len());
+
+    for repo in repos {
+        let latest_workspace = sqlx::query_as::<_, LatestRepoWorkspaceRow>(
+            r#"SELECT w.id AS workspace_id,
+                      COALESCE(w.name, w.branch) AS workspace_name
+               FROM workspaces w
+               JOIN workspace_repos wr ON wr.workspace_id = w.id
+               WHERE wr.repo_id = ?
+                 AND w.archived = FALSE
+               ORDER BY w.updated_at DESC
+               LIMIT 1"#,
+        )
+        .bind(repo.id)
+        .fetch_optional(&deployment.db().pool)
+        .await?;
+
+        entries.push(RepoNavigationEntry {
+            repo,
+            latest_workspace_id: latest_workspace.as_ref().map(|row| row.workspace_id),
+            latest_workspace_name: latest_workspace.map(|row| row.workspace_name),
+        });
+    }
+
+    Ok(ResponseJson(ApiResponse::success(entries)))
+}
+
 pub async fn get_repo(
     State(deployment): State<DeploymentImpl>,
     Path(repo_id): Path<Uuid>,
@@ -369,6 +413,7 @@ pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/repos", get(get_repos).post(register_repo))
         .route("/repos/recent", get(get_recent_repos))
+        .route("/repos/recent-navigation", get(get_recent_repo_navigation))
         .route("/repos/init", post(init_repo))
         .route("/repos/batch", post(get_repos_batch))
         .route(

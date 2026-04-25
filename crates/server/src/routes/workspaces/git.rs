@@ -434,7 +434,10 @@ pub async fn get_workspace_branch_status(
         let status = match tokio::time::timeout(
             GIT_STATUS_TIMEOUT,
             tokio::task::spawn_blocking(move || -> Result<BranchStatus, GitServiceError> {
-                let head_oid = git.get_head_info(&worktree_path_for_status).ok().map(|h| h.oid);
+                let head_oid = git
+                    .get_head_info(&worktree_path_for_status)
+                    .ok()
+                    .map(|h| h.oid);
 
                 let (is_rebase_in_progress, conflicted_files, conflict_op) = {
                     let in_rebase = git
@@ -460,7 +463,8 @@ pub async fn get_workspace_branch_status(
 
                 let has_uncommitted_changes = uncommitted_count.map(|c| c > 0);
 
-                let is_target_remote = git.is_remote_branch(&repo_path, &target_branch_for_status)?;
+                let is_target_remote =
+                    git.is_remote_branch(&repo_path, &target_branch_for_status)?;
 
                 let (commits_ahead, commits_behind) = if is_target_remote {
                     let (ahead, behind) = git.get_remote_branch_status(
@@ -470,8 +474,11 @@ pub async fn get_workspace_branch_status(
                     )?;
                     (Some(ahead), Some(behind))
                 } else {
-                    let (a, b) =
-                        git.get_branch_status(&repo_path, &workspace_branch, &target_branch_for_status)?;
+                    let (a, b) = git.get_branch_status(
+                        &repo_path,
+                        &workspace_branch,
+                        &target_branch_for_status,
+                    )?;
                     (Some(a), Some(b))
                 };
 

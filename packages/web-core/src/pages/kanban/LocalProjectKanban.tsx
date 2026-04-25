@@ -1,30 +1,146 @@
-import { useEffect, useRef } from 'react';
-import { ProjectsGuideDialog } from '@vibe/ui/components/ProjectsGuideDialog';
-import { useAuth } from '@/shared/hooks/auth/useAuth';
-import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { ProjectKanban } from '@/pages/kanban/ProjectKanban';
+import { useEffect, useMemo, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import type { Project as RemoteProject } from 'shared/remote-types';
+import { useTranslation } from 'react-i18next';
+import {
+  buildKanbanIssueComposerKey,
+  closeKanbanIssueComposer,
+} from '@/shared/stores/useKanbanIssueComposerStore';
+import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { OrgContext, type OrgContextValue } from '@/shared/hooks/useOrgContext';
+import { ProjectProvider } from '@/shared/providers/remote/ProjectProvider';
+import {
+  ProjectKanbanLayout,
+  ProjectMutationsRegistration,
+} from '@/pages/kanban/ProjectKanban';
+import { projectsApi } from '@/shared/lib/api';
 
-const PROJECTS_GUIDE_ID = 'projects-guide';
+function createLocalProjectView(
+  projectId: string,
+  name: string
+): RemoteProject {
+  const now = new Date().toISOString();
+  return {
+    id: projectId,
+    organization_id: 'local',
+    name,
+    color: 'local',
+    sort_order: 0,
+    created_at: now,
+    updated_at: now,
+  };
+}
 
 export function LocalProjectKanban() {
-  const { config, updateAndSaveConfig, loading } = useUserSystem();
-  const { isLoaded, isSignedIn } = useAuth();
-  const hasAutoShownProjectsGuide = useRef(false);
+  const { t } = useTranslation('common');
+  const { projectId, hostId, hasInvalidWorkspaceCreateDraftId } =
+    useCurrentKanbanRouteState();
+  const appNavigation = useAppNavigation();
+  const issueComposerKey = useMemo(() => {
+    if (!projectId) {
+      return null;
+    }
+    return buildKanbanIssueComposerKey(hostId, projectId);
+  }, [hostId, projectId]);
+  const previousIssueComposerKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (hasAutoShownProjectsGuide.current) return;
-    if (!isLoaded || !isSignedIn || loading || !config) return;
+    const previousKey = previousIssueComposerKeyRef.current;
+    if (previousKey && previousKey !== issueComposerKey) {
+      closeKanbanIssueComposer(previousKey);
+    }
 
-    const seenFeatures = config.showcases?.seen_features ?? [];
-    if (seenFeatures.includes(PROJECTS_GUIDE_ID)) return;
+    previousIssueComposerKeyRef.current = issueComposerKey;
+  }, [issueComposerKey]);
 
-    hasAutoShownProjectsGuide.current = true;
+  useEffect(() => {
+    if (!projectId) return;
 
-    void updateAndSaveConfig({
-      showcases: { seen_features: [...seenFeatures, PROJECTS_GUIDE_ID] },
-    });
-    ProjectsGuideDialog.show().finally(() => ProjectsGuideDialog.hide());
-  }, [config, isLoaded, isSignedIn, loading, updateAndSaveConfig]);
+    if (hasInvalidWorkspaceCreateDraftId) {
+      appNavigation.goToProject(projectId, {
+        replace: true,
+      });
+    }
+  }, [projectId, hasInvalidWorkspaceCreateDraftId, appNavigation]);
 
-  return <ProjectKanban />;
+  const {
+    data: project,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['local-project', projectId],
+    queryFn: () => projectsApi.getById(projectId!),
+    enabled: !!projectId,
+    staleTime: 60_000,
+  });
+
+  const orgValue = useMemo<OrgContextValue | null>(() => {
+    if (!projectId) {
+      return null;
+    }
+
+    const localProject = createLocalProjectView(
+      projectId,
+      project?.name ?? 'Project'
+    );
+    const projectsById = new Map([[localProject.id, localProject]]);
+
+    return {
+      organizationId: 'local',
+      projects: [localProject],
+      isLoading: false,
+      error: null,
+      retry: () => {},
+      insertProject: (data) => {
+        const optimisticProject = createLocalProjectView(
+          crypto.randomUUID(),
+          data.name
+        );
+        return {
+          data: optimisticProject,
+          persisted: Promise.resolve(optimisticProject),
+        };
+      },
+      updateProject: () => ({ persisted: Promise.resolve() }),
+      removeProject: () => ({ persisted: Promise.resolve() }),
+      getProject: (candidateProjectId) => projectsById.get(candidateProjectId),
+      projectsById,
+      membersWithProfilesById: new Map(),
+    };
+  }, [projectId, project?.name]);
+
+  if (!projectId) {
+    return (
+      <div className="flex items-center justify-center h-full w-full">
+        <p className="text-low">{t('kanban.noProjectFound')}</p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full w-full">
+        <p className="text-low">{t('states.loading')}</p>
+      </div>
+    );
+  }
+
+  if (error || !project || !orgValue) {
+    return (
+      <div className="flex items-center justify-center h-full w-full">
+        <p className="text-low">{t('kanban.noProjectFound')}</p>
+      </div>
+    );
+  }
+
+  return (
+    <OrgContext.Provider value={orgValue}>
+      <ProjectProvider projectId={projectId}>
+        <ProjectMutationsRegistration>
+          <ProjectKanbanLayout projectName={project.name} />
+        </ProjectMutationsRegistration>
+      </ProjectProvider>
+    </OrgContext.Provider>
+  );
 }

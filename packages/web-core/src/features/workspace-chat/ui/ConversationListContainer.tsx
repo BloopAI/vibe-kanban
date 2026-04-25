@@ -383,11 +383,12 @@ export const ConversationList = forwardRef<
     }
   };
 
-  const { isFirstTurn, isLoadingHistory } = useConversationHistory({
-    attempt,
-    onTimelineUpdated,
-    scopeKey: conversationScopeKey,
-  });
+  const { isFirstTurn, isLoadingHistory, hasMoreHistory, loadMoreHistory } =
+    useConversationHistory({
+      attempt,
+      onTimelineUpdated,
+      scopeKey: conversationScopeKey,
+    });
 
   const prevEntriesRef = useRef<DisplayEntry[]>([]);
   const prevRowsRef = useRef<ConversationRow[]>([]);
@@ -461,6 +462,7 @@ export const ConversationList = forwardRef<
 
   const conversationVirtualizer = useConversationVirtualizer({
     rows: virtualizedRows,
+    contentVersion: dataVersion,
     totalRowCount: conversationRows.length,
     scrollContainerRef: tanstackScrollRef,
     onAtBottomChange,
@@ -751,6 +753,31 @@ export const ConversationList = forwardRef<
       clearPendingInteractionAnchor();
     };
   }, [clearPendingInteractionAnchor]);
+
+  useEffect(() => {
+    const scrollEl = tanstackScrollRef.current;
+    if (!scrollEl) {
+      return;
+    }
+
+    const maybeLoadOlderHistory = () => {
+      if (!hasMoreHistory || isLoadingHistory || loading) {
+        return;
+      }
+      if (scrollEl.scrollTop <= 80) {
+        void loadMoreHistory();
+      }
+    };
+
+    scrollEl.addEventListener('scroll', maybeLoadOlderHistory, {
+      passive: true,
+    });
+    maybeLoadOlderHistory();
+
+    return () => {
+      scrollEl.removeEventListener('scroll', maybeLoadOlderHistory);
+    };
+  }, [hasMoreHistory, isLoadingHistory, loadMoreHistory, loading]);
 
   return (
     <ApprovalFormProvider>

@@ -5,13 +5,16 @@ import {
   useEffect,
   useRef,
   type MouseEvent,
+  type RefObject,
 } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useActions } from '@/shared/hooks/useActions';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { cn } from '@/shared/lib/utils';
@@ -32,7 +35,14 @@ import {
   bulkUpdateIssues,
   type BulkUpdateIssueItem,
 } from '@/shared/lib/remoteApi';
-import { CaretLeftIcon, DotsThreeIcon, PlusIcon } from '@phosphor-icons/react';
+import {
+  CaretLeftIcon,
+  DotsThreeIcon,
+  HandIcon,
+  PlusIcon,
+  SpinnerGapIcon,
+  XIcon,
+} from '@phosphor-icons/react';
 import { Actions } from '@/shared/actions';
 import {
   buildKanbanIssueComposerKey,
@@ -62,17 +72,13 @@ import { ViewNavTabs } from '@vibe/ui/components/ViewNavTabs';
 import { IssueListView } from '@vibe/ui/components/IssueListView';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { KanbanFiltersDialog } from '@/shared/dialogs/kanban/KanbanFiltersDialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@vibe/ui/components/Dropdown';
 import { SearchableTagDropdownContainer } from '@/shared/components/SearchableTagDropdownContainer';
 import type { IssuePriority } from 'shared/remote-types';
 import { useIssueMultiSelect } from '@/shared/hooks/useIssueMultiSelect';
 import { useIssueSelectionStore } from '@/shared/stores/useIssueSelectionStore';
 import { BulkActionBarContainer } from './BulkActionBarContainer';
+import { saveProjectStatusDefaults } from '@/shared/hooks/useProjectRepoDefaults';
+import { projectsApi } from '@/shared/lib/api';
 
 const areStringSetsEqual = (left: string[], right: string[]): boolean => {
   if (left.length !== right.length) {
@@ -118,16 +124,431 @@ function LoadingState() {
   );
 }
 
+function useDismissableLayer(
+  isOpen: boolean,
+  refs: RefObject<HTMLElement>[],
+  onDismiss: () => void
+) {
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) {
+        return;
+      }
+
+      const inside = refs.some((ref) => ref.current?.contains(target));
+      if (!inside) {
+        onDismiss();
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onDismiss();
+      }
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onDismiss, refs]);
+}
+
+type LocalProjectSettingsDialogProps = {
+  projectId: string;
+  projectName: string;
+  statuses: {
+    id: string;
+    name: string;
+    color: string;
+    hidden?: boolean;
+    sort_order?: number;
+  }[];
+  issues: { id: string; status_id: string }[];
+  onClose: () => void;
+};
+
+function normalizeLocalStatusKey(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function defaultLocalStatusColor(name: string) {
+  switch (normalizeLocalStatusKey(name)) {
+    case 'inprogress':
+      return '42 90% 55%';
+    case 'inreview':
+      return '280 55% 58%';
+    case 'instaging':
+      return '196 72% 47%';
+    case 'done':
+    case 'completed':
+      return '145 55% 42%';
+    case 'cancelled':
+    case 'canceled':
+      return '0 0% 55%';
+    default:
+      return '220 70% 52%';
+  }
+}
+
+function buildLocalStatusId(name: string) {
+  const normalized = normalizeLocalStatusKey(name);
+  if (!normalized || normalized === 'todo') {
+    return 'todo';
+  }
+  if (normalized === 'inprogress') {
+    return 'in_progress';
+  }
+  if (normalized === 'inreview') {
+    return 'in_review';
+  }
+  if (normalized === 'instaging') {
+    return 'in_staging';
+  }
+  if (normalized === 'done' || normalized === 'completed') {
+    return 'done';
+  }
+  if (normalized === 'cancelled' || normalized === 'canceled') {
+    return 'cancelled';
+  }
+  return `status_${normalized}`;
+}
+
+function LocalProjectSettingsDialog({
+  projectId,
+  projectName,
+  statuses,
+  issues,
+  onClose,
+}: LocalProjectSettingsDialogProps) {
+  const queryClient = useQueryClient();
+  const appNavigation = useAppNavigation();
+  const countsByStatusId = useMemo(() => {
+    const counts = new Map<string, number>();
+    issues.forEach((issue) => {
+      counts.set(issue.status_id, (counts.get(issue.status_id) ?? 0) + 1);
+    });
+    return counts;
+  }, [issues]);
+
+  const [draftStatuses, setDraftStatuses] = useState(() =>
+    [...statuses]
+      .sort((left, right) => (left.sort_order ?? 0) - (right.sort_order ?? 0))
+      .map((status, index) => ({
+        id: status.id,
+        name: status.name,
+        color: status.color,
+        hidden: status.hidden ?? false,
+        sort_order: status.sort_order ?? index,
+      }))
+  );
+  const [newColumnName, setNewColumnName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const statusCounts = useMemo(
+    () =>
+      draftStatuses.map((status) => ({
+        ...status,
+        count: countsByStatusId.get(status.id) ?? 0,
+      })),
+    [countsByStatusId, draftStatuses]
+  );
+
+  const moveStatus = useCallback((index: number, direction: -1 | 1) => {
+    setDraftStatuses((current) => {
+      const nextIndex = index + direction;
+      if (nextIndex < 0 || nextIndex >= current.length) {
+        return current;
+      }
+      const next = [...current];
+      const [item] = next.splice(index, 1);
+      next.splice(nextIndex, 0, item);
+      return next.map((status, sortOrder) => ({
+        ...status,
+        sort_order: sortOrder,
+      }));
+    });
+  }, []);
+
+  const removeStatus = useCallback((id: string) => {
+    setDraftStatuses((current) =>
+      current
+        .filter((status) => status.id !== id)
+        .map((status, sortOrder) => ({
+          ...status,
+          sort_order: sortOrder,
+        }))
+    );
+  }, []);
+
+  const addStatus = useCallback(() => {
+    const trimmed = newColumnName.trim();
+    if (!trimmed) {
+      return;
+    }
+    const key = normalizeLocalStatusKey(trimmed);
+    if (!key) {
+      return;
+    }
+    if (
+      draftStatuses.some(
+        (status) => normalizeLocalStatusKey(status.name) === key
+      )
+    ) {
+      setError('That column already exists.');
+      return;
+    }
+    setError(null);
+    setDraftStatuses((current) => [
+      ...current,
+      {
+        id: buildLocalStatusId(trimmed),
+        name: trimmed,
+        color: defaultLocalStatusColor(trimmed),
+        hidden: false,
+        sort_order: current.length,
+      },
+    ]);
+    setNewColumnName('');
+  }, [draftStatuses, newColumnName]);
+
+  const saveStatuses = useCallback(async () => {
+    try {
+      setIsSaving(true);
+      setError(null);
+      await saveProjectStatusDefaults(
+        projectId,
+        draftStatuses.map((status, index) => ({
+          id: status.id,
+          name: status.name,
+          color: status.color,
+          hidden: status.hidden,
+          sort_order: index,
+        }))
+      );
+      onClose();
+      window.location.reload();
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : 'Failed to save project settings.'
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }, [draftStatuses, onClose, projectId]);
+
+  const archiveProject = useCallback(async () => {
+    try {
+      setIsSaving(true);
+      setError(null);
+      await projectsApi.update(projectId, { archived: true });
+      await queryClient.invalidateQueries({ queryKey: ['local-projects'] });
+      await queryClient.invalidateQueries({
+        queryKey: ['local-project', projectId],
+      });
+      onClose();
+      appNavigation.goToWorkspaces();
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : 'Failed to archive project.'
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }, [appNavigation, onClose, projectId, queryClient]);
+
+  return (
+    <>
+      <div className="fixed inset-0 z-[10000] bg-black/50" onClick={onClose} />
+      <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4">
+        <div
+          className="w-full max-w-3xl overflow-hidden rounded-sm border border-border bg-panel shadow-lg"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <div>
+              <h3 className="text-lg font-medium text-high">
+                Project settings
+              </h3>
+              <p className="text-sm text-low">{projectName}</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-sm p-1 text-low transition-colors hover:bg-secondary hover:text-normal"
+              aria-label="Close project settings"
+            >
+              <XIcon className="size-icon-sm" weight="bold" />
+            </button>
+          </div>
+          <div className="space-y-4 px-4 py-4">
+            <div className="rounded-sm border border-border bg-secondary/40 px-3 py-2 text-sm text-low">
+              Local-only boards keep their columns in local project scratch now.
+              Add, move, and remove empty columns here. Removing a column with
+              issues is blocked.
+            </div>
+            <div className="flex items-center justify-between gap-4 rounded-sm border border-border bg-panel px-3 py-2">
+              <div>
+                <div className="text-sm font-medium text-high">
+                  Archive project
+                </div>
+                <div className="text-xs text-low">
+                  Hide this project from the main sidebar until it is restored
+                  from Archived.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void archiveProject()}
+                disabled={isSaving}
+                className="rounded-sm border border-border px-3 py-2 text-sm text-high transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Archive
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={newColumnName}
+                onChange={(event) => {
+                  setError(null);
+                  setNewColumnName(event.target.value);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    addStatus();
+                  }
+                }}
+                placeholder="New column name"
+                className="flex-1 rounded-sm border border-border bg-panel px-3 py-2 text-sm text-high outline-none ring-0 placeholder:text-low focus:border-brand"
+              />
+              <button
+                type="button"
+                onClick={addStatus}
+                className="rounded-sm border border-border px-3 py-2 text-sm text-high transition-colors hover:bg-secondary"
+              >
+                Add column
+              </button>
+            </div>
+            {error && (
+              <div className="rounded-sm border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                {error}
+              </div>
+            )}
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-high">Columns</div>
+              <div className="space-y-2">
+                {statusCounts.map((status, index) => {
+                  const canRemove = status.count === 0;
+                  return (
+                    <div
+                      key={status.id}
+                      className="flex items-center justify-between gap-3 rounded-sm border border-border px-3 py-2"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: `hsl(${status.color})` }}
+                        />
+                        <div className="min-w-0">
+                          <div className="truncate text-sm text-high">
+                            {status.name}
+                          </div>
+                          <div className="text-xs text-low">
+                            {status.count} issues
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => moveStatus(index, -1)}
+                          disabled={index === 0}
+                          className="rounded-sm border border-border px-2 py-1 text-xs text-high transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Up
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveStatus(index, 1)}
+                          disabled={index === statusCounts.length - 1}
+                          className="rounded-sm border border-border px-2 py-1 text-xs text-high transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Down
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeStatus(status.id)}
+                          disabled={!canRemove}
+                          className="rounded-sm border border-border px-2 py-1 text-xs text-high transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                          title={
+                            canRemove
+                              ? 'Remove column'
+                              : 'Move issues out of this column before removing it'
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 border-t border-border px-4 py-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-sm border border-border px-3 py-2 text-sm text-high transition-colors hover:bg-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void saveStatuses()}
+              disabled={isSaving}
+              className="rounded-sm bg-brand px-3 py-2 text-sm font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSaving ? 'Saving…' : 'Save columns'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 type CollapsedKanbanColumnProps = {
   statusName: string;
   statusColor: string;
+  issueCount: number;
+  hasNeedsAttention: boolean;
+  hasInProgress: boolean;
   onExpand: () => void;
+  isMobile: boolean;
 };
 
 function CollapsedKanbanColumn({
   statusName,
   statusColor,
+  issueCount,
+  hasNeedsAttention,
+  hasInProgress,
   onExpand,
+  isMobile,
 }: CollapsedKanbanColumnProps) {
   const { t } = useTranslation('common');
 
@@ -135,15 +556,33 @@ function CollapsedKanbanColumn({
     <button
       type="button"
       onClick={onExpand}
-      className="group relative flex min-h-40 flex-1 overflow-hidden bg-secondary transition-colors hover:bg-secondary/80 focus:outline-none focus:ring-1 focus:ring-brand"
+      className={cn(
+        'group relative flex overflow-hidden bg-secondary transition-colors hover:bg-secondary/80 focus:outline-none focus:ring-1 focus:ring-brand',
+        isMobile ? 'min-h-0 flex-none' : 'min-h-40 flex-1'
+      )}
       aria-label={t('kanban.expandColumn', {
-        defaultValue: 'Expand {{statusName}} column',
+        defaultValue: 'Expand {{statusName}} column ({{count}} issues)',
         statusName,
+        count: issueCount,
       })}
-      title={statusName}
+      title={`${statusName} (${issueCount})`}
     >
-      <div className="sticky top-0 z-20 flex h-40 w-full shrink-0 items-start justify-center border-b bg-secondary/95 px-2 pt-4 backdrop-blur-sm">
-        <div className="[writing-mode:vertical-rl] flex items-center gap-2 whitespace-nowrap pt-2 text-center">
+      <div
+        className={cn(
+          'sticky top-0 z-20 flex w-full shrink-0 border-b bg-secondary/95 px-2 backdrop-blur-sm',
+          isMobile
+            ? 'items-center justify-start py-3'
+            : 'h-40 items-start justify-center pt-4'
+        )}
+      >
+        <div
+          className={cn(
+            'flex items-center gap-2 whitespace-nowrap text-center',
+            isMobile
+              ? '[writing-mode:horizontal-tb]'
+              : '[writing-mode:vertical-rl] pt-2'
+          )}
+        >
           <span className="text-sm font-medium leading-none text-normal">
             &gt;
           </span>
@@ -154,6 +593,29 @@ function CollapsedKanbanColumn({
           <span className="text-sm font-medium leading-none text-normal">
             {statusName}
           </span>
+          <span className="text-sm font-medium leading-none text-low">
+            ({issueCount})
+          </span>
+          {(hasNeedsAttention || hasInProgress) && (
+            <span className="flex items-center gap-1 text-low">
+              {hasNeedsAttention && (
+                <HandIcon
+                  className="size-icon-xs text-brand shrink-0"
+                  weight="fill"
+                  aria-label={t('workspaces.needsAttention')}
+                />
+              )}
+              {hasInProgress && (
+                <SpinnerGapIcon
+                  className="size-icon-xs shrink-0 animate-spin text-brand"
+                  weight="bold"
+                  aria-label={t('tasks:status.inProgress', {
+                    defaultValue: 'In Progress',
+                  })}
+                />
+              )}
+            </span>
+          )}
         </div>
       </div>
     </button>
@@ -199,6 +661,9 @@ export function KanbanContainer() {
   } = useOrgContext();
   const { activeWorkspaces } = useWorkspaceContext();
   const { userId } = useAuth();
+  const { loginStatus } = useUserSystem();
+  const isLocalOnlySession =
+    loginStatus?.status === 'loggedin' && !loginStatus.profile;
 
   // Get project name by finding the project matching current projectId
   const projectName = projects.find((p) => p.id === projectId)?.name ?? '';
@@ -247,6 +712,18 @@ export function KanbanContainer() {
   const openProjectsGuide = useCallback(() => {
     executeAction(Actions.ProjectsGuide);
   }, [executeAction]);
+
+  const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
+  const [isLocalProjectSettingsOpen, setIsLocalProjectSettingsOpen] =
+    useState(false);
+  const projectMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const projectMenuRef = useRef<HTMLDivElement>(null);
+
+  useDismissableLayer(
+    isProjectMenuOpen,
+    [projectMenuButtonRef, projectMenuRef],
+    () => setIsProjectMenuOpen(false)
+  );
 
   const projectViewSelection = useUiPreferencesStore(
     (s) => s.kanbanProjectViewSelections[projectId]
@@ -485,11 +962,14 @@ export function KanbanContainer() {
     [statuses]
   );
 
-  // Filter statuses: visible (non-hidden) for kanban, hidden for tabs
-  const visibleStatuses = useMemo(
-    () => sortedStatuses.filter((s) => !s.hidden),
-    [sortedStatuses]
-  );
+  // Fail safe if persisted project status settings hide every column.
+  // The kanban board should stay usable rather than rendering an empty state.
+  const visibleStatuses = useMemo(() => {
+    const explicitVisibleStatuses = sortedStatuses.filter((s) => !s.hidden);
+    return explicitVisibleStatuses.length > 0
+      ? explicitVisibleStatuses
+      : sortedStatuses;
+  }, [sortedStatuses]);
   const kanbanGridTemplateColumns = useMemo(
     () =>
       visibleStatuses
@@ -509,10 +989,17 @@ export function KanbanContainer() {
     return map;
   }, [visibleStatuses]);
 
-  const hiddenStatuses = useMemo(
-    () => sortedStatuses.filter((s) => s.hidden),
-    [sortedStatuses]
-  );
+  const hiddenStatuses = useMemo(() => {
+    const explicitVisibleStatusIds = new Set(
+      sortedStatuses.filter((s) => !s.hidden).map((s) => s.id)
+    );
+
+    if (explicitVisibleStatusIds.size === 0) {
+      return [];
+    }
+
+    return sortedStatuses.filter((s) => !explicitVisibleStatusIds.has(s.id));
+  }, [sortedStatuses]);
 
   const defaultCreateStatusId = useMemo(() => {
     if (kanbanViewMode === 'kanban') {
@@ -988,27 +1475,49 @@ export function KanbanContainer() {
             {projectName}
           </h2>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors"
-                aria-label="Project menu"
+          <div className="relative">
+            <button
+              ref={projectMenuButtonRef}
+              type="button"
+              className="rounded-sm p-half text-low transition-colors hover:bg-secondary hover:text-normal"
+              aria-label="Project menu"
+              aria-expanded={isProjectMenuOpen}
+              onClick={() => setIsProjectMenuOpen((value) => !value)}
+            >
+              <DotsThreeIcon className="size-icon-sm" weight="bold" />
+            </button>
+            {isProjectMenuOpen && (
+              <div
+                ref={projectMenuRef}
+                className="absolute right-0 top-full z-[10000] mt-1 min-w-48 rounded-sm border border-border bg-panel py-half shadow-md"
               >
-                <DotsThreeIcon className="size-icon-sm" weight="bold" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={openProjectsGuide}>
-                {t('kanban.openProjectsGuide', 'Projects guide')}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => executeAction(Actions.ProjectSettings)}
-              >
-                {t('kanban.editProjectSettings', 'Edit project settings')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <button
+                  type="button"
+                  className="flex w-full items-center px-base py-half text-left text-sm text-high transition-colors hover:bg-secondary"
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    openProjectsGuide();
+                  }}
+                >
+                  {t('kanban.openProjectsGuide', 'Projects guide')}
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center px-base py-half text-left text-sm text-high transition-colors hover:bg-secondary"
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    if (isLocalOnlySession) {
+                      setIsLocalProjectSettingsOpen(true);
+                      return;
+                    }
+                    void executeAction(Actions.ProjectSettings);
+                  }}
+                >
+                  {t('kanban.editProjectSettings', 'Edit project settings')}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div
@@ -1080,20 +1589,40 @@ export function KanbanContainer() {
               {visibleStatuses.map((status) => {
                 const issueIds = items[status.id] ?? [];
                 const isCollapsed = collapsedStatusIdSet.has(status.id);
+                const columnWorkspaces = issueIds.flatMap(
+                  (issueId) => workspacesByIssueId.get(issueId) ?? []
+                );
+                const hasNeedsAttention = columnWorkspaces.some(
+                  (workspace) =>
+                    workspace.hasPendingApproval ||
+                    (!!workspace.hasUnseenActivity && !workspace.isRunning)
+                );
+                const hasInProgress = columnWorkspaces.some(
+                  (workspace) =>
+                    !!workspace.isRunning && !workspace.hasPendingApproval
+                );
 
                 return (
                   <KanbanBoard
                     key={status.id}
                     className={cn(
-                      isCollapsed && !isMobile && '!min-w-16 !max-w-16'
+                      isCollapsed &&
+                        (isMobile ? '!min-h-0' : '!min-w-16 !max-w-16')
                     )}
                   >
                     {isCollapsed ? (
-                      <KanbanCards id={status.id} className="bg-secondary">
+                      <KanbanCards
+                        id={status.id}
+                        className={cn('bg-secondary', isMobile && '!flex-none')}
+                      >
                         <CollapsedKanbanColumn
                           statusName={status.name}
                           statusColor={status.color}
+                          issueCount={issueIds.length}
+                          hasNeedsAttention={hasNeedsAttention}
+                          hasInProgress={hasInProgress}
                           onExpand={() => toggleCollapsedStatus(status.id)}
+                          isMobile={isMobile}
                         />
                       </KanbanCards>
                     ) : (
@@ -1152,21 +1681,8 @@ export function KanbanContainer() {
                             if (!issue) return null;
                             const issueWorkspaces =
                               workspacesByIssueId.get(issue.id) ?? [];
-                            const workspaceIdsShownOnCard = new Set(
-                              issueWorkspaces.map((workspace) => workspace.id)
-                            );
                             const issueCardPullRequests =
-                              getPullRequestsForIssue(issue.id).filter((pr) => {
-                                if (!pr.workspace_id) {
-                                  return true;
-                                }
-
-                                // If this PR is already visible under a workspace card,
-                                // do not render it again at the issue level.
-                                return !workspaceIdsShownOnCard.has(
-                                  pr.workspace_id
-                                );
-                              });
+                              getPullRequestsForIssue(issue.id);
 
                             return (
                               <KanbanCard
@@ -1290,6 +1806,15 @@ export function KanbanContainer() {
         </div>
       )}
 
+      {isLocalProjectSettingsOpen && (
+        <LocalProjectSettingsDialog
+          projectId={projectId}
+          projectName={projectName}
+          statuses={statuses}
+          issues={issues}
+          onClose={() => setIsLocalProjectSettingsOpen(false)}
+        />
+      )}
       {isMultiSelectActive && <BulkActionBarContainer projectId={projectId} />}
     </div>
   );

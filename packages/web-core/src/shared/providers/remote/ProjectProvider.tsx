@@ -1,4 +1,4 @@
-import { useMemo, useCallback, type ReactNode } from 'react';
+import { useMemo, useCallback, useEffect, type ReactNode } from 'react';
 import { useShape } from '@/shared/integrations/electric/hooks';
 import {
   PROJECT_ISSUES_SHAPE,
@@ -27,6 +27,10 @@ import {
   ProjectContext,
   type ProjectContextValue,
 } from '@/shared/hooks/useProjectContext';
+import {
+  WORKSPACE_LINK_REFRESH_EVENT,
+  type WorkspaceLinkRefreshDetail,
+} from '@/shared/lib/workspaceLinkRefresh';
 
 interface ProjectProviderProps {
   projectId: string;
@@ -78,6 +82,44 @@ export function ProjectProvider({ projectId, children }: ProjectProviderProps) {
   const workspacesResult = useShape(PROJECT_WORKSPACES_SHAPE, params, {
     enabled,
   });
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    const handleWorkspaceLinkRefresh = (event: Event) => {
+      const customEvent = event as CustomEvent<WorkspaceLinkRefreshDetail>;
+      if (
+        customEvent.detail?.projectId &&
+        customEvent.detail.projectId !== projectId
+      ) {
+        return;
+      }
+
+      workspacesResult.retry();
+      pullRequestsResult.retry();
+      pullRequestIssuesResult.retry();
+    };
+
+    window.addEventListener(
+      WORKSPACE_LINK_REFRESH_EVENT,
+      handleWorkspaceLinkRefresh as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        WORKSPACE_LINK_REFRESH_EVENT,
+        handleWorkspaceLinkRefresh as EventListener
+      );
+    };
+  }, [
+    enabled,
+    projectId,
+    pullRequestIssuesResult,
+    pullRequestsResult,
+    workspacesResult,
+  ]);
 
   // Board readiness depends on core kanban data only.
   // Other project-scoped shapes hydrate opportunistically after render.

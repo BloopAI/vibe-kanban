@@ -9,8 +9,9 @@ use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 
 use crate::{log_msg::LogMsg, stream_lines::LinesStreamExt};
 
-// Large default for stores that need full replay from memory. Live execution/event
-// stores should generally use `with_limits` to avoid buffering excessive output.
+// Large default for stores that need full replay from memory (for example, on-demand
+// normalization of historical logs). Live execution/event stores should generally use
+// `with_limits` to keep the desktop server from buffering excessive output in-process.
 const DEFAULT_HISTORY_BYTES: usize = 100000 * 1024;
 const DEFAULT_CHANNEL_CAPACITY: usize = 100000;
 
@@ -123,6 +124,25 @@ impl MsgStore {
                     None
                 }
             }
+        });
+
+        Box::pin(hist.chain(live))
+    }
+
+    /// History then live, but treat broadcast lag as a stream error instead of
+    /// silently dropping messages. Patch-based websocket consumers should use
+    /// this so they can reconnect and rebuild from a full replay.
+    pub fn history_plus_stream_strict(
+        &self,
+    ) -> futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>> {
+        let (history, rx) = (self.get_history(), self.get_receiver());
+
+        let hist = futures::stream::iter(history.into_iter().map(Ok::<_, std::io::Error>));
+        let live = BroadcastStream::new(rx).map(|res| match res {
+            Ok(msg) => Ok(msg),
+            Err(BroadcastStreamRecvError::Lagged(n)) => Err(std::io::Error::other(format!(
+                "MsgStore broadcast lagged; {n} messages dropped"
+            ))),
         });
 
         Box::pin(hist.chain(live))

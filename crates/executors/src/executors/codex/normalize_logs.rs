@@ -431,20 +431,13 @@ impl LogState {
         let is_new = entry.is_none();
         let (content, index) = if entry.is_none() {
             let index = index_provider.next();
-            let content = truncate_to_tail(&content, STREAMING_TEXT_BYTES);
             *entry = Some(StreamingText { index, content });
             (&entry.as_ref().unwrap().content, index)
         } else {
             let streaming_state = entry.as_mut().unwrap();
             match mode {
-                UpdateMode::Append => append_truncated_tail(
-                    &mut streaming_state.content,
-                    &content,
-                    STREAMING_TEXT_BYTES,
-                ),
-                UpdateMode::Set => {
-                    streaming_state.content = truncate_to_tail(&content, STREAMING_TEXT_BYTES)
-                }
+                UpdateMode::Append => streaming_state.content.push_str(&content),
+                UpdateMode::Set => streaming_state.content = content,
             }
             (&streaming_state.content, streaming_state.index)
         };
@@ -1399,10 +1392,8 @@ fn handle_direct_notification(
                 entry_index,
                 NormalizedEntry {
                     timestamp: None,
-                    entry_type: NormalizedEntryType::ErrorMessage {
-                        error_type: NormalizedEntryError::Other,
-                    },
-                    content: format!("{}{}", notification.summary, details),
+                    entry_type: NormalizedEntryType::SystemMessage,
+                    content: format!("warning: {}{}", notification.summary, details),
                     metadata: None,
                 },
             );
@@ -1455,6 +1446,10 @@ const SUPPRESSED_STDERR_PATTERNS: &[&str] = &[
     // exists on disk but isn't indexed in the state DB — even when the Sqlite feature flag is
     // disabled (which is the default). See: https://github.com/openai/codex/commit/c38a5958
     "state db missing rollout path for",
+    // On hosts that block unprivileged user namespaces, codex-app-server emits this to stderr
+    // alongside a structured config warning. The structured event is the useful signal; the raw
+    // stderr line only creates a duplicate red chat row.
+    "Codex's Linux sandbox uses bubblewrap and needs access to create user namespaces.",
 ];
 
 /// Codex-specific stderr normalizer that filters noisy internal messages.
@@ -2212,10 +2207,8 @@ pub fn normalize_logs(
                         &entry_index,
                         NormalizedEntry {
                             timestamp: None,
-                            entry_type: NormalizedEntryType::ErrorMessage {
-                                error_type: NormalizedEntryError::Other,
-                            },
-                            content: message,
+                            entry_type: NormalizedEntryType::SystemMessage,
+                            content: format!("warning: {message}"),
                             metadata: None,
                         },
                     );
@@ -2543,7 +2536,6 @@ static SESSION_ID: LazyLock<Regex> = LazyLock::new(|| {
 
 const STREAMING_COMMAND_OUTPUT_BYTES: usize = 32 * 1024;
 const FINAL_COMMAND_OUTPUT_BYTES: usize = 64 * 1024;
-const STREAMING_TEXT_BYTES: usize = 128 * 1024;
 
 fn truncate_to_tail(input: &str, max_bytes: usize) -> String {
     if input.len() <= max_bytes {
@@ -2578,6 +2570,7 @@ fn append_truncated_tail(target: &mut String, chunk: &str, max_bytes: usize) {
 fn truncate_optional_output(output: Option<String>, max_bytes: usize) -> Option<String> {
     output.map(|value| truncate_to_tail(&value, max_bytes))
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Error {
     LaunchError { error: String },
@@ -2787,6 +2780,26 @@ mod tests {
         latest_normalized_entries(&msg_store)
     }
 
+    async fn normalize_stdout_stderr(
+        stdout_lines: &[String],
+        stderr_lines: &[String],
+    ) -> Vec<NormalizedEntry> {
+        let msg_store = Arc::new(MsgStore::new());
+        for line in stdout_lines {
+            msg_store.push_stdout(format!("{line}\n"));
+        }
+        for line in stderr_lines {
+            msg_store.push(LogMsg::Stderr(format!("{line}\n")));
+        }
+        msg_store.push_finished();
+
+        for handle in normalize_logs(msg_store.clone(), Path::new("/tmp/test-worktree")) {
+            handle.await.unwrap();
+        }
+
+        latest_normalized_entries(&msg_store)
+    }
+
     fn tool_use<'a>(entries: &'a [NormalizedEntry], tool_name: &str) -> &'a NormalizedEntry {
         entries
             .iter()
@@ -2974,5 +2987,50 @@ mod tests {
             }
             other => panic!("unexpected dynamic tool entry: {other:?}"),
         }
+    }
+
+    #[tokio::test]
+    async fn renders_warning_events_as_system_messages() {
+        let entries = normalize_lines(&[json!({
+            "method": "configWarning",
+            "params": {
+                "summary": "Codex's Linux sandbox uses bubblewrap and needs access to create user namespaces.",
+                "details": null
+            }
+        })
+        .to_string()])
+        .await;
+
+        let entry = entries
+            .iter()
+            .find(|entry| entry.content.contains("bubblewrap"))
+            .expect("missing warning entry");
+
+        assert!(matches!(
+            entry.entry_type,
+            NormalizedEntryType::SystemMessage
+        ));
+        assert_eq!(
+            entry.content,
+            "warning: Codex's Linux sandbox uses bubblewrap and needs access to create user namespaces."
+        );
+    }
+
+    #[tokio::test]
+    async fn suppresses_duplicate_bubblewrap_stderr_warning() {
+        let entries = normalize_stdout_stderr(
+            &[],
+            &[String::from(
+                "2026-04-21T11:07:43.292686Z ERROR codex_app_server: Codex's Linux sandbox uses bubblewrap and needs access to create user namespaces.",
+            )],
+        )
+        .await;
+
+        assert!(
+            !entries
+                .iter()
+                .any(|entry| entry.content.contains("bubblewrap")),
+            "expected duplicate bubblewrap stderr warning to be suppressed"
+        );
     }
 }

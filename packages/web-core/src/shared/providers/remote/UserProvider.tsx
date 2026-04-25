@@ -1,4 +1,4 @@
-import { useMemo, useCallback, type ReactNode } from 'react';
+import { useMemo, useCallback, useEffect, type ReactNode } from 'react';
 import { useShape } from '@/shared/integrations/electric/hooks';
 import { USER_WORKSPACES_SHAPE } from 'shared/remote-types';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
@@ -6,6 +6,7 @@ import {
   UserContext,
   type UserContextValue,
 } from '@/shared/hooks/useUserContext';
+import { WORKSPACE_LINK_REFRESH_EVENT } from '@/shared/lib/workspaceLinkRefresh';
 
 interface UserProviderProps {
   children: ReactNode;
@@ -20,6 +21,28 @@ export function UserProvider({ children }: UserProviderProps) {
 
   // Shape subscriptions
   const workspacesResult = useShape(USER_WORKSPACES_SHAPE, params, { enabled });
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    const handleWorkspaceLinkRefresh = () => {
+      workspacesResult.retry();
+    };
+
+    window.addEventListener(
+      WORKSPACE_LINK_REFRESH_EVENT,
+      handleWorkspaceLinkRefresh
+    );
+
+    return () => {
+      window.removeEventListener(
+        WORKSPACE_LINK_REFRESH_EVENT,
+        handleWorkspaceLinkRefresh
+      );
+    };
+  }, [enabled, workspacesResult]);
 
   // Lookup helpers
   const getWorkspacesForIssue = useCallback(

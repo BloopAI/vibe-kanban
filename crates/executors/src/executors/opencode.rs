@@ -245,6 +245,7 @@ impl Opencode {
 
         Ok(SpawnedChild {
             child,
+            transient_unit_name: None,
             exit_signal: Some(exit_signal_rx),
             cancel: Some(cancel),
         })

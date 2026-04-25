@@ -1,21 +1,101 @@
 # DELTA.md
 
-## 2026-04-15T21:00:00Z | vk/660f-vk-ops | ops-playbook adoption baseline
+## 2026-04-18T00:00:00Z | staging | local-only recovery baseline
 
-- Intent: bring this Vibe Kanban fork up to the Ops Playbook baseline without changing app behavior.
-- Completed: added root continuity docs, repo identity doc, repo-specific ops audit, release-safety doc, and a lightweight CI governance check.
-- Files changed: `AGENTS.md`, `README.md`, `STATE.md`, `STREAM.md`, `HANDOFF.md`, `DELTA.md`, `REPO_IDENTITY.md`, `docs/audits/vibe-kanban-ops-audit.md`, `docs/operations/release-safety.md`, `scripts/check-ops-playbook.mjs`, `package.json`, `.github/workflows/test.yml`.
-- Verified: `pnpm run ops:check` passed and `git diff --check` passed. `pnpm run format` did not complete because `prettier` was not available in this checkout.
-- Not complete / known gaps: no dedicated `staging` branch, no enforced branch freshness workflow yet, and local QA remains a documented manual gate.
-- Risks / warnings: future branches must keep continuity docs current or the baseline will decay into stale paperwork.
-- Next safest step: run `pnpm run ops:check`, format, and confirm the CI workflow syntax remains valid.
+- Intent: recover the usable VK board state, remove active cloud coupling, and make the local install restorable.
+- Completed:
+  - imported the VK cloud export into the local SQLite DB
+  - switched the live runtime to local-only behavior (`shared_api_base: null`)
+  - restored project settings, local columns, issue creation, workspace linking, and workspace history scroll
+  - added lean backup + one-click restore scripts
+  - installed hourly backup cron with Desktop archive mirroring
+- Verified:
+  - local API reports `shared_api_base: null`
+  - project boards and issues load locally
+  - backups are created locally and mirrored to Desktop
+- Not complete / known gaps:
+  - some historic metadata can only be reconstructed if present in export or DB snapshots
+  - project-scoped PR fallback is still broader than it should be
 
-## 2026-04-15T22:10:00Z | vk/660f-vk-ops | staging-branch model enforcement
+## 2026-04-18T22:00:00Z | staging | hyrox issue/workspace/PR repair
 
-- Intent: replace the temporary `main`-only fallback with the actual ops-playbook `staging` to `main` branch model.
-- Completed: updated repo docs toward `staging` as the integration branch, added branch-policy and branch-freshness automation, and updated CI triggers to cover `staging` and `main`.
-- Files changed: `AGENTS.md`, `REPO_IDENTITY.md`, `STATE.md`, `STREAM.md`, `HANDOFF.md`, `DELTA.md`, `README.md`, `docs/audits/vibe-kanban-ops-audit.md`, `docs/operations/release-safety.md`, `.github/workflows/test.yml`, `package.json`, `scripts/check-branch-policy.mjs`, `scripts/check-branch-freshness.mjs`.
-- Verified: `pnpm run ops:check` passed, `git diff --check` passed, targeted branch-policy validation passed, and branch-freshness validation correctly failed against `origin/main` because this branch is behind upstream.
-- Not complete / known gaps: `origin` still needs a real `staging` branch and GitHub protection settings.
-- Risks / warnings: branch-policy automation will fail for `staging`-based workflows until the branch exists remotely.
-- Next safest step: validate the new scripts locally, then create and protect `staging` on GitHub before relying on the new PR policy.
+- Intent: repair missing workspace links and merged PR indicators in the `hyroxready-app` kanban after local recovery.
+- Completed:
+  - re-linked `ART-57` to `FR::Cardio Timer Font Size`
+  - restored merged PR metadata for:
+    - `ART-60` -> `#799`
+    - `ART-61` -> `#800`
+    - `T42` -> `#801`
+  - updated issue workspace cards so PR badges are visible on small/narrow layouts
+- Files changed:
+  - `packages/ui/src/components/IssueWorkspaceCard.tsx`
+- Backups:
+  - `/home/mcp/backups/vk-hyrox-pr-workspace-fix-20260418T223433Z`
+  - `/home/mcp/backups/vk-hyrox-ui-rollout-20260418T224435Z`
+  - `/home/mcp/backups/vk-t42-pr-fix-20260418T233203Z`
+- Verified:
+  - local fallback API shows the repaired issue/workspace/PR links
+  - live bundle rolled to `index-tPwgyQmd.js`
+  - fix committed to `staging` as `1ad3ed085`
+
+## 2026-04-18T23:00:00Z | staging | vibe-kanban project smoke test
+
+- Intent: prove the `vibe-kanban` project can resume normal issue/workspace work locally.
+- Completed:
+  - created a temporary issue in the `vibe-kanban` project
+  - created a linked workspace against `_vibe_kanban_repo`
+  - verified the workspace appeared under the issue immediately
+  - stopped and deleted the temporary workspace
+  - deleted the temporary issue
+- Verified:
+  - local issue creation works
+  - local workspace creation works
+  - workspace linking/refresh works
+- Not complete / known gaps:
+  - none blocking normal project work in the `vibe-kanban` board
+
+## 2026-04-19T00:00:00Z | vk/53b2-vk-needs-review | app bar needs-review project bubbles
+
+- Intent: show a project-level visual indicator when a project has linked workspaces with agents that have finished or are waiting for review.
+- Completed:
+  - added project icon bubbles in the left app bar for projects with review-needed workspaces
+  - aggregated review-needed state from existing workspace summary signals
+  - added local helper APIs for workspace summaries and local project workspace lookup
+  - committed the feature as `5c5f83855`
+- Files changed:
+  - `packages/ui/src/components/AppBar.tsx`
+  - `packages/web-core/src/shared/components/ui-new/containers/SharedAppLayout.tsx`
+  - `packages/web-core/src/shared/lib/api.ts`
+  - `STREAM.md`
+  - `HANDOFF.md`
+- Verified:
+  - `git diff --check` passed for the touched frontend files
+- Not complete / known gaps:
+  - `pnpm run format` could not complete because `prettier` was missing
+  - `pnpm run check` could not complete because `tsc` was missing
+  - original branch push/PR preview state has since changed; see current branch history and PR state instead of this older branch-note wording
+
+## 2026-04-24T00:00:00Z | vk/7b9a-vk-worktree-clea | immediate post-merge worktree cleanup
+
+- Intent: remove workspace worktree folders as soon as a tracked PR lands in `staging` instead of waiting for the archived-workspace retention window.
+- Completed:
+  - added a shared container helper that deletes archived worktrees for workspaces with merged tracked PRs targeting `staging`
+  - called that helper from both the background PR monitor and the attach-existing-PR route
+  - added a retry after archive-script completion so archive scripts can finish before the worktree is removed
+  - archived linked local workspaces and cleaned up their worktrees when their issues move into `In Staging`, including bulk issue updates
+  - documented the new behavior in `VK_WORKFLOW.md`
+- Files changed:
+  - `crates/services/src/services/container.rs`
+  - `crates/services/src/services/pr_monitor.rs`
+  - `crates/local-deployment/src/container.rs`
+  - `crates/server/src/routes/local_compat.rs`
+  - `crates/server/src/routes/workspaces/pr.rs`
+  - `VK_WORKFLOW.md`
+  - `STREAM.md`
+  - `HANDOFF.md`
+- Verified:
+  - added unit coverage for the merged-to-`staging` PR detection helper
+  - `cargo fmt --all` completed
+- Not complete / known gaps:
+  - full test validation was not rerun after the final cleanup behavior adjustments
+  - pinned workspaces still keep the existing auto-archive exception

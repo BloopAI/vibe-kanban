@@ -1,0 +1,537 @@
+---
+title: "Local Backup and Recovery"
+description: "Create a real, restorable backup of a local Vibe Kanban install before risky work"
+---
+
+This runbook is for the **local desktop/local server install** of Vibe Kanban.
+
+Use it **before**:
+
+- rebuilding the desktop or local server binary
+- changing auth mode
+- changing workspace paths, repo links, or database schema
+- disabling cloud features
+- restoring from an older snapshot
+- asking an agent to perform broad recovery work
+
+<Warning>
+Copying only `db.v2.sqlite` is **not** a full backup.
+
+If the local install is still coupled to a shared API or Electric stream, the local SQLite database may not contain the full issue and board graph you see in the UI. In that state, a "DB backup" is only a partial backup.
+</Warning>
+
+## What a real backup must include
+
+A real local backup must capture all of these at the same time:
+
+1. **Live application state**
+   - `~/.local/share/vibe-kanban/`
+   - every `db.v2*.sqlite` file
+   - `config.json`
+   - `credentials.json` if present
+   - signing keys and other local runtime files
+2. **Service and launch configuration**
+   - `~/.config/systemd/user/vibe-kanban.service`
+   - `~/.config/systemd/user/vibe-kanban.service.d/`
+   - wrapper scripts such as `~/.local/bin/vibe-kanban-serve`
+   - the currently deployed binary such as `~/.local/bin/vibe-kanban-server-cleanfix`
+3. **Source state**
+   - the checked out repo
+   - `git status`
+   - `git diff`
+   - the current branch and current commit SHA
+4. **Runtime evidence**
+   - `/api/info`
+   - service status
+   - recent service logs
+5. **Remote-coupling proof**
+   - whether `/api/info` reports a non-null `shared_api_base`
+   - whether the local UI is still using remote or Electric-backed issue streams
+
+If any of these are missing, the backup is incomplete.
+
+## Current recommended backup system
+
+The current recommended backup path for a local-only Vibe Kanban install is a **lean restore backup**:
+
+- small enough to run regularly
+- complete enough to restore the local VK state
+- assumes GitHub remains the source of truth for repo history already safely pushed there
+- captures the **local-only** state that GitHub does not protect
+
+This is the system currently implemented in the repo.
+
+### Scripts
+
+- Backup generator: `scripts/vk_lean_backup.py`
+- One-click backup wrapper: `scripts/run_vk_lean_backup.sh`
+- Restore script: `scripts/vk_restore_lean_backup.py`
+- One-click restore wrapper: `scripts/run_vk_restore_latest.sh`
+
+### What the lean backup includes
+
+1. **VK local state**
+   - `~/.local/share/vibe-kanban/db.v2.sqlite`
+   - `config.json`
+   - `server_ed25519_signing_key`
+   - `sessions/`
+2. **Runtime launch state**
+   - `~/.config/systemd/user/vibe-kanban.service`
+   - `~/.config/systemd/user/vibe-kanban.service.d/`
+   - `~/.local/bin/vibe-kanban-serve`
+   - `~/.local/bin/vibe-kanban-server-cleanfix`
+3. **Exported cloud recovery data**
+   - latest local cloud export zip if present
+4. **Deterministic restore metadata**
+   - project/workspace inventory from the DB
+   - exact worktree mapping
+   - exact repo HEAD/branch metadata
+5. **Local-only git state not guaranteed to be on GitHub**
+   - local-only git bundles
+   - working tree diffs
+   - staged diffs
+   - untracked files
+   - stash patches
+6. **VK Codex continuity state**
+   - the dedicated VK Codex home if the service is isolated with `CODEX_HOME`
+   - at minimum:
+     - `auth.json`
+     - `config.toml`
+     - `version.json`
+     - `sessions/`
+     - `shell_snapshots/`
+     - `history.jsonl`
+     - `session_index.jsonl`
+     - `state_5.sqlite*`
+
+### What the lean backup intentionally excludes
+
+- full repo copies
+- `node_modules`
+- `target/`
+- `.gradle/`
+- `.next/`
+- other large build caches or generated output that can be rebuilt from GitHub state
+
+That exclusion is intentional. The purpose of the lean backup is to preserve what is **not** safely recoverable from GitHub while staying small enough to run frequently.
+
+## Backup outputs
+
+Each run creates:
+
+- a timestamped directory:
+  - `/home/<user>/backups/vk-lean-restore-<timestamp>/`
+- a timestamped archive:
+  - `/home/<user>/backups/vk-lean-restore-<timestamp>.tar.gz`
+- stable local pointers:
+  - `/home/<user>/backups/vk-lean-restore-latest`
+  - `/home/<user>/backups/vk-lean-restore-latest.tar.gz`
+
+The backup also mirrors the archive to the Desktop machine:
+
+- `Desktop/vk-backups/vk-lean-restore-<timestamp>.tar.gz`
+- `Desktop/vk-backups/vk-lean-restore-latest.tar.gz`
+
+The `latest` path is the one agents should prefer for fast restore.
+
+Important local-disk rule:
+
+- only the newest unpacked timestamped backup directory is kept locally
+- older local runs are kept as compressed archives only
+- this is intentional because the extracted directories are the biggest source of backup bloat
+
+## Scheduled backups
+
+The current scheduler is a user crontab entry:
+
+```cron
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+HOME=/home/mcp
+17 * * * * /home/mcp/_vibe_kanban_repo/scripts/run_vk_lean_backup.sh >> /home/mcp/backups/vk-lean-backup.cron.log 2>&1
+```
+
+That means:
+
+- the lean backup runs **once per hour**
+- it runs at minute `17`
+- it writes logs to:
+  - `/home/mcp/backups/vk-lean-backup.cron.log`
+
+### Retention
+
+The backup script keeps:
+
+- timestamped snapshot directories
+- timestamped archives
+- stable `latest` pointers
+
+Timestamped backups age out automatically using this retention ladder:
+
+- keep **hourly** backups for the last **1 day**
+- then keep **1 every 6 hours** for the next **1 day**
+- then keep **1 every 12 hours** for the next **1 day**
+- then keep **daily** backups for the next **7 days**
+- then keep **weekly** backups for the next **8 weeks**
+- then keep **monthly** backups for the next **12 months**
+- then keep **yearly** backups after that
+- always keep at least the newest **3** timestamped runs
+
+This pruning runs for:
+
+- local timestamped backup archives
+- Desktop mirrored timestamped archives
+
+For local extracted directories:
+
+- keep only the newest timestamped extracted backup directory
+- delete older extracted directories automatically after archiving
+- rely on the retained `.tar.gz` archives for older restores
+
+The stable `latest` pointers are not pruned.
+
+## One-click backup
+
+Run:
+
+```bash
+cd /home/mcp/_vibe_kanban_repo
+./scripts/run_vk_lean_backup.sh
+```
+
+This will:
+
+1. create a fresh lean restore backup under `/home/<user>/backups`
+2. update the local `latest` pointers
+3. mirror the archive to the Desktop backup folder
+
+## One-click restore
+
+To restore from the latest backup:
+
+```bash
+cd /home/mcp/_vibe_kanban_repo
+./scripts/run_vk_restore_latest.sh
+```
+
+This restores from:
+
+```bash
+/home/<user>/backups/vk-lean-restore-latest.tar.gz
+```
+
+You can also restore a specific archive directly:
+
+```bash
+cd /home/mcp/_vibe_kanban_repo
+python3 scripts/vk_restore_lean_backup.py /home/<user>/backups/vk-lean-restore-<timestamp>.tar.gz
+```
+
+## What restore actually does
+
+The restore script is designed to avoid guessing.
+
+It will:
+
+1. stop `vibe-kanban.service`
+2. restore the VK DB, config, sessions, signing key, service unit, and launcher binaries
+3. use GitHub remotes to rehydrate the underlying repos if needed
+4. fetch local-only git bundles from the backup
+5. recreate worktrees using the saved worktree manifest
+6. reapply:
+   - staged diffs
+   - working diffs
+   - untracked files
+   - stash-derived patches
+7. reload and restart `vibe-kanban.service`
+
+The goal is that an agent can restore the backup plus GitHub state and get back to what should appear to be the captured VK snapshot, without inventing missing steps.
+
+## Codex auth isolation
+
+The local VK service is expected to use its own Codex home instead of sharing `~/.codex` with tmux or other interactive Codex sessions.
+
+Current expected value:
+
+```bash
+CODEX_HOME=/home/mcp/.local/share/vibe-kanban/codex-home
+```
+
+Why:
+
+- sharing `~/.codex/auth.json` between VK and interactive Codex sessions can cause refresh-token rotation races
+- the symptom is repeated `refresh_token_reused` failures inside VK coding-agent runs
+
+<Warning>
+If you isolate VK onto a dedicated `CODEX_HOME`, do **not** copy only `auth.json`.
+
+Old workspace thread fork/resume depends on the Codex rollout/session state too. If you move VK to a fresh `CODEX_HOME` without copying the old Codex `sessions/` and related state, existing workspace threads can fail with:
+
+`thread/fork request failed: no rollout found for thread id ...`
+</Warning>
+
+When creating or restoring a dedicated VK `CODEX_HOME`, carry forward both:
+
+- authentication/config files
+- Codex session/rollout state
+
+## Required assumptions for successful restore
+
+The lean restore path assumes:
+
+- GitHub is still reachable
+- the repos already pushed to GitHub remain the source of truth for committed history
+- the backup archive and checksum manifest are intact
+
+If those assumptions are false, use a heavier full backup instead.
+
+## The most important preflight check
+
+Before calling anything a full backup, check whether the local install is still partially remote-backed:
+
+```bash
+curl -s http://127.0.0.1:4311/api/info | jq '.data.shared_api_base, .data.login_status, .data.remote_auth_degraded'
+```
+
+### Safe result
+
+The safest state for a local-only backup is:
+
+- `shared_api_base` is `null`
+- local board data is known to persist in local tables
+- the UI is not timing out on Electric streams before falling back
+
+### Unsafe result
+
+If `shared_api_base` is non-null, treat the install as **cloud-coupled** until proven otherwise.
+
+That means:
+
+- the local DB may only contain partial board state
+- restoring only the local DB may lose issue columns, links, tags, assignees, and other board metadata
+- you must not claim you have a full recovery point yet
+
+<Warning>
+If `shared_api_base` is non-null, stop and either:
+
+1. export the remote-backed project data separately, or
+2. first convert the install to fully local-only and verify that board state persists locally, then take the backup.
+
+Do not proceed with risky recovery work on a cloud-coupled install and call the result "fully backed up".
+</Warning>
+
+## Standard backup procedure
+
+Use a timestamped directory under `/home/<user>/backups/`.
+
+Example:
+
+```bash
+ts=$(date -u +%Y%m%dT%H%M%SZ)
+root="$HOME/backups/vk-full-backup-$ts"
+mkdir -p "$root"
+```
+
+### Step 1: Record current runtime state
+
+```bash
+curl -s http://127.0.0.1:4311/api/info | jq '.' > "$root/api-info.json"
+systemctl --user status vibe-kanban.service --no-pager -l > "$root/systemctl-status.txt" 2>&1 || true
+journalctl --user -u vibe-kanban.service -n 400 --no-pager > "$root/journal.txt" 2>&1 || true
+ps -eo pid,ppid,etime,%cpu,%mem,rss,comm,args --sort=-rss > "$root/processes.txt"
+```
+
+### Step 2: Back up the live local state directory
+
+```bash
+mkdir -p "$root/live-state"
+cp -a "$HOME/.local/share/vibe-kanban/." "$root/live-state/"
+```
+
+Verify the copy:
+
+```bash
+find "$root/live-state" -maxdepth 2 -type f | sort > "$root/live-state-files.txt"
+```
+
+### Step 3: Back up service definitions and launchers
+
+```bash
+mkdir -p "$root/systemd"
+cp -a "$HOME/.config/systemd/user/vibe-kanban.service" "$root/systemd/" 2>/dev/null || true
+cp -a "$HOME/.config/systemd/user/vibe-kanban.service.d" "$root/systemd/" 2>/dev/null || true
+
+cp -a "$HOME/.local/bin/vibe-kanban-serve" "$root/" 2>/dev/null || true
+cp -a "$HOME/.local/bin/vibe-kanban-server-cleanfix" "$root/" 2>/dev/null || true
+```
+
+If the service points to a different binary, copy that too.
+
+### Step 4: Back up repo state before edits
+
+From the repo root:
+
+```bash
+git rev-parse --show-toplevel > "$root/repo-root.txt"
+git branch --show-current > "$root/branch.txt"
+git rev-parse HEAD > "$root/head.txt"
+git status --short > "$root/git-status.txt"
+git diff > "$root/git.diff"
+git diff --stat > "$root/git-diffstat.txt"
+git ls-files -o --exclude-standard > "$root/untracked.txt"
+```
+
+If worktrees are in use:
+
+```bash
+git worktree list --porcelain > "$root/worktrees.txt"
+```
+
+### Step 5: Record environment that affects behavior
+
+```bash
+systemctl --user cat vibe-kanban.service > "$root/systemd-cat.txt" 2>&1 || true
+env | sort > "$root/env.txt"
+```
+
+If you are intentionally using a filtered environment, record the exact launch command separately.
+
+### Step 6: Freeze a copy of the current binary identity
+
+```bash
+sha256sum "$HOME/.local/bin/vibe-kanban-serve" > "$root/sha256.txt" 2>/dev/null || true
+sha256sum "$HOME/.local/bin/vibe-kanban-server-cleanfix" >> "$root/sha256.txt" 2>/dev/null || true
+```
+
+## Backup verification checklist
+
+Do not say "backup complete" until all of these are true:
+
+- the timestamped directory exists
+- `api-info.json` exists
+- the copied `live-state/` contains the current `db.v2.sqlite`
+- service files and launchers were copied
+- repo branch, HEAD, status, and diff were captured
+- a file listing of the copied live-state directory exists
+- the backup location was written into the task log or handoff
+- the operator explicitly noted whether the install was cloud-coupled at backup time
+
+## What does **not** count as a full backup
+
+These are common failures:
+
+- copying only `db.v2.sqlite`
+- copying only the repo
+- copying only the binary
+- saying "backup taken" without recording `/api/info`
+- taking a backup while `shared_api_base` is still non-null and pretending it is a full local recovery point
+- taking a backup after risky edits instead of before
+
+## Restore procedure
+
+<Warning>
+Restore into a quiescent system. Stop heavy agents and avoid changing the repo while restoring.
+</Warning>
+
+### Step 1: Stop the service
+
+```bash
+systemctl --user stop vibe-kanban.service
+```
+
+### Step 2: Preserve the broken current state before overwriting it
+
+```bash
+ts=$(date -u +%Y%m%dT%H%M%SZ)
+rescue="$HOME/backups/vk-pre-restore-$ts"
+mkdir -p "$rescue"
+cp -a "$HOME/.local/share/vibe-kanban/." "$rescue/" 2>/dev/null || true
+cp -a "$HOME/.config/systemd/user/vibe-kanban.service" "$rescue/" 2>/dev/null || true
+cp -a "$HOME/.config/systemd/user/vibe-kanban.service.d" "$rescue/" 2>/dev/null || true
+cp -a "$HOME/.local/bin/vibe-kanban-serve" "$rescue/" 2>/dev/null || true
+cp -a "$HOME/.local/bin/vibe-kanban-server-cleanfix" "$rescue/" 2>/dev/null || true
+```
+
+### Step 3: Restore files from the chosen backup
+
+```bash
+backup="$HOME/backups/vk-full-backup-<timestamp>"
+
+cp -a "$backup/live-state/." "$HOME/.local/share/vibe-kanban/"
+cp -a "$backup/systemd/vibe-kanban.service" "$HOME/.config/systemd/user/" 2>/dev/null || true
+cp -a "$backup/systemd/vibe-kanban.service.d" "$HOME/.config/systemd/user/" 2>/dev/null || true
+cp -a "$backup/vibe-kanban-serve" "$HOME/.local/bin/" 2>/dev/null || true
+cp -a "$backup/vibe-kanban-server-cleanfix" "$HOME/.local/bin/" 2>/dev/null || true
+```
+
+### Step 4: Reload and restart
+
+```bash
+systemctl --user daemon-reload
+systemctl --user start vibe-kanban.service
+```
+
+### Step 5: Verify immediately
+
+```bash
+curl -s http://127.0.0.1:4311/api/info | jq '.'
+systemctl --user status vibe-kanban.service --no-pager -l
+journalctl --user -u vibe-kanban.service -n 200 --no-pager
+```
+
+Then verify:
+
+- the expected binary is running
+- the expected workspace and project count is present
+- the expected board data is visible
+- the install is still local-only if that was the intended state
+
+## Required restore drill
+
+If you are building a process for future agents, do not stop at "we copied files".
+
+Run a restore drill:
+
+1. take a backup
+2. restore it into a test state or after a deliberate restart
+3. verify the same issues, statuses, workspace links, and project counts are still present
+4. document what persisted locally and what did not
+
+If you have never completed that drill, you do not have a trusted backup process yet.
+
+## Operational policy for agents
+
+Any agent working on the local VK install must follow this policy:
+
+1. Back up first.
+2. Record whether the install is still cloud-coupled.
+3. Do not call the backup "full" unless local persistence is proven.
+4. Before schema changes, binary replacement, auth changes, or repo-link changes, take a fresh timestamped backup.
+5. After each risky change, record the exact backup path in the handoff.
+
+## If the install is still cloud-coupled
+
+If `/api/info` still reports a shared API base, add these extra steps:
+
+1. Record the exact `shared_api_base` value.
+2. Record whether the UI still emits Electric timeout or fallback errors.
+3. Export or otherwise preserve the remote-backed project data before proceeding.
+4. Do not claim recovery is possible from SQLite alone.
+
+This is the specific failure mode that causes "we took backups" and "we still cannot restore the board" to both be true.
+
+## Minimum handoff note
+
+Every risky VK task should end with a note like this:
+
+```text
+Backup created: /home/<user>/backups/vk-full-backup-<timestamp>
+Service state captured: yes
+Repo state captured: yes
+/api/info captured: yes
+shared_api_base at backup time: <value or null>
+Local-only persistence verified: <yes/no>
+Restore drill completed: <yes/no>
+```
+
+If that note does not exist, future operators should assume the backup is incomplete.

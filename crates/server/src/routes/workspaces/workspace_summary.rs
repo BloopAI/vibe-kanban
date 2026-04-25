@@ -1,3 +1,9 @@
+use std::{
+    collections::HashMap,
+    sync::{LazyLock, Mutex},
+    time::{Duration, Instant},
+};
+
 use axum::{Json, extract::State, response::Json as ResponseJson};
 use db::models::{
     coding_agent_turn::CodingAgentTurn,
@@ -21,7 +27,7 @@ pub struct WorkspaceSummaryRequest {
 }
 
 /// Summary info for a single workspace
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 pub struct WorkspaceSummary {
     pub workspace_id: Uuid,
     /// Session ID of the latest execution process
@@ -52,7 +58,7 @@ pub struct WorkspaceSummary {
 }
 
 /// Response containing summaries for requested workspaces
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 pub struct WorkspaceSummaryResponse {
     pub summaries: Vec<WorkspaceSummary>,
 }
@@ -64,6 +70,17 @@ pub struct DiffStats {
     pub lines_removed: usize,
 }
 
+#[derive(Debug, Clone)]
+struct CachedWorkspaceSummaryResponse {
+    response: WorkspaceSummaryResponse,
+    generated_at: Instant,
+}
+
+static WORKSPACE_SUMMARY_CACHE: LazyLock<Mutex<HashMap<bool, CachedWorkspaceSummaryResponse>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+const WORKSPACE_SUMMARY_CACHE_TTL: Duration = Duration::from_secs(2);
+
 /// Fetch summary information for workspaces filtered by archived status.
 /// This endpoint returns data that cannot be efficiently included in the streaming endpoint.
 #[axum::debug_handler]
@@ -73,6 +90,15 @@ pub async fn get_workspace_summaries(
 ) -> Result<ResponseJson<ApiResponse<WorkspaceSummaryResponse>>, ApiError> {
     let pool = &deployment.db().pool;
     let archived = request.archived;
+
+    if let Some(cached) = WORKSPACE_SUMMARY_CACHE
+        .lock()
+        .ok()
+        .and_then(|cache| cache.get(&archived).cloned())
+        .filter(|cached| cached.generated_at.elapsed() < WORKSPACE_SUMMARY_CACHE_TTL)
+    {
+        return Ok(ResponseJson(ApiResponse::success(cached.response)));
+    }
 
     // 1. Fetch all workspaces with the given archived status
     let workspaces: Vec<Workspace> = Workspace::find_all_with_status(pool, Some(archived), None)
@@ -143,7 +169,17 @@ pub async fn get_workspace_summaries(
         })
         .collect();
 
-    Ok(ResponseJson(ApiResponse::success(
-        WorkspaceSummaryResponse { summaries },
-    )))
+    let response = WorkspaceSummaryResponse { summaries };
+
+    if let Ok(mut cache) = WORKSPACE_SUMMARY_CACHE.lock() {
+        cache.insert(
+            archived,
+            CachedWorkspaceSummaryResponse {
+                response: response.clone(),
+                generated_at: Instant::now(),
+            },
+        );
+    }
+
+    Ok(ResponseJson(ApiResponse::success(response)))
 }

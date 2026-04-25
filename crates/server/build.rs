@@ -1,5 +1,21 @@
 use std::{fs, path::Path};
 
+fn track_dir_recursive(path: &Path) {
+    println!("cargo:rerun-if-changed={}", path.display());
+
+    let Ok(entries) = fs::read_dir(path) else {
+        return;
+    };
+
+    for entry in entries.flatten() {
+        let entry_path = entry.path();
+        println!("cargo:rerun-if-changed={}", entry_path.display());
+        if entry_path.is_dir() {
+            track_dir_recursive(&entry_path);
+        }
+    }
+}
+
 fn main() {
     // Load .env from the workspace root
     let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -45,4 +61,6 @@ fn main() {
 
         fs::write(dist_path.join("index.html"), dummy_html).unwrap();
     }
+
+    track_dir_recursive(&dist_path);
 }

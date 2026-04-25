@@ -18,13 +18,16 @@ type Options = {
 
 export function useTaskWorkspaces(taskId?: string, opts?: Options) {
   const enabled = (opts?.enabled ?? true) && !!taskId;
-  const refetchInterval = opts?.refetchInterval ?? 5000;
+  const refetchInterval = opts?.refetchInterval ?? false;
 
   return useQuery<Workspace[]>({
     queryKey: taskWorkspaceKeys.byTask(taskId),
     queryFn: () => workspacesApi.getAll(taskId!),
     enabled,
     refetchInterval,
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 }
 
@@ -34,7 +37,7 @@ export function useTaskWorkspaces(taskId?: string, opts?: Options) {
  */
 export function useTaskWorkspacesWithSessions(taskId?: string, opts?: Options) {
   const enabled = (opts?.enabled ?? true) && !!taskId;
-  const refetchInterval = opts?.refetchInterval ?? 5000;
+  const refetchInterval = opts?.refetchInterval ?? false;
 
   return useQuery<WorkspaceWithSession[]>({
     queryKey: taskWorkspaceKeys.byTaskWithSessions(taskId),
@@ -51,5 +54,8 @@ export function useTaskWorkspacesWithSessions(taskId?: string, opts?: Options) {
     },
     enabled,
     refetchInterval,
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 }

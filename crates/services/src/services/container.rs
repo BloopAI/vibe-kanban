@@ -17,6 +17,8 @@ use db::{
         execution_process_repo_state::{
             CreateExecutionProcessRepoState, ExecutionProcessRepoState,
         },
+        merge::MergeStatus,
+        pull_request::PullRequest,
         repo::Repo,
         session::{CreateSession, Session, SessionError},
         workspace::{Workspace, WorkspaceError},
@@ -59,8 +61,7 @@ use worktree_manager::WorktreeError;
 
 use crate::services::{execution_process, notification::NotificationService};
 pub type ContainerRef = String;
-
-const MAX_HISTORIC_RAW_LOG_MESSAGES: usize = 2000;
+const IMMEDIATE_PR_MERGE_CLEANUP_TARGET_BRANCH: &str = "staging";
 
 #[derive(Debug, Error)]
 pub enum ContainerError {
@@ -195,6 +196,8 @@ pub trait ContainerService {
     async fn create(&self, workspace: &Workspace) -> Result<ContainerRef, ContainerError>;
 
     async fn kill_all_running_processes(&self) -> Result<(), ContainerError>;
+
+    async fn delete_worktree(&self, workspace: &Workspace) -> Result<(), ContainerError>;
 
     async fn delete(&self, workspace: &Workspace) -> Result<(), ContainerError>;
 
@@ -562,6 +565,52 @@ pub trait ContainerService {
         Ok(())
     }
 
+    /// Delete an archived workspace worktree immediately when no non-dev
+    /// processes are still running.
+    async fn maybe_delete_archived_worktree_if_safe(
+        &self,
+        workspace_id: Uuid,
+    ) -> Result<(), ContainerError> {
+        let pool = &self.db().pool;
+        let Some(workspace) = Workspace::find_by_id(pool, workspace_id).await? else {
+            return Ok(());
+        };
+
+        if !workspace.archived || workspace.worktree_deleted {
+            return Ok(());
+        }
+
+        if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
+            .await
+            .unwrap_or(true)
+        {
+            return Ok(());
+        }
+
+        self.delete(&workspace).await
+    }
+
+    /// Delete the workspace worktree immediately when a merged PR into `staging`
+    /// has archived the workspace and no non-dev processes are still running.
+    async fn maybe_delete_archived_worktree_for_merged_staging_pr(
+        &self,
+        workspace_id: Uuid,
+    ) -> Result<(), ContainerError> {
+        let pool = &self.db().pool;
+        let Some(workspace) = Workspace::find_by_id(pool, workspace_id).await? else {
+            return Ok(());
+        };
+
+        let pull_requests = PullRequest::find_by_workspace_id(pool, workspace.id).await?;
+        if !has_merged_pr_to_target_branch(&pull_requests, IMMEDIATE_PR_MERGE_CLEANUP_TARGET_BRANCH)
+        {
+            return Ok(());
+        }
+
+        self.maybe_delete_archived_worktree_if_safe(workspace_id)
+            .await
+    }
+
     fn setup_actions_for_repos(&self, repos: &[Repo]) -> Option<ExecutorAction> {
         let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 
@@ -800,259 +849,275 @@ pub trait ContainerService {
         &self,
         id: &Uuid,
     ) -> Option<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>> {
+        let process_status = ExecutionProcess::find_by_id(&self.db().pool, *id)
+            .await
+            .ok()
+            .flatten()
+            .map(|process| process.status);
+
         if let Some(store) = self.get_msg_store_by_id(id).await {
-            // First try in-memory store
-            return Some(
-                store
-                    .history_plus_stream()
-                    .filter(|msg| {
-                        future::ready(matches!(
-                            msg,
-                            Ok(LogMsg::Stdout(..) | LogMsg::Stderr(..) | LogMsg::Finished)
-                        ))
-                    })
-                    .boxed(),
-            );
-        } else {
-            let mut messages =
-                execution_process::load_raw_log_messages(&self.db().pool, *id).await?;
-            if messages.len() > MAX_HISTORIC_RAW_LOG_MESSAGES {
-                let keep_from = messages.len() - MAX_HISTORIC_RAW_LOG_MESSAGES;
-                messages.drain(..keep_from);
+            // Keep using the live in-memory store while the process is still
+            // running. Once it finishes, replay from a finite snapshot instead
+            // of subscribing to a potentially stale store forever.
+            if matches!(process_status, Some(ExecutionProcessStatus::Running)) {
+                return Some(
+                    store
+                        .history_plus_stream_strict()
+                        .filter(|msg| {
+                            future::ready(matches!(
+                                msg,
+                                Ok(LogMsg::Stdout(..) | LogMsg::Stderr(..) | LogMsg::Finished)
+                            ))
+                        })
+                        .boxed(),
+                );
             }
 
-            let stream = futures::stream::iter(
-                messages
-                    .into_iter()
-                    .filter(|m| matches!(m, LogMsg::Stdout(_) | LogMsg::Stderr(_)))
-                    .chain(std::iter::once(LogMsg::Finished))
-                    .map(Ok::<_, std::io::Error>),
-            )
-            .boxed();
+            let history = store.get_history();
+            if !history.is_empty() {
+                let stream = futures::stream::iter(
+                    history
+                        .into_iter()
+                        .filter(|m| matches!(m, LogMsg::Stdout(_) | LogMsg::Stderr(_)))
+                        .chain(std::iter::once(LogMsg::Finished))
+                        .map(Ok::<_, std::io::Error>),
+                )
+                .boxed();
 
-            Some(stream)
+                return Some(stream);
+            }
         }
+
+        execution_process::stream_raw_log_messages(&self.db().pool, *id)
+            .await
+            .map(|stream| {
+                stream
+                    .filter_map(|msg| async move {
+                        match msg {
+                            Ok(LogMsg::Stdout(content)) => Some(Ok(LogMsg::Stdout(content))),
+                            Ok(LogMsg::Stderr(content)) => Some(Ok(LogMsg::Stderr(content))),
+                            Ok(LogMsg::Finished) => None,
+                            Ok(_) => None,
+                            Err(err) => Some(Err(err)),
+                        }
+                    })
+                    .chain(futures::stream::once(async {
+                        Ok::<_, std::io::Error>(LogMsg::Finished)
+                    }))
+                    .boxed()
+            })
     }
 
     async fn stream_normalized_logs(
         &self,
         id: &Uuid,
     ) -> Option<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>> {
-        // First try in-memory store (existing behavior)
+        let process_status = ExecutionProcess::find_by_id(&self.db().pool, *id)
+            .await
+            .ok()
+            .flatten()
+            .map(|process| process.status);
+
         if let Some(store) = self.get_msg_store_by_id(id).await {
-            Some(
-                store
-                    .history_plus_stream() // BoxStream<Result<LogMsg, io::Error>>
-                    .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
-                    .chain(futures::stream::once(async {
-                        Ok::<_, std::io::Error>(LogMsg::Finished)
-                    }))
-                    .boxed(),
-            )
-        } else {
-            let mut raw_messages =
-                execution_process::load_raw_log_messages(&self.db().pool, *id).await?;
-            if raw_messages.len() > MAX_HISTORIC_RAW_LOG_MESSAGES {
-                let keep_from = raw_messages.len() - MAX_HISTORIC_RAW_LOG_MESSAGES;
-                raw_messages.drain(..keep_from);
+            // Running processes should continue streaming live normalized
+            // patches. Finished processes must replay from a finite snapshot so
+            // callers do not hang on a store that never closes.
+            if matches!(process_status, Some(ExecutionProcessStatus::Running)) {
+                return Some(
+                    store
+                        .history_plus_stream_strict() // BoxStream<Result<LogMsg, io::Error>>
+                        .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
+                        .chain(futures::stream::once(async {
+                            Ok::<_, std::io::Error>(LogMsg::Finished)
+                        }))
+                        .boxed(),
+                );
             }
 
-            // Create temporary store and populate
-            // Include JsonPatch messages (already normalized) and Stdout/Stderr (need normalization)
-            let temp_store = Arc::new(MsgStore::new());
-            for msg in raw_messages {
-                if matches!(
-                    msg,
-                    LogMsg::Stdout(_) | LogMsg::Stderr(_) | LogMsg::JsonPatch(_)
-                ) {
-                    temp_store.push(msg);
-                }
-            }
-            temp_store.push_finished();
+            let history = store.get_history();
+            if !history.is_empty() {
+                let stream = futures::stream::iter(
+                    history
+                        .into_iter()
+                        .filter(|msg| matches!(msg, LogMsg::JsonPatch(_)))
+                        .map(Ok::<_, std::io::Error>),
+                )
+                .chain(futures::stream::once(async {
+                    Ok::<_, std::io::Error>(LogMsg::Finished)
+                }))
+                .boxed();
 
-            let process = match ExecutionProcess::find_by_id(&self.db().pool, *id).await {
-                Ok(Some(process)) => process,
+                return Some(stream);
+            }
+        }
+
+        let process = match ExecutionProcess::find_by_id(&self.db().pool, *id).await {
+            Ok(Some(process)) => process,
+            Ok(None) => {
+                tracing::error!("No execution process found for ID: {}", id);
+                return None;
+            }
+            Err(e) => {
+                tracing::error!("Failed to fetch execution process {}: {}", id, e);
+                return None;
+            }
+        };
+
+        // Get the workspace to determine correct directory
+        let (workspace, _session) =
+            match process.parent_workspace_and_session(&self.db().pool).await {
+                Ok(Some((workspace, session))) => (workspace, session),
                 Ok(None) => {
-                    tracing::error!("No execution process found for ID: {}", id);
+                    tracing::error!(
+                        "No workspace/session found for session ID: {}",
+                        process.session_id
+                    );
                     return None;
                 }
                 Err(e) => {
-                    tracing::error!("Failed to fetch execution process {}: {}", id, e);
-                    return None;
-                }
-            };
-
-            // Get the workspace to determine correct directory
-            let (workspace, _session) =
-                match process.parent_workspace_and_session(&self.db().pool).await {
-                    Ok(Some((workspace, session))) => (workspace, session),
-                    Ok(None) => {
-                        tracing::error!(
-                            "No workspace/session found for session ID: {}",
-                            process.session_id
-                        );
-                        return None;
-                    }
-                    Err(e) => {
-                        tracing::error!(
-                            "Failed to fetch workspace for session {}: {}",
-                            process.session_id,
-                            e
-                        );
-                        return None;
-                    }
-                };
-
-            if let Err(err) = self.ensure_container_exists(&workspace).await {
-                tracing::warn!(
-                    "Failed to recreate worktree before log normalization for workspace {}: {}",
-                    workspace.id,
-                    err
-                );
-            }
-
-            let current_dir = self.workspace_to_current_dir(&workspace);
-
-            let executor_action = if let Ok(executor_action) = process.executor_action() {
-                executor_action
-            } else {
-                tracing::error!(
-                    "Failed to parse executor action: {:?}",
-                    process.executor_action()
-                );
-                return None;
-            };
-
-            // Spawn normalizer on populated store and collect JoinHandles
-            let handles = match executor_action.typ() {
-                ExecutorActionType::CodingAgentInitialRequest(request) => {
-                    #[cfg(feature = "qa-mode")]
-                    {
-                        let executor = QaMockExecutor;
-                        executor.normalize_logs(
-                            temp_store.clone(),
-                            &request.effective_dir(&current_dir),
-                        )
-                    }
-                    #[cfg(not(feature = "qa-mode"))]
-                    {
-                        let executor = ExecutorConfigs::get_cached()
-                            .get_coding_agent_or_default(&request.executor_config.profile_id());
-                        executor.normalize_logs(
-                            temp_store.clone(),
-                            &request.effective_dir(&current_dir),
-                        )
-                    }
-                }
-                ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-                    #[cfg(feature = "qa-mode")]
-                    {
-                        let executor = QaMockExecutor;
-                        executor.normalize_logs(
-                            temp_store.clone(),
-                            &request.effective_dir(&current_dir),
-                        )
-                    }
-                    #[cfg(not(feature = "qa-mode"))]
-                    {
-                        let executor = ExecutorConfigs::get_cached()
-                            .get_coding_agent_or_default(&request.executor_config.profile_id());
-                        executor.normalize_logs(
-                            temp_store.clone(),
-                            &request.effective_dir(&current_dir),
-                        )
-                    }
-                }
-                #[cfg(feature = "qa-mode")]
-                ExecutorActionType::ReviewRequest(_request) => {
-                    let executor = QaMockExecutor;
-                    executor.normalize_logs(temp_store.clone(), &current_dir)
-                }
-                #[cfg(not(feature = "qa-mode"))]
-                ExecutorActionType::ReviewRequest(request) => {
-                    let executor = ExecutorConfigs::get_cached()
-                        .get_coding_agent_or_default(&request.executor_config.profile_id());
-                    executor.normalize_logs(temp_store.clone(), &current_dir)
-                }
-                _ => {
-                    tracing::debug!(
-                        "Executor action doesn't support log normalization: {:?}",
-                        process.executor_action()
+                    tracing::error!(
+                        "Failed to fetch workspace for session {}: {}",
+                        process.session_id,
+                        e
                     );
                     return None;
                 }
             };
 
-            // Await all normalizer tasks, then push Ready so the dedup
-            // stream knows when to flush its buffer and terminate.
-            {
-                let store = temp_store.clone();
-                tokio::spawn(async move {
-                    for handle in handles {
-                        let _ = handle.await;
+        let current_dir = self.workspace_to_current_dir(&workspace);
+
+        let executor_action = if let Ok(executor_action) = process.executor_action() {
+            executor_action
+        } else {
+            tracing::error!(
+                "Failed to parse executor action: {:?}",
+                process.executor_action()
+            );
+            return None;
+        };
+
+        let raw_stream = execution_process::stream_raw_log_messages(&self.db().pool, *id).await?;
+
+        // Historical replays should start emitting patches immediately, even
+        // for very large finished transcripts. Feed the persisted raw log file
+        // into a temporary MsgStore incrementally so the normalizer can stream
+        // patches as it parses, instead of waiting for a full-file read.
+        let temp_store = Arc::new(MsgStore::new());
+
+        // Spawn normalizer on populated store and collect JoinHandles
+        let handles = match executor_action.typ() {
+            ExecutorActionType::CodingAgentInitialRequest(request) => {
+                #[cfg(feature = "qa-mode")]
+                {
+                    let executor = QaMockExecutor;
+                    executor
+                        .normalize_logs(temp_store.clone(), &request.effective_dir(&current_dir))
+                }
+                #[cfg(not(feature = "qa-mode"))]
+                {
+                    let executor = ExecutorConfigs::get_cached()
+                        .get_coding_agent_or_default(&request.executor_config.profile_id());
+                    executor
+                        .normalize_logs(temp_store.clone(), &request.effective_dir(&current_dir))
+                }
+            }
+            ExecutorActionType::CodingAgentFollowUpRequest(request) => {
+                #[cfg(feature = "qa-mode")]
+                {
+                    let executor = QaMockExecutor;
+                    executor
+                        .normalize_logs(temp_store.clone(), &request.effective_dir(&current_dir))
+                }
+                #[cfg(not(feature = "qa-mode"))]
+                {
+                    let executor = ExecutorConfigs::get_cached()
+                        .get_coding_agent_or_default(&request.executor_config.profile_id());
+                    executor
+                        .normalize_logs(temp_store.clone(), &request.effective_dir(&current_dir))
+                }
+            }
+            #[cfg(feature = "qa-mode")]
+            ExecutorActionType::ReviewRequest(_request) => {
+                let executor = QaMockExecutor;
+                executor.normalize_logs(temp_store.clone(), &current_dir)
+            }
+            #[cfg(not(feature = "qa-mode"))]
+            ExecutorActionType::ReviewRequest(request) => {
+                let executor = ExecutorConfigs::get_cached()
+                    .get_coding_agent_or_default(&request.executor_config.profile_id());
+                executor.normalize_logs(temp_store.clone(), &current_dir)
+            }
+            _ => {
+                tracing::debug!(
+                    "Executor action doesn't support log normalization: {:?}",
+                    process.executor_action()
+                );
+                return None;
+            }
+        };
+
+        let output_finished = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let output_finished_task = output_finished.clone();
+        let temp_store_for_finish = temp_store.clone();
+        tokio::spawn(async move {
+            for handle in handles {
+                let _ = handle.await;
+            }
+            output_finished_task.store(true, std::sync::atomic::Ordering::SeqCst);
+            temp_store_for_finish.push_finished();
+        });
+
+        let temp_store_for_feed = temp_store.clone();
+        tokio::spawn(async move {
+            tokio::pin!(raw_stream);
+
+            while let Some(msg) = raw_stream.next().await {
+                match msg {
+                    Ok(msg @ (LogMsg::Stdout(_) | LogMsg::Stderr(_) | LogMsg::JsonPatch(_))) => {
+                        temp_store_for_feed.push(msg);
                     }
-                    store.push(LogMsg::Ready);
-                });
+                    Ok(LogMsg::Finished) => {}
+                    Ok(_) => {}
+                    Err(e) => {
+                        temp_store_for_feed.push(LogMsg::Stderr(format!("stream error: {e}")));
+                    }
+                }
             }
 
-            // Stream normalized patches, deduplicating consecutive patches
-            // that target the same path (only the final state matters for
-            // historical replay). The Ready sentinel flushes the buffer.
-            enum PatchOrDone {
-                Patch(Patch),
-                Done,
-            }
+            temp_store_for_feed.push_finished();
+        });
 
-            let stream = temp_store
-                .history_plus_stream()
-                .filter_map(|msg| async move {
-                    match msg {
-                        Ok(LogMsg::JsonPatch(patch)) => Some(PatchOrDone::Patch(patch)),
-                        Ok(LogMsg::Ready) => Some(PatchOrDone::Done),
-                        _ => None,
-                    }
-                });
-
-            let deduped = futures::stream::unfold(
-                (stream.boxed(), None::<Patch>, HashSet::<String>::new()),
-                |(mut stream, buffered, mut sent_paths)| async move {
-                    match stream.next().await {
-                        Some(PatchOrDone::Patch(patch)) => {
-                            let Some(prev) = buffered else {
-                                // First patch — just buffer it
-                                return Some((None, (stream, Some(patch), sent_paths)));
+        Some(
+            temp_store
+                .history_plus_stream_strict()
+                .scan(HashSet::<String>::new(), move |sent_paths, msg| {
+                    let output_finished = output_finished.clone();
+                    future::ready(match msg {
+                        Ok(LogMsg::JsonPatch(patch)) => {
+                            let patch = match patch_entry_path(&patch) {
+                                Some(_) if is_add_or_replace(&patch) => {
+                                    fix_patch_ops(patch, sent_paths)
+                                }
+                                _ => patch,
                             };
-                            if patch_entry_path(&patch) == patch_entry_path(&prev)
-                                && is_add_or_replace(&patch)
-                                && is_add_or_replace(&prev)
-                            {
-                                // Same path, both add/replace — replace buffer
-                                Some((None, (stream, Some(patch), sent_paths)))
-                            } else {
-                                // Different — emit prev, buffer new
-                                let prev = fix_patch_ops(prev, &mut sent_paths);
-                                Some((Some(prev), (stream, Some(patch), sent_paths)))
-                            }
+                            Some(Some(Ok(LogMsg::JsonPatch(patch))))
                         }
-                        Some(PatchOrDone::Done) | None => {
-                            // Sentinel or stream end: flush buffer and terminate
-                            if let Some(prev) = buffered {
-                                let prev = fix_patch_ops(prev, &mut sent_paths);
-                                return Some((Some(prev), (stream, None, sent_paths)));
-                            }
+                        Ok(LogMsg::Finished)
+                            if output_finished.load(std::sync::atomic::Ordering::SeqCst) =>
+                        {
                             None
                         }
-                    }
-                },
-            )
-            .filter_map(|opt| async move { opt })
-            .map(|p| Ok::<_, std::io::Error>(LogMsg::JsonPatch(p)))
-            .chain(futures::stream::once(async {
-                Ok::<_, std::io::Error>(LogMsg::Finished)
-            }));
-
-            Some(deduped.boxed())
-        }
+                        Ok(LogMsg::Finished) => Some(None),
+                        Ok(_) => Some(None),
+                        Err(e) => Some(Some(Err(e))),
+                    })
+                })
+                .filter_map(future::ready)
+                .chain(futures::stream::once(async {
+                    Ok::<_, std::io::Error>(LogMsg::Finished)
+                }))
+                .boxed(),
+        )
     }
 
     async fn start_workspace(
@@ -1367,5 +1432,56 @@ pub trait ContainerService {
 
         tracing::debug!("Started next action: {:?}", next_action);
         Ok(())
+    }
+}
+
+fn has_merged_pr_to_target_branch(pull_requests: &[PullRequest], target_branch_name: &str) -> bool {
+    pull_requests.iter().any(|pr| {
+        pr.target_branch_name == target_branch_name && matches!(pr.pr_status, MergeStatus::Merged)
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::Utc;
+    use uuid::Uuid;
+
+    use super::*;
+
+    fn pr(target_branch_name: &str, pr_status: MergeStatus) -> PullRequest {
+        PullRequest {
+            id: Uuid::new_v4().to_string(),
+            workspace_id: Some(Uuid::new_v4()),
+            repo_id: Some(Uuid::new_v4()),
+            pr_url: "https://example.com/pr/1".to_string(),
+            pr_number: 1,
+            pr_status,
+            target_branch_name: target_branch_name.to_string(),
+            merged_at: None,
+            merge_commit_sha: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            synced_at: None,
+        }
+    }
+
+    #[test]
+    fn detects_merged_staging_prs() {
+        let pull_requests = vec![
+            pr("main", MergeStatus::Merged),
+            pr("staging", MergeStatus::Merged),
+        ];
+
+        assert!(has_merged_pr_to_target_branch(&pull_requests, "staging"));
+    }
+
+    #[test]
+    fn ignores_non_merged_or_non_staging_prs() {
+        let pull_requests = vec![
+            pr("staging", MergeStatus::Open),
+            pr("main", MergeStatus::Merged),
+        ];
+
+        assert!(!has_merged_pr_to_target_branch(&pull_requests, "staging"));
     }
 }

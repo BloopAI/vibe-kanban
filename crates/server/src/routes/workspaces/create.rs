@@ -2,13 +2,17 @@ use std::collections::HashMap;
 
 use axum::{Json, extract::State, response::Json as ResponseJson};
 use db::models::{
+    project::Project,
     requests::{
         CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, CreateWorkspaceApiRequest,
+        LinkedIssueInfo,
     },
+    task::Task,
     workspace::{CreateWorkspace, Workspace},
 };
 use deployment::Deployment;
 use services::services::container::ContainerService;
+use sqlx::Error as SqlxError;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -23,6 +27,7 @@ use crate::{
 pub(crate) async fn create_workspace_record(
     deployment: &DeploymentImpl,
     name: Option<String>,
+    linked_issue: Option<&LinkedIssueInfo>,
 ) -> Result<Workspace, ApiError> {
     let workspace_id = Uuid::new_v4();
     let branch_label = name
@@ -44,14 +49,75 @@ pub(crate) async fn create_workspace_record(
     )
     .await?;
 
+    if let Some(task_id) = resolve_local_linked_issue_task_id(deployment, linked_issue).await? {
+        Workspace::update_task_id(&deployment.db().pool, workspace_id, Some(task_id)).await?;
+        return Workspace::find_by_id(&deployment.db().pool, workspace_id)
+            .await?
+            .ok_or_else(|| {
+                ApiError::BadRequest("Workspace was created but could not be reloaded".to_string())
+            });
+    }
+
     Ok(workspace)
+}
+
+async fn resolve_local_linked_issue_task_id(
+    deployment: &DeploymentImpl,
+    linked_issue: Option<&LinkedIssueInfo>,
+) -> Result<Option<Uuid>, ApiError> {
+    let Some(linked_issue) = linked_issue else {
+        return Ok(None);
+    };
+
+    let project =
+        match Project::find_by_id(&deployment.db().pool, linked_issue.remote_project_id).await {
+            Ok(project) => project,
+            Err(SqlxError::RowNotFound) => return Ok(None),
+            Err(e) => return Err(e.into()),
+        };
+
+    if project.remote_project_id.is_some() {
+        return Ok(None);
+    }
+
+    let task = match Task::find_by_id(&deployment.db().pool, linked_issue.issue_id).await {
+        Ok(task) => task,
+        Err(SqlxError::RowNotFound) => return Ok(None),
+        Err(e) => return Err(e.into()),
+    };
+
+    Ok(task
+        .filter(|task| task.project_id == linked_issue.remote_project_id)
+        .map(|task| task.id))
+}
+
+async fn ensure_local_linked_issue_task_id(
+    deployment: &DeploymentImpl,
+    workspace_id: Uuid,
+    linked_issue: Option<&LinkedIssueInfo>,
+) -> Result<Option<Uuid>, ApiError> {
+    const MAX_ATTEMPTS: usize = 8;
+    const RETRY_DELAY_MS: u64 = 250;
+
+    for attempt in 0..MAX_ATTEMPTS {
+        if let Some(task_id) = resolve_local_linked_issue_task_id(deployment, linked_issue).await? {
+            Workspace::update_task_id(&deployment.db().pool, workspace_id, Some(task_id)).await?;
+            return Ok(Some(task_id));
+        }
+
+        if attempt + 1 < MAX_ATTEMPTS {
+            tokio::time::sleep(tokio::time::Duration::from_millis(RETRY_DELAY_MS)).await;
+        }
+    }
+
+    Ok(None)
 }
 
 pub async fn create_workspace(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateWorkspaceApiRequest>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
-    let workspace = create_workspace_record(&deployment, payload.name).await?;
+    let workspace = create_workspace_record(&deployment, payload.name, None).await?;
 
     deployment
         .track_if_analytics_allowed(
@@ -236,8 +302,26 @@ pub async fn create_and_start_workspace(
 
     let mut managed_workspace = deployment
         .workspace_manager()
-        .load_managed_workspace(create_workspace_record(&deployment, name).await?)
+        .load_managed_workspace(
+            create_workspace_record(&deployment, name, linked_issue.as_ref()).await?,
+        )
         .await?;
+
+    if linked_issue.is_some() && managed_workspace.workspace.task_id.is_none() {
+        if ensure_local_linked_issue_task_id(
+            &deployment,
+            managed_workspace.workspace.id,
+            linked_issue.as_ref(),
+        )
+        .await?
+        .is_some()
+        {
+            managed_workspace = deployment
+                .workspace_manager()
+                .load_managed_workspace(managed_workspace.workspace.clone())
+                .await?;
+        }
+    }
 
     for repo in &repos {
         managed_workspace

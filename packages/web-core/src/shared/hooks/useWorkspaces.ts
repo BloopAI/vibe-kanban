@@ -1,5 +1,9 @@
-import { useCallback, useMemo } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from '@tanstack/react-query';
 import { useJsonPatchWsStream } from '@/shared/hooks/useJsonPatchWsStream';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import { makeLocalApiRequest } from '@/shared/lib/localApiTransport';
@@ -129,6 +133,7 @@ async function fetchWorkspaceSummariesByArchived(
 
 export function useWorkspaces(): UseWorkspacesResult {
   const hostId = useHostId();
+  const queryClient = useQueryClient();
 
   // Two separate WebSocket connections: one for active, one for archived
   // No limit param - we fetch all and slice on frontend so backfill works when archiving
@@ -166,10 +171,10 @@ export function useWorkspaces(): UseWorkspacesResult {
       queryKey: workspaceSummaryKeys.byArchived(false, hostId),
       queryFn: () => fetchWorkspaceSummariesByArchived(false, hostId),
       enabled: activeIsInitialized,
-      staleTime: 1000,
-      refetchInterval: 15000,
+      staleTime: 60000,
+      refetchInterval: false,
       refetchOnWindowFocus: false,
-      refetchOnMount: 'always',
+      refetchOnMount: false,
       placeholderData: keepPreviousData,
     });
 
@@ -179,12 +184,75 @@ export function useWorkspaces(): UseWorkspacesResult {
       queryKey: workspaceSummaryKeys.byArchived(true, hostId),
       queryFn: () => fetchWorkspaceSummariesByArchived(true, hostId),
       enabled: archivedIsInitialized,
-      staleTime: 1000,
-      refetchInterval: 15000,
+      staleTime: 60000,
+      refetchInterval: false,
       refetchOnWindowFocus: false,
-      refetchOnMount: 'always',
+      refetchOnMount: false,
       placeholderData: keepPreviousData,
     });
+
+  const activeRefreshTimeoutRef = useRef<number | null>(null);
+  const archivedRefreshTimeoutRef = useRef<number | null>(null);
+  const didSeeActiveSnapshotRef = useRef(false);
+  const didSeeArchivedSnapshotRef = useRef(false);
+
+  useEffect(() => {
+    if (!activeIsInitialized || !activeData) {
+      return;
+    }
+
+    if (!didSeeActiveSnapshotRef.current) {
+      didSeeActiveSnapshotRef.current = true;
+      return;
+    }
+
+    if (activeRefreshTimeoutRef.current !== null) {
+      window.clearTimeout(activeRefreshTimeoutRef.current);
+    }
+
+    activeRefreshTimeoutRef.current = window.setTimeout(() => {
+      activeRefreshTimeoutRef.current = null;
+      void queryClient.invalidateQueries({
+        queryKey: workspaceSummaryKeys.byArchived(false, hostId),
+      });
+    }, 250);
+
+    return () => {
+      if (activeRefreshTimeoutRef.current !== null) {
+        window.clearTimeout(activeRefreshTimeoutRef.current);
+        activeRefreshTimeoutRef.current = null;
+      }
+    };
+  }, [activeData, activeIsInitialized, hostId, queryClient]);
+
+  useEffect(() => {
+    if (!archivedIsInitialized || !archivedData) {
+      return;
+    }
+
+    if (!didSeeArchivedSnapshotRef.current) {
+      didSeeArchivedSnapshotRef.current = true;
+      return;
+    }
+
+    if (archivedRefreshTimeoutRef.current !== null) {
+      window.clearTimeout(archivedRefreshTimeoutRef.current);
+    }
+
+    archivedRefreshTimeoutRef.current = window.setTimeout(() => {
+      archivedRefreshTimeoutRef.current = null;
+      void queryClient.invalidateQueries({
+        queryKey: workspaceSummaryKeys.byArchived(true, hostId),
+      });
+    }, 250);
+
+    return () => {
+      if (archivedRefreshTimeoutRef.current !== null) {
+        window.clearTimeout(archivedRefreshTimeoutRef.current);
+        archivedRefreshTimeoutRef.current = null;
+      }
+    };
+  }, [archivedData, archivedIsInitialized, hostId, queryClient]);
 
   const workspaces = useMemo(() => {
     if (!activeData?.workspaces) return [];

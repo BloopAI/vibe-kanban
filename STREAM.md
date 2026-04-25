@@ -2,69 +2,71 @@
 
 ## Stream Identifier
 
-- Branch: `vk/660f-vk-ops`
-- PR: Not opened yet
-- Worktree: `/home/mcp/code/worktrees/.vibe-kanban-workspaces/660f-vk-ops/_vibe_kanban_repo`
+- Branch: `vk/7b9a-vk-worktree-clea`
+- Repo: `/home/mcp/code/worktrees/7b9a-vk-worktree-clea/_vibe_kanban_repo`
+- Base: `fork/staging`
+- Working mode: workspace lifecycle cleanup
 
 ## Objective
 
-- Move this Vibe Kanban fork from a lightweight ops-playbook baseline to an enforced `staging` plus `main` branch model.
+- Delete workspace worktree folders as soon as a tracked PR into `staging` is merged, and archive linked workspaces plus clean up their worktrees automatically when an issue is moved into `In Staging`.
 
 ## In Scope
 
-- Updating root continuity docs to the real branch model
-- Repo-specific release-safety updates for `staging` promotion
-- CI enforcement for branch policy and branch freshness
+- PR-merge monitoring paths that already archive workspaces
+- Safe immediate worktree deletion for merged-to-`staging` workspaces
+- Local issue status transitions into `In Staging`
+- Workflow documentation for the new behaviour
+- Branch-local continuity docs for this stream
 
 ## Out of Scope
 
-- Changing application runtime behavior
-- Reworking release packaging and publishing mechanics
+- Changing merge behavior for direct local merges
+- Altering the general archived-workspace retention policy for other cases
+- Changing pin semantics for merged workspaces
 
 ## Stream-Specific Decisions
 
-- Adopt the actual playbook branch model in repo docs and CI now.
-- Treat remote `staging` branch creation and GitHub protection settings as the remaining human setup step.
+- Reuse the existing archive-on-merge flow instead of adding a separate post-merge job.
+- Only trigger immediate folder deletion for PRs merged into `staging`.
+- If an archive script is still running, defer deletion until that archive script exits.
+- Treat moving a local issue into `In Staging` as an explicit archive-and-cleanup signal for linked local workspaces.
+- Preserve the current pinned-workspace exception from auto-archiving.
 
 ## Relevant Files / Modules
 
-- `AGENTS.md`
-- `README.md`
-- `STATE.md`
-- `STREAM.md`
+- `crates/services/src/services/container.rs`
+- `crates/services/src/services/pr_monitor.rs`
+- `crates/local-deployment/src/container.rs`
+- `crates/server/src/routes/local_compat.rs`
+- `crates/server/src/routes/workspaces/pr.rs`
+- `VK_WORKFLOW.md`
 - `HANDOFF.md`
 - `DELTA.md`
-- `REPO_IDENTITY.md`
-- `docs/audits/vibe-kanban-ops-audit.md`
-- `docs/operations/release-safety.md`
-- `.github/workflows/test.yml`
-- `package.json`
-- `scripts/check-ops-playbook.mjs`
-- `scripts/check-branch-policy.mjs`
-- `scripts/check-branch-freshness.mjs`
 
 ## Current Status
 
-- Confirmed:
-  - Ops Playbook reviewed.
-  - Existing Vibe Kanban CI and release workflows audited.
-  - `pnpm run ops:check` passed.
-  - `git diff --check` passed.
-  - Branch-policy script passed targeted validation for `staging` and `main` PR paths.
+- Completed:
+  - added a shared container helper for safe immediate deletion of archived worktrees
+  - kept the merged-PR-to-`staging` cleanup path on top of that helper
+  - wired the PR monitor and attach-existing-PR route to clean up worktrees after archive-on-merge succeeds
+  - added a retry after archive-script completion so deletion waits for archive scripts to finish
+  - archived linked local workspaces and cleaned up their worktrees when a local issue transitions into `In Staging`, including bulk issue updates
+  - documented the new post-merge cleanup behaviour in `VK_WORKFLOW.md`
+- In progress:
+  - rebasing the branch onto current `fork/staging`
 - Pending:
-  - Branch-model docs and CI from `main`-only to `staging` plus `main`.
-  - Re-run `pnpm run format` in an environment where frontend formatting dependencies are installed.
-  - Create the real `staging` branch on GitHub and validate freshness against it.
+  - finish the rebase
+  - merge this branch into `staging`
 
 ## Risks / Regression Traps
 
-- Overstating enforcement would be misleading because branch protection and staging promotion are not implemented here yet.
-- GitHub does not yet have a real `staging` branch.
-- The new freshness check currently fails against `origin/main` because this branch is behind the latest upstream tip.
-- Root continuity docs can cause churn if future branches do not keep them targeted and concise.
+- Deleting the worktree before an archive script finishes would break archive-script execution; the retry path must remain in place.
+- The merged-PR cleanup path relies on tracked PR metadata; workspaces without tracked PR rows still fall back to the existing time-based cleanup path unless `In Staging` is used.
+- Pinned workspaces still skip archive-on-merge, so they do not use the merged-PR immediate deletion path.
 
 ## Next Safe Steps
 
-1. Run targeted validation plus `ops:check`.
-2. Create and protect `staging` on GitHub, then validate freshness against it.
-3. Run formatting in a fully bootstrapped workspace.
+1. Resolve the current continuity-doc rebase conflict by keeping this branch’s stream notes.
+2. Continue the rebase onto `fork/staging`.
+3. Merge the rebased branch into the local `staging` checkout.

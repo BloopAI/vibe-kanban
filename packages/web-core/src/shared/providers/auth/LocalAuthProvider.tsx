@@ -11,16 +11,17 @@ interface LocalAuthProviderProps {
 
 export function LocalAuthProvider({ children }: LocalAuthProviderProps) {
   const { loginStatus } = useUserSystem();
-  const isRemoteSignedIn =
-    loginStatus?.status === 'loggedin' && !!loginStatus.profile;
+  // Local VK can run without a cloud profile; if the backend reports
+  // `loggedin`, treat that as authenticated for local-only UI gating.
+  const isSignedIn = loginStatus?.status === 'loggedin';
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      isSignedIn: isRemoteSignedIn,
+      isSignedIn: isSignedIn,
       isLoaded: loginStatus !== null,
-      userId: isRemoteSignedIn ? (loginStatus?.profile?.user_id ?? null) : null,
+      userId: isSignedIn ? (loginStatus?.profile?.user_id ?? null) : null,
     }),
-    [isRemoteSignedIn, loginStatus]
+    [isSignedIn, loginStatus]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

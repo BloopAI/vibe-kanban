@@ -141,9 +141,15 @@ pub struct UiPreferencesData {
     /// Last selected project ID
     #[serde(default)]
     pub selected_project_id: Option<String>,
+    /// Preferred order for local-only project icons in the app bar
+    #[serde(default)]
+    pub local_project_order: Vec<String>,
     /// Default setting for creating a draft workspace from new issues
     #[serde(default)]
     pub create_draft_workspace_by_default: Option<bool>,
+    /// Whether to show optional links and profile controls in the left app bar
+    #[serde(default)]
+    pub show_left_column_links: Option<bool>,
     /// Kanban project view selections (active view per project)
     #[serde(default)]
     pub kanban_project_view_selections: std::collections::HashMap<String, serde_json::Value>,
@@ -193,10 +199,22 @@ pub struct DraftWorkspaceRepo {
     pub target_branch: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct ProjectStatusConfigData {
+    pub id: String,
+    pub name: String,
+    pub color: String,
+    #[serde(default)]
+    pub hidden: bool,
+    pub sort_order: i64,
+}
+
 /// Data for project repo defaults scratch (default repos/branches per project)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ProjectRepoDefaultsData {
     pub repos: Vec<DraftWorkspaceRepo>,
+    #[serde(default)]
+    pub statuses: Vec<ProjectStatusConfigData>,
 }
 
 /// Data for a draft issue scratch (issue creation on kanban board)
@@ -306,13 +324,13 @@ impl TryFrom<ScratchRow> for Scratch {
 }
 
 /// Request body for creating a scratch (id comes from URL path, type from payload)
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct CreateScratch {
     pub payload: ScratchPayload,
 }
 
 /// Request body for updating a scratch
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct UpdateScratch {
     pub payload: ScratchPayload,
 }

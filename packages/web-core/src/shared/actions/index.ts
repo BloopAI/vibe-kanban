@@ -280,6 +280,48 @@ export const Actions = {
     },
   },
 
+  DeleteWorkspaceWorktree: {
+    id: 'delete-worktree',
+    label: 'Delete Worktree',
+    icon: ProhibitIcon,
+    shortcut: 'W T',
+    variant: 'destructive',
+    requiresTarget: ActionTargetType.WORKSPACE,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.layoutMode === 'workspaces',
+    isEnabled: (ctx) => !ctx.isAttemptRunning,
+    execute: async (ctx, workspaceId) => {
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
+
+      if (workspace.worktree_deleted) {
+        await ConfirmDialog.show({
+          title: 'Worktree Already Deleted',
+          message:
+            'This workspace does not currently have a worktree. It will be recreated automatically the next time you open it in the editor or run the agent.',
+          confirmText: 'OK',
+          showCancelButton: false,
+          variant: 'info',
+        });
+        return;
+      }
+
+      const result = await ConfirmDialog.show({
+        title: 'Delete Worktree',
+        message:
+          'Delete the local worktree for this workspace but keep the workspace record? VK will recreate the worktree automatically if you open the workspace again later.',
+        confirmText: 'Delete Worktree',
+        cancelText: 'Cancel',
+        variant: 'destructive',
+      });
+
+      if (result !== 'confirmed') {
+        return;
+      }
+
+      await workspacesApi.deleteWorktree(workspaceId);
+      invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+    },
+  },
+
   DeleteWorkspace: {
     id: 'delete-workspace',
     label: 'Delete',
@@ -428,7 +470,8 @@ export const Actions = {
     label: 'Project Settings',
     icon: GearIcon,
     requiresTarget: ActionTargetType.NONE,
-    isVisible: (ctx) => ctx.layoutMode === 'kanban',
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.kanbanOrgId !== 'local',
     execute: async (ctx) => {
       await SettingsDialog.show({
         initialSection: 'remote-projects',
@@ -504,7 +547,8 @@ export const Actions = {
     label: 'Projects Guide',
     icon: QuestionIcon,
     requiresTarget: ActionTargetType.NONE,
-    isVisible: (ctx) => ctx.layoutMode === 'kanban',
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.kanbanOrgId !== 'local',
     execute: async () => {
       await ProjectsGuideDialog.show();
     },

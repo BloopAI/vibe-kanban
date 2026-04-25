@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react';
 
 export const WorkspaceContext = createContext<string | undefined>(undefined);
 export const SessionContext = createContext<string | undefined>(undefined);
+export const HostIdContext = createContext<string | null>(null);
 
 export function useWorkspaceId() {
   return useContext(WorkspaceContext);
@@ -9,6 +10,22 @@ export function useWorkspaceId() {
 
 export function useSessionId() {
   return useContext(SessionContext);
+}
+
+export function useHostId() {
+  return useContext(HostIdContext);
+}
+
+export function scopeLocalApiPath(
+  pathOrUrl: string,
+  hostId: string | null | undefined
+) {
+  if (!hostId) return pathOrUrl;
+  if (!pathOrUrl.startsWith('/api/') || pathOrUrl.startsWith('/api/host/')) {
+    return pathOrUrl;
+  }
+
+  return `/api/host/${hostId}${pathOrUrl.slice('/api'.length)}`;
 }
 
 // Local attachment metadata for rendering uploaded attachments before they're saved

@@ -25,6 +25,7 @@ import {
   ConversationList,
   type ConversationListHandle,
 } from '@/features/workspace-chat/ui/ConversationListContainer';
+import { usePinConversationToBottomOnChatBoxResize } from '@/features/workspace-chat/ui/usePinConversationToBottomOnChatBoxResize';
 import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryUiContext';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
@@ -182,6 +183,7 @@ function WorkspaceSessionPanel({
   const routeState = useCurrentKanbanRouteState();
   const { workspaces: remoteWorkspaces } = useUserContext();
   const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
+  const containerRef = useRef<HTMLDivElement>(null);
   const conversationListRef = useRef<ConversationListHandle>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const { data: workspace, isLoading: isWorkspaceLoading } = useWorkspaceRecord(
@@ -328,15 +330,27 @@ function WorkspaceSessionPanel({
     setIsAtBottom(atBottom);
   }, []);
 
+  const streamScopeKey = `${workspaceId}-${selectedSessionId ?? 'new'}`;
+
+  usePinConversationToBottomOnChatBoxResize({
+    containerRef,
+    conversationListRef,
+    isAtBottom,
+    scopeKey: `${workspaceId}:${selectedSessionId ?? 'new'}`,
+  });
+
   return (
     <ExecutionProcessesProvider
-      key={`${workspaceId}-${selectedSessionId ?? 'new'}`}
+      key={streamScopeKey}
       sessionId={selectedSessionId}
     >
       <ApprovalFeedbackProvider>
-        <EntriesProvider key={`${workspaceId}-${selectedSessionId ?? 'new'}`}>
+        <EntriesProvider key={streamScopeKey}>
           <MessageEditProvider>
-            <div className="relative flex h-full flex-1 flex-col bg-primary">
+            <div
+              ref={containerRef}
+              className="relative flex h-full flex-1 flex-col bg-primary"
+            >
               <div className="flex items-center justify-between px-base py-half border-b shrink-0">
                 <div className="flex items-center gap-half min-w-0 font-ibm-plex-mono">
                   <button
@@ -383,7 +397,7 @@ function WorkspaceSessionPanel({
                   <div className="w-chat max-w-full h-full">
                     <RetryUiProvider workspaceId={workspaceWithSession.id}>
                       <ConversationList
-                        key={`${workspaceId}-${selectedSessionId ?? 'new'}`}
+                        key={streamScopeKey}
                         ref={conversationListRef}
                         attempt={workspaceWithSession}
                         onAtBottomChange={handleAtBottomChange}
@@ -412,7 +426,10 @@ function WorkspaceSessionPanel({
                 </div>
               )}
 
-              <div className="flex justify-center @container pl-px">
+              <div
+                className="flex justify-center @container pl-px"
+                data-chatbox-container="true"
+              >
                 <SessionChatBoxContainer
                   {...(isSessionsLoading || isWorkspaceLoading
                     ? {
@@ -642,7 +659,17 @@ export function ProjectRightSidebarContainer() {
           key={rightPanelState.draftId}
           draftId={rightPanelState.draftId}
         >
-          <CreateChatBoxContainer onWorkspaceCreated={handleWorkspaceCreated} />
+          <CreateChatBoxContainer
+            onWorkspaceCreated={handleWorkspaceCreated}
+            forcedLinkedIssue={
+              linkedIssueId && projectId
+                ? {
+                    issueId: linkedIssueId,
+                    remoteProjectId: projectId,
+                  }
+                : null
+            }
+          />
         </CreateModeProvider>
       </WorkspaceCreatePanel>
     );

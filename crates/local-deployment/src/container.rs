@@ -60,6 +60,7 @@ use utils::{
 };
 use uuid::Uuid;
 use workspace_manager::{RepoWorkspaceInput, WorkspaceError, WorkspaceManager};
+use worktree_manager::WorktreeManager;
 
 use crate::{command, copy};
 
@@ -72,6 +73,7 @@ pub struct LocalContainerService {
     db: DBService,
     workspace_manager: WorkspaceManager,
     child_store: Arc<RwLock<HashMap<Uuid, Arc<RwLock<AsyncGroupChild>>>>>,
+    transient_unit_store: Arc<RwLock<HashMap<Uuid, String>>>,
     cancellation_tokens: Arc<RwLock<HashMap<Uuid, CancellationToken>>>,
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
     /// Tracks background tasks that stream logs to the database.
@@ -104,6 +106,7 @@ impl LocalContainerService {
         remote_client: Option<RemoteClient>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
+        let transient_unit_store = Arc::new(RwLock::new(HashMap::new()));
         let cancellation_tokens = Arc::new(RwLock::new(HashMap::new()));
         let db_stream_handles = Arc::new(RwLock::new(HashMap::new()));
         let exit_monitor_handles = Arc::new(RwLock::new(HashMap::new()));
@@ -114,6 +117,7 @@ impl LocalContainerService {
             db,
             workspace_manager,
             child_store,
+            transient_unit_store,
             cancellation_tokens,
             msg_stores,
             db_stream_handles,
@@ -205,6 +209,16 @@ impl LocalContainerService {
         map.insert(id, Arc::new(RwLock::new(exec)));
     }
 
+    async fn add_transient_unit_name(&self, id: Uuid, unit_name: String) {
+        let mut map = self.transient_unit_store.write().await;
+        map.insert(id, unit_name);
+    }
+
+    async fn take_transient_unit_name(&self, id: &Uuid) -> Option<String> {
+        let mut map = self.transient_unit_store.write().await;
+        map.remove(id)
+    }
+
     async fn remove_child_from_store(&self, id: &Uuid) {
         let mut map = self.child_store.write().await;
         map.remove(id);
@@ -242,6 +256,7 @@ impl LocalContainerService {
 
     async fn cleanup_workspace(&self, workspace: &Workspace) {
         let Some(container_ref) = &workspace.container_ref else {
+            let _ = Workspace::mark_worktree_deleted(&self.db.pool, workspace.id).await;
             return;
         };
         let workspace_dir = PathBuf::from(container_ref);
@@ -486,6 +501,7 @@ impl LocalContainerService {
     ) -> JoinHandle<()> {
         let exec_id = *exec_id;
         let child_store = self.child_store.clone();
+        let transient_unit_store = self.transient_unit_store.clone();
         let msg_stores = self.msg_stores.clone();
         let db = self.db.clone();
         let config = self.config.clone();
@@ -507,6 +523,15 @@ impl LocalContainerService {
                 // Some coding agent processes do not automatically exit after processing the user request; instead the executor
                 // signals when processing has finished to gracefully kill the process.
                 exit_result = &mut exit_signal_future => {
+                    let unit_name = {
+                        let mut units = transient_unit_store.write().await;
+                        units.remove(&exec_id)
+                    };
+                    if let Some(unit_name) = unit_name
+                        && let Err(err) = command::stop_transient_unit(&unit_name).await
+                    {
+                        tracing::warn!("Failed to stop transient unit {unit_name}: {err}");
+                    }
                     // Executor signaled completion: kill group and use the provided result
                     if let Some(child_lock) = child_store.read().await.get(&exec_id).cloned() {
                         let mut child = child_lock.write().await ;
@@ -526,6 +551,11 @@ impl LocalContainerService {
                 exit_status_result = &mut process_exit_rx => {
                     status_result = exit_status_result.unwrap_or_else(|e| Err(std::io::Error::other(e)));
                 }
+            }
+
+            {
+                let mut units = transient_unit_store.write().await;
+                units.remove(&exec_id);
             }
 
             let (exit_code, status) = match status_result {
@@ -740,6 +770,20 @@ impl LocalContainerService {
                     }
                 }
 
+                if matches!(
+                    ctx.execution_process.run_reason,
+                    ExecutionProcessRunReason::ArchiveScript
+                ) && let Err(e) = container
+                    .maybe_delete_archived_worktree_if_safe(ctx.workspace.id)
+                    .await
+                {
+                    tracing::error!(
+                        "Failed to delete archived worktree after archive script for workspace {}: {}",
+                        ctx.workspace.id,
+                        e
+                    );
+                }
+
                 // Fire analytics event when CodingAgent execution has finished
                 if config.read().await.analytics_enabled
                     && matches!(
@@ -854,6 +898,82 @@ impl LocalContainerService {
     fn dir_name_from_workspace(workspace_id: &Uuid, task_title: &str) -> String {
         let task_title_id = git_branch_id(task_title);
         format!("{}-{}", short_uuid(workspace_id), task_title_id)
+    }
+
+    fn default_workspace_dir(workspace: &Workspace) -> PathBuf {
+        let label = workspace.name.as_deref().unwrap_or("workspace");
+        let workspace_dir_name =
+            LocalContainerService::dir_name_from_workspace(&workspace.id, label);
+        WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name)
+    }
+
+    async fn migrate_workspace_if_needed(
+        &self,
+        workspace: &Workspace,
+        repositories: &[Repo],
+        current_dir: &Path,
+        desired_dir: &Path,
+    ) -> Result<PathBuf, ContainerError> {
+        if current_dir == desired_dir {
+            return Ok(current_dir.to_path_buf());
+        }
+
+        if !current_dir.exists() {
+            return Ok(desired_dir.to_path_buf());
+        }
+
+        if let Some(parent) = desired_dir.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+
+        if desired_dir.exists() {
+            Workspace::update_container_ref(
+                &self.db.pool,
+                workspace.id,
+                &desired_dir.to_string_lossy(),
+            )
+            .await?;
+            return Ok(desired_dir.to_path_buf());
+        }
+
+        if repositories.len() == 1 && current_dir.join(".git").is_file() {
+            let repo = &repositories[0];
+            tokio::fs::create_dir_all(desired_dir).await?;
+            let desired_worktree_path = desired_dir.join(&repo.name);
+            WorktreeManager::move_worktree(&repo.path, current_dir, &desired_worktree_path).await?;
+        } else {
+            tokio::fs::create_dir_all(desired_dir).await?;
+            for repo in repositories {
+                let old_worktree_path = current_dir.join(&repo.name);
+                if !old_worktree_path.exists() {
+                    continue;
+                }
+
+                let new_worktree_path = desired_dir.join(&repo.name);
+                WorktreeManager::move_worktree(&repo.path, &old_worktree_path, &new_worktree_path)
+                    .await?;
+            }
+        }
+
+        if current_dir.exists() {
+            let _ = tokio::fs::remove_dir_all(current_dir).await;
+        }
+
+        Workspace::update_container_ref(
+            &self.db.pool,
+            workspace.id,
+            &desired_dir.to_string_lossy(),
+        )
+        .await?;
+
+        tracing::info!(
+            "Relocated workspace {} from {} to {}",
+            workspace.id,
+            current_dir.display(),
+            desired_dir.display()
+        );
+
+        Ok(desired_dir.to_path_buf())
     }
 
     async fn track_child_msgs_in_store(&self, id: Uuid, child: &mut AsyncGroupChild) {
@@ -1200,12 +1320,8 @@ impl ContainerService for LocalContainerService {
     }
 
     async fn create(&self, workspace: &Workspace) -> Result<ContainerRef, ContainerError> {
-        let label = workspace.name.as_deref().unwrap_or("workspace");
-        let workspace_dir_name =
-            LocalContainerService::dir_name_from_workspace(&workspace.id, label);
-        let workspace_dir = WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name);
-
         let (repositories, workspace_inputs) = self.workspace_repo_inputs(workspace.id).await?;
+        let workspace_dir = Self::default_workspace_dir(workspace);
 
         let created_workspace = WorkspaceManager::create_workspace(
             &workspace_dir,
@@ -1241,6 +1357,11 @@ impl ContainerService for LocalContainerService {
         Ok(())
     }
 
+    async fn delete_worktree(&self, workspace: &Workspace) -> Result<(), ContainerError> {
+        self.cleanup_workspace(workspace).await;
+        Ok(())
+    }
+
     async fn ensure_container_exists(
         &self,
         workspace: &Workspace,
@@ -1249,12 +1370,16 @@ impl ContainerService for LocalContainerService {
         let (repositories, workspace_inputs) = self.workspace_repo_inputs(workspace.id).await?;
 
         let workspace_dir = if let Some(container_ref) = &workspace.container_ref {
-            PathBuf::from(container_ref)
+            let current_dir = PathBuf::from(container_ref);
+            self.migrate_workspace_if_needed(
+                workspace,
+                &repositories,
+                &current_dir,
+                &Self::default_workspace_dir(workspace),
+            )
+            .await?
         } else {
-            let label = workspace.name.as_deref().unwrap_or("workspace");
-            let workspace_dir_name =
-                LocalContainerService::dir_name_from_workspace(&workspace.id, label);
-            WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name)
+            Self::default_workspace_dir(workspace)
         };
 
         WorkspaceManager::ensure_workspace_exists(
@@ -1265,13 +1390,10 @@ impl ContainerService for LocalContainerService {
         .await
         .map_err(Self::map_workspace_manager_error)?;
 
-        if workspace.container_ref.is_none() {
-            Workspace::update_container_ref(
-                &self.db.pool,
-                workspace.id,
-                &workspace_dir.to_string_lossy(),
-            )
-            .await?;
+        let workspace_dir_str = workspace_dir.to_string_lossy().to_string();
+        if workspace.container_ref.as_deref() != Some(workspace_dir_str.as_str()) {
+            Workspace::update_container_ref(&self.db.pool, workspace.id, &workspace_dir_str)
+                .await?;
         }
 
         if workspace.worktree_deleted {
@@ -1382,6 +1504,11 @@ impl ContainerService for LocalContainerService {
         self.track_child_msgs_in_store(execution_process.id, &mut spawned.child)
             .await;
 
+        if let Some(unit_name) = spawned.transient_unit_name.take() {
+            self.add_transient_unit_name(execution_process.id, unit_name)
+                .await;
+        }
+
         self.add_child_to_store(execution_process.id, spawned.child)
             .await;
 
@@ -1417,6 +1544,17 @@ impl ContainerService for LocalContainerService {
 
         ExecutionProcess::update_completion(&self.db.pool, execution_process.id, status, exit_code)
             .await?;
+
+        if let Some(unit_name) = self.take_transient_unit_name(&execution_process.id).await
+            && let Err(e) = command::stop_transient_unit(&unit_name).await
+        {
+            tracing::warn!(
+                "Failed to stop transient unit {} for execution {}: {}",
+                unit_name,
+                execution_process.id,
+                e
+            );
+        }
 
         // Try graceful cancellation first, then force kill
         if let Some(cancel) = self.take_cancellation_token(&execution_process.id).await {

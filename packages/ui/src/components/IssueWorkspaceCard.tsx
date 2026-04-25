@@ -4,6 +4,7 @@ import {
   GitPullRequestIcon,
   DotsThreeIcon,
   LinkBreakIcon,
+  PencilSimpleIcon,
   TrashIcon,
   PlayIcon,
   HandIcon,
@@ -48,6 +49,7 @@ export interface WorkspaceWithStats {
 export interface IssueWorkspaceCardProps {
   workspace: WorkspaceWithStats;
   onClick?: () => void;
+  onRename?: () => void;
   onUnlink?: () => void;
   onDelete?: () => void;
   showOwner?: boolean;
@@ -110,6 +112,7 @@ function IssueWorkspaceCardContainer({
 export function IssueWorkspaceCard({
   workspace,
   onClick,
+  onRename,
   onUnlink,
   onDelete,
   showOwner = true,
@@ -165,7 +168,7 @@ export function IssueWorkspaceCard({
               className="h-5 w-5 text-[10px] border-2 border-panel"
             />
           )}
-          {(onUnlink || onDelete) && (
+          {(onRename || onUnlink || onDelete) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -180,6 +183,17 @@ export function IssueWorkspaceCard({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {onRename && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRename();
+                    }}
+                  >
+                    <PencilSimpleIcon className="size-icon-xs" />
+                    {t('workspaces.rename.action')}
+                  </DropdownMenuItem>
+                )}
                 {onUnlink && (
                   <DropdownMenuItem
                     onClick={(e) => {
@@ -278,7 +292,7 @@ export function IssueWorkspaceCard({
           )}
         </div>
 
-        <div className="hidden sm:flex items-center gap-half shrink-0">
+        <div className="flex items-center justify-end gap-half shrink-0 flex-wrap max-w-full">
           {workspace.prs.length > 0 ? (
             workspace.prs.map((pr) => (
               <a

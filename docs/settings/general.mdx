@@ -146,13 +146,13 @@ Use a prefix that matches your team's branching conventions (e.g., `feature`, `f
 
 ### Workspace Directory
 
-Specify where Vibe Kanban stores workspace data. Workspaces are created in a `.vibe-kanban-workspaces` subdirectory within this path.
+Specify where Vibe Kanban stores workspace data. Workspaces are created directly within this path.
 
-- **Default location** - Leave empty to use the system default (typically your home directory)
+- **Default location** - Leave empty to use the system default (`~/code/worktrees`)
 - **Custom location** - Set a specific path if you prefer workspaces on a different drive or directory
 
 <Warning>
-Changes to Workspace Directory require an app restart. Existing workspaces remain in their original location.
+Changes to Workspace Directory require an app restart. Existing workspaces may be migrated to the new root when they are reopened.
 </Warning>
 
 ## Notifications
@@ -194,4 +194,3 @@ Create reusable text snippets that can be inserted into workspace prompts using 
 <Card title="Learn more about tags" icon="tag" href="/settings/creating-task-tags">
   Complete guide to creating and managing tags
 </Card>
-

@@ -2,44 +2,48 @@
 
 ## What Changed This Session
 
-- Added Ops Playbook continuity docs and repo-specific release-safety guidance.
-- Wired a lightweight governance check into CI.
-- Upgraded the repo docs and CI to a real `staging` to `main` branch model with branch-policy and branch-freshness checks.
+- Implemented immediate worktree-folder deletion for workspaces whose tracked PRs are merged into `staging`.
+- Implemented automatic workspace archiving and worktree cleanup when a linked local issue is moved into `In Staging`.
+- Reused the existing archive-on-merge flow instead of adding a new background job.
+- Added a safe retry after archive-script completion so archive scripts can finish before the worktree is removed.
+- Refreshed the branch-local continuity docs and `VK_WORKFLOW.md` for the new behavior.
 
 ## What Is True Right Now
 
-- The repo-side implementation now assumes a real `staging` plus `main` model in docs and CI.
-- Existing test and release workflows remain the source of truth for application validation and releases.
-- `origin` still does not have a `staging` branch, so the human setup step is still outstanding.
+- `crates/services/src/services/container.rs` now exposes a generic safe-delete helper for archived worktrees and keeps the merged-PR-to-`staging` cleanup check as a narrower wrapper.
+- `crates/services/src/services/pr_monitor.rs` calls the merged-PR helper after merge detection archives the workspace.
+- `crates/server/src/routes/workspaces/pr.rs` calls the same merged-PR helper when attaching an already-merged PR.
+- `crates/server/src/routes/local_compat.rs` now archives linked local workspaces and requests immediate worktree cleanup when an issue transitions into `In Staging`, including bulk issue updates.
+- `crates/local-deployment/src/container.rs` retries deletion after archive-script completion, which covers workspaces whose archive script delayed cleanup.
+- Pinned workspaces still keep the existing behavior and do not auto-archive on merge.
+- The branch is currently mid-rebase onto `fork/staging`, and only the continuity docs conflicted.
 
 ## What The Next Agent Should Do
 
-- Keep `STREAM.md` current if branch scope changes.
-- Run `pnpm run ops:check` when touching root ops docs.
-- Expand automation where the repo can actually enforce the rule, especially branch policy and freshness.
+- Finish the rebase with the refreshed continuity docs.
+- Merge the rebased branch into the local `staging` checkout.
+- Push or open/update the PR only after the merge step the user requested is complete.
 
 ## What The Next Agent Must Not Do
 
-- Do not describe remote `staging` protection as active unless the branch exists on GitHub.
-- Do not move branch-local intent into `STATE.md`.
-- Do not weaken the local-validation gate or branch-policy checks in docs without replacing them with a stronger enforced path.
+- Do not remove the archive-script retry path; that would reintroduce a race where the worktree disappears mid-script.
+- Do not broaden the merged-PR cleanup path to non-`staging` PRs unless the user explicitly asks for that policy change.
+- Do not change pinned-workspace behavior without confirmation.
 
 ## Verification Required Before Further Changes
 
-- `pnpm run ops:check`
-- `pnpm run format`
-- Any task-specific validation affected by later edits
+- `git status --short --branch`
+- `git rebase --continue`
+- merge verification on the local `staging` checkout
 
 ## Verification Status From This Session
 
-- `pnpm run ops:check` passed.
-- `git diff --check` passed.
-- `pnpm run format` failed in this checkout because `prettier` was not available in the workspace environment.
-- Targeted branch-policy validation passed.
-- Branch-freshness validation against `origin/main` failed because this branch is behind the latest upstream `main`.
+- The branch rebased attempt started and only continuity-doc conflicts appeared.
+- `cargo fmt --all` had already been run before this rebase attempt.
+- Full tests were not rerun in this session.
 
 ## Session Metadata
 
-- Branch: `vk/660f-vk-ops`
-- Worktree: `/home/mcp/code/worktrees/.vibe-kanban-workspaces/660f-vk-ops/_vibe_kanban_repo`
-- Focus: Ops Playbook adoption baseline
+- Branch: `vk/7b9a-vk-worktree-clea`
+- Repo: `/home/mcp/code/worktrees/7b9a-vk-worktree-clea/_vibe_kanban_repo`
+- Focus: immediate worktree cleanup after PR merge into `staging` and on `In Staging` issue transitions

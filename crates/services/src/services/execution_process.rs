@@ -12,7 +12,7 @@ use db::{
         execution_process_logs::ExecutionProcessLogs,
     },
 };
-use futures::{StreamExt, TryStreamExt};
+use futures::{StreamExt, TryStreamExt, future, stream::BoxStream};
 use indicatif::{ProgressBar, ProgressStyle};
 use sqlx::SqlitePool;
 use tokio::{io::AsyncWriteExt, sync::RwLock, task::JoinHandle};
@@ -20,7 +20,7 @@ use utils::{
     assets::prod_asset_dir_path,
     execution_logs::{
         ExecutionLogWriter, process_log_file_path, process_log_file_path_in_root,
-        read_execution_log_file,
+        read_execution_log_file, stream_execution_log_file,
     },
     log_msg::LogMsg,
     msg_store::MsgStore,
@@ -352,6 +352,18 @@ async fn read_execution_logs_for_execution(
     pool: &SqlitePool,
     execution_id: Uuid,
 ) -> Result<Option<String>> {
+    match execution_log_file_path_for_execution(pool, execution_id).await? {
+        Some(path) => Ok(Some(read_execution_log_file(&path).await.with_context(
+            || format!("read execution log file for execution {execution_id}"),
+        )?)),
+        None => Ok(None),
+    }
+}
+
+async fn execution_log_file_path_for_execution(
+    pool: &SqlitePool,
+    execution_id: Uuid,
+) -> Result<Option<std::path::PathBuf>> {
     let session_id = if let Some(process) = ExecutionProcess::find_by_id(pool, execution_id).await?
     {
         process.session_id
@@ -361,21 +373,19 @@ async fn read_execution_logs_for_execution(
     let path = process_log_file_path(session_id, execution_id);
 
     match tokio::fs::metadata(&path).await {
-        Ok(_) => Ok(Some(read_execution_log_file(&path).await.with_context(
-            || format!("read execution log file for execution {execution_id}"),
-        )?)),
+        Ok(_) => Ok(Some(path)),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             if cfg!(debug_assertions) {
                 // Convenience for local development with a clone of a prod db. Read only access to prod logs.
                 let prod_path =
                     process_log_file_path_in_root(&prod_asset_dir_path(), session_id, execution_id);
-                match read_execution_log_file(&prod_path).await {
-                    Ok(contents) => return Ok(Some(contents)),
+                match tokio::fs::metadata(&prod_path).await {
+                    Ok(_) => return Ok(Some(prod_path)),
                     Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
                     Err(err) => {
                         return Err(err).with_context(|| {
                             format!(
-                                "read execution log file for execution {execution_id} from {}",
+                                "check execution log file exists for execution {execution_id} at {}",
                                 prod_path.display()
                             )
                         });
@@ -390,6 +400,87 @@ async fn read_execution_logs_for_execution(
                 path.display()
             )
         }),
+    }
+}
+
+pub async fn stream_raw_log_messages(
+    pool: &SqlitePool,
+    execution_id: Uuid,
+) -> Option<BoxStream<'static, std::io::Result<LogMsg>>> {
+    if let Some(path) = execution_log_file_path_for_execution(pool, execution_id)
+        .await
+        .inspect_err(|e| {
+            tracing::warn!(
+                "Failed to resolve execution log file for execution {}: {:#}",
+                execution_id,
+                e
+            );
+        })
+        .ok()
+        .flatten()
+    {
+        match stream_execution_log_file(&path).await {
+            Ok(lines) => {
+                let stream = lines
+                    .scan(0usize, move |bad_lines, line_res| {
+                        future::ready(match line_res {
+                            Ok(line) if line.trim().is_empty() => Some(None),
+                            Ok(line) => match serde_json::from_str::<LogMsg>(&line) {
+                                Ok(msg) => Some(Some(Ok(msg))),
+                                Err(e) => {
+                                    *bad_lines += 1;
+                                    if *bad_lines <= 3 {
+                                        tracing::warn!(
+                                            "Skipping unparsable streamed log line for execution {}: {}",
+                                            execution_id,
+                                            e
+                                        );
+                                    }
+                                    Some(None)
+                                }
+                            },
+                            Err(err) => Some(Some(Err(err))),
+                        })
+                    })
+                    .filter_map(future::ready)
+                    .boxed();
+
+                return Some(stream);
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to open execution log file stream for execution {}: {}",
+                    execution_id,
+                    e
+                );
+            }
+        }
+    }
+
+    let db_log_records = match ExecutionProcessLogs::find_by_execution_id(pool, execution_id).await
+    {
+        Ok(records) if !records.is_empty() => records,
+        Ok(_) => return None,
+        Err(e) => {
+            tracing::error!(
+                "Failed to fetch DB logs for execution {}: {}",
+                execution_id,
+                e
+            );
+            return None;
+        }
+    };
+
+    match ExecutionProcessLogs::parse_logs(&db_log_records) {
+        Ok(msgs) => Some(futures::stream::iter(msgs.into_iter().map(Ok)).boxed()),
+        Err(e) => {
+            tracing::error!(
+                "Failed to parse DB logs for execution {}: {}",
+                execution_id,
+                e
+            );
+            None
+        }
     }
 }
 

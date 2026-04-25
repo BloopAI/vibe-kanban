@@ -51,11 +51,22 @@ pub mod pty;
 const EVENT_HISTORY_BYTES: usize = 1 * 1024 * 1024;
 const EVENT_CHANNEL_CAPACITY: usize = 1024;
 
-fn local_auth_disabled() -> bool {
-    matches!(
-        std::env::var("VK_DISABLE_AUTH").ok().as_deref(),
-        Some("1") | Some("true") | Some("TRUE") | Some("yes") | Some("YES")
-    )
+fn is_local_auth_disabled() -> bool {
+    let Ok(value) = std::env::var("VK_DISABLE_AUTH") else {
+        return false;
+    };
+
+    let normalized = value.trim().to_ascii_lowercase();
+    matches!(normalized.as_str(), "1" | "true" | "yes" | "on")
+}
+
+fn is_pr_monitor_disabled() -> bool {
+    let Ok(value) = std::env::var("VK_DISABLE_PR_MONITOR") else {
+        return false;
+    };
+
+    let normalized = value.trim().to_ascii_lowercase();
+    matches!(normalized.as_str(), "1" | "true" | "yes" | "on")
 }
 
 #[derive(Clone)]
@@ -265,11 +276,8 @@ impl Deployment for LocalDeployment {
             None => None,
         };
         let pr_sync_notify = Arc::new(Notify::new());
-        let disable_pr_monitor = std::env::var("VK_DISABLE_PR_MONITOR")
-            .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
-            .unwrap_or(false);
-        if disable_pr_monitor {
-            tracing::warn!("PR monitoring disabled via VK_DISABLE_PR_MONITOR");
+        if is_pr_monitor_disabled() {
+            tracing::info!("PR monitor disabled by VK_DISABLE_PR_MONITOR");
         } else {
             let db = db.clone();
             let analytics = analytics.as_ref().map(|s| AnalyticsContext {
@@ -421,7 +429,8 @@ impl LocalDeployment {
     }
 
     pub async fn get_login_status(&self) -> LoginStatus {
-        if local_auth_disabled() {
+        if is_local_auth_disabled() {
+            self.auth_context.clear_profile().await;
             self.auth_context.clear_remote_auth_degraded_slug().await;
             return LoginStatus::LoggedIn { profile: None };
         }
