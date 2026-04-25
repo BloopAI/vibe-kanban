@@ -175,7 +175,8 @@ export function SharedAppLayout() {
   const isExportActive = currentDestination?.kind === 'export';
   const showCloudShutdownBanner =
     !import.meta.env.VITE_DISABLE_SHUTDOWN_NOTIFICATION &&
-    (isExportActive || (isSignedIn && isProjectDestination(currentDestination)));
+    (isExportActive ||
+      (isSignedIn && isProjectDestination(currentDestination)));
   const isWorkspaceSidebarPreviewEnabled =
     !isMobile && isWorkspacesActive && !isLeftSidebarVisible;
   const activeProjectId = projectDestination?.projectId ?? null;
