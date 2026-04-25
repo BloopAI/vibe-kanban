@@ -155,7 +155,6 @@ export function useWorkspaces(): UseWorkspacesResult {
 
   const {
     data: archivedData,
-    isConnected: archivedIsConnected,
     isInitialized: archivedIsInitialized,
     error: archivedError,
   } = useJsonPatchWsStream<WorkspacesState>(
@@ -286,14 +285,17 @@ export function useWorkspaces(): UseWorkspacesResult {
       .map((ws) => toSidebarWorkspace(ws, archivedSummaries.get(ws.id)));
   }, [archivedData, archivedSummaries]);
 
-  // isLoading is true when we haven't received initial data from either stream
-  const isLoading = !activeIsInitialized || !archivedIsInitialized;
+  // The primary workspace list must not be blocked by archived workspace
+  // initialization. Archived snapshots can be slow under load and are not
+  // required to render active workspaces.
+  const isLoading = !activeIsInitialized;
 
-  // Combined connection status
-  const isConnected = activeIsConnected && archivedIsConnected;
+  // Keep active workspace connectivity independent from the optional archived
+  // stream so a slow archive query does not blank the main workspace list.
+  const isConnected = activeIsConnected;
 
-  // Combined error (show first error if any)
-  const error = activeError || archivedError;
+  // Only surface archived stream errors after the active list has initialized.
+  const error = activeError || (activeIsInitialized ? archivedError : null);
 
   return {
     workspaces,

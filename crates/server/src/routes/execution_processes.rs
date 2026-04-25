@@ -227,6 +227,9 @@ async fn handle_normalized_logs_ws(
                     Some(Err(e)) => {
                         let _ = flush_buffered_patch(&mut socket, &mut buffered_patch_ops).await;
                         tracing::error!("stream error: {}", e);
+                        let _ = socket
+                            .send(LogMsg::Finished.to_ws_message_unchecked())
+                            .await;
                         break;
                     }
                     None => {
