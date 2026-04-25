@@ -603,7 +603,6 @@ function CollapsedKanbanColumn({
                   className="size-icon-xs text-brand shrink-0"
                   weight="fill"
                   aria-label={t('workspaces.needsAttention')}
-                  title={t('workspaces.needsAttention')}
                 />
               )}
               {hasInProgress && (
@@ -611,9 +610,6 @@ function CollapsedKanbanColumn({
                   className="size-icon-xs shrink-0 animate-spin text-brand"
                   weight="bold"
                   aria-label={t('tasks:status.inProgress', {
-                    defaultValue: 'In Progress',
-                  })}
-                  title={t('tasks:status.inProgress', {
                     defaultValue: 'In Progress',
                   })}
                 />

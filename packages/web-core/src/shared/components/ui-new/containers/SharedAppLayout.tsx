@@ -289,21 +289,26 @@ export function SharedAppLayout() {
     needsReviewWorkspaceIds,
     userWorkspaces,
   ]);
-  const allAppBarProjects = useMemo(
-    () =>
-      (isLocalAuthBypassed ? localAppBarProjects : sortedProjects).map(
-        (project) => ({
-          ...project,
-          hasNeedsReview: needsReviewProjectIds.has(project.id),
-        })
-      ),
-    [
-      isLocalAuthBypassed,
-      localAppBarProjects,
-      needsReviewProjectIds,
-      sortedProjects,
-    ]
-  );
+  const allAppBarProjects = useMemo<AppBarProject[]>(() => {
+    const projects: AppBarProject[] = isLocalAuthBypassed
+      ? localAppBarProjects
+      : sortedProjects.map((project) => ({
+          id: project.id,
+          name: project.name,
+          color: project.color,
+          archived: false,
+        }));
+
+    return projects.map((project) => ({
+      ...project,
+      hasNeedsReview: needsReviewProjectIds.has(project.id),
+    }));
+  }, [
+    isLocalAuthBypassed,
+    localAppBarProjects,
+    needsReviewProjectIds,
+    sortedProjects,
+  ]);
   const archivedProjects = useMemo(
     () => allAppBarProjects.filter((project) => project.archived),
     [allAppBarProjects]
