@@ -251,12 +251,11 @@ export function createImageNode(options: CreateImageNodeOptions) {
         isImageLikeFileName(workspaceDisplayName));
     const showDownloadButton = Boolean(
       (isAttachment &&
-        (
-          scopeLocalApiPath(localAttachment?.proxy_url ?? '', hostId) ||
+        (scopeLocalApiPath(localAttachment?.proxy_url ?? '', hostId) ||
           scopeLocalApiPath(fullSizeUrl ?? '', hostId) ||
-          scopeLocalApiPath(metadata?.proxy_url ?? '', hostId)
-        )) ||
-        (!isWorkspaceImage && scopeLocalApiPath(metadata?.proxy_url ?? '', hostId))
+          scopeLocalApiPath(metadata?.proxy_url ?? '', hostId))) ||
+        (!isWorkspaceImage &&
+          scopeLocalApiPath(metadata?.proxy_url ?? '', hostId))
     );
 
     const handleClick = useCallback(
@@ -287,7 +286,10 @@ export function createImageNode(options: CreateImageNodeOptions) {
         }
 
         if (metadata?.exists && metadata.proxy_url) {
-          const metadataProxyUrl = scopeLocalApiPath(metadata.proxy_url, hostId);
+          const metadataProxyUrl = scopeLocalApiPath(
+            metadata.proxy_url,
+            hostId
+          );
           if (isWorkspaceImage) {
             options.openImagePreview({
               imageUrl: metadataProxyUrl,

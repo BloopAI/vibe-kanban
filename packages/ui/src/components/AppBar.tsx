@@ -39,7 +39,9 @@ function getProjectInitials(name: string): string {
 
   const words = trimmed.split(/[\s_-]+/).filter(Boolean);
   if (words.length >= 2) {
-    return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
+    return (
+      words[0].charAt(0) + words[words.length - 1].charAt(0)
+    ).toUpperCase();
   }
   return trimmed.slice(0, 2).toUpperCase();
 }
@@ -489,7 +491,9 @@ export function AppBar({
                       draggableId={project.id}
                       index={index}
                       disableInteractiveElementBlocking
-                      isDragDisabled={item.isSavingProjectOrder || item.archived}
+                      isDragDisabled={
+                        item.isSavingProjectOrder || item.archived
+                      }
                     >
                       {(dragProvided, snapshot) => (
                         <div
@@ -512,7 +516,9 @@ export function AppBar({
                                 onClick={() => item.onProjectClick(project.id)}
                                 className={cn(
                                   appBarItemBaseClassName,
-                                  item.archived ? 'cursor-pointer' : 'cursor-grab',
+                                  item.archived
+                                    ? 'cursor-pointer'
+                                    : 'cursor-grab',
                                   snapshot.isDragging && 'shadow-lg',
                                   item.activeProjectId === project.id
                                     ? ''
@@ -600,7 +606,8 @@ export function AppBar({
               label="Join our Discord"
               iconPath={discordIconPath}
               badge={
-                onlineCount != null && (onlineCount > 999 ? '999+' : onlineCount)
+                onlineCount != null &&
+                (onlineCount > 999 ? '999+' : onlineCount)
               }
             />
           </>
