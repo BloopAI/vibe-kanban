@@ -1,7 +1,7 @@
 use std::{str::FromStr, sync::Arc, time::Duration};
 
 use sqlx::{
-    ConnectOptions, Error, Pool, Sqlite, SqlitePool,
+    ConnectOptions, Error, Pool, Sqlite,
     migrate::MigrateError,
     sqlite::{SqliteConnectOptions, SqliteConnection, SqliteJournalMode, SqlitePoolOptions},
 };

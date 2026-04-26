@@ -48,7 +48,7 @@ pub mod container;
 mod copy;
 pub mod pty;
 
-const EVENT_HISTORY_BYTES: usize = 1 * 1024 * 1024;
+const EVENT_HISTORY_BYTES: usize = 1024 * 1024;
 const EVENT_CHANNEL_CAPACITY: usize = 1024;
 
 fn is_local_auth_disabled() -> bool {

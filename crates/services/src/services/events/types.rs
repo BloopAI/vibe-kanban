@@ -29,6 +29,7 @@ pub enum HookTables {
     Scratch,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, TS)]
 #[serde(tag = "type", content = "data", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RecordTypes {
