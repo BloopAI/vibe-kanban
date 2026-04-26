@@ -175,3 +175,25 @@
   - execution-process WebSocket returned initial snapshot plus `Ready`
 - Not complete / known gaps:
   - no browser-driven long-running agent test was performed; the smoke test covered the stream path and deployed service health
+
+## 2026-04-26T16:05:00Z | vk/ea3c-vk-auto-archive | local-only auth gate hotfix
+
+- Intent: stop local-only Vibe Kanban from showing a remote sign-in prompt in the left nav after service restarts or deploys.
+- Completed:
+  - traced the regression to `/api/info` returning `login_status: loggedout` while `shared_api_base` was intentionally `null`
+  - added the live user-service drop-in `/home/mcp/.config/systemd/user/vibe-kanban.service.d/local-auth.conf` with `VK_DISABLE_AUTH=1`
+  - changed local deployment login status so an install with no shared API base reports `LoggedIn { profile: None }`
+- Verified:
+  - live `/api/info` returned `login_status: loggedin` and `shared_api_base: null` after the service drop-in
+  - `https://vibe.local` returned `200` after restart
+  - `pnpm run format`
+  - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo check -p local-deployment -p server`
+  - `pnpm --filter @vibe/local-web run build`
+  - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo build --release -p server --bin server`
+  - active workspace summaries showed no `running` execution-process statuses before restart
+  - deployed binary hash matched `target/release/server`: `8d348fb20f36bb25d0dc0737aa5ae3df6e8e8c2243003bff6ffc27f2985f6525`
+  - post-restart service state was `active/running`
+  - post-restart `/api/info` returned `login_status: loggedin` and `shared_api_base: null`
+  - post-restart `https://vibe.local` returned `200`
+- Not complete / known gaps:
+  - local-auth source hardening still needs commit/push/staging promotion

@@ -112,7 +112,7 @@ Then tell the agent:
 ## Stable Working Model
 
 - Source of truth for code: `/home/mcp/_vibe_kanban_repo`
-- Source of truth for deployed runtime: `vibe-kanban.service` + `/home/mcp/.local/bin/vibe-kanban-server-cleanfix`
+- Source of truth for deployed runtime: `vibe-kanban.service` + `/home/mcp/.local/bin/vibe-kanban-serve`
 - Source of truth for live board data: `/home/mcp/.local/share/vibe-kanban/db.v2.sqlite`
 - Source of truth for task-specific workspace state: `/home/mcp/code/worktrees/...`
 
