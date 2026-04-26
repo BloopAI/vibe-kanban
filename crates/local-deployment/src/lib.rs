@@ -48,7 +48,7 @@ pub mod container;
 mod copy;
 pub mod pty;
 
-const EVENT_HISTORY_BYTES: usize = 1 * 1024 * 1024;
+const EVENT_HISTORY_BYTES: usize = 1024 * 1024;
 const EVENT_CHANNEL_CAPACITY: usize = 1024;
 
 fn is_local_auth_disabled() -> bool {
@@ -429,7 +429,8 @@ impl LocalDeployment {
     }
 
     pub async fn get_login_status(&self) -> LoginStatus {
-        if is_local_auth_disabled() {
+        // A local-only install has no remote API to authenticate against; keep local UI gates open.
+        if is_local_auth_disabled() || self.remote_info.get_api_base().is_none() {
             self.auth_context.clear_profile().await;
             self.auth_context.clear_remote_auth_degraded_slug().await;
             return LoginStatus::LoggedIn { profile: None };

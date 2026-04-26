@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use codex_app_server_protocol::{ReviewTarget, ThreadStartParams};
 
-use super::{client::AppServerClient, fork_params_from};
+use super::{client::AppServerClient, fork_params_from, is_unforkable_rollout_error};
 use crate::executors::ExecutorError;
 
 pub async fn launch_codex_review(
@@ -21,13 +21,31 @@ pub async fn launch_codex_review(
     let thread_id = match resume_session {
         Some(session_id) => {
             let response = client
-                .thread_fork(fork_params_from(session_id, thread_start_params))
-                .await?;
-            tracing::debug!(
-                "forked thread for review, new thread_id={}",
-                response.thread.id
-            );
-            response.thread.id
+                .thread_fork(fork_params_from(
+                    session_id.clone(),
+                    thread_start_params.clone(),
+                ))
+                .await;
+
+            match response {
+                Ok(response) => {
+                    tracing::debug!(
+                        "forked thread for review, new thread_id={}",
+                        response.thread.id
+                    );
+                    response.thread.id
+                }
+                Err(err) if is_unforkable_rollout_error(&err) => {
+                    tracing::warn!(
+                        resume_session_id = %session_id,
+                        error = %err,
+                        "Codex review resume thread is not forkable; starting a fresh thread"
+                    );
+                    let response = client.thread_start(thread_start_params).await?;
+                    response.thread.id
+                }
+                Err(err) => return Err(err),
+            }
         }
         None => {
             let response = client.thread_start(thread_start_params).await?;

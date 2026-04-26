@@ -1,3 +1,5 @@
+#![allow(clippy::collapsible_if)]
+
 use std::collections::HashMap;
 
 use axum::{Json, extract::State, response::Json as ResponseJson};

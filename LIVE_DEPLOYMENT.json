@@ -1,13 +1,13 @@
 {
-  "generated_at_utc": "2026-04-22T13:02:53Z",
+  "generated_at_utc": "2026-04-26T20:53:10Z",
   "canonical_repo": "/home/mcp/_vibe_kanban_repo",
   "canonical_branch": "staging",
-  "canonical_head": "f93eab2825ee17bb3cfa485c90d03488eecf2d67",
+  "canonical_head": "98bb6992d0b003e33dfccb1ab8375ba1bee5fa2b",
   "canonical_repo_dirty": true,
   "live_service": "vibe-kanban.service",
   "live_service_wrapper": "/home/mcp/.local/bin/vibe-kanban-serve",
-  "live_binary": "/home/mcp/.local/bin/vibe-kanban-server-cleanfix",
-  "live_binary_sha256": "4a5e3356b9c7dc4dff3b5e82d5e451ce58d789d8db48420bbe207517d2e70ba4",
+  "live_binary": "/home/mcp/.local/bin/vibe-kanban-serve",
+  "live_binary_sha256": "8d348fb20f36bb25d0dc0737aa5ae3df6e8e8c2243003bff6ffc27f2985f6525",
   "live_state_dir": "/home/mcp/.local/share/vibe-kanban",
   "workspace_root": "/home/mcp/code/worktrees",
   "notes": [
@@ -26,6 +26,8 @@
     "Workspace create-and-start now retries local linked-issue task resolution briefly before giving up, which covers freshly created issues that are not discoverable on the first lookup.",
     "The three broken live workspace links from 2026-04-22 were repaired through the normal workspace link API and now point at their correct issues again.",
     "Normalized chat log websocket delivery now batches patches for 50ms and coalesces repeated writes to the same entry path before sending them to the browser.",
-    "The live normalized-log replay for process d928142b-d587-4a16-9e23-013d1a6df622 dropped from roughly 3872 websocket patch messages / 5.07 GB over 20s to roughly 60 patch messages / 109.6 MB after the server-side coalescing change."
+    "The live normalized-log replay for process d928142b-d587-4a16-9e23-013d1a6df622 dropped from roughly 3872 websocket patch messages / 5.07 GB over 20s to roughly 60 patch messages / 109.6 MB after the server-side coalescing change.",
+    "The local service now has a persistent VK_DISABLE_AUTH=1 drop-in, and local-only deployments with shared_api_base null report login_status loggedin without requiring the env fallback.",
+    "The 2026-04-26 local-auth hotfix binary was built from this worktree after PR #37 merged into staging and deployed to /home/mcp/.local/bin/vibe-kanban-serve."
   ]
 }

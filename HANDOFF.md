@@ -7,20 +7,31 @@
 - Backed up the live DB and cleared only invalid `agent_session_id` pointers whose rollout files were empty or missing.
 - Fixed `vibe.local` 502 by restoring the local service bind address for the LAN reverse proxy.
 - Added execution-process stream reconnect/server filtering so mounted workspace pages do not stay stuck showing agents as running after the stream closes.
-- Opened PR `#37` for the hotfix and began merging current `fork/staging` into the hotfix branch so the fix can be promoted without being lost.
-- Refreshed branch-local continuity docs for this repair stream after resolving staging merge conflicts.
+- Merged PR `#37` into `staging` for the rollout, execution-status, and `vibe.local` hotfixes.
+- Investigated the recurring left-nav sign-in prompt and traced it to local-only `/api/info` returning `login_status: loggedout`.
+- Added a live `VK_DISABLE_AUTH=1` systemd drop-in and hardened source so local-only installs with no shared API base report signed in without a profile.
+- Investigated `no rollout found for thread id 019dc44c-03d6-7401-a6f5-52353f438bcf`; the rollout JSONL existed, but Codex rejected it as unforkable.
+- Backed up the live DB to `/home/mcp/backups/vk-rollout-repair-20260426T-thread019dc44c/db.v2.sqlite` and cleared only that stale `agent_session_id` pointer.
+- Added, deployed, and verified a Codex executor fallback so missing, empty, or unloadable stored rollout IDs start a fresh thread instead of failing prompts or reviews.
 
 ## What Is True Right Now
 
 - The live local install remains the source of truth.
 - The checked-out branch in this worktree is `vk/ea3c-vk-auto-archive`.
-- PR `#37` targets `staging` from this branch.
+- PR `#37` targeted `staging` from this branch and is merged; the current branch is fast-forwarded to `fork/staging` and now carries the follow-up local-auth hardening.
 - `crates/db/src/models/coding_agent_turn.rs` now only returns resumable session info from completed, exit-0 coding-agent turns with a non-empty summary.
+- `crates/local-deployment/src/lib.rs` now treats local-only installs with no shared API base as `LoggedIn { profile: None }`.
 - The reported empty rollout `019dc72a-9fba-7961-9c36-a3f8f8a63036` cannot be reconstructed because the persisted JSONL file is zero bytes.
 - The reported rollout `019dc9bd-ef72-76f2-b08e-4c83659f0369` exists and is non-empty; its late `thread not found` log did not indicate an empty rollout.
 - The live DB now has zero `agent_session_id` pointers to empty or missing rollout files.
 - The live DB backup is `/home/mcp/backups/vk-rollout-repair-20260426T122842Z`.
+- The latest single-pointer DB backup is `/home/mcp/backups/vk-rollout-repair-20260426T-thread019dc44c/db.v2.sqlite`.
+- The stale live DB pointer for `019dc44c-03d6-7401-a6f5-52353f438bcf` has been cleared.
+- Codex normal prompt and review launch paths now fall back to a fresh thread when `thread/fork` reports `no rollout found for thread id`, `empty session file`, or `failed to load rollout`.
 - The live service drop-in `/home/mcp/.config/systemd/user/vibe-kanban.service.d/fixed-ports.conf` sets `HOST=0.0.0.0`, `BACKEND_PORT=4311`, and `PREVIEW_PROXY_PORT=4312`.
+- The live service drop-in `/home/mcp/.config/systemd/user/vibe-kanban.service.d/local-auth.conf` sets `VK_DISABLE_AUTH=1`.
+- The deployed live binary is `/home/mcp/.local/bin/vibe-kanban-serve` with SHA-256 `8d348fb20f36bb25d0dc0737aa5ae3df6e8e8c2243003bff6ffc27f2985f6525`.
+- The latest deployed live binary is `/home/mcp/.local/bin/vibe-kanban-serve` with SHA-256 `4a87753855846cde85227e582c3fb0fc3fe23b297b5cd5fd74c65b802f81cc6b`; the previous binary backup is `/home/mcp/.local/bin/vibe-kanban-serve.backup-20260426-unforkable-rollout`.
 - `vibe.local` resolves to the separate LAN nginx proxy at `10.0.0.97`, which proxies to this host on `10.0.0.129:4311`.
 
 ## Known Good Validation
@@ -36,8 +47,24 @@
   - deployed rebuilt binary to `/home/mcp/.local/bin/vibe-kanban-serve`
   - `https://vibe.local` returned `200`
   - execution-process WebSocket returned initial snapshot plus `Ready`
+  - live `/api/info` returned `login_status: loggedin` and `shared_api_base: null` after the auth drop-in
+  - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo check -p local-deployment -p server`
+  - active workspace summaries showed no `running` execution-process statuses before restart
+  - rebuilt and redeployed the local-auth hotfix binary to `/home/mcp/.local/bin/vibe-kanban-serve`
+  - deployed binary hash matched `target/release/server`
+  - restarted `vibe-kanban.service`
+  - post-restart service state was `active/running` with `HOST=0.0.0.0`, `BACKEND_PORT=4311`, `PREVIEW_PROXY_PORT=4312`, and `VK_DISABLE_AUTH=1`
+  - post-restart `/api/info` returned `login_status: loggedin` and `shared_api_base: null`
+  - post-restart `https://vibe.local` returned `200`
+  - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo check -p executors -p server`
+  - `pnpm run format`
+  - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo build --release -p server --bin server`
+  - deployed binary hash matched `target/release/server`: `4a87753855846cde85227e582c3fb0fc3fe23b297b5cd5fd74c65b802f81cc6b`
+  - post-fallback-restart service state was `active`
+  - post-fallback-restart `/api/info` returned `login_status: loggedin` and `shared_api_base: null`
+  - post-fallback-restart `https://vibe.local` returned `200`
 - Still pending:
-  - finish staging merge validation and merge PR `#37` if GitHub accepts it
+  - commit, push, and promote the Codex unforkable-rollout fallback
 
 ## What The Next Agent Should Do
 
@@ -45,7 +72,9 @@
 - Preserve the targeted DB repair approach: clear only invalid rollout anchors, not all historical session ids.
 - Preserve the execution-process stream behavior: reconnect cleanly on client close for process streams, and do not forward unrelated non-patch event messages from the server process stream.
 - Preserve the fixed LAN bind systemd drop-in unless the proxy is also changed.
+- Preserve the local-only auth behavior: no shared API base means no remote sign-in CTA should be required.
 - If another `empty session file` appears, scan for the referenced rollout size and DB row before changing code again.
+- If another `no rollout found` pointer appears, do not blanket-delete history; the executor fallback should let the prompt continue while a new valid session id self-heals future turns.
 
 ## What The Next Agent Must Not Do
 
@@ -60,9 +89,11 @@
 - `pnpm run format`
 - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo check -p db`
 - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo check -p services -p db`
+- `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo check -p executors -p server`
 - `pnpm --filter @vibe/local-web run build`
 - live DB scan for empty or missing rollout anchors
-- `curl -k -I https://vibe.local`
+- `curl -s http://127.0.0.1:4311/api/info` must show `login_status: loggedin` and `shared_api_base: null`
+- `curl -k -I https://vibe.local` must return `200`
 - execution-process WebSocket snapshot smoke test
 
 ## Verification Status From This Session
@@ -70,6 +101,7 @@
 - Code-level validation for the DB query guard and event stream guard passed.
 - Live DB invalid-anchor repair passed.
 - Full repo formatting, frontend build, release build, deployment, `vibe.local`, and execution-process WebSocket smoke tests passed.
+- Targeted executor/server compile, format, release build, deploy, service restart, `/api/info`, and `vibe.local` checks passed for the unforkable-rollout fallback.
 
 ## Session Metadata
 

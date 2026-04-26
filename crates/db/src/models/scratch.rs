@@ -243,6 +243,7 @@ pub struct DraftIssueData {
 
 /// The payload of a scratch, tagged by type. The type is part of the composite primary key.
 /// Data is stored as markdown string.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Serialize, Deserialize, TS, EnumDiscriminants)]
 #[serde(tag = "type", content = "data", rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum_discriminants(name(ScratchType))]

@@ -81,6 +81,13 @@ pub(crate) fn fork_params_from(thread_id: String, params: ThreadStartParams) -> 
     }
 }
 
+pub(crate) fn is_unforkable_rollout_error(err: &ExecutorError) -> bool {
+    let message = err.to_string();
+    message.contains("no rollout found for thread id")
+        || message.contains("empty session file")
+        || message.contains("failed to load rollout")
+}
+
 use async_trait::async_trait;
 use codex_app_server_protocol::{
     AskForApproval as V2AskForApproval, ReviewTarget, SandboxMode as V2SandboxMode,
@@ -639,10 +646,28 @@ impl Codex {
             }
             Some(session_id) => {
                 let response = client
-                    .thread_fork(fork_params_from(session_id, thread_start_params))
-                    .await?;
-                tracing::debug!("forked thread, new thread_id={}", response.thread.id);
-                (response.thread.id, response.model)
+                    .thread_fork(fork_params_from(
+                        session_id.clone(),
+                        thread_start_params.clone(),
+                    ))
+                    .await;
+
+                match response {
+                    Ok(response) => {
+                        tracing::debug!("forked thread, new thread_id={}", response.thread.id);
+                        (response.thread.id, response.model)
+                    }
+                    Err(err) if is_unforkable_rollout_error(&err) => {
+                        tracing::warn!(
+                            resume_session_id = %session_id,
+                            error = %err,
+                            "Codex resume thread is not forkable; starting a fresh thread"
+                        );
+                        let response = client.thread_start(thread_start_params).await?;
+                        (response.thread.id, response.model)
+                    }
+                    Err(err) => return Err(err),
+                }
             }
         };
 

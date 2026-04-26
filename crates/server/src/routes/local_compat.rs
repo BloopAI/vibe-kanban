@@ -1,3 +1,5 @@
+#![allow(clippy::collapsible_if, clippy::question_mark, dead_code)]
+
 use std::collections::{HashMap, HashSet};
 
 use axum::{
@@ -6,7 +8,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, patch, post},
 };
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use db::models::{
     project::Project,
     pull_request::PullRequest,
@@ -912,23 +914,22 @@ async fn find_linked_workspaces_for_task(
     deployment: &DeploymentImpl,
     task_id: Uuid,
 ) -> Result<Vec<Workspace>, ApiError> {
-    Ok(sqlx::query_as!(
-        Workspace,
-        r#"SELECT  id                AS "id!: Uuid",
-                   task_id           AS "task_id: Uuid",
+    Ok(sqlx::query_as::<_, Workspace>(
+        r#"SELECT  id,
+                   task_id,
                    container_ref,
                    branch,
-                   setup_completed_at AS "setup_completed_at: DateTime<Utc>",
-                   created_at        AS "created_at!: DateTime<Utc>",
-                   updated_at        AS "updated_at!: DateTime<Utc>",
-                   archived          AS "archived!: bool",
-                   pinned            AS "pinned!: bool",
+                   setup_completed_at,
+                   created_at,
+                   updated_at,
+                   archived,
+                   pinned,
                    name,
-                   worktree_deleted  AS "worktree_deleted!: bool"
+                   worktree_deleted
            FROM workspaces
            WHERE task_id = ?"#,
-        task_id
     )
+    .bind(task_id)
     .fetch_all(&deployment.db().pool)
     .await?)
 }
