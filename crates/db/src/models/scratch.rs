@@ -206,6 +206,7 @@ pub struct ProjectStatusConfigData {
     pub color: String,
     #[serde(default)]
     pub hidden: bool,
+    #[ts(type = "number")]
     pub sort_order: i64,
 }
 
