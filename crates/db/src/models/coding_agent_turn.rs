@@ -31,8 +31,9 @@ pub struct CodingAgentResumeInfo {
 }
 
 impl CodingAgentTurn {
-    /// Find session info from the latest coding agent turn for a session.
-    /// Only returns turns that have an agent_session_id set.
+    /// Find resumable session info from the latest successful coding agent turn for a session.
+    /// Failed launches can still emit an agent_session_id before Codex has persisted a usable
+    /// rollout file, so only completed turns with a final summary are safe continuity anchors.
     pub async fn find_latest_session_info(
         pool: &SqlitePool,
         session_id: Uuid,
@@ -47,7 +48,11 @@ impl CodingAgentTurn {
                WHERE ep.session_id = $1
                  AND ep.run_reason = 'codingagent'
                  AND ep.dropped = FALSE
+                 AND ep.status = 'completed'
+                 AND ep.exit_code = 0
                  AND cat.agent_session_id IS NOT NULL
+                 AND cat.summary IS NOT NULL
+                 AND trim(cat.summary) != ''
                ORDER BY ep.created_at DESC
                LIMIT 1"#,
             session_id

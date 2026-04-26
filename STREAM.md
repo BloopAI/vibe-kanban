@@ -8,26 +8,27 @@
 
 ## Objective
 
-- Keep this worktree aligned with the current local-only VK stability baseline while the next branch-specific task is established.
+- Repair local Codex rollout continuity so failed or corrupt agent launches cannot poison follow-up turns.
 
 ## In Scope
 
 - Truthful branch-local continuity for this worktree
-- Verifying the checked-out branch state against `staging`
+- Guarding resume/fork selection against failed coding-agent turns
+- Repairing live local DB continuity pointers that reference empty or missing rollout files
 - Preserving the local-only runtime baseline
 
 ## Out of Scope
 
 - Reconstructing the old backup-retention branch context as if it were still checked out here
-- Inventing new branch-local feature scope without explicit task direction
 - Re-enabling shared/cloud API behavior
+- Reconstructing a zero-byte Codex rollout file that has no persisted content
 
 ## Stream-Specific Decisions
 
-- This worktree currently has no branch-local code delta relative to `staging`.
 - The checked-out tip is `88c0ebd59` (`fix: stop workspace status polling churn`).
 - Local runtime expectations from `STATE.md` remain in force, including `shared_api_base: null`.
-- Any new implementation work should either start from this clean baseline or move to a fresh task branch with updated continuity notes.
+- Resume continuity should only anchor to successful coding-agent turns: completed process, exit code `0`, non-null agent session id, and non-empty final summary.
+- Empty or missing rollout files are live-state corruption, not valid resume anchors.
 
 ## Relevant Files / Modules
 
@@ -35,27 +36,28 @@
 - `HANDOFF.md`
 - `DELTA.md`
 - `STATE.md`
-- `packages/web-core/src/shared/hooks/useBranchStatus.ts`
-- `packages/web-core/src/shared/hooks/useTaskWorkspaces.ts`
+- `crates/db/src/models/coding_agent_turn.rs`
+- `/home/mcp/.local/share/vibe-kanban/db.v2.sqlite`
+- `/home/mcp/.local/share/vibe-kanban/codex-home/sessions`
 
 ## Current Status
 
 - Confirmed:
-  - the worktree is clean
-  - `vk/ea3c-vk-auto-archive` currently matches `staging`
-  - the latest landed stability hotfix in this checkout is `88c0ebd59`
-  - the live local VK service currently reports `shared_api_base: null`
+  - the reported zero-byte rollout was `019dc72a-9fba-7961-9c36-a3f8f8a63036`
+  - the reported `019dc9bd-ef72-76f2-b08e-4c83659f0369` rollout is non-empty
+  - the live DB repair cleared four invalid `agent_session_id` pointers whose rollout files were empty or missing
+  - a DB backup was saved at `/home/mcp/backups/vk-rollout-repair-20260426T122842Z`
 - Pending:
-  - explicit direction for the next branch-local change, if any
+  - rebuild/restart the local service after validation if the running install should receive the code guard immediately
 
 ## Risks / Regression Traps
 
 - Trusting stale continuity docs instead of the checked-out branch and code
-- Assuming this worktree still contains the backup-retention PR scope
-- Starting new edits without first recording the real branch intent in `STREAM.md`
+- Treating any non-null `agent_session_id` as resumable without checking the source process outcome
+- Nulling all historical agent session IDs instead of only invalid live-state pointers
 
 ## Next Safe Steps
 
-1. Verify the local runtime still reports `shared_api_base: null`.
-2. Treat this worktree as a clean staging-equivalent baseline until a new scoped task is defined.
-3. If new work starts here, update `STREAM.md` and `HANDOFF.md` before handing off again.
+1. Finish validation for the DB query guard.
+2. Rebuild and restart the local service if the live install should use the guard immediately.
+3. Recheck that no DB `agent_session_id` pointers reference empty or missing rollout files.

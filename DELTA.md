@@ -122,3 +122,20 @@
   - `curl -s http://127.0.0.1:4311/api/info` confirmed `shared_api_base: null`
 - Not complete / known gaps:
   - `pnpm run format` did not complete because `packages/web-core` could not resolve `prettier`
+
+## 2026-04-26T12:35:00Z | vk/ea3c-vk-auto-archive | Codex rollout continuity repair
+
+- Intent: stop empty or failed Codex rollout launches from poisoning follow-up turns in the local Vibe Kanban install.
+- Completed:
+  - identified `019dc72a-9fba-7961-9c36-a3f8f8a63036` as a true zero-byte rollout file
+  - confirmed `019dc9bd-ef72-76f2-b08e-4c83659f0369` was non-empty despite the late `thread not found` log
+  - changed resume lookup to only use completed exit-0 coding-agent turns with a non-empty summary
+  - backed up the live DB to `/home/mcp/backups/vk-rollout-repair-20260426T122842Z`
+  - cleared four live DB `agent_session_id` pointers whose rollout files were empty or missing
+- Verified:
+  - `cargo fmt --all`
+  - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo check -p db`
+  - post-repair live DB scan returned `bad_rollout_agent_session_rows_after 0`
+- Not complete / known gaps:
+  - the zero-byte rollout cannot be reconstructed because no persisted session content exists
+  - the upstream Codex late-finalization `thread not found` log may still appear, but it no longer points at an empty rollout anchor in the live DB
