@@ -7,12 +7,14 @@
 - Backed up the live DB and cleared only invalid `agent_session_id` pointers whose rollout files were empty or missing.
 - Fixed `vibe.local` 502 by restoring the local service bind address for the LAN reverse proxy.
 - Added execution-process stream reconnect/server filtering so mounted workspace pages do not stay stuck showing agents as running after the stream closes.
-- Refreshed branch-local continuity docs for this repair stream.
+- Opened PR `#37` for the hotfix and began merging current `fork/staging` into the hotfix branch so the fix can be promoted without being lost.
+- Refreshed branch-local continuity docs for this repair stream after resolving staging merge conflicts.
 
 ## What Is True Right Now
 
 - The live local install remains the source of truth.
 - The checked-out branch in this worktree is `vk/ea3c-vk-auto-archive`.
+- PR `#37` targets `staging` from this branch.
 - `crates/db/src/models/coding_agent_turn.rs` now only returns resumable session info from completed, exit-0 coding-agent turns with a non-empty summary.
 - The reported empty rollout `019dc72a-9fba-7961-9c36-a3f8f8a63036` cannot be reconstructed because the persisted JSONL file is zero bytes.
 - The reported rollout `019dc9bd-ef72-76f2-b08e-4c83659f0369` exists and is non-empty; its late `thread not found` log did not indicate an empty rollout.
@@ -35,10 +37,11 @@
   - `https://vibe.local` returned `200`
   - execution-process WebSocket returned initial snapshot plus `Ready`
 - Still pending:
-  - commit the status-stream hotfix if not already committed later in this session
+  - finish staging merge validation and merge PR `#37` if GitHub accepts it
 
 ## What The Next Agent Should Do
 
+- If this handoff is encountered mid-merge, finish conflict resolution instead of restarting the branch.
 - Preserve the targeted DB repair approach: clear only invalid rollout anchors, not all historical session ids.
 - Preserve the execution-process stream behavior: reconnect cleanly on client close for process streams, and do not forward unrelated non-patch event messages from the server process stream.
 - Preserve the fixed LAN bind systemd drop-in unless the proxy is also changed.
@@ -72,4 +75,4 @@
 
 - Branch: `vk/ea3c-vk-auto-archive`
 - Repo: `/home/mcp/code/worktrees/ea3c-vk-auto-archive/_vibe_kanban_repo`
-- Focus: repair Codex rollout resume continuity and live invalid rollout anchors
+- Focus: repair Codex rollout resume continuity, live invalid rollout anchors, execution-process stale status, and `vibe.local` reachability

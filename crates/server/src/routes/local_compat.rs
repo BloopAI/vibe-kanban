@@ -6,7 +6,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, patch, post},
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use db::models::{
     project::Project,
     pull_request::PullRequest,
@@ -18,6 +18,7 @@ use db::models::{
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use services::services::container::ContainerService;
 use sqlx::{QueryBuilder, Sqlite};
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -216,6 +217,10 @@ fn canonical_status_name(status_id: &str) -> String {
         "cancelled" | "canceled" => "Cancelled".to_string(),
         _ => "To do".to_string(),
     }
+}
+
+fn is_in_staging_status(value: &str) -> bool {
+    normalize_status_key(value) == "instaging"
 }
 
 fn status_id_from_name(name: &str) -> String {
@@ -903,6 +908,67 @@ async fn ensure_mutable_issue(deployment: &DeploymentImpl, issue_id: Uuid) -> Re
     Err(sqlx::Error::RowNotFound.into())
 }
 
+async fn find_linked_workspaces_for_task(
+    deployment: &DeploymentImpl,
+    task_id: Uuid,
+) -> Result<Vec<Workspace>, ApiError> {
+    Ok(sqlx::query_as!(
+        Workspace,
+        r#"SELECT  id                AS "id!: Uuid",
+                   task_id           AS "task_id: Uuid",
+                   container_ref,
+                   branch,
+                   setup_completed_at AS "setup_completed_at: DateTime<Utc>",
+                   created_at        AS "created_at!: DateTime<Utc>",
+                   updated_at        AS "updated_at!: DateTime<Utc>",
+                   archived          AS "archived!: bool",
+                   pinned            AS "pinned!: bool",
+                   name,
+                   worktree_deleted  AS "worktree_deleted!: bool"
+           FROM workspaces
+           WHERE task_id = ?"#,
+        task_id
+    )
+    .fetch_all(&deployment.db().pool)
+    .await?)
+}
+
+async fn archive_linked_workspaces_for_in_staging_issue(
+    deployment: &DeploymentImpl,
+    issue_id: Uuid,
+) -> Result<(), ApiError> {
+    let workspaces = find_linked_workspaces_for_task(deployment, issue_id).await?;
+
+    for workspace in workspaces {
+        if !workspace.archived
+            && let Err(e) = deployment.container().archive_workspace(workspace.id).await
+        {
+            tracing::error!(
+                "Failed to archive workspace {} after moving issue {} to In Staging: {}",
+                workspace.id,
+                issue_id,
+                e
+            );
+            continue;
+        }
+
+        if let Err(e) = deployment
+            .container()
+            .maybe_delete_archived_worktree_if_safe(workspace.id)
+            .await
+        {
+            tracing::error!(
+                "Failed to delete archived worktree for workspace {} after moving issue {} to In Staging: {}",
+                workspace.id,
+                issue_id,
+                e
+            );
+        }
+    }
+
+    Ok(())
+}
+
 async fn list_fallback_projects(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<serde_json::Value>, ApiError> {
@@ -1302,6 +1368,8 @@ async fn update_issue(
         .ok_or(sqlx::Error::RowNotFound)?;
     let project_tasks = load_project_tasks(&deployment, existing.project_id).await?;
     let configured_statuses = load_project_status_configs(&deployment, existing.project_id).await?;
+    let previous_status_name =
+        extract_status_name(existing.description.as_deref(), &existing.status);
     let status_name = request
         .status_id
         .as_deref()
@@ -1314,11 +1382,13 @@ async fn update_issue(
                 Some(&existing.status),
             )
         })
-        .unwrap_or_else(|| extract_status_name(existing.description.as_deref(), &existing.status));
+        .unwrap_or_else(|| previous_status_name.clone());
     let next_description_source = request
         .description
         .clone()
         .unwrap_or(existing.description.clone());
+    let entered_in_staging =
+        !is_in_staging_status(&previous_status_name) && is_in_staging_status(&status_name);
 
     Task::update(
         &deployment.db().pool,
@@ -1332,6 +1402,10 @@ async fn update_issue(
         request.parent_issue_id,
     )
     .await?;
+
+    if entered_in_staging {
+        archive_linked_workspaces_for_in_staging_issue(&deployment, issue_id).await?;
+    }
 
     Ok(ResponseJson(MutationTxidResponse {
         txid: Utc::now().timestamp_millis(),
@@ -1351,6 +1425,8 @@ async fn bulk_update_issues(
         let project_tasks = load_project_tasks(&deployment, existing.project_id).await?;
         let configured_statuses =
             load_project_status_configs(&deployment, existing.project_id).await?;
+        let previous_status_name =
+            extract_status_name(existing.description.as_deref(), &existing.status);
         let status_name = update
             .status_id
             .as_deref()
@@ -1363,13 +1439,13 @@ async fn bulk_update_issues(
                     Some(&existing.status),
                 )
             })
-            .unwrap_or_else(|| {
-                extract_status_name(existing.description.as_deref(), &existing.status)
-            });
+            .unwrap_or_else(|| previous_status_name.clone());
         let next_description_source = update
             .description
             .clone()
             .unwrap_or(existing.description.clone());
+        let entered_in_staging =
+            !is_in_staging_status(&previous_status_name) && is_in_staging_status(&status_name);
 
         Task::update(
             &deployment.db().pool,
@@ -1383,6 +1459,10 @@ async fn bulk_update_issues(
             update.parent_issue_id,
         )
         .await?;
+
+        if entered_in_staging {
+            archive_linked_workspaces_for_in_staging_issue(&deployment, update.id).await?;
+        }
     }
 
     Ok(ResponseJson(MutationTxidResponse {

@@ -320,6 +320,7 @@
       "rename-workspace": "Rename workspace",
       "pin-workspace": "Pin/Unpin workspace",
       "archive-workspace": "Archive workspace",
+      "delete-worktree": "Delete workspace worktree",
       "delete-workspace": "Delete workspace",
       "toggle-changes-mode": "Toggle Changes panel",
       "toggle-logs-mode": "Toggle Logs panel",

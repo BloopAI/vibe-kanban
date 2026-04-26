@@ -35,6 +35,7 @@ import { TABLE_TRANSFORMER } from '@vibe/ui/lib/table-transformer';
 import {
   WorkspaceContext as EditorWorkspaceContext,
   SessionContext,
+  HostIdContext,
   LocalAttachmentsContext,
   type LocalAttachmentMetadata,
 } from '@vibe/ui/components/WorkspaceContext';
@@ -69,6 +70,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { useDiffPaths } from '@/shared/stores/useWorkspaceDiffStore';
 import { useSlashCommands } from '@/shared/hooks/useExecutorDiscovery';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
+import { useHostId } from '@/shared/providers/HostIdProvider';
 import { cn } from '@/shared/lib/utils';
 import { repoApi } from '@/shared/lib/api';
 import { searchTagsAndFiles } from '@/shared/lib/searchTagsAndFiles';
@@ -87,6 +89,7 @@ import {
 } from '@/shared/dialogs/command-bar/selections/repoSelection';
 import { fetchAttachmentSasUrl } from '@/shared/lib/remoteApi';
 import { writeClipboardViaBridge } from '@/shared/lib/clipboard';
+import { ReadOnlyCodeBlockCopyPlugin } from '@/shared/components/ReadOnlyCodeBlockCopyPlugin';
 import type { SendMessageShortcut } from 'shared/types';
 import type { BaseCodingAgent } from 'shared/types';
 
@@ -298,6 +301,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
     // Copy button state
     const [copied, setCopied] = useState(false);
     const diffPaths = useDiffPaths();
+    const hostId = useHostId();
     const preferredRepoId = useUiPreferencesStore(
       (state) => state.fileSearchRepoId
     );
@@ -511,104 +515,107 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
 
     const editorContent = (
       <div className="wysiwyg text-base relative">
-        <EditorWorkspaceContext.Provider value={workspaceId}>
-          <SessionContext.Provider value={sessionId}>
-            <LocalAttachmentsContext.Provider value={localAttachments ?? []}>
-              <LexicalComposer initialConfig={initialConfig}>
-                <EditorRefPlugin editorRef={editorInstanceRef} />
-                <MarkdownSyncPlugin
-                  value={value}
-                  onChange={onChange}
-                  onEditorStateChange={onEditorStateChange}
-                  editable={!disabled}
-                  transformers={allTransformers}
-                />
-                {!disabled && !showStaticToolbar && <ToolbarPlugin />}
-
-                <div className="relative">
-                  <RichTextPlugin
-                    contentEditable={
-                      <ContentEditable
-                        className={cn('outline-none', className)}
-                        aria-label={
-                          disabled ? 'Markdown content' : 'Markdown editor'
-                        }
-                        onPasteCapture={handlePaste}
-                      />
-                    }
-                    placeholder={placeholderElement}
-                    ErrorBoundary={LexicalErrorBoundary}
+        <HostIdContext.Provider value={hostId}>
+          <EditorWorkspaceContext.Provider value={workspaceId}>
+            <SessionContext.Provider value={sessionId}>
+              <LocalAttachmentsContext.Provider value={localAttachments ?? []}>
+                <LexicalComposer initialConfig={initialConfig}>
+                  <EditorRefPlugin editorRef={editorInstanceRef} />
+                  <MarkdownSyncPlugin
+                    value={value}
+                    onChange={onChange}
+                    onEditorStateChange={onEditorStateChange}
+                    editable={!disabled}
+                    transformers={allTransformers}
                   />
-                </div>
+                  {!disabled && !showStaticToolbar && <ToolbarPlugin />}
 
-                {showStaticToolbar && (
-                  <StaticToolbarPlugin
-                    saveStatus={saveStatus}
-                    extraActions={staticToolbarActions}
-                    readOnly={disabled}
-                    onRequestEdit={onRequestEdit}
-                  />
-                )}
-
-                <MarkdownShortcutPlugin transformers={allTransformers} />
-                <ListPlugin />
-                <TablePlugin />
-                <CodeHighlightPlugin />
-                {/* Only include editing plugins when not in read-only mode */}
-                {!disabled && (
-                  <>
-                    {autoFocus && <AutoFocusPlugin />}
-                    <HistoryPlugin />
-                    <CodeBlockEscapePlugin />
-                    <InlineCodeBoundaryPlugin />
-                    <PasteMarkdownPlugin transformers={allTransformers} />
-                    <TypeaheadOpenProvider>
-                      <FileTagTypeaheadPlugin
-                        repoIds={repoIds}
-                        diffPaths={diffPaths}
-                        preferredRepoId={preferredRepoId}
-                        setPreferredRepoId={setFileSearchRepo}
-                        listRecentRepos={listRecentRepos}
-                        getRepoById={getRepoById}
-                        chooseRepo={chooseRepo}
-                        onCreateTag={handleCreateTag}
-                        searchTagsAndFiles={searchFileTags}
-                      />
-                      {executor && (
-                        <SlashCommandTypeaheadPlugin
-                          enabled={true}
-                          commands={slashCommandsQuery.commands}
-                          isInitialized={slashCommandsQuery.isInitialized}
-                          isDiscovering={slashCommandsQuery.discovering}
+                  <div className="relative">
+                    <RichTextPlugin
+                      contentEditable={
+                        <ContentEditable
+                          className={cn('outline-none', className)}
+                          aria-label={
+                            disabled ? 'Markdown content' : 'Markdown editor'
+                          }
+                          onPasteCapture={handlePaste}
                         />
-                      )}
-                      <KeyboardCommandsPlugin
-                        onCmdEnter={onCmdEnter}
-                        onShiftCmdEnter={onShiftCmdEnter}
-                        onChange={onChange}
-                        transformers={allTransformers}
-                        sendShortcut={sendShortcut}
-                      />
-                    </TypeaheadOpenProvider>
-                    <ImageKeyboardPlugin isTargetNode={$isImageNode} />
-                    <ComponentInfoKeyboardPlugin
-                      isTargetNode={$isComponentInfoNode}
+                      }
+                      placeholder={placeholderElement}
+                      ErrorBoundary={LexicalErrorBoundary}
                     />
-                  </>
-                )}
-                {/* Link sanitization for read-only mode */}
-                {disabled && <ReadOnlyLinkPlugin />}
-                {/* Clickable code for file paths in read-only mode */}
-                {disabled && findMatchingDiffPath && onCodeClick && (
-                  <ClickableCodePlugin
-                    findMatchingDiffPath={findMatchingDiffPath}
-                    onCodeClick={onCodeClick}
-                  />
-                )}
-              </LexicalComposer>
-            </LocalAttachmentsContext.Provider>
-          </SessionContext.Provider>
-        </EditorWorkspaceContext.Provider>
+                  </div>
+
+                  {showStaticToolbar && (
+                    <StaticToolbarPlugin
+                      saveStatus={saveStatus}
+                      extraActions={staticToolbarActions}
+                      readOnly={disabled}
+                      onRequestEdit={onRequestEdit}
+                    />
+                  )}
+
+                  <MarkdownShortcutPlugin transformers={allTransformers} />
+                  <ListPlugin />
+                  <TablePlugin />
+                  <CodeHighlightPlugin />
+                  {/* Only include editing plugins when not in read-only mode */}
+                  {!disabled && (
+                    <>
+                      {autoFocus && <AutoFocusPlugin />}
+                      <HistoryPlugin />
+                      <CodeBlockEscapePlugin />
+                      <InlineCodeBoundaryPlugin />
+                      <PasteMarkdownPlugin transformers={allTransformers} />
+                      <TypeaheadOpenProvider>
+                        <FileTagTypeaheadPlugin
+                          repoIds={repoIds}
+                          diffPaths={diffPaths}
+                          preferredRepoId={preferredRepoId}
+                          setPreferredRepoId={setFileSearchRepo}
+                          listRecentRepos={listRecentRepos}
+                          getRepoById={getRepoById}
+                          chooseRepo={chooseRepo}
+                          onCreateTag={handleCreateTag}
+                          searchTagsAndFiles={searchFileTags}
+                        />
+                        {executor && (
+                          <SlashCommandTypeaheadPlugin
+                            enabled={true}
+                            commands={slashCommandsQuery.commands}
+                            isInitialized={slashCommandsQuery.isInitialized}
+                            isDiscovering={slashCommandsQuery.discovering}
+                          />
+                        )}
+                        <KeyboardCommandsPlugin
+                          onCmdEnter={onCmdEnter}
+                          onShiftCmdEnter={onShiftCmdEnter}
+                          onChange={onChange}
+                          transformers={allTransformers}
+                          sendShortcut={sendShortcut}
+                        />
+                      </TypeaheadOpenProvider>
+                      <ImageKeyboardPlugin isTargetNode={$isImageNode} />
+                      <ComponentInfoKeyboardPlugin
+                        isTargetNode={$isComponentInfoNode}
+                      />
+                    </>
+                  )}
+                  {/* Link sanitization for read-only mode */}
+                  {disabled && <ReadOnlyLinkPlugin />}
+                  {disabled && <ReadOnlyCodeBlockCopyPlugin />}
+                  {/* Clickable code for file paths in read-only mode */}
+                  {disabled && findMatchingDiffPath && onCodeClick && (
+                    <ClickableCodePlugin
+                      findMatchingDiffPath={findMatchingDiffPath}
+                      onCodeClick={onCodeClick}
+                    />
+                  )}
+                </LexicalComposer>
+              </LocalAttachmentsContext.Provider>
+            </SessionContext.Provider>
+          </EditorWorkspaceContext.Provider>
+        </HostIdContext.Provider>
       </div>
     );
 

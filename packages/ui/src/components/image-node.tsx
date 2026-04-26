@@ -7,7 +7,9 @@ import { Download, File, HelpCircle, Loader2, X } from 'lucide-react';
 import {
   useWorkspaceId,
   useSessionId,
+  useHostId,
   useLocalAttachments,
+  scopeLocalApiPath,
   type LocalAttachmentMetadata,
 } from './WorkspaceContext';
 import {
@@ -127,6 +129,7 @@ function toMetadataFromLocalImage(
 }
 
 function useImageMetadata(
+  hostId: string | null,
   workspaceId: string | undefined,
   sessionId: string | undefined,
   src: string,
@@ -152,7 +155,10 @@ function useImageMetadata(
       if (!workspaceId || !sessionId) return null;
 
       const response = await fetch(
-        `/api/workspaces/${workspaceId}/attachments/metadata?path=${encodeURIComponent(src)}&session_id=${sessionId}`
+        scopeLocalApiPath(
+          `/api/workspaces/${workspaceId}/attachments/metadata?path=${encodeURIComponent(src)}&session_id=${sessionId}`,
+          hostId
+        )
       );
       const payload = await response.json();
       return payload.data as ImageMetadataLike | null;
@@ -199,6 +205,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
     const { src, altText } = data;
     const workspaceId = useWorkspaceId();
     const sessionId = useSessionId();
+    const hostId = useHostId();
     const localAttachments = useLocalAttachments();
     const [editor] = useLexicalComposerContext();
 
@@ -230,6 +237,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
     );
 
     const { data: metadata, isLoading: loading } = useImageMetadata(
+      hostId,
       workspaceId,
       sessionId,
       src,
@@ -243,8 +251,11 @@ export function createImageNode(options: CreateImageNodeOptions) {
         isImageLikeFileName(workspaceDisplayName));
     const showDownloadButton = Boolean(
       (isAttachment &&
-        (localAttachment?.proxy_url || fullSizeUrl || metadata?.proxy_url)) ||
-        (!isWorkspaceImage && metadata?.proxy_url)
+        (scopeLocalApiPath(localAttachment?.proxy_url ?? '', hostId) ||
+          scopeLocalApiPath(fullSizeUrl ?? '', hostId) ||
+          scopeLocalApiPath(metadata?.proxy_url ?? '', hostId))) ||
+        (!isWorkspaceImage &&
+          scopeLocalApiPath(metadata?.proxy_url ?? '', hostId))
     );
 
     const handleClick = useCallback(
@@ -252,10 +263,14 @@ export function createImageNode(options: CreateImageNodeOptions) {
         event.preventDefault();
         event.stopPropagation();
 
-        const localAttachmentUrl = localAttachment?.proxy_url ?? null;
+        const localAttachmentUrl = localAttachment?.proxy_url
+          ? scopeLocalApiPath(localAttachment.proxy_url, hostId)
+          : null;
 
         if (isAttachment && (localAttachmentUrl || fullSizeUrl)) {
-          const resolvedFullSizeUrl = localAttachmentUrl || fullSizeUrl;
+          const resolvedFullSizeUrl =
+            localAttachmentUrl ||
+            (fullSizeUrl ? scopeLocalApiPath(fullSizeUrl, hostId) : null);
           if (!resolvedFullSizeUrl) return;
 
           if (isImageAttachment && (localAttachmentUrl || thumbnailUrl)) {
@@ -271,16 +286,20 @@ export function createImageNode(options: CreateImageNodeOptions) {
         }
 
         if (metadata?.exists && metadata.proxy_url) {
+          const metadataProxyUrl = scopeLocalApiPath(
+            metadata.proxy_url,
+            hostId
+          );
           if (isWorkspaceImage) {
             options.openImagePreview({
-              imageUrl: metadata.proxy_url,
+              imageUrl: metadataProxyUrl,
               altText,
               fileName: metadata.file_name ?? undefined,
               format: metadata.format ?? undefined,
               sizeBytes: metadata.size_bytes,
             });
           } else {
-            window.open(metadata.proxy_url, '_blank', 'noopener,noreferrer');
+            window.open(metadataProxyUrl, '_blank', 'noopener,noreferrer');
           }
         }
       },
@@ -293,6 +312,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
         metadata,
         isWorkspaceImage,
         altText,
+        hostId,
       ]
     );
 
@@ -302,9 +322,13 @@ export function createImageNode(options: CreateImageNodeOptions) {
         event.stopPropagation();
 
         const downloadUrl =
-          localAttachment?.proxy_url ??
-          fullSizeUrl ??
-          (!isWorkspaceImage ? (metadata?.proxy_url ?? null) : null);
+          (localAttachment?.proxy_url
+            ? scopeLocalApiPath(localAttachment.proxy_url, hostId)
+            : null) ??
+          (fullSizeUrl ? scopeLocalApiPath(fullSizeUrl, hostId) : null) ??
+          (!isWorkspaceImage && metadata?.proxy_url
+            ? scopeLocalApiPath(metadata.proxy_url, hostId)
+            : null);
         if (!downloadUrl) return;
 
         downloadBlobUrl(downloadUrl, altText || 'attachment').catch((error) => {
@@ -317,6 +341,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
         isWorkspaceImage,
         metadata,
         altText,
+        hostId,
       ]
     );
 
@@ -347,7 +372,11 @@ export function createImageNode(options: CreateImageNodeOptions) {
     );
 
     if (isAttachment) {
-      const previewUrl = localAttachment?.proxy_url ?? thumbnailUrl;
+      const previewUrl =
+        (localAttachment?.proxy_url
+          ? scopeLocalApiPath(localAttachment.proxy_url, hostId)
+          : null) ??
+        (thumbnailUrl ? scopeLocalApiPath(thumbnailUrl, hostId) : null);
 
       if (isImageAttachment && !localAttachment && attachmentLoading) {
         thumbnailContent = (
@@ -413,7 +442,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
       } else if (metadata?.exists && metadata.proxy_url) {
         thumbnailContent = (
           <img
-            src={metadata.proxy_url}
+            src={scopeLocalApiPath(metadata.proxy_url, hostId)}
             alt={altText}
             className="w-10 h-10 object-cover rounded flex-shrink-0"
             draggable={false}

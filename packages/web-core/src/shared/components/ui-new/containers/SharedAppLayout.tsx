@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DropResult } from '@hello-pangea/dnd';
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
 import { siDiscord, siGithub } from 'simple-icons';
@@ -9,6 +9,7 @@ import {
   LayoutIcon,
   KanbanIcon,
   DownloadSimpleIcon,
+  ArchiveIcon,
 } from '@phosphor-icons/react';
 import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
 import { useIsMobile } from '@/shared/hooks/useIsMobile';
@@ -27,6 +28,7 @@ import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
+import { useUserContext } from '@/shared/hooks/useUserContext';
 import { useDiscordOnlineCount } from '@/shared/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/shared/hooks/useGitHubStars';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
@@ -45,6 +47,7 @@ import {
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
+import { ArchivedProjectsDialog } from '@/shared/dialogs/kanban/ArchivedProjectsDialog';
 import { useCommandBarShortcut } from '@/shared/hooks/useCommandBarShortcut';
 import { useWorkspaceSidebarPreviewController } from '@/shared/hooks/useWorkspaceSidebarPreviewController';
 import { useShape } from '@/shared/integrations/electric/hooks';
@@ -54,7 +57,7 @@ import { AppBarNotificationBellContainer } from '@/pages/workspaces/AppBarNotifi
 import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebarContainer';
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
 import { useRemoteCloudHostsAppBarModel } from '@/shared/hooks/useRemoteCloudHosts';
-import { projectsApi } from '@/shared/lib/api';
+import { projectsApi, workspacesApi } from '@/shared/lib/api';
 
 function getLocalProjectColor(projectId: string): string {
   let hash = 0;
@@ -62,6 +65,44 @@ function getLocalProjectColor(projectId: string): string {
     hash = (hash * 31 + char.charCodeAt(0)) % 360;
   }
   return `${hash} 70% 45%`;
+}
+
+function orderLocalProjects(
+  projects: AppBarProject[],
+  localProjectOrder: string[]
+): AppBarProject[] {
+  if (localProjectOrder.length === 0) {
+    return projects;
+  }
+
+  const projectById = new Map(projects.map((project) => [project.id, project]));
+  const ordered: AppBarProject[] = [];
+
+  for (const projectId of localProjectOrder) {
+    const project = projectById.get(projectId);
+    if (!project) {
+      continue;
+    }
+    ordered.push(project);
+    projectById.delete(projectId);
+  }
+
+  return [...ordered, ...projectById.values()];
+}
+
+function workspaceNeedsReview(workspace: {
+  has_pending_approval?: boolean;
+  has_unseen_turns?: boolean;
+  latest_process_status?: string | null;
+}): boolean {
+  if (workspace.has_pending_approval) {
+    return true;
+  }
+
+  return (
+    workspace.has_unseen_turns === true &&
+    workspace.latest_process_status !== 'running'
+  );
 }
 
 export function SharedAppLayout() {
@@ -72,7 +113,11 @@ export function SharedAppLayout() {
   const isLeftSidebarVisible = useUiPreferencesStore(
     (s) => s.isLeftSidebarVisible
   );
+  const showLeftColumnLinks = useUiPreferencesStore(
+    (s) => s.showLeftColumnLinks
+  );
   const { isSignedIn } = useAuth();
+  const { workspaces: userWorkspaces } = useUserContext();
   const { appVersion, loginStatus } = useUserSystem();
   const updateVersion = useAppUpdateStore((s) => s.updateVersion);
   const restartForUpdate = useAppUpdateStore((s) => s.restart);
@@ -115,6 +160,10 @@ export function SharedAppLayout() {
 
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
+  const localProjectOrder = useUiPreferencesStore((s) => s.localProjectOrder);
+  const setLocalProjectOrder = useUiPreferencesStore(
+    (s) => s.setLocalProjectOrder
+  );
   const prevOrgIdRef = useRef<string | null>(null);
 
   // Auto-select first org if none selected or selection is invalid
@@ -156,34 +205,126 @@ export function SharedAppLayout() {
   );
   const localAppBarProjects = useMemo<AppBarProject[]>(
     () =>
-      localProjects.map((project) => ({
-        id: project.id,
-        name: project.name,
-        color: getLocalProjectColor(project.id),
-        archived: project.archived,
-      })),
-    [localProjects]
-  );
-  const allAppBarProjects = isLocalAuthBypassed
-    ? localAppBarProjects
-    : sortedProjects;
-  const isProjectsLoading = isLocalAuthBypassed
-    ? isLocalProjectsLoading
-    : isLoading;
-  const archivedProjects = useMemo(
-    () =>
-      allAppBarProjects.filter(
-        (project) => 'archived' in project && project.archived
+      orderLocalProjects(
+        localProjects.map((project) => ({
+          id: project.id,
+          name: project.name,
+          color: getLocalProjectColor(project.id),
+          archived: project.archived,
+        })),
+        localProjectOrder
       ),
+    [localProjectOrder, localProjects]
+  );
+
+  const {
+    data: activeWorkspaceSummaries = [],
+    isLoading: isActiveWorkspaceSummariesLoading,
+  } = useQuery({
+    queryKey: ['workspace-summaries', 'active'],
+    queryFn: () => workspacesApi.listSummaries(false),
+    staleTime: 1000,
+    refetchInterval: 15000,
+  });
+  const {
+    data: archivedWorkspaceSummaries = [],
+    isLoading: isArchivedWorkspaceSummariesLoading,
+  } = useQuery({
+    queryKey: ['workspace-summaries', 'archived'],
+    queryFn: () => workspacesApi.listSummaries(true),
+    staleTime: 1000,
+    refetchInterval: 15000,
+  });
+  const localProjectWorkspaceQueries = useQueries({
+    queries: localProjects.map((project) => ({
+      queryKey: ['project-workspaces', project.id],
+      queryFn: () => projectsApi.listWorkspaces(project.id),
+      enabled: isLocalAuthBypassed,
+      staleTime: 1000,
+      refetchInterval: 15000,
+    })),
+  });
+  const needsReviewWorkspaceIds = useMemo(() => {
+    const summaries = [
+      ...activeWorkspaceSummaries,
+      ...archivedWorkspaceSummaries,
+    ];
+    return new Set(
+      summaries
+        .filter((summary) => workspaceNeedsReview(summary))
+        .map((summary) => summary.workspace_id)
+    );
+  }, [activeWorkspaceSummaries, archivedWorkspaceSummaries]);
+  const needsReviewProjectIds = useMemo(() => {
+    const projectIds = new Set<string>();
+
+    if (isLocalAuthBypassed) {
+      for (const query of localProjectWorkspaceQueries) {
+        for (const workspace of query.data ?? []) {
+          if (
+            workspace.local_workspace_id &&
+            needsReviewWorkspaceIds.has(workspace.local_workspace_id)
+          ) {
+            projectIds.add(workspace.project_id);
+          }
+        }
+      }
+
+      return projectIds;
+    }
+
+    for (const workspace of userWorkspaces) {
+      if (
+        workspace.local_workspace_id &&
+        needsReviewWorkspaceIds.has(workspace.local_workspace_id)
+      ) {
+        projectIds.add(workspace.project_id);
+      }
+    }
+
+    return projectIds;
+  }, [
+    isLocalAuthBypassed,
+    localProjectWorkspaceQueries,
+    needsReviewWorkspaceIds,
+    userWorkspaces,
+  ]);
+  const allAppBarProjects = useMemo<AppBarProject[]>(() => {
+    const projects: AppBarProject[] = isLocalAuthBypassed
+      ? localAppBarProjects
+      : sortedProjects.map((project) => ({
+          id: project.id,
+          name: project.name,
+          color: project.color,
+          archived: false,
+        }));
+
+    return projects.map((project) => ({
+      ...project,
+      hasNeedsReview: needsReviewProjectIds.has(project.id),
+    }));
+  }, [
+    isLocalAuthBypassed,
+    localAppBarProjects,
+    needsReviewProjectIds,
+    sortedProjects,
+  ]);
+  const archivedProjects = useMemo(
+    () => allAppBarProjects.filter((project) => project.archived),
     [allAppBarProjects]
   );
   const appBarProjects = useMemo(
-    () =>
-      allAppBarProjects.filter(
-        (project) => !('archived' in project) || !project.archived
-      ),
+    () => allAppBarProjects.filter((project) => !project.archived),
     [allAppBarProjects]
   );
+  const isProjectsLoading = isLocalAuthBypassed
+    ? isLocalProjectsLoading ||
+      isActiveWorkspaceSummariesLoading ||
+      isArchivedWorkspaceSummariesLoading ||
+      localProjectWorkspaceQueries.some((query) => query.isLoading)
+    : isLoading ||
+      isActiveWorkspaceSummariesLoading ||
+      isArchivedWorkspaceSummariesLoading;
   const [orderedProjects, setOrderedProjects] =
     useState<AppBarProject[]>(appBarProjects);
   const [isSavingProjectOrder, setIsSavingProjectOrder] = useState(false);
@@ -289,7 +430,7 @@ export function SharedAppLayout() {
 
   const handleProjectsDragEnd = useCallback(
     async ({ source, destination }: DropResult) => {
-      if (isLocalAuthBypassed || isSavingProjectOrder) {
+      if (isSavingProjectOrder) {
         return;
       }
       if (!destination || source.index === destination.index) {
@@ -306,6 +447,12 @@ export function SharedAppLayout() {
 
       reordered.splice(destination.index, 0, moved);
       setOrderedProjects(reordered);
+
+      if (isLocalAuthBypassed) {
+        setLocalProjectOrder(reordered.map((project) => project.id));
+        return;
+      }
+
       setIsSavingProjectOrder(true);
 
       try {
@@ -326,6 +473,7 @@ export function SharedAppLayout() {
       isLocalAuthBypassed,
       isSavingProjectOrder,
       orderedProjects,
+      setLocalProjectOrder,
       updateManyProjects,
     ]
   );
@@ -366,6 +514,13 @@ export function SharedAppLayout() {
     },
     [appNavigation, isLocalAuthBypassed, queryClient]
   );
+
+  const handleOpenArchivedProjects = useCallback(() => {
+    void ArchivedProjectsDialog.show({
+      projects: archivedProjects,
+      onResumeProject: handleRestoreArchivedProject,
+    });
+  }, [archivedProjects, handleRestoreArchivedProject]);
 
   const handleSignIn = useCallback(async () => {
     try {
@@ -426,16 +581,20 @@ export function SharedAppLayout() {
             {/* Desktop AppBar sidebar. */}
             <AppBar
               projects={orderedProjects}
-              archivedProjects={archivedProjects}
               hosts={remoteCloudHosts}
               activeHostId={activeHostId}
               onCreateProject={handleCreateProject}
+              onOpenArchivedProjects={handleOpenArchivedProjects}
+              hasArchivedProjects={archivedProjects.length > 0}
               onExportClick={handleExportClick}
               onWorkspacesClick={handleWorkspacesClick}
+              showRemoteSection={showLeftColumnLinks}
+              showExportButton={showLeftColumnLinks}
+              showProfileButton={showLeftColumnLinks}
+              showSocialLinks={showLeftColumnLinks}
               onHostClick={handleHostClick}
               onPairHostClick={handlePairHostClick}
               onProjectClick={handleProjectClick}
-              onArchivedProjectClick={handleRestoreArchivedProject}
               onProjectsDragEnd={handleProjectsDragEnd}
               isSavingProjectOrder={isSavingProjectOrder}
               isWorkspacesActive={isWorkspacesActive}
@@ -599,31 +758,6 @@ export function SharedAppLayout() {
                       </button>
                     ))}
                   </div>
-
-                  {isLocalAuthBypassed && archivedProjects.length > 0 && (
-                    <div className="space-y-1">
-                      <p className="px-3 text-xs font-medium uppercase tracking-wide text-low">
-                        Archived
-                      </p>
-                      {archivedProjects.map((project) => (
-                        <button
-                          type="button"
-                          key={project.id}
-                          onClick={() => {
-                            void handleRestoreArchivedProject(project.id);
-                            setIsDrawerOpen(false);
-                          }}
-                          className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-low transition-colors hover:bg-secondary hover:text-normal cursor-pointer"
-                        >
-                          <span
-                            className="h-2.5 w-2.5 rounded-full shrink-0 opacity-60"
-                            style={{ backgroundColor: `hsl(${project.color})` }}
-                          />
-                          <span className="truncate">{project.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="px-4 py-6 text-center">
@@ -656,17 +790,32 @@ export function SharedAppLayout() {
             {/* Create Project button */}
             {isSignedIn && (
               <div className="p-3 border-t border-border">
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleCreateProject();
-                    setIsDrawerOpen(false);
-                  }}
-                  className="flex items-center gap-2 w-full px-3 py-2.5 rounded-md text-sm text-low hover:text-normal hover:bg-secondary cursor-pointer"
-                >
-                  <PlusIcon className="h-4 w-4" />
-                  Create Project
-                </button>
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleCreateProject();
+                      setIsDrawerOpen(false);
+                    }}
+                    className="flex items-center gap-2 w-full px-3 py-2.5 rounded-md text-sm text-low hover:text-normal hover:bg-secondary cursor-pointer"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                    Create Project
+                  </button>
+                  {isLocalAuthBypassed && archivedProjects.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDrawerOpen(false);
+                        handleOpenArchivedProjects();
+                      }}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 rounded-md text-sm text-low hover:text-normal hover:bg-secondary cursor-pointer"
+                    >
+                      <ArchiveIcon className="h-4 w-4" />
+                      Archived Projects
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>

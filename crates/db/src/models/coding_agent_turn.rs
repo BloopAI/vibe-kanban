@@ -31,6 +31,23 @@ pub struct CodingAgentResumeInfo {
 }
 
 impl CodingAgentTurn {
+    /// Find the workspace affected by a coding-agent turn row update.
+    pub async fn find_workspace_id_by_rowid(
+        pool: &SqlitePool,
+        rowid: i64,
+    ) -> Result<Option<Uuid>, sqlx::Error> {
+        sqlx::query_scalar(
+            r#"SELECT s.workspace_id
+               FROM coding_agent_turns cat
+               JOIN execution_processes ep ON cat.execution_process_id = ep.id
+               JOIN sessions s ON ep.session_id = s.id
+               WHERE cat.rowid = ?"#,
+        )
+        .bind(rowid)
+        .fetch_optional(pool)
+        .await
+    }
+
     /// Find resumable session info from the latest successful coding agent turn for a session.
     /// Failed launches can still emit an agent_session_id before Codex has persisted a usable
     /// rollout file, so only completed turns with a final summary are safe continuity anchors.

@@ -101,8 +101,13 @@ import {
   OpenRemoteWorkspaceInEditorRequest,
   OpenRemoteEditorResponse,
   ProfileResponse,
+  WorkspaceSummary,
+  WorkspaceSummaryResponse,
 } from 'shared/types';
-import type { Project as RemoteProject } from 'shared/remote-types';
+import type {
+  Project as RemoteProject,
+  Workspace as RemoteWorkspace,
+} from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
 import { resolveHostRequestScope } from '@/shared/lib/hostRequestScope';
@@ -753,6 +758,16 @@ export const workspacesApi = {
     );
   },
 
+  deleteWorktree: async (workspaceId: string): Promise<Workspace> => {
+    const response = await makeRequest(
+      `/api/workspaces/${workspaceId}/execution/worktree/delete`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<Workspace>(response);
+  },
+
   getPrComments: async (
     workspaceId: string,
     repoId: string
@@ -769,6 +784,15 @@ export const workspacesApi = {
       method: 'PUT',
     });
     return handleApiResponse<void>(response);
+  },
+
+  listSummaries: async (archived: boolean): Promise<WorkspaceSummary[]> => {
+    const response = await makeRequest('/api/workspaces/summaries', {
+      method: 'POST',
+      body: JSON.stringify({ archived }),
+    });
+    const result = await handleApiResponse<WorkspaceSummaryResponse>(response);
+    return result.summaries;
   },
 
   /** Create a workspace directly from a pull request */
@@ -1505,6 +1529,16 @@ export const projectsApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<Project>(response);
+  },
+
+  listWorkspaces: async (projectId: string): Promise<RemoteWorkspace[]> => {
+    const response = await makeRequest(
+      `/v1/fallback/project_workspaces?project_id=${encodeURIComponent(projectId)}`
+    );
+    const result = await handleApiResponse<{ workspaces: RemoteWorkspace[] }>(
+      response
+    );
+    return result.workspaces;
   },
 };
 

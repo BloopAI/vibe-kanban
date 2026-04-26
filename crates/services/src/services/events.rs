@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::Arc};
 use db::{
     DBService,
     models::{
-        execution_process::ExecutionProcess, scratch::Scratch, session::Session,
+        coding_agent_turn::CodingAgentTurn, execution_process::ExecutionProcess, session::Session,
         workspace::Workspace,
     },
 };
@@ -41,16 +41,26 @@ impl EventService {
         }
     }
 
+    async fn push_workspace_update(
+        pool: &SqlitePool,
+        msg_store: Arc<MsgStore>,
+        workspace_id: Uuid,
+    ) -> Result<(), SqlxError> {
+        if let Some(workspace_with_status) =
+            Workspace::find_by_id_with_status(pool, workspace_id).await?
+        {
+            msg_store.push_patch(workspace_patch::replace(&workspace_with_status));
+        }
+        Ok(())
+    }
+
     async fn push_workspace_update_for_session(
         pool: &SqlitePool,
         msg_store: Arc<MsgStore>,
         session_id: Uuid,
     ) -> Result<(), SqlxError> {
-        if let Some(session) = Session::find_by_id(pool, session_id).await?
-            && let Some(workspace_with_status) =
-                Workspace::find_by_id_with_status(pool, session.workspace_id).await?
-        {
-            msg_store.push_patch(workspace_patch::replace(&workspace_with_status));
+        if let Some(session) = Session::find_by_id(pool, session_id).await? {
+            Self::push_workspace_update(pool, msg_store, session.workspace_id).await?;
         }
         Ok(())
     }
@@ -128,6 +138,7 @@ impl EventService {
                             let record_type: RecordTypes = match (table, hook.operation.clone()) {
                                 (HookTables::Workspaces, SqliteOperation::Delete)
                                 | (HookTables::ExecutionProcesses, SqliteOperation::Delete)
+                                | (HookTables::CodingAgentTurns, SqliteOperation::Delete)
                                 | (HookTables::Scratch, SqliteOperation::Delete) => {
                                     return;
                                 }
@@ -163,19 +174,42 @@ impl EventService {
                                         }
                                     }
                                 }
-                                (HookTables::Scratch, _) => {
-                                    match Scratch::find_by_rowid(&db.pool, rowid).await {
-                                        Ok(Some(scratch)) => RecordTypes::Scratch(scratch),
-                                        Ok(None) => RecordTypes::DeletedScratch {
-                                            rowid,
-                                            scratch_id: None,
-                                            scratch_type: None,
-                                        },
-                                        Err(e) => {
-                                            tracing::error!("Failed to fetch scratch: {:?}", e);
-                                            return;
+                                (HookTables::CodingAgentTurns, _) => {
+                                    match CodingAgentTurn::find_workspace_id_by_rowid(
+                                        &db.pool, rowid,
+                                    )
+                                    .await
+                                    {
+                                        Ok(Some(workspace_id)) => {
+                                            if let Err(err) =
+                                                EventService::push_workspace_update(
+                                                    &db.pool,
+                                                    msg_store_for_hook.clone(),
+                                                    workspace_id,
+                                                )
+                                                .await
+                                            {
+                                                tracing::error!(
+                                                    "Failed to push workspace update after coding agent turn change: {:?}",
+                                                    err
+                                                );
+                                            }
+                                        }
+                                        Ok(None) => {}
+                                        Err(err) => {
+                                            tracing::error!(
+                                                "Failed to find workspace for coding agent turn change: {:?}",
+                                                err
+                                            );
                                         }
                                     }
+                                    return;
+                                }
+                                // Scratch create/update notifications are emitted directly
+                                // from the scratch API route to avoid an extra DB round-trip
+                                // and global row refetch on every UI preference write.
+                                (HookTables::Scratch, _) => {
+                                    return;
                                 }
                             };
 

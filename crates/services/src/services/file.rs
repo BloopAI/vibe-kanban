@@ -116,18 +116,36 @@ impl FileService {
         let cached_path = self.cache_dir.join(&new_filename);
         fs::write(&cached_path, data)?;
 
-        let file = File::create(
+        let create_result = File::create(
             &self.pool,
             &CreateFile {
                 file_path: new_filename,
                 original_name: original_filename.to_string(),
                 mime_type,
                 size_bytes: file_size as i64,
-                hash,
+                hash: hash.clone(),
             },
         )
-        .await?;
-        Ok(file)
+        .await;
+
+        match create_result {
+            Ok(file) => Ok(file),
+            Err(err) => {
+                let _ = fs::remove_file(&cached_path);
+
+                if is_duplicate_attachment_hash_error(&err)
+                    && let Some(existing) = File::find_by_hash(&self.pool, &hash).await?
+                {
+                    tracing::debug!(
+                        "Reused existing file record after concurrent hash insert: {}",
+                        hash
+                    );
+                    return Ok(existing);
+                }
+
+                Err(err.into())
+            }
+        }
     }
 
     pub async fn delete_orphaned_files(&self) -> Result<(), FileError> {
@@ -283,5 +301,14 @@ impl FileService {
         }
 
         None
+    }
+}
+
+fn is_duplicate_attachment_hash_error(err: &sqlx::Error) -> bool {
+    match err {
+        sqlx::Error::Database(db_err) => db_err
+            .message()
+            .contains("UNIQUE constraint failed: attachments.hash"),
+        _ => false,
     }
 }

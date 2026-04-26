@@ -31,6 +31,7 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/dev-server/start", post(start_dev_server))
         .route("/cleanup", post(run_cleanup_script))
         .route("/archive", post(run_archive_script))
+        .route("/worktree/delete", post(delete_workspace_worktree))
         .route("/stop", post(stop_workspace_execution))
 }
 
@@ -285,4 +286,51 @@ pub async fn run_archive_script(
         .await;
 
     Ok(ResponseJson(ApiResponse::success(execution_process)))
+}
+
+pub async fn delete_workspace_worktree(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
+        .await?
+    {
+        return Err(ApiError::Conflict(
+            "Cannot delete the worktree while processes are running. Stop all processes first."
+                .to_string(),
+        ));
+    }
+
+    let dev_servers =
+        ExecutionProcess::find_running_dev_servers_by_workspace(pool, workspace.id).await?;
+    for dev_server in dev_servers {
+        tracing::info!(
+            "Stopping dev server {} before deleting worktree for workspace {}",
+            dev_server.id,
+            workspace.id
+        );
+
+        if let Err(e) = deployment
+            .container()
+            .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
+            .await
+        {
+            tracing::error!(
+                "Failed to stop dev server {} for workspace {}: {}",
+                dev_server.id,
+                workspace.id,
+                e
+            );
+        }
+    }
+
+    deployment.container().delete_worktree(&workspace).await?;
+
+    let updated = Workspace::find_by_id(pool, workspace.id)
+        .await?
+        .ok_or(db::models::workspace::WorkspaceError::WorkspaceNotFound)?;
+
+    Ok(ResponseJson(ApiResponse::success(updated)))
 }

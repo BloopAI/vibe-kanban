@@ -11,6 +11,7 @@ import {
 import {
   useUiPreferencesStore,
   DEFAULT_CREATE_DRAFT_WORKSPACE_BY_DEFAULT,
+  DEFAULT_SHOW_LEFT_COLUMN_LINKS,
   type RightMainPanelMode,
   type ContextBarPosition,
   type WorkspacePanelState,
@@ -23,6 +24,11 @@ import {
   type KanbanProjectViewPreferences,
 } from '@/shared/stores/useUiPreferencesStore';
 import type { RepoAction } from '@vibe/ui/components/RepoCard';
+
+type UiPreferencesScratchData = UiPreferencesData & {
+  local_project_order?: string[];
+  show_left_column_links?: boolean | null;
+};
 
 // Stable UUID for global UI preferences (not tied to a workspace/user)
 // This is a deterministic UUID v5 generated from the namespace "ui-preferences"
@@ -47,13 +53,15 @@ function storeToScratchData(state: {
   workspaceSort: WorkspaceSortState;
   selectedOrgId: string | null;
   selectedProjectId: string | null;
+  localProjectOrder: string[];
   createDraftWorkspaceByDefault: boolean;
+  showLeftColumnLinks: boolean;
   kanbanProjectViewSelections: Record<string, KanbanProjectViewSelection>;
   kanbanProjectViewPreferences: Record<
     string,
     Record<string, KanbanProjectViewPreferences>
   >;
-}): UiPreferencesData {
+}): UiPreferencesScratchData {
   const workspacePanelStates: { [key: string]: WorkspacePanelStateData } = {};
   for (const [key, value] of Object.entries(state.workspacePanelStates)) {
     workspacePanelStates[key] = {
@@ -83,7 +91,9 @@ function storeToScratchData(state: {
     },
     selected_org_id: state.selectedOrgId,
     selected_project_id: state.selectedProjectId,
+    local_project_order: state.localProjectOrder,
     create_draft_workspace_by_default: state.createDraftWorkspaceByDefault,
+    show_left_column_links: state.showLeftColumnLinks,
     kanban_project_view_selections: state.kanbanProjectViewSelections as Record<
       string,
       JsonValue
@@ -96,7 +106,7 @@ function storeToScratchData(state: {
 /**
  * Converts scratch data to store state format (snake_case to camelCase)
  */
-function scratchDataToStore(data: UiPreferencesData): {
+function scratchDataToStore(data: UiPreferencesScratchData): {
   repoActions: Record<string, RepoAction>;
   expanded: Record<string, boolean>;
   contextBarPosition: ContextBarPosition;
@@ -111,7 +121,9 @@ function scratchDataToStore(data: UiPreferencesData): {
   workspaceSort: WorkspaceSortState;
   selectedOrgId: string | null;
   selectedProjectId: string | null;
+  localProjectOrder: string[];
   createDraftWorkspaceByDefault: boolean;
+  showLeftColumnLinks: boolean;
   kanbanProjectViewSelections: Record<string, KanbanProjectViewSelection>;
   kanbanProjectViewPreferences: Record<
     string,
@@ -168,9 +180,12 @@ function scratchDataToStore(data: UiPreferencesData): {
     },
     selectedOrgId: data.selected_org_id ?? null,
     selectedProjectId: data.selected_project_id ?? null,
+    localProjectOrder: data.local_project_order ?? [],
     createDraftWorkspaceByDefault:
       data.create_draft_workspace_by_default ??
       DEFAULT_CREATE_DRAFT_WORKSPACE_BY_DEFAULT,
+    showLeftColumnLinks:
+      data.show_left_column_links ?? DEFAULT_SHOW_LEFT_COLUMN_LINKS,
     kanbanProjectViewSelections: (data.kanban_project_view_selections ??
       {}) as Record<string, KanbanProjectViewSelection>,
     kanbanProjectViewPreferences: (data.kanban_project_view_preferences ??
@@ -210,15 +225,19 @@ export function useUiPreferencesScratch() {
     workspaceSort: state.workspaceSort,
     selectedOrgId: state.selectedOrgId,
     selectedProjectId: state.selectedProjectId,
+    localProjectOrder: state.localProjectOrder,
     createDraftWorkspaceByDefault: state.createDraftWorkspaceByDefault,
+    showLeftColumnLinks: state.showLeftColumnLinks,
     kanbanProjectViewSelections: state.kanbanProjectViewSelections,
     kanbanProjectViewPreferences: state.kanbanProjectViewPreferences,
   }));
 
   // Extract scratch data
   const payload = scratch?.payload as ScratchPayload | undefined;
-  const scratchData: UiPreferencesData | undefined =
-    payload?.type === 'UI_PREFERENCES' ? payload.data : undefined;
+  const scratchData: UiPreferencesScratchData | undefined =
+    payload?.type === 'UI_PREFERENCES'
+      ? (payload.data as UiPreferencesScratchData)
+      : undefined;
 
   // Save to server function
   const saveToServer = useCallback(async () => {
@@ -242,7 +261,9 @@ export function useUiPreferencesScratch() {
       workspaceSort: currentState.workspaceSort,
       selectedOrgId: currentState.selectedOrgId,
       selectedProjectId: currentState.selectedProjectId,
+      localProjectOrder: currentState.localProjectOrder,
       createDraftWorkspaceByDefault: currentState.createDraftWorkspaceByDefault,
+      showLeftColumnLinks: currentState.showLeftColumnLinks,
       kanbanProjectViewSelections: currentState.kanbanProjectViewSelections,
       kanbanProjectViewPreferences: currentState.kanbanProjectViewPreferences,
     });
@@ -297,8 +318,10 @@ export function useUiPreferencesScratch() {
         workspaceSort: serverState.workspaceSort,
         selectedOrgId: serverState.selectedOrgId,
         selectedProjectId: serverState.selectedProjectId,
+        localProjectOrder: serverState.localProjectOrder,
         createDraftWorkspaceByDefault:
           serverState.createDraftWorkspaceByDefault,
+        showLeftColumnLinks: serverState.showLeftColumnLinks,
         kanbanProjectViewSelections: serverState.kanbanProjectViewSelections,
         kanbanProjectViewPreferences: serverState.kanbanProjectViewPreferences,
       });

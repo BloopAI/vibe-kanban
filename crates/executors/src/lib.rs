@@ -9,3 +9,4 @@ pub mod mcp_config;
 pub mod model_selector;
 pub mod profile;
 pub mod stdout_dup;
+pub mod systemd_run;

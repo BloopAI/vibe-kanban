@@ -699,6 +699,7 @@ impl ClaudeCode {
 
         Ok(SpawnedChild {
             child,
+            transient_unit_name: None,
             exit_signal: None,
             cancel: Some(cancel),
         })

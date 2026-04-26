@@ -127,6 +127,7 @@ impl AcpAgentHarness {
 
         Ok(SpawnedChild {
             child,
+            transient_unit_name: None,
             exit_signal: Some(exit_rx),
             cancel: Some(cancel),
         })
@@ -180,6 +181,7 @@ impl AcpAgentHarness {
 
         Ok(SpawnedChild {
             child,
+            transient_unit_name: None,
             exit_signal: Some(exit_rx),
             cancel: Some(cancel),
         })

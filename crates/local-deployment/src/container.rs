@@ -73,6 +73,7 @@ pub struct LocalContainerService {
     db: DBService,
     workspace_manager: WorkspaceManager,
     child_store: Arc<RwLock<HashMap<Uuid, Arc<RwLock<AsyncGroupChild>>>>>,
+    transient_unit_store: Arc<RwLock<HashMap<Uuid, String>>>,
     cancellation_tokens: Arc<RwLock<HashMap<Uuid, CancellationToken>>>,
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
     /// Tracks background tasks that stream logs to the database.
@@ -105,6 +106,7 @@ impl LocalContainerService {
         remote_client: Option<RemoteClient>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
+        let transient_unit_store = Arc::new(RwLock::new(HashMap::new()));
         let cancellation_tokens = Arc::new(RwLock::new(HashMap::new()));
         let db_stream_handles = Arc::new(RwLock::new(HashMap::new()));
         let exit_monitor_handles = Arc::new(RwLock::new(HashMap::new()));
@@ -115,6 +117,7 @@ impl LocalContainerService {
             db,
             workspace_manager,
             child_store,
+            transient_unit_store,
             cancellation_tokens,
             msg_stores,
             db_stream_handles,
@@ -206,6 +209,16 @@ impl LocalContainerService {
         map.insert(id, Arc::new(RwLock::new(exec)));
     }
 
+    async fn add_transient_unit_name(&self, id: Uuid, unit_name: String) {
+        let mut map = self.transient_unit_store.write().await;
+        map.insert(id, unit_name);
+    }
+
+    async fn take_transient_unit_name(&self, id: &Uuid) -> Option<String> {
+        let mut map = self.transient_unit_store.write().await;
+        map.remove(id)
+    }
+
     async fn remove_child_from_store(&self, id: &Uuid) {
         let mut map = self.child_store.write().await;
         map.remove(id);
@@ -243,6 +256,7 @@ impl LocalContainerService {
 
     async fn cleanup_workspace(&self, workspace: &Workspace) {
         let Some(container_ref) = &workspace.container_ref else {
+            let _ = Workspace::mark_worktree_deleted(&self.db.pool, workspace.id).await;
             return;
         };
         let workspace_dir = PathBuf::from(container_ref);
@@ -487,6 +501,7 @@ impl LocalContainerService {
     ) -> JoinHandle<()> {
         let exec_id = *exec_id;
         let child_store = self.child_store.clone();
+        let transient_unit_store = self.transient_unit_store.clone();
         let msg_stores = self.msg_stores.clone();
         let db = self.db.clone();
         let config = self.config.clone();
@@ -508,6 +523,15 @@ impl LocalContainerService {
                 // Some coding agent processes do not automatically exit after processing the user request; instead the executor
                 // signals when processing has finished to gracefully kill the process.
                 exit_result = &mut exit_signal_future => {
+                    let unit_name = {
+                        let mut units = transient_unit_store.write().await;
+                        units.remove(&exec_id)
+                    };
+                    if let Some(unit_name) = unit_name
+                        && let Err(err) = command::stop_transient_unit(&unit_name).await
+                    {
+                        tracing::warn!("Failed to stop transient unit {unit_name}: {err}");
+                    }
                     // Executor signaled completion: kill group and use the provided result
                     if let Some(child_lock) = child_store.read().await.get(&exec_id).cloned() {
                         let mut child = child_lock.write().await ;
@@ -527,6 +551,11 @@ impl LocalContainerService {
                 exit_status_result = &mut process_exit_rx => {
                     status_result = exit_status_result.unwrap_or_else(|e| Err(std::io::Error::other(e)));
                 }
+            }
+
+            {
+                let mut units = transient_unit_store.write().await;
+                units.remove(&exec_id);
             }
 
             let (exit_code, status) = match status_result {
@@ -739,6 +768,20 @@ impl LocalContainerService {
                             );
                         }
                     }
+                }
+
+                if matches!(
+                    ctx.execution_process.run_reason,
+                    ExecutionProcessRunReason::ArchiveScript
+                ) && let Err(e) = container
+                    .maybe_delete_archived_worktree_if_safe(ctx.workspace.id)
+                    .await
+                {
+                    tracing::error!(
+                        "Failed to delete archived worktree after archive script for workspace {}: {}",
+                        ctx.workspace.id,
+                        e
+                    );
                 }
 
                 // Fire analytics event when CodingAgent execution has finished
@@ -1314,6 +1357,11 @@ impl ContainerService for LocalContainerService {
         Ok(())
     }
 
+    async fn delete_worktree(&self, workspace: &Workspace) -> Result<(), ContainerError> {
+        self.cleanup_workspace(workspace).await;
+        Ok(())
+    }
+
     async fn ensure_container_exists(
         &self,
         workspace: &Workspace,
@@ -1456,6 +1504,11 @@ impl ContainerService for LocalContainerService {
         self.track_child_msgs_in_store(execution_process.id, &mut spawned.child)
             .await;
 
+        if let Some(unit_name) = spawned.transient_unit_name.take() {
+            self.add_transient_unit_name(execution_process.id, unit_name)
+                .await;
+        }
+
         self.add_child_to_store(execution_process.id, spawned.child)
             .await;
 
@@ -1491,6 +1544,17 @@ impl ContainerService for LocalContainerService {
 
         ExecutionProcess::update_completion(&self.db.pool, execution_process.id, status, exit_code)
             .await?;
+
+        if let Some(unit_name) = self.take_transient_unit_name(&execution_process.id).await
+            && let Err(e) = command::stop_transient_unit(&unit_name).await
+        {
+            tracing::warn!(
+                "Failed to stop transient unit {} for execution {}: {}",
+                unit_name,
+                execution_process.id,
+                e
+            );
+        }
 
         // Try graceful cancellation first, then force kill
         if let Some(cancel) = self.take_cancellation_token(&execution_process.id).await {

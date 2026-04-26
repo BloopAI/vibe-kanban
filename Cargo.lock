@@ -7932,6 +7932,7 @@ dependencies = [
  "git",
  "git-host",
  "http",
+ "json-patch 2.0.0",
  "local-deployment",
  "mime_guess",
  "os_info",

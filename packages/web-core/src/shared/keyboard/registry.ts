@@ -118,6 +118,13 @@ export const sequentialBindings: SequentialBinding[] = [
     actionId: 'archive-workspace',
   },
   {
+    id: 'seq-workspace-delete-worktree',
+    keys: ['w', 't'],
+    description: 'Delete workspace worktree',
+    group: 'Workspace',
+    actionId: 'delete-worktree',
+  },
+  {
     id: 'seq-workspace-delete',
     keys: ['w', 'x'],
     description: 'Delete workspace',

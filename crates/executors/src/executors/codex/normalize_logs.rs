@@ -1392,10 +1392,8 @@ fn handle_direct_notification(
                 entry_index,
                 NormalizedEntry {
                     timestamp: None,
-                    entry_type: NormalizedEntryType::ErrorMessage {
-                        error_type: NormalizedEntryError::Other,
-                    },
-                    content: format!("{}{}", notification.summary, details),
+                    entry_type: NormalizedEntryType::SystemMessage,
+                    content: format!("warning: {}{}", notification.summary, details),
                     metadata: None,
                 },
             );
@@ -1448,6 +1446,10 @@ const SUPPRESSED_STDERR_PATTERNS: &[&str] = &[
     // exists on disk but isn't indexed in the state DB — even when the Sqlite feature flag is
     // disabled (which is the default). See: https://github.com/openai/codex/commit/c38a5958
     "state db missing rollout path for",
+    // On hosts that block unprivileged user namespaces, codex-app-server emits this to stderr
+    // alongside a structured config warning. The structured event is the useful signal; the raw
+    // stderr line only creates a duplicate red chat row.
+    "Codex's Linux sandbox uses bubblewrap and needs access to create user namespaces.",
 ];
 
 /// Codex-specific stderr normalizer that filters noisy internal messages.
@@ -2205,10 +2207,8 @@ pub fn normalize_logs(
                         &entry_index,
                         NormalizedEntry {
                             timestamp: None,
-                            entry_type: NormalizedEntryType::ErrorMessage {
-                                error_type: NormalizedEntryError::Other,
-                            },
-                            content: message,
+                            entry_type: NormalizedEntryType::SystemMessage,
+                            content: format!("warning: {message}"),
                             metadata: None,
                         },
                     );
@@ -2780,6 +2780,26 @@ mod tests {
         latest_normalized_entries(&msg_store)
     }
 
+    async fn normalize_stdout_stderr(
+        stdout_lines: &[String],
+        stderr_lines: &[String],
+    ) -> Vec<NormalizedEntry> {
+        let msg_store = Arc::new(MsgStore::new());
+        for line in stdout_lines {
+            msg_store.push_stdout(format!("{line}\n"));
+        }
+        for line in stderr_lines {
+            msg_store.push(LogMsg::Stderr(format!("{line}\n")));
+        }
+        msg_store.push_finished();
+
+        for handle in normalize_logs(msg_store.clone(), Path::new("/tmp/test-worktree")) {
+            handle.await.unwrap();
+        }
+
+        latest_normalized_entries(&msg_store)
+    }
+
     fn tool_use<'a>(entries: &'a [NormalizedEntry], tool_name: &str) -> &'a NormalizedEntry {
         entries
             .iter()
@@ -2967,5 +2987,50 @@ mod tests {
             }
             other => panic!("unexpected dynamic tool entry: {other:?}"),
         }
+    }
+
+    #[tokio::test]
+    async fn renders_warning_events_as_system_messages() {
+        let entries = normalize_lines(&[json!({
+            "method": "configWarning",
+            "params": {
+                "summary": "Codex's Linux sandbox uses bubblewrap and needs access to create user namespaces.",
+                "details": null
+            }
+        })
+        .to_string()])
+        .await;
+
+        let entry = entries
+            .iter()
+            .find(|entry| entry.content.contains("bubblewrap"))
+            .expect("missing warning entry");
+
+        assert!(matches!(
+            entry.entry_type,
+            NormalizedEntryType::SystemMessage
+        ));
+        assert_eq!(
+            entry.content,
+            "warning: Codex's Linux sandbox uses bubblewrap and needs access to create user namespaces."
+        );
+    }
+
+    #[tokio::test]
+    async fn suppresses_duplicate_bubblewrap_stderr_warning() {
+        let entries = normalize_stdout_stderr(
+            &[],
+            &[String::from(
+                "2026-04-21T11:07:43.292686Z ERROR codex_app_server: Codex's Linux sandbox uses bubblewrap and needs access to create user namespaces.",
+            )],
+        )
+        .await;
+
+        assert!(
+            !entries
+                .iter()
+                .any(|entry| entry.content.contains("bubblewrap")),
+            "expected duplicate bubblewrap stderr warning to be suppressed"
+        );
     }
 }

@@ -1,5 +1,9 @@
-import { useCallback, useMemo } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from '@tanstack/react-query';
 import { useJsonPatchWsStream } from '@/shared/hooks/useJsonPatchWsStream';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import { makeLocalApiRequest } from '@/shared/lib/localApiTransport';
@@ -56,6 +60,18 @@ function toSidebarWorkspace(
   ws: WorkspaceWithStatus,
   summary?: WorkspaceSummary
 ): SidebarWorkspace {
+  const latestProcessStatus = summary?.latest_process_status ?? undefined;
+  const isSettled =
+    latestProcessStatus === 'completed' ||
+    latestProcessStatus === 'failed' ||
+    latestProcessStatus === 'killed';
+  const isRunning =
+    latestProcessStatus === 'running'
+      ? true
+      : isSettled
+        ? false
+        : ws.is_running;
+
   return {
     id: ws.id,
     name: ws.name ?? ws.branch, // Use name if available, fallback to branch
@@ -68,7 +84,7 @@ function toSidebarWorkspace(
     linesAdded: summary?.lines_added ?? undefined,
     linesRemoved: summary?.lines_removed ?? undefined,
     // Real data from stream
-    isRunning: ws.is_running,
+    isRunning,
     isPinned: ws.pinned,
     isArchived: ws.archived,
     // Additional data from summary
@@ -76,7 +92,7 @@ function toSidebarWorkspace(
     hasRunningDevServer: summary?.has_running_dev_server,
     hasUnseenActivity: summary?.has_unseen_turns,
     latestProcessCompletedAt: summary?.latest_process_completed_at ?? undefined,
-    latestProcessStatus: summary?.latest_process_status ?? undefined,
+    latestProcessStatus,
     prStatus: summary?.pr_status ?? undefined,
     prNumber:
       summary?.pr_number != null ? Number(summary.pr_number) : undefined,
@@ -129,6 +145,7 @@ async function fetchWorkspaceSummariesByArchived(
 
 export function useWorkspaces(): UseWorkspacesResult {
   const hostId = useHostId();
+  const queryClient = useQueryClient();
 
   // Two separate WebSocket connections: one for active, one for archived
   // No limit param - we fetch all and slice on frontend so backfill works when archiving
@@ -150,7 +167,6 @@ export function useWorkspaces(): UseWorkspacesResult {
 
   const {
     data: archivedData,
-    isConnected: archivedIsConnected,
     isInitialized: archivedIsInitialized,
     error: archivedError,
   } = useJsonPatchWsStream<WorkspacesState>(
@@ -167,7 +183,7 @@ export function useWorkspaces(): UseWorkspacesResult {
       queryFn: () => fetchWorkspaceSummariesByArchived(false, hostId),
       enabled: activeIsInitialized,
       staleTime: 60000,
-      refetchInterval: false,
+      refetchInterval: 10000,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
       placeholderData: keepPreviousData,
@@ -180,11 +196,74 @@ export function useWorkspaces(): UseWorkspacesResult {
       queryFn: () => fetchWorkspaceSummariesByArchived(true, hostId),
       enabled: archivedIsInitialized,
       staleTime: 60000,
-      refetchInterval: false,
+      refetchInterval: 10000,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
       placeholderData: keepPreviousData,
     });
+
+  const activeRefreshTimeoutRef = useRef<number | null>(null);
+  const archivedRefreshTimeoutRef = useRef<number | null>(null);
+  const didSeeActiveSnapshotRef = useRef(false);
+  const didSeeArchivedSnapshotRef = useRef(false);
+
+  useEffect(() => {
+    if (!activeIsInitialized || !activeData) {
+      return;
+    }
+
+    if (!didSeeActiveSnapshotRef.current) {
+      didSeeActiveSnapshotRef.current = true;
+      return;
+    }
+
+    if (activeRefreshTimeoutRef.current !== null) {
+      window.clearTimeout(activeRefreshTimeoutRef.current);
+    }
+
+    activeRefreshTimeoutRef.current = window.setTimeout(() => {
+      activeRefreshTimeoutRef.current = null;
+      void queryClient.invalidateQueries({
+        queryKey: workspaceSummaryKeys.byArchived(false, hostId),
+      });
+    }, 250);
+
+    return () => {
+      if (activeRefreshTimeoutRef.current !== null) {
+        window.clearTimeout(activeRefreshTimeoutRef.current);
+        activeRefreshTimeoutRef.current = null;
+      }
+    };
+  }, [activeData, activeIsInitialized, hostId, queryClient]);
+
+  useEffect(() => {
+    if (!archivedIsInitialized || !archivedData) {
+      return;
+    }
+
+    if (!didSeeArchivedSnapshotRef.current) {
+      didSeeArchivedSnapshotRef.current = true;
+      return;
+    }
+
+    if (archivedRefreshTimeoutRef.current !== null) {
+      window.clearTimeout(archivedRefreshTimeoutRef.current);
+    }
+
+    archivedRefreshTimeoutRef.current = window.setTimeout(() => {
+      archivedRefreshTimeoutRef.current = null;
+      void queryClient.invalidateQueries({
+        queryKey: workspaceSummaryKeys.byArchived(true, hostId),
+      });
+    }, 250);
+
+    return () => {
+      if (archivedRefreshTimeoutRef.current !== null) {
+        window.clearTimeout(archivedRefreshTimeoutRef.current);
+        archivedRefreshTimeoutRef.current = null;
+      }
+    };
+  }, [archivedData, archivedIsInitialized, hostId, queryClient]);
 
   const workspaces = useMemo(() => {
     if (!activeData?.workspaces) return [];
@@ -218,14 +297,17 @@ export function useWorkspaces(): UseWorkspacesResult {
       .map((ws) => toSidebarWorkspace(ws, archivedSummaries.get(ws.id)));
   }, [archivedData, archivedSummaries]);
 
-  // isLoading is true when we haven't received initial data from either stream
-  const isLoading = !activeIsInitialized || !archivedIsInitialized;
+  // The primary workspace list must not be blocked by archived workspace
+  // initialization. Archived snapshots can be slow under load and are not
+  // required to render active workspaces.
+  const isLoading = !activeIsInitialized;
 
-  // Combined connection status
-  const isConnected = activeIsConnected && archivedIsConnected;
+  // Keep active workspace connectivity independent from the optional archived
+  // stream so a slow archive query does not blank the main workspace list.
+  const isConnected = activeIsConnected;
 
-  // Combined error (show first error if any)
-  const error = activeError || archivedError;
+  // Only surface archived stream errors after the active list has initialized.
+  const error = activeError || (activeIsInitialized ? archivedError : null);
 
   return {
     workspaces,

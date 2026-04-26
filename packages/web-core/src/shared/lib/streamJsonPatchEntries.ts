@@ -43,19 +43,22 @@ export function streamJsonPatchEntries<E = unknown>(
   url: string,
   opts: StreamOptions<E> = {}
 ): StreamController<E> {
-  let connected = false;
-  let closed = false;
-  let ws: WebSocket | null = null;
-  let snapshot: PatchContainer<E> = structuredClone(
+  const initialSnapshot: PatchContainer<E> = structuredClone(
     opts.initial ?? ({ entries: [] } as PatchContainer<E>)
   );
+  let connected = false;
+  let closed = false;
+  let finished = false;
+  let ws: WebSocket | null = null;
+  let snapshot: PatchContainer<E> = structuredClone(initialSnapshot);
 
   const subscribers = new Set<(entries: E[]) => void>();
   if (opts.onEntries) subscribers.add(opts.onEntries);
 
-  // --- rAF batching state ---
   let pendingOps: Operation[] = [];
   let rafId: number | null = null;
+  let retryTimer: number | null = null;
+  let retryAttempt = 0;
 
   const notify = () => {
     for (const cb of subscribers) {
@@ -64,6 +67,22 @@ export function streamJsonPatchEntries<E = unknown>(
       } catch {
         /* swallow subscriber errors */
       }
+    }
+  };
+
+  const clearRetryTimer = () => {
+    if (retryTimer !== null) {
+      window.clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+  };
+
+  const resetReplayState = () => {
+    snapshot = structuredClone(initialSnapshot);
+    pendingOps = [];
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
     }
   };
 
@@ -84,7 +103,6 @@ export function streamJsonPatchEntries<E = unknown>(
     try {
       const msg = JSON.parse(event.data);
 
-      // Handle JsonPatch messages — accumulate ops for next rAF flush
       if (msg.JsonPatch) {
         const raw = msg.JsonPatch as Operation[];
         pendingOps.push(...raw);
@@ -93,12 +111,12 @@ export function streamJsonPatchEntries<E = unknown>(
         }
       }
 
-      // Handle Finished messages — flush synchronously before closing
       if (msg.finished !== undefined) {
         if (rafId !== null) {
           cancelAnimationFrame(rafId);
         }
         flush();
+        finished = true;
         opts.onFinished?.(snapshot.entries);
         ws?.close();
       }
@@ -107,41 +125,64 @@ export function streamJsonPatchEntries<E = unknown>(
     }
   };
 
-  void (async () => {
-    try {
-      const opened = await openLocalApiWebSocket(url);
+  const scheduleReconnect = () => {
+    if (closed || finished || retryTimer !== null) return;
 
-      if (closed) {
-        opened.close();
-        return;
-      }
+    const delay = Math.min(8000, 1000 * Math.pow(2, retryAttempt));
+    retryTimer = window.setTimeout(() => {
+      retryTimer = null;
+      retryAttempt += 1;
+      resetReplayState();
+      connect();
+    }, delay);
+  };
 
-      ws = opened;
-      ws.addEventListener('open', () => {
-        connected = true;
-        opts.onConnect?.();
-      });
+  const connect = () => {
+    void (async () => {
+      try {
+        const opened = await openLocalApiWebSocket(url);
 
-      ws.addEventListener('message', handleMessage);
-
-      ws.addEventListener('error', (err) => {
-        connected = false;
-        opts.onError?.(err);
-      });
-
-      ws.addEventListener('close', () => {
-        connected = false;
-        if (rafId !== null) {
-          cancelAnimationFrame(rafId);
-          rafId = null;
+        if (closed || finished) {
+          opened.close();
+          return;
         }
-      });
-    } catch (error) {
-      if (!closed) {
-        opts.onError?.(error);
+
+        ws = opened;
+        ws.addEventListener('open', () => {
+          connected = true;
+          retryAttempt = 0;
+          clearRetryTimer();
+          opts.onConnect?.();
+        });
+
+        ws.addEventListener('message', handleMessage);
+
+        ws.addEventListener('error', (err) => {
+          connected = false;
+          opts.onError?.(err);
+        });
+
+        ws.addEventListener('close', () => {
+          connected = false;
+          ws = null;
+          if (rafId !== null) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+          }
+          if (!closed && !finished) {
+            scheduleReconnect();
+          }
+        });
+      } catch (error) {
+        if (!closed && !finished) {
+          opts.onError?.(error);
+          scheduleReconnect();
+        }
       }
-    }
-  })();
+    })();
+  };
+
+  connect();
 
   return {
     getEntries(): E[] {
@@ -155,12 +196,12 @@ export function streamJsonPatchEntries<E = unknown>(
     },
     onChange(cb: (entries: E[]) => void): () => void {
       subscribers.add(cb);
-      // push current state immediately
       cb(snapshot.entries);
       return () => subscribers.delete(cb);
     },
     close(): void {
       closed = true;
+      clearRetryTimer();
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
         rafId = null;
@@ -172,19 +213,10 @@ export function streamJsonPatchEntries<E = unknown>(
   };
 }
 
-/**
- * Dedupe multiple ops that touch the same path within a batch.
- * Last write for a path wins, while preserving the overall left-to-right
- * order of the *kept* final operations.
- *
- * Example:
- *   add /entries/4, replace /entries/4  -> keep only the final replace
- */
 function dedupeOps(ops: Operation[]): Operation[] {
   const lastIndexByPath = new Map<string, number>();
   ops.forEach((op, i) => lastIndexByPath.set(op.path, i));
 
-  // Keep only the last op for each path, in ascending order of their final index
   const keptIndices = [...lastIndexByPath.values()].sort((a, b) => a - b);
   return keptIndices.map((i) => ops[i]!);
 }

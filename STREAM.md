@@ -4,11 +4,12 @@
 
 - Branch: `vk/ea3c-vk-auto-archive`
 - Repo: `/home/mcp/code/worktrees/ea3c-vk-auto-archive/_vibe_kanban_repo`
-- Working mode: local-only VK maintenance worktree
+- Base: `fork/staging`
+- Working mode: production hotfix promotion for local VK stability
 
 ## Objective
 
-- Repair local Codex rollout continuity and execution-status streaming so failed rollouts and stale "agent running" UI state do not block normal prompt flow.
+- Repair local Codex rollout continuity and execution-status streaming so failed rollouts and stale "agent running" UI state do not block normal prompt flow, then promote the fix through the fork workflow so it survives updates/deploys.
 
 ## In Scope
 
@@ -17,20 +18,22 @@
 - Repairing live local DB continuity pointers that reference empty or missing rollout files
 - Keeping execution-process state streams alive/reconnected so completed agents stop showing as running without a page refresh
 - Keeping `vibe.local` reachable through the LAN reverse proxy
-- Preserving the local-only runtime baseline
+- Preserving the local-only runtime baseline and staging merge compatibility
 
 ## Out of Scope
 
 - Reconstructing the old backup-retention branch context as if it were still checked out here
 - Re-enabling shared/cloud API behavior
 - Reconstructing a zero-byte Codex rollout file that has no persisted content
+- Broad workspace lifecycle cleanup beyond what already exists on `fork/staging`
 
 ## Stream-Specific Decisions
 
-- The checked-out tip is `88c0ebd59` (`fix: stop workspace status polling churn`).
 - Local runtime expectations from `STATE.md` remain in force, including `shared_api_base: null`.
 - Resume continuity should only anchor to successful coding-agent turns: completed process, exit code `0`, non-null agent session id, and non-empty final summary.
 - Empty or missing rollout files are live-state corruption, not valid resume anchors.
+- Execution-process streams are long-lived state streams; non-patch terminal messages must not make mounted workspace views keep stale running snapshots.
+- `vibe.local` requires the user service to bind `HOST=0.0.0.0` on `BACKEND_PORT=4311` for the external LAN nginx proxy.
 
 ## Relevant Files / Modules
 
@@ -42,6 +45,7 @@
 - `crates/services/src/services/events/streams.rs`
 - `packages/web-core/src/shared/hooks/useJsonPatchWsStream.ts`
 - `packages/web-core/src/shared/hooks/useExecutionProcesses.ts`
+- `packages/web-core/src/features/workspace-chat/model/hooks/useConversationHistory.ts`
 - `/home/mcp/.local/share/vibe-kanban/db.v2.sqlite`
 - `/home/mcp/.local/share/vibe-kanban/codex-home/sessions`
 - `/home/mcp/.config/systemd/user/vibe-kanban.service.d/fixed-ports.conf`
@@ -55,8 +59,12 @@
   - a DB backup was saved at `/home/mcp/backups/vk-rollout-repair-20260426T122842Z`
   - the local service is rebuilt/restarted with the rollout guard and execution-process stream hotfix
   - `vibe.local` returns `200` through nginx after binding VK to `0.0.0.0:4311`
-- Pending:
-  - commit the execution-status hotfix after final validation
+- Completed locally:
+  - committed rollout continuity guard
+  - committed execution-status stream and `vibe.local` hotfix
+  - opened PR `#37` into `staging`
+- In progress:
+  - merging current `fork/staging` into this hotfix branch before completing PR `#37`
 
 ## Risks / Regression Traps
 
@@ -68,6 +76,8 @@
 
 ## Next Safe Steps
 
-1. Commit the execution-status stream hotfix and continuity updates.
-2. If rebuilding again, build `packages/local-web` first, then force a server rebuild so `rust-embed` includes the real assets.
-3. After any service restart, verify `https://vibe.local`, `http://127.0.0.1:4311/api/info`, and an execution-process WebSocket snapshot.
+1. Finish resolving the `fork/staging` merge.
+2. Run `pnpm run format`, frontend build, and targeted Rust checks.
+3. Push PR `#37` and merge it into `staging` if checks/permissions allow.
+4. If rebuilding again, build `packages/local-web` first, then force a server rebuild so `rust-embed` includes the real assets.
+5. After any service restart, verify `https://vibe.local`, `http://127.0.0.1:4311/api/info`, and an execution-process WebSocket snapshot.

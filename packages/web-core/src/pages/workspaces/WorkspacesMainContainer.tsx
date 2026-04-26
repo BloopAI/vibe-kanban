@@ -1,7 +1,6 @@
 import {
   forwardRef,
   useCallback,
-  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -15,6 +14,7 @@ import {
   type ConversationListHandle,
 } from '@/features/workspace-chat/ui/ConversationListContainer';
 import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
+import { usePinConversationToBottomOnChatBoxResize } from '@/features/workspace-chat/ui/usePinConversationToBottomOnChatBoxResize';
 import { ContextBarContainer } from './ContextBarContainer';
 import { EntriesProvider } from '@/features/workspace-chat/model/contexts/EntriesContext';
 import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/MessageEditContext';
@@ -142,9 +142,7 @@ export const WorkspacesMainContainer = forwardRef<
   }, []);
 
   const [isAtBottom, setIsAtBottom] = useState(true);
-  const isAtBottomRef = useRef(isAtBottom);
   const handleAtBottomChange = useCallback((atBottom: boolean) => {
-    isAtBottomRef.current = atBottom;
     setIsAtBottom(atBottom);
   }, []);
 
@@ -157,48 +155,17 @@ export const WorkspacesMainContainer = forwardRef<
 
   const { session } = workspaceWithSession ?? {};
 
-  useEffect(() => {
-    isAtBottomRef.current = isAtBottom;
-  }, [isAtBottom]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || typeof ResizeObserver === 'undefined') return;
-
-    const chatBoxContainer = container.querySelector<HTMLElement>(
-      '[data-chatbox-container="true"]'
-    );
-    if (!chatBoxContainer) return;
-
-    let previousHeight = chatBoxContainer.getBoundingClientRect().height;
-
-    const observer = new ResizeObserver((entries) => {
-      const nextHeight =
-        entries[0]?.contentRect.height ??
-        chatBoxContainer.getBoundingClientRect().height;
-
-      if (Math.abs(nextHeight - previousHeight) < 0.5) return;
-      const heightDelta = nextHeight - previousHeight;
-      previousHeight = nextHeight;
-
-      if (!isAtBottomRef.current) return;
-
-      requestAnimationFrame(() => {
-        if (!isAtBottomRef.current) return;
-        conversationListRef.current?.adjustScrollBy(heightDelta);
-      });
-    });
-
-    observer.observe(chatBoxContainer);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [workspaceWithSession?.id, session?.id]);
+  usePinConversationToBottomOnChatBoxResize({
+    containerRef,
+    conversationListRef,
+    isAtBottom,
+    scopeKey: `${workspaceWithSession?.id ?? 'none'}:${session?.id ?? 'new'}`,
+  });
 
   const entriesProviderKey = workspaceWithSession
     ? `${workspaceWithSession.id}-${selectedSessionId ?? 'new'}`
     : 'empty';
+  const streamScopeKey = entriesProviderKey;
 
   const conversationContent = workspaceWithSession ? (
     <div
@@ -208,7 +175,7 @@ export const WorkspacesMainContainer = forwardRef<
       <div className="w-chat max-w-full h-full">
         <RetryUiProvider workspaceId={workspaceWithSession.id}>
           <ConversationList
-            key={entriesProviderKey}
+            key={streamScopeKey}
             ref={conversationListRef}
             attempt={workspaceWithSession}
             repos={repos}
@@ -251,7 +218,7 @@ export const WorkspacesMainContainer = forwardRef<
 
   return (
     <ApprovalFeedbackProvider>
-      <EntriesProvider key={entriesProviderKey}>
+      <EntriesProvider key={streamScopeKey}>
         <MessageEditProvider>
           <WorkspacesMain
             workspaceWithSession={

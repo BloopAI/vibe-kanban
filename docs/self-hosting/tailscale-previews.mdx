@@ -1,0 +1,154 @@
+---
+title: "Tailscale Previews"
+description: "Expose a temporary Vibe Kanban development preview to your tailnet with Tailscale Serve"
+---
+
+This guide shows you how to run a temporary Vibe Kanban preview from this repository and make it reachable to other devices on your tailnet with Tailscale Serve.
+
+Use this workflow when you want to share a branch preview for QA or review without exposing it to the public internet.
+
+## What this workflow does
+
+- Runs the repo in normal development mode with `pnpm run dev`
+- Keeps the backend local and only exposes the frontend through Tailscale Serve
+- Allows browser API requests from your Tailscale preview URL with `VK_ALLOWED_ORIGINS`
+- Uses your machine's `*.ts.net` MagicDNS hostname with a per-preview HTTPS port
+- Avoids collisions when multiple worktrees or agents publish previews from the same machine
+
+<Warning>
+This workflow is for temporary development previews. It is not a production deployment.
+</Warning>
+
+## Prerequisites
+
+- Tailscale installed and connected on the machine running the preview
+- `tailscale serve` enabled for your tailnet policy
+- `pnpm i` already run in the repository root
+- A branch or worktree ready to preview
+
+<Info>
+`tailscale serve` configuration is machine-wide. If every preview uses `--https=443`, the newest one replaces the previous preview on that node. This workflow avoids that by using the worktree's allocated frontend port as the Tailscale HTTPS port, which gives each preview its own URL.
+</Info>
+
+## Start a temporary preview
+
+<Steps>
+<Step title="Compute the preview origin">
+  This repo includes a helper that uses your worktree's allocated frontend port and your current Tailscale MagicDNS hostname.
+
+  To print the preview origin:
+
+  ```bash
+  pnpm run tailscale:preview:origin
+  ```
+
+  Example output:
+
+  ```text
+  https://my-machine.example.ts.net:3000
+  ```
+</Step>
+
+<Step title="Start Vibe Kanban with the preview origin allowed">
+  Export the exact preview origin, then start the dev stack:
+
+  ```bash
+  eval "$(pnpm run --silent tailscale:preview:env)"
+  pnpm run dev
+  ```
+
+  The dev script allocates the frontend, backend, and preview-proxy ports automatically.
+
+  <Tip>
+  If you want repeatable ports for a longer debugging session, set `PORT` before starting the stack. The repo will use that value for the frontend and assign the backend and preview-proxy ports immediately after it.
+  </Tip>
+</Step>
+
+<Step title="Publish the frontend with Tailscale Serve">
+  In a second terminal, publish the frontend with the helper script:
+
+  ```bash
+  pnpm run tailscale:preview:start
+  ```
+
+  <Info>
+  The helper publishes `https://<machine>.<tailnet>.ts.net:<frontend-port>` and forwards that HTTPS port to the same local frontend port. Because frontend ports are already unique per worktree, multiple agents can run this simultaneously without reusing the same URL.
+  </Info>
+</Step>
+
+<Step title="Verify the preview">
+  Open the URL printed by `pnpm run tailscale:preview:origin` from another device on the same tailnet.
+
+  Confirm that:
+
+  1. the UI loads from the full `https://...ts.net:<port>` URL
+  2. navigation works
+  3. API-backed pages load without `403 Forbidden` errors
+
+  You can also verify the backend config locally:
+
+  ```bash
+  curl -s "http://127.0.0.1:$(node scripts/setup-dev-environment.js backend)/api/info"
+  ```
+</Step>
+</Steps>
+
+## Stop the preview
+
+When you are done, stop both the Tailscale endpoint and the local dev stack:
+
+```bash
+pnpm run tailscale:preview:stop
+```
+
+Then stop `pnpm run dev` in its terminal.
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="The frontend does not load on the ts.net URL">
+Check that Tailscale Serve is forwarding to the same frontend port that the repo allocated:
+
+```bash
+pnpm run tailscale:preview:origin
+tailscale serve status
+```
+</Accordion>
+
+<Accordion title="The UI loads but API requests fail with 403">
+Your preview origin is missing from `VK_ALLOWED_ORIGINS`, or it does not match exactly.
+
+Restart the dev stack with the full origin, including `https://`:
+
+```bash
+eval "$(pnpm run --silent tailscale:preview:env)"
+pnpm run dev
+```
+</Accordion>
+
+<Accordion title="Two previews were overwriting each other">
+That happens when both previews use the same Tailscale HTTPS port, usually `443`.
+
+Use the helper script instead of a hard-coded `tailscale serve --https=443 ...` command:
+
+```bash
+pnpm run tailscale:preview:origin
+pnpm run tailscale:preview:start
+```
+</Accordion>
+
+<Accordion title="You need to preview a different branch">
+Stop the current dev server, switch worktrees or branches, restart `pnpm run dev`, and republish if the frontend port changes. Different worktrees naturally get different preview URLs because their frontend ports differ.
+</Accordion>
+</AccordionGroup>
+
+## Recommended workflow for branch previews
+
+For a short-lived branch preview:
+
+1. create a dedicated worktree for the branch
+2. run `eval "$(pnpm run --silent tailscale:preview:env)"`
+3. start `pnpm run dev`
+4. publish the frontend with `pnpm run tailscale:preview:start`
+5. share the `https://...ts.net:<port>` URL from `pnpm run tailscale:preview:origin`
+6. run `pnpm run tailscale:preview:stop` when review is finished

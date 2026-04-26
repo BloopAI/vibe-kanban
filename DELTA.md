@@ -54,37 +54,53 @@
 - Not complete / known gaps:
   - none blocking normal project work in the `vibe-kanban` board
 
-## 2026-04-18T23:45:00Z | vk/cc95-vk-archive-proje | local project archive flow
+## 2026-04-19T00:00:00Z | vk/53b2-vk-needs-review | app bar needs-review project bubbles
 
-- Intent: keep the local left-column project list manageable by hiding inactive projects behind an archive/restore flow.
+- Intent: show a project-level visual indicator when a project has linked workspaces with agents that have finished or are waiting for review.
 - Completed:
-  - added a persistent `archived` flag to local projects
-  - exposed local project archive updates through `/api/projects/:project_id`
-  - hid archived local projects from the main AppBar/mobile drawer list and surfaced them in an Archived restore section
-  - added an archive action to the local project settings dialog
-  - regenerated `shared/types.ts`
+  - added project icon bubbles in the left app bar for projects with review-needed workspaces
+  - aggregated review-needed state from existing workspace summary signals
+  - added local helper APIs for workspace summaries and local project workspace lookup
+  - committed the feature as `5c5f83855`
+- Files changed:
+  - `packages/ui/src/components/AppBar.tsx`
+  - `packages/web-core/src/shared/components/ui-new/containers/SharedAppLayout.tsx`
+  - `packages/web-core/src/shared/lib/api.ts`
+  - `STREAM.md`
+  - `HANDOFF.md`
 - Verified:
-  - `cargo run --bin generate_types`
-  - `cargo fmt --all`
+  - `git diff --check` passed for the touched frontend files
 - Not complete / known gaps:
-  - full frontend formatting/typecheck could not run in this worktree because `prettier` and `tsc` are not installed
-  - full `cargo check --workspace` was started but not waited through to completion after the successful type-generation build
+  - `pnpm run format` could not complete because `prettier` was missing
+  - `pnpm run check` could not complete because `tsc` was missing
+  - original branch push/PR preview state has since changed; see current branch history and PR state instead of this older branch-note wording
 
-## 2026-04-19T10:30:00Z | vk/ops-backup-retention-20260419 | canonical staging sync cleanup
+## 2026-04-24T00:00:00Z | vk/7b9a-vk-worktree-clea | immediate post-merge worktree cleanup
 
-- Intent: repair the divergent canonical local `staging` checkout and preserve only the backup retention change as its own normal PR.
+- Intent: remove workspace worktree folders as soon as a tracked PR lands in `staging` instead of waiting for the archived-workspace retention window.
 - Completed:
-  - preserved the old divergent local `staging` tip on rescue branches
-  - reset canonical local `staging` to `fork/staging`
-  - replayed `ca67946ab` onto `vk/ops-backup-retention-20260419`
-  - opened PR `#6` for the isolated backup retention change
-  - refreshed branch-local continuity docs for the backup retention stream
+  - added a shared container helper that deletes archived worktrees for workspaces with merged tracked PRs targeting `staging`
+  - called that helper from both the background PR monitor and the attach-existing-PR route
+  - added a retry after archive-script completion so archive scripts can finish before the worktree is removed
+  - archived linked local workspaces and cleaned up their worktrees when their issues move into `In Staging`, including bulk issue updates
+  - documented the new behavior in `VK_WORKFLOW.md`
+- Files changed:
+  - `crates/services/src/services/container.rs`
+  - `crates/services/src/services/pr_monitor.rs`
+  - `crates/local-deployment/src/container.rs`
+  - `crates/server/src/routes/local_compat.rs`
+  - `crates/server/src/routes/workspaces/pr.rs`
+  - `VK_WORKFLOW.md`
+  - `STREAM.md`
+  - `HANDOFF.md`
 - Verified:
-  - canonical `staging` matches `fork/staging`
-  - `vk/ops-backup-retention-20260419` is one commit ahead of `staging`
+  - added unit coverage for the merged-to-`staging` PR detection helper
+  - `cargo fmt --all` completed
 - Not complete / known gaps:
   - PR `#6` still needs merge
   - backup retention validation was not rerun during the sync cleanup step
+  - full test validation was not rerun after the final cleanup behavior adjustments
+  - pinned workspaces still keep the existing auto-archive exception
 # 2026-04-19 Workspace Polling Hotfix
 
 - A second frontend churn path was identified after the earlier kanban/sidebar fix.

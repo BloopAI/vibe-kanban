@@ -38,7 +38,9 @@ import {
 import {
   CaretLeftIcon,
   DotsThreeIcon,
+  HandIcon,
   PlusIcon,
+  SpinnerGapIcon,
   XIcon,
 } from '@phosphor-icons/react';
 import { Actions } from '@/shared/actions';
@@ -532,13 +534,21 @@ function LocalProjectSettingsDialog({
 type CollapsedKanbanColumnProps = {
   statusName: string;
   statusColor: string;
+  issueCount: number;
+  hasNeedsAttention: boolean;
+  hasInProgress: boolean;
   onExpand: () => void;
+  isMobile: boolean;
 };
 
 function CollapsedKanbanColumn({
   statusName,
   statusColor,
+  issueCount,
+  hasNeedsAttention,
+  hasInProgress,
   onExpand,
+  isMobile,
 }: CollapsedKanbanColumnProps) {
   const { t } = useTranslation('common');
 
@@ -546,15 +556,33 @@ function CollapsedKanbanColumn({
     <button
       type="button"
       onClick={onExpand}
-      className="group relative flex min-h-40 flex-1 overflow-hidden bg-secondary transition-colors hover:bg-secondary/80 focus:outline-none focus:ring-1 focus:ring-brand"
+      className={cn(
+        'group relative flex overflow-hidden bg-secondary transition-colors hover:bg-secondary/80 focus:outline-none focus:ring-1 focus:ring-brand',
+        isMobile ? 'min-h-0 flex-none' : 'min-h-40 flex-1'
+      )}
       aria-label={t('kanban.expandColumn', {
-        defaultValue: 'Expand {{statusName}} column',
+        defaultValue: 'Expand {{statusName}} column ({{count}} issues)',
         statusName,
+        count: issueCount,
       })}
-      title={statusName}
+      title={`${statusName} (${issueCount})`}
     >
-      <div className="sticky top-0 z-20 flex h-40 w-full shrink-0 items-start justify-center border-b bg-secondary/95 px-2 pt-4 backdrop-blur-sm">
-        <div className="[writing-mode:vertical-rl] flex items-center gap-2 whitespace-nowrap pt-2 text-center">
+      <div
+        className={cn(
+          'sticky top-0 z-20 flex w-full shrink-0 border-b bg-secondary/95 px-2 backdrop-blur-sm',
+          isMobile
+            ? 'items-center justify-start py-3'
+            : 'h-40 items-start justify-center pt-4'
+        )}
+      >
+        <div
+          className={cn(
+            'flex items-center gap-2 whitespace-nowrap text-center',
+            isMobile
+              ? '[writing-mode:horizontal-tb]'
+              : '[writing-mode:vertical-rl] pt-2'
+          )}
+        >
           <span className="text-sm font-medium leading-none text-normal">
             &gt;
           </span>
@@ -565,6 +593,29 @@ function CollapsedKanbanColumn({
           <span className="text-sm font-medium leading-none text-normal">
             {statusName}
           </span>
+          <span className="text-sm font-medium leading-none text-low">
+            ({issueCount})
+          </span>
+          {(hasNeedsAttention || hasInProgress) && (
+            <span className="flex items-center gap-1 text-low">
+              {hasNeedsAttention && (
+                <HandIcon
+                  className="size-icon-xs text-brand shrink-0"
+                  weight="fill"
+                  aria-label={t('workspaces.needsAttention')}
+                />
+              )}
+              {hasInProgress && (
+                <SpinnerGapIcon
+                  className="size-icon-xs shrink-0 animate-spin text-brand"
+                  weight="bold"
+                  aria-label={t('tasks:status.inProgress', {
+                    defaultValue: 'In Progress',
+                  })}
+                />
+              )}
+            </span>
+          )}
         </div>
       </div>
     </button>
@@ -911,11 +962,14 @@ export function KanbanContainer() {
     [statuses]
   );
 
-  // Filter statuses: visible (non-hidden) for kanban, hidden for tabs
-  const visibleStatuses = useMemo(
-    () => sortedStatuses.filter((s) => !s.hidden),
-    [sortedStatuses]
-  );
+  // Fail safe if persisted project status settings hide every column.
+  // The kanban board should stay usable rather than rendering an empty state.
+  const visibleStatuses = useMemo(() => {
+    const explicitVisibleStatuses = sortedStatuses.filter((s) => !s.hidden);
+    return explicitVisibleStatuses.length > 0
+      ? explicitVisibleStatuses
+      : sortedStatuses;
+  }, [sortedStatuses]);
   const kanbanGridTemplateColumns = useMemo(
     () =>
       visibleStatuses
@@ -935,10 +989,17 @@ export function KanbanContainer() {
     return map;
   }, [visibleStatuses]);
 
-  const hiddenStatuses = useMemo(
-    () => sortedStatuses.filter((s) => s.hidden),
-    [sortedStatuses]
-  );
+  const hiddenStatuses = useMemo(() => {
+    const explicitVisibleStatusIds = new Set(
+      sortedStatuses.filter((s) => !s.hidden).map((s) => s.id)
+    );
+
+    if (explicitVisibleStatusIds.size === 0) {
+      return [];
+    }
+
+    return sortedStatuses.filter((s) => !explicitVisibleStatusIds.has(s.id));
+  }, [sortedStatuses]);
 
   const defaultCreateStatusId = useMemo(() => {
     if (kanbanViewMode === 'kanban') {
@@ -1528,20 +1589,40 @@ export function KanbanContainer() {
               {visibleStatuses.map((status) => {
                 const issueIds = items[status.id] ?? [];
                 const isCollapsed = collapsedStatusIdSet.has(status.id);
+                const columnWorkspaces = issueIds.flatMap(
+                  (issueId) => workspacesByIssueId.get(issueId) ?? []
+                );
+                const hasNeedsAttention = columnWorkspaces.some(
+                  (workspace) =>
+                    workspace.hasPendingApproval ||
+                    (!!workspace.hasUnseenActivity && !workspace.isRunning)
+                );
+                const hasInProgress = columnWorkspaces.some(
+                  (workspace) =>
+                    !!workspace.isRunning && !workspace.hasPendingApproval
+                );
 
                 return (
                   <KanbanBoard
                     key={status.id}
                     className={cn(
-                      isCollapsed && !isMobile && '!min-w-16 !max-w-16'
+                      isCollapsed &&
+                        (isMobile ? '!min-h-0' : '!min-w-16 !max-w-16')
                     )}
                   >
                     {isCollapsed ? (
-                      <KanbanCards id={status.id} className="bg-secondary">
+                      <KanbanCards
+                        id={status.id}
+                        className={cn('bg-secondary', isMobile && '!flex-none')}
+                      >
                         <CollapsedKanbanColumn
                           statusName={status.name}
                           statusColor={status.color}
+                          issueCount={issueIds.length}
+                          hasNeedsAttention={hasNeedsAttention}
+                          hasInProgress={hasInProgress}
                           onExpand={() => toggleCollapsedStatus(status.id)}
+                          isMobile={isMobile}
                         />
                       </KanbanCards>
                     ) : (
@@ -1600,21 +1681,8 @@ export function KanbanContainer() {
                             if (!issue) return null;
                             const issueWorkspaces =
                               workspacesByIssueId.get(issue.id) ?? [];
-                            const workspaceIdsShownOnCard = new Set(
-                              issueWorkspaces.map((workspace) => workspace.id)
-                            );
                             const issueCardPullRequests =
-                              getPullRequestsForIssue(issue.id).filter((pr) => {
-                                if (!pr.workspace_id) {
-                                  return true;
-                                }
-
-                                // If this PR is already visible under a workspace card,
-                                // do not render it again at the issue level.
-                                return !workspaceIdsShownOnCard.has(
-                                  pr.workspace_id
-                                );
-                              });
+                              getPullRequestsForIssue(issue.id);
 
                             return (
                               <KanbanCard

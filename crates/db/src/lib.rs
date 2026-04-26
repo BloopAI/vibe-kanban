@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc, time::Duration};
 
 use sqlx::{
     ConnectOptions, Error, Pool, Sqlite, SqlitePool,
@@ -80,8 +80,12 @@ impl DBService {
         );
         let options = SqliteConnectOptions::from_str(&database_url)?
             .create_if_missing(true)
-            .journal_mode(SqliteJournalMode::Delete);
-        let pool = SqlitePool::connect_with(options).await?;
+            .journal_mode(SqliteJournalMode::Wal)
+            .busy_timeout(Duration::from_secs(15));
+        let pool = SqlitePoolOptions::new()
+            .max_connections(8)
+            .connect_with(options)
+            .await?;
         run_migrations(&pool).await?;
         Ok(DBService { pool })
     }
@@ -93,10 +97,11 @@ impl DBService {
         );
         let options = SqliteConnectOptions::from_str(&database_url)?
             .create_if_missing(true)
-            .journal_mode(SqliteJournalMode::Delete)
+            .journal_mode(SqliteJournalMode::Wal)
+            .busy_timeout(Duration::from_secs(15))
             .disable_statement_logging();
         SqlitePoolOptions::new()
-            .max_connections(64)
+            .max_connections(8)
             .connect_with(options)
             .await
     }
@@ -131,10 +136,12 @@ impl DBService {
         );
         let options = SqliteConnectOptions::from_str(&database_url)?
             .create_if_missing(true)
-            .journal_mode(SqliteJournalMode::Delete);
+            .journal_mode(SqliteJournalMode::Wal)
+            .busy_timeout(Duration::from_secs(15));
 
         let pool = if let Some(hook) = after_connect {
             SqlitePoolOptions::new()
+                .max_connections(8)
                 .after_connect(move |conn, _meta| {
                     let hook = hook.clone();
                     Box::pin(async move {
@@ -145,7 +152,10 @@ impl DBService {
                 .connect_with(options)
                 .await?
         } else {
-            SqlitePool::connect_with(options).await?
+            SqlitePoolOptions::new()
+                .max_connections(8)
+                .connect_with(options)
+                .await?
         };
 
         run_migrations(&pool).await?;

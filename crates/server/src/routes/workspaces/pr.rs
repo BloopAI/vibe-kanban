@@ -509,10 +509,25 @@ pub async fn attach_existing_pr(
             let open_pr_count = PullRequest::count_open_for_workspace(pool, workspace.id).await?;
 
             if open_pr_count == 0 {
-                if !workspace.pinned
-                    && let Err(e) = deployment.container().archive_workspace(workspace.id).await
-                {
-                    tracing::error!("Failed to archive workspace {}: {}", workspace.id, e);
+                if !workspace.pinned {
+                    match deployment.container().archive_workspace(workspace.id).await {
+                        Ok(()) => {
+                            if let Err(e) = deployment
+                                .container()
+                                .maybe_delete_archived_worktree_for_merged_staging_pr(workspace.id)
+                                .await
+                            {
+                                tracing::error!(
+                                    "Failed to delete merged staging worktree for workspace {}: {}",
+                                    workspace.id,
+                                    e
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to archive workspace {}: {}", workspace.id, e);
+                        }
+                    }
                 }
             } else {
                 tracing::info!(

@@ -6,13 +6,29 @@
 
 ## Confirmed Current State
 
+- Canonical VK source repo is `/home/mcp/_vibe_kanban_repo`.
+- Production is copy-deployed from a built binary, not run live from checkout.
+- Live deploy details are recorded in:
+  - `VK_WORKFLOW.md`
+  - `LIVE_DEPLOYMENT.json`
+- VK task workspaces are under `/home/mcp/code/worktrees/...` and are not the canonical product repo.
 - Local runtime is active and serving from the rebuilt local binary.
 - `/api/info` reports `shared_api_base: null`.
-- The kanban/workspace hang regression that was driving VK to `9+ GB` RSS is fixed in the current local runtime and in `staging`.
+- An isolated lab instance exists at `127.0.0.1:4411` with separate state and separate `CODEX_HOME`.
+- Two frontend polling regressions that contributed to VK hangs are fixed in the current local runtime and in `staging`:
+  - `packages/web-core/src/shared/hooks/useWorkspaces.ts`
+  - `packages/web-core/src/shared/hooks/useUiPreferencesScratch.ts`
+  - `packages/web-core/src/shared/hooks/useBranchStatus.ts`
+  - `packages/web-core/src/shared/hooks/useTaskWorkspaces.ts`
 - Verified after the fix:
   - repeated mixed board/workspace bursts passed with `0` failures
   - a 2-minute mixed soak (`21,070` requests) passed with `0` failures
   - live service stayed around `90 MB RSS` with `0` swap instead of re-bloating into the multi-GB range
+- Additional controlled workspace-open emulation also passed:
+  - `OpsPB::Linking in reports`
+  - `VK:: Wire Ntfy`
+  - `Vk::Ops`
+  - stayed roughly in the `32–51 MB` range with `0` endpoint failures
 - The imported cloud project/issue data has been brought into the local DB.
 - The `vibe-kanban` project can currently create issues and create/link workspaces successfully.
 - Local projects now support archive/restore behavior in the left-column project navigation.
@@ -25,6 +41,7 @@
 
 - Normal project work can resume. No recovery-only blocker remains for issue/workspace creation in the `vibe-kanban` project.
 - Branch-local work is adding local project list hygiene without reintroducing cloud/shared state.
+- The remaining unresolved stability problem is being moved toward an isolated test-instance workflow instead of continuing diagnosis directly in prod VK.
 
 ## Proposed / Not Adopted
 
@@ -37,7 +54,20 @@
 - The local fallback pull-request endpoint still returns project-wide PR data and should be narrowed by `issue_id` in a future cleanup pass.
 - The archive/restore flow is currently implemented for local projects; remote/cloud project archiving remains out of scope.
 - The branch-local backup retention change needs to be merged from its dedicated PR before treating it as landed in `staging`.
-- The recent memory spiral was traced to a repo-side regression in frontend request/write behavior, not to the local-only install mode itself.
+- The recent memory spiral was partly traced to repo-side frontend request/write behavior, not to the local-only install mode itself.
+- However, VK is still not fully fixed:
+  - there is a remaining heavy-child / SQLite-lock / memory-retention path
+  - under several live attached child processes, VK can still re-bloat into the `9+ GB` range
+  - then `database is locked` errors can break `POST /api/workspaces/start` and `POST /api/workspaces/summaries`
+- That remaining bug is not yet isolated well enough to package upstream again.
+- Best current lab diagnosis:
+  - SQLite `DELETE` mode was a real contributor
+  - ignored PR monitor disable was real background churn
+  - missing unseen-turn index was real, but smaller than the DB-mode problem
+  - the remaining hotspot is still `UI_PREFERENCES` scratch upsert churn
+- Important nuance:
+  - `_vibe_kanban_repo` is not uniquely bad because of raw repo size or raw git speed
+  - it is a stronger trigger because `vibe-kanban` tasks tend to run preview/dev-server/self-hosting workloads inside VK
 
 ## Relevant Files / Modules
 
@@ -45,6 +75,12 @@
 - `STATE.md`
 - `STREAM.md`
 - `DELTA.md`
+- `crates/db/src/lib.rs`
+- `crates/local-deployment/src/lib.rs`
+- `crates/services/src/services/pr_monitor.rs`
+- `crates/db/src/models/coding_agent_turn.rs`
+- `crates/services/src/services/events.rs`
+- `crates/server/src/routes/scratch.rs`
 - `docs/self-hosting/local-backup-recovery.mdx`
 - `scripts/vk_lean_backup.py`
 - `scripts/run_vk_lean_backup.sh`
@@ -62,20 +98,38 @@
 ## Decisions Currently In Force
 
 - Operate VK in local-only mode.
+- Use `/home/mcp/_vibe_kanban_repo` as the only canonical VK codebase.
+- Start external VK-fixing agents from `/home/mcp/_vibe_kanban_repo` unless the task is explicitly workspace-specific.
 - Use the lean backup + Desktop mirror as the standard recovery path.
 - Apply retention to lean backups so the default recovery path stays sustainable over time.
 - Start new repo work from `staging`.
 - Treat the local DB plus GitHub state as the combined restore source, not the old cloud.
 - Keep inactive local projects out of the primary left-column list by archiving them instead of leaving them permanently visible.
+- Keep prod VK usable for day-to-day work, but do further root-cause debugging in a separate test instance where restarts and instrumentation are safe.
+- Do not port lab findings to prod or `staging` without explicit user confirmation.
 
 ## Risks / Regression Traps
 
+- Agents can get confused because VK has three different path classes:
+  - canonical source repo
+  - live service/runtime/state
+  - task-specific worktrees
+- Treating a worktree path as the canonical repo is an easy way to lose changes, patch the wrong place, or misunderstand what is deployed.
 - Reintroducing shared API env vars will put the install back into a mixed local/remote state.
 - Deleting or replacing the local DB without a fresh backup will break the current restore guarantee.
 - UI changes that hide PR badges or issue/workspace links can look like data loss even when the DB is correct.
 - UI changes that hide archived local projects must still provide a clear restore path or they will look like missing data.
 - Replacing VK `CODEX_HOME` with a fresh directory and copying only `auth.json` will break old workspace thread fork/resume with `no rollout found for thread id ...`.
 - VK Codex isolation requires both auth and Codex session/rollout state if you want existing workspace threads to continue cleanly after the switch.
+- Passing raw HTTP stress tests is not enough. The earlier false positive came from not reproducing:
+  - mounted workspace UI behavior
+  - repeated workspace/task polling
+  - live attached coding-agent / preview child-process load
+- If prod VK wedges and `systemctl --user restart vibe-kanban.service` gets stuck in `deactivating (stop-sigterm)`, the safe recovery path is:
+  - back up `db.v2.sqlite`
+  - wait briefly for graceful cleanup
+  - if still stuck, force-kill only the VK main PID and let systemd respawn it
+  - do not touch tmux or unrelated Codex sessions
 
 ## Next Safe Steps
 
@@ -87,3 +141,378 @@
    - `/v1/fallback/project_workspaces?project_id=...`
    - `/api/workspaces/:id/git/status`
 4. If a future agent touches project/workspace linking or project-list visibility, verify through the live API and the UI before merging.
+5. Stand up an isolated test instance from current prod state before continuing root-cause work on the remaining memory / DB-lock path.
+6. Continue validating lab-only backend fixes in this order:
+   - DB mode / pool / monitor control
+   - scratch write amplification
+   - then longer soak runs with repeated `_vibe_kanban_repo` workspace starts
+Lab findings, 2026-04-19:
+
+- The DB-side fixes being tested in the lab are materially helping:
+  - SQLite `WAL`
+  - reduced pool size
+  - PR monitor actually disabled
+  - `UI_PREFERENCES` scratch coalescing / reduced scratch fanout
+- After those fixes, the main remaining `vibe-kanban` trigger is heavy preview/install child workload, not the VK server heap itself.
+- A lab-only prototype now runs Codex/script executions in transient user services via `systemd-run`.
+- In that configuration:
+  - the main lab VK service stayed roughly `117-222 MB`
+  - the heavy preview/install load moved into a separate transient `vk-lab-codex-*.service`
+  - stopping the workspace via VK successfully removed the transient unit
+- This strongly suggests the remaining production hardening path is:
+  1. keep the DB/scratch fixes
+  2. isolate heavy executions into separate units/cgroups
+  3. add explicit unit tracking and cleanup
+
+This is still lab-only. Do not port any of it to prod or `staging` without explicit user confirmation.
+
+Production state, 2026-04-20:
+
+- The confirmed lab fixes are now deployed in production.
+- Current production hardening includes:
+  - SQLite `WAL`
+  - DB pool capped to `8`
+  - SQLite busy timeout enabled
+  - PR monitor truly disabled when `VK_DISABLE_PR_MONITOR=1`
+  - direct scratch event emission from the scratch route
+  - `UI_PREFERENCES` scratch write coalescing
+  - heavy Codex/script executions launched in transient user services through `systemd-run`
+- Current prod launcher env includes:
+  - `VK_USE_SYSTEMD_RUN=1`
+  - `VK_TRANSIENT_MEMORY_HIGH=1500M`
+  - `VK_TRANSIENT_MEMORY_MAX=3000M`
+- Confirmed prod behavior after rollout:
+  - main VK service stayed around `116-117 MB` during a real no-op Codex execution
+  - the execution ran in a separate `vk-exec-codex-*.service`
+  - the transient unit cleaned up after completion
+
+Current production notes, 2026-04-21:
+
+- VK isolated auth was stale again and was repaired by resyncing:
+  - `/home/mcp/.codex/auth.json` -> `/home/mcp/.local/share/vibe-kanban/codex-home/auth.json`
+- This restored working VK follow-ups, but does not remove the long-term concurrent refresh-token race risk.
+- New issue-linked workspaces were not appearing in Issues immediately:
+  - patch now live in `packages/web-core/src/shared/hooks/useCreateWorkspace.ts`
+- Stale auth/bubblewrap noise visible in workspace transcripts was not only coming from failed rows in SQLite.
+- The stale visible transcript noise also lived in:
+  - `/home/mcp/.local/share/vibe-kanban/sessions/.../processes/*.jsonl`
+- Current state after cleanup:
+  - stale empty failed/killed codingagent rows removed from DB
+  - process transcripts sanitized to remove stale auth/bubblewrap noise
+- Current main unresolved UI/runtime problem:
+  - the earlier refresh/remount workaround has now been removed
+  - current production fix is backend-side:
+    - follow-up spawn now immediately pushes execution-process and workspace patches into the live event stream from `crates/server/src/routes/sessions/mod.rs`
+  - if chat still regresses, the next check should be the session execution-process websocket publication path, not more client-side remount logic
+- Residual red chat rows were traced further:
+  - fresh process logs on `2026-04-21` still showed the bubblewrap/userns warning
+  - those were not only stale history
+  - the remaining production cause was legacy follow-up forks still carrying old `workspaceWrite` sandbox settings into Codex app-server, which emitted `configWarning`
+  - the normalizer was also surfacing those warning-class events as red `error_message` rows
+- Current production repair for that residual chat noise:
+  - `crates/executors/src/executors/codex.rs`
+    - follow-up fork requests now explicitly override the forked thread with the current computed sandbox/approval/config params instead of inheriting stale old thread settings
+    - host userns/AppArmor detection still forces Codex sandbox to `danger-full-access` when needed
+  - `crates/executors/src/executors/codex/normalize_logs.rs`
+    - Codex warnings/config warnings now render as system messages instead of error messages
+    - duplicate bubblewrap stderr lines are suppressed
+  - live deployed binary:
+    - `/home/mcp/.local/bin/vibe-kanban-server-cleanfix`
+    - sha256 `47c15955156cddb47252823c110859c8450eb0767a9d19933322dded5c99bf6b`
+  - stored process transcript cleanup after rollout:
+    - `13` process log files rewritten
+    - `26` fresh bubblewrap warning lines removed
+- Current chat-behavior repair in `staging`:
+  - removed the client-side pending follow-up acknowledgment state in `packages/web-core/src/features/workspace-chat/ui/SessionChatBoxContainer.tsx`
+  - follow-up sends now clear the composer immediately after the server accepts the send instead of waiting on later process-count heuristics
+  - `packages/web-core/src/features/workspace-chat/model/hooks/useConversationHistory.ts` now materializes newly added already-completed processes, so fast follow-ups still appear even if they skip a visible running window
+  - `packages/web-core/src/features/workspace-chat/model/useConversationVirtualizer.ts` now refreshes bottom-lock correction on every conversation content update, including streaming growth in the unvirtualized tail
+  - intended effect:
+    - sent messages stop looking unsent while waiting for delayed UI acknowledgment
+    - false send/running state is reduced
+    - chat should stay pinned to the live bottom while the last turn keeps growing
+- Confirmed live root cause for the remaining stuck-chat behavior:
+  - the running production service journal showed repeated `MsgStore broadcast lagged ... messages dropped for this subscriber`
+  - that means patch-based running-process log subscribers could silently miss conversation updates and stay stale until the UI remounted and replayed history
+- Current chat stream repair now deployed:
+  - `crates/utils/src/msg_store.rs`
+    - added a strict history/live stream mode that turns broadcast lag into a hard stream error instead of silently dropping messages
+  - `crates/services/src/services/container.rs`
+    - running raw/normalized log websocket streams now use the strict stream mode
+  - `packages/web-core/src/shared/lib/streamJsonPatchEntries.ts`
+    - process log websockets now reconnect on unexpected close/error and rebuild state from replay instead of staying dead forever
+  - live deployed binary:
+    - `/home/mcp/.local/bin/vibe-kanban-server-cleanfix`
+    - sha256 `946a4211438d532614a7055672c2fa25c710312b9b38923abf812fbb602bc964`
+- Current production 404 repair, `2026-04-21`:
+  - the live `404 /` after the chat-stream rollout was a build/deploy correctness issue, not an API/router regression
+  - root cause:
+    - `crates/server/build.rs` did not track `packages/local-web/dist`, so `cargo build --release --bin server` could reuse a stale server build even after the frontend bundle was rebuilt
+    - result: the deployed binary could come up healthy for `/api/*` while still missing the current embedded frontend assets for `/`
+  - current repair:
+    - `crates/server/build.rs` now recursively emits `cargo:rerun-if-changed` for `packages/local-web/dist`
+    - rebuilt `target/release/server`
+    - redeployed `/home/mcp/.local/bin/vibe-kanban-server-cleanfix`
+    - restarted `vibe-kanban.service`
+  - live validation after redeploy:
+    - `curl http://127.0.0.1:4311/` now returns `200` with `index.html`
+    - `curl http://127.0.0.1:4311/assets/index-DWkKdBPw.js` now returns `200`
+    - `/api/info` still returns `200`
+  - current live binary sha256:
+    - `a6d17ed54f8ceba064928404ab2af055ae00d855e5bd889e193df265ef6b45b3`
+- Current chat-load repair, `2026-04-21`:
+  - symptom:
+    - workspace shell loaded
+    - sessions API and execution-process session stream returned data
+    - but historic chat transcripts could stay blank/loading because normalized log replay never produced entries
+  - root cause:
+    - `crates/services/src/services/container.rs` historical normalized replay used a history-plus-live temp-store stream
+    - for finished processes, final normalized `JsonPatch` / `Ready` messages could race between snapshot capture and receiver subscription
+    - when that happened, the normalized websocket stayed open but emitted nothing, so chats appeared not to load
+  - current repair:
+    - finished-process normalized replay now fully normalizes and deduplicates history before serving a finite websocket replay
+    - live/running process paths still use the streaming path
+  - live verification after redeploy:
+    - direct probe of `/api/execution-processes/ac4680a0-2573-4a78-b71d-8a879caf56b8/normalized-logs/ws` now returns normalized entries immediately instead of hanging
+    - `/api/info` still returns `200`
+  - current live binary sha256:
+    - `e0b3704dcce3f4cf70031141b85c5e2fea0169a6f0d6e0daf458f0fc3656f461`
+- Current historic chat replay repair for large finished processes, `2026-04-21`:
+  - symptom:
+    - specific workspaces such as `FR:: Garmin Sync Down` could still open with blank chat/loading state even after the earlier finished-replay race fix
+    - direct probes showed the newest Garmin execution process `123302ac-b1d5-4587-90b6-5d3bba2d712e` had an `~84 MB` persisted raw log file and both raw and normalized replay websockets stayed silent long enough to make the UI look dead
+  - root cause:
+    - historical replay still read large process transcripts monolithically before emitting the first websocket message
+    - `packages/web-core/src/features/workspace-chat/model/hooks/useConversationHistory.ts` also treated finished replay as all-or-nothing, so a single slow recent process could blank the whole conversation during initial history load
+  - current repair:
+    - `crates/utils/src/execution_logs.rs`
+      - added line-streaming reads for persisted process log files
+    - `crates/services/src/services/execution_process.rs`
+      - historical raw log replay now streams parsed `LogMsg` values incrementally from disk instead of loading the entire file into memory first
+    - `crates/services/src/services/container.rs`
+      - finished-process normalized replay now feeds persisted raw logs into the executor normalizer incrementally and streams normalized patches as they are produced
+      - historical normalization no longer calls `ensure_container_exists()`, so chat replay does not trigger expensive worktree recreation/git inspection
+    - `packages/web-core/src/features/workspace-chat/model/hooks/useConversationHistory.ts`
+      - history loading now paints partial historic entries as they stream in instead of waiting for a full process replay to finish
+  - live validation after redeploy:
+    - direct probe of `/api/execution-processes/123302ac-b1d5-4587-90b6-5d3bba2d712e/raw-logs/ws` returned the first replay patch in about `67 ms`
+    - direct probe of `/api/execution-processes/123302ac-b1d5-4587-90b6-5d3bba2d712e/normalized-logs/ws` returned the first normalized replay patch in about `61 ms`
+    - `curl -I http://127.0.0.1:4311/` returned `200 OK`
+    - `/api/info` remained healthy after restart
+  - current live binary sha256:
+    - `2288ec455166a1057c7567763555e3545bd71f87892942aec46ea149f6f961e4`
+- Example repaired workspace link:
+  - `VC::ops Playbook`
+  - workspace id `0b00ce25-fb2b-4742-b310-4bf6aaa1e7e7`
+  - linked task id `69a9dbf6-2cb9-48f2-8d9f-d160fe7a5107`
+- Additional repaired workspace link:
+   - `FR:: Garmin Sync Down`
+   - workspace id `25e19656-bc9f-4315-9712-a1d5468bdc00`
+   - linked task id `7d046622-1dd5-4025-bf04-fe2bfebd10a3`
+- Current attachment/upload and workspace-create stabilization, `2026-04-21`:
+  - symptom:
+    - live VK felt extremely slow
+    - attachment insertions were failing from the UI
+    - creating a workspace could surface `failed to fetch`
+  - verified live narrowing before fix:
+    - direct `POST /api/workspaces` succeeded, so workspace creation itself was not broken
+    - direct `POST /api/attachments/upload` failed with `500`, while the journal showed `UNIQUE constraint failed: attachments.hash`
+    - journal also showed heavy pool contention and repeated slow `POST /api/workspaces/summaries`-related query bursts
+  - root cause:
+    - `crates/services/src/services/file.rs`
+      - file dedupe was check-then-insert, so concurrent or repeated same-content uploads could trip the unique `attachments.hash` constraint and return a server error instead of reusing the existing attachment record
+    - `crates/server/src/routes/workspaces/workspace_summary.rs`
+      - the workspace summary endpoint could be hit repeatedly with identical `archived` inputs, creating avoidable DB burst load that competed with writes and made the UI look hung
+  - current repair:
+    - `crates/services/src/services/file.rs`
+      - duplicate-hash insert errors now clean up the temp file, re-query by hash, and return the existing attachment row instead of surfacing `500`
+    - `crates/server/src/routes/workspaces/workspace_summary.rs`
+      - added a short in-process cache keyed by `archived` with a `2s` TTL to dampen identical summary storms without changing API shape
+  - live validation after redeploy:
+    - `cargo check -p services -p server`
+    - `cargo build --release --bin server`
+    - `pnpm run format`
+    - redeployed `/home/mcp/.local/bin/vibe-kanban-server-cleanfix`
+    - restarted `vibe-kanban.service`
+    - `curl -sS -o /tmp/api_info.out -w '%{http_code} %{time_total}\n' http://127.0.0.1:4311/api/info`
+      - `200 0.009340`
+    - `curl -sS -o /tmp/create_ws_postfix.out -w '%{http_code} %{time_total}\n' -H 'Content-Type: application/json' -d '{"name":"probe-ws-postfix"}' http://127.0.0.1:4311/api/workspaces`
+      - `200 0.007593`
+    - duplicate-content upload probe:
+      - first `POST /api/attachments/upload` with `/tmp/vk_attach_test.txt`: `200 0.005327`
+      - second identical `POST /api/attachments/upload`: `200 0.001606`
+      - both returned attachment id `2c54f409-7091-492f-9e07-4b4aa6092bf2`
+  - deployment notes:
+    - `systemctl --user restart vibe-kanban.service` again hung in `deactivating`
+    - systemd eventually escalated to `SIGKILL` on old main PID `2388147` and brought the new service up cleanly on PID `2444957`
+  - current live binary sha256:
+    - `719712f0cc78503eb9d04908f4d9480d9cb11fb820294995138ed62e66a6083b`
+- Current chat session-reset and first-screen attachment follow-up, `2026-04-21`:
+  - symptom after the earlier chat/load repairs:
+    - follow-up prompts could finish server-side but the chat pane later reset to the empty-state copy:
+      - `Your workspace conversation will appear here once a new turn starts.`
+    - this left the composer blocked because the UI no longer held the active session selection
+    - attachment insertion from the initial workspace screen could still fail while the same attachment flow worked from the second screen
+  - verified code-side causes:
+    - `packages/web-core/src/shared/hooks/useWorkspaceSessions.ts`
+      - follow-up-triggered session query refreshes could replace or clear the current selection even when the selected session still existed
+      - once selection dropped, the conversation view fell back to the empty-state path in `ConversationListContainer.tsx`
+    - `packages/web-core/src/features/workspace-chat/model/hooks/useSessionSend.ts`
+      - existing-session follow-ups were invalidating the workspace session list aggressively, increasing the chance of the selection-reset race
+    - `packages/ui/src/components/attachment-node.tsx` and `packages/ui/src/components/image-node.tsx`
+      - editor attachment metadata and proxy URLs were still using raw local `/api/...` paths instead of host-scoped paths
+      - that made attachment behavior diverge between screens depending on whether the host-aware API layer wrapped the request
+  - current repair now landed and deployed:
+    - `packages/web-core/src/shared/hooks/useWorkspaceSessions.ts`
+      - preserves the current existing-session selection within the same workspace when it is still present
+      - only clears selection on empty-session results when the workspace itself changed
+    - `packages/web-core/src/features/workspace-chat/model/hooks/useSessionSend.ts`
+      - removed the unnecessary workspace-session query invalidation on follow-up send
+    - `packages/ui/src/components/WorkspaceContext.tsx`
+      - added `HostIdContext` plus `scopeLocalApiPath(...)` for editor-node local API URLs
+    - `packages/web-core/src/shared/components/WYSIWYGEditor.tsx`
+      - now provides the current host id to UI editor nodes
+    - `packages/ui/src/components/attachment-node.tsx`
+    - `packages/ui/src/components/image-node.tsx`
+      - attachment metadata fetches and proxy/file URLs now use host-scoped local API paths consistently
+  - validation after redeploy:
+    - `pnpm --filter @vibe/web-core run check`
+    - `pnpm --filter @vibe/ui run check`
+    - `pnpm --filter @vibe/local-web run build`
+    - `cargo build --release --bin server`
+    - `pnpm run format`
+    - `systemctl --user show vibe-kanban.service -p ActiveState -p MainPID`
+    - `sha256sum /proc/$(systemctl --user show -p MainPID --value vibe-kanban.service)/exe /home/mcp/.local/bin/vibe-kanban-server-cleanfix`
+    - `curl -s http://127.0.0.1:4311/api/info`
+    - `curl -sI http://127.0.0.1:4311/`
+  - result:
+    - live service is `active`
+    - running process and deployed binary both match sha256 `8b3b3f9e72dc37f99df018e88fa8f321cfd65b7df7b72b1136426f62832e15af`
+    - `/api/info` is healthy and `/` returns `200`
+    - UI confirmation of the exact blank-chat and first-screen attachment flows still requires one real user pass in the live app
+- Current chat live-update follow-up, `2026-04-22`:
+  - user-reported symptom:
+    - in workspace `FR:: Coaches Feature Stream`, the agent started streaming thought/log lines, then stopped updating after a short time
+    - the UI kept showing the blinking thinking indicator even though the underlying agent execution kept progressing
+  - verified live narrowing:
+    - workspace id `fcd0ec67-a0fe-42a8-9337-ef3228ceee80`
+    - session id `a97647d3-6d95-4470-a320-fe6bf415edd8`
+    - process id `b20d10a2-bf5b-43c2-97ef-ac1186664201`
+    - process completed server-side at `2026-04-22T11:40:54Z`
+    - the live journal showed repeated `MsgStore broadcast lagged ... messages dropped for this subscriber` bursts at `2026-04-22T11:40:49Z` while this workspace was active
+  - actual remaining root cause:
+    - the earlier strict fail/reconnect repair covered per-process raw/normalized log stores
+    - but `crates/services/src/services/events/streams.rs` was still using raw `BroadcastStream` listeners for session/workspace/scratch event websockets and silently dropping lagged updates
+    - that meant the session execution-process stream could miss the completion/update patch, leaving the UI stuck in stale running state with no new chat entries
+  - current repair now landed and deployed:
+    - `crates/services/src/services/events/streams.rs`
+      - session/workspace/scratch event streams now convert broadcast lag into a stream error instead of swallowing it
+      - this lets the client websocket close and reconnect, replaying a fresh snapshot instead of staying stale
+  - validation after redeploy:
+    - `cargo check -p services -p server`
+    - `cargo build --release --bin server`
+    - redeployed `/home/mcp/.local/bin/vibe-kanban-server-cleanfix`
+    - restarted `vibe-kanban.service`
+    - verified the running service main PID resolves to `/home/mcp/.local/bin/vibe-kanban-server-cleanfix`
+    - `sha256sum /proc/$(systemctl --user show -p MainPID --value vibe-kanban.service)/exe /home/mcp/.local/bin/vibe-kanban-server-cleanfix`
+    - `curl -sf http://127.0.0.1:4311/api/info`
+  - result:
+    - live service is `active`
+    - running process and deployed binary both match sha256 `9ad30eadb01eb7a357493a6232ffdddc3c212d32d8ae2dd050ff35ec742acad2`
+    - direct UI confirmation still requires one real workspace retest
+- Current issue/workspace relink follow-up, `2026-04-22`:
+  - user-reported symptom:
+    - three newly created local issues were not linked to the workspaces created for them
+  - verified live DB state before fix:
+    - task `af85bbe0-7c78-46ea-b0ec-91476596850c` (`FR:: Coaches Feature Stream `) existed, but workspace `fcd0ec67-a0fe-42a8-9337-ef3228ceee80` had `task_id = null`
+    - task `6bc54000-384e-4164-8995-b1c5a7d2469b` (`FR::Investigate today's active burn calories`) existed, but workspace `ff6bfbf1-8f71-4787-9e92-df7910c0928f` had `task_id = null`
+    - task `f0933141-23fd-4a0e-89d3-5d2202325cea` (`FR::Investigate today's active burn calories`) existed, but workspace `e9c522ad-a455-42c7-9a4d-74ed6bf8ee98` had `task_id = null`
+  - root cause:
+    - the workspace-create issue route relied on create-mode draft state carrying `linkedIssue` all the way through submit
+    - if that draft/bootstrap state dropped the issue link, the create request could go out with `linked_issue = null`
+    - the backend also only did a one-shot local task lookup during workspace creation, so a just-created issue could still miss the initial automatic link
+  - current repair now landed and deployed:
+    - `packages/web-core/src/shared/components/CreateChatBoxContainer.tsx`
+      - added `forcedLinkedIssue` support and submit now prefers the explicit issue context from the route when present
+    - `packages/web-core/src/pages/kanban/ProjectRightSidebarContainer.tsx`
+      - workspace-create issue routes now pass the current route issue/project directly into `CreateChatBoxContainer`
+    - `crates/server/src/routes/workspaces/create.rs`
+      - added a bounded local issue-to-task relink retry during create-and-start when `linked_issue` is present but the first local task lookup misses
+  - live relinks performed:
+    - linked workspace `fcd0ec67-a0fe-42a8-9337-ef3228ceee80` -> task `af85bbe0-7c78-46ea-b0ec-91476596850c`
+    - linked workspace `ff6bfbf1-8f71-4787-9e92-df7910c0928f` -> task `6bc54000-384e-4164-8995-b1c5a7d2469b`
+    - linked workspace `e9c522ad-a455-42c7-9a4d-74ed6bf8ee98` -> task `f0933141-23fd-4a0e-89d3-5d2202325cea`
+  - validation after redeploy:
+    - `cargo check -p server -p services`
+    - `pnpm --filter @vibe/web-core run check`
+    - `pnpm --filter @vibe/local-web run build`
+    - `cargo build --release --bin server`
+    - redeployed `/home/mcp/.local/bin/vibe-kanban-server-cleanfix`
+    - restarted `vibe-kanban.service`
+    - verified `/api/info` healthy and `/` returns `200`
+    - verified running PID executable sha matches deployed binary sha `ebbdb9041fd2b6f517606005b53bca8ff1980f68553c1fa9135169b5dc6395cc`
+- Current chat streaming follow-up, `2026-04-22`:
+  - user-reported symptom:
+    - `FR:: Coaches Feature Stream` orchestration workspace briefly showed a few live chat lines, then stopped updating while still appearing busy
+  - verified live workspace/process:
+    - orchestration workspace `679c24ec-7368-4a08-8f82-931f8d0ea896`
+    - session `65c4bde9-df70-4e12-91fd-210c41e7aa3a`
+    - latest process `d928142b-d587-4a16-9e23-013d1a6df622`
+    - DB state showed the latest process already completed at `2026-04-22T12:39:44Z`
+  - root cause:
+    - the normalized chat websocket was replaying a pathological volume of repeated `replace` patches for the same entry path while the assistant response was still growing
+    - direct live probe of `/api/execution-processes/d928142b-d587-4a16-9e23-013d1a6df622/normalized-logs/ws` before the fix saw about:
+      - `3872` patch messages
+      - `~5.07 GB` of websocket JSON over `20s`
+      - `2333` repeated updates on `/entries/5`
+    - that amount of redundant patch traffic is enough to stall the client even when the backend process itself is still progressing
+  - current repair now landed and deployed:
+    - `crates/server/src/routes/execution_processes.rs`
+      - normalized log websocket delivery now batches patches for `50ms`
+      - repeated ops on the same path are coalesced so only the latest write in the window is serialized and sent
+      - added unit tests for last-write-wins patch coalescing
+    - `crates/server/Cargo.toml`
+      - added direct `json-patch` dependency for the new server-side coalescing logic
+  - validation after redeploy:
+    - `cargo test -p server coalesce_patch_ops -- --nocapture`
+    - `cargo check -p server -p services`
+    - `cargo build --release --bin server`
+    - `pnpm run format`
+    - redeployed `/home/mcp/.local/bin/vibe-kanban-server-cleanfix`
+    - restarted `vibe-kanban.service`
+    - verified `/api/info` healthy and `/` returns `200`
+    - verified running PID executable sha matches deployed binary sha `4a5e3356b9c7dc4dff3b5e82d5e451ce58d789d8db48420bbe207517d2e70ba4`
+    - repeated the same normalized-log websocket probe after deploy and saw about:
+      - `60` patch messages
+      - `128` patch ops
+      - `~109.6 MB` total websocket JSON
+      - clean `finished` receipt in about `16.1s`
+
+Codex follow-up state, 2026-04-20:
+
+- The broken workspace follow-up path is repaired in prod.
+- Root cause:
+  - transient `systemd-run` Codex executions were not inheriting `CODEX_HOME`
+  - app-server looked in the wrong Codex state root and failed `thread/fork`
+- Prod now passes the required inherited env into transient Codex units:
+  - `PATH`
+  - `HOME`
+  - `CODEX_HOME`
+  - `SHELL`
+  - `BASH_ENV`
+  - `VK_CODEX_BASE_COMMAND`
+- Live wrapper also exports:
+  - `VK_CODEX_BASE_COMMAND=/home/mcp/.local/bin/codex`
+- The Codex follow-up fork request is now minimal rather than cloning all thread-start params.
+- Confirmed resumed/running again after the fix:
+  - `FR:: Garmin Sync Down`
+  - `VK::Default repo in Issues`
+  - `VK:: Wire Ntfy`
+  - `VK::Codeblock only copy`
+  - `OpsPB::Linking in reports`
+  - `FR::ORC::Android Parity`
+  - `FR::ORC::Generative Programming`
+  - `FR::Admin Movement Library Fix`
+  - `FR::Custom Workout Log Equipment`
+  - `FR::Reorder Custom Exercises`
+  - `FR::Investigate Failed to Save Custom Workout`

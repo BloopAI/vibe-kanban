@@ -1,0 +1,151 @@
+---
+title: "Lightweight Agent Preview"
+description: "Run a fast Vibe Kanban frontend preview without starting another backend watcher"
+---
+
+Use the lightweight preview when you need to smoke test frontend changes from an
+agent worktree. It starts only the local Vite frontend and proxies API and
+websocket traffic to an existing Vibe Kanban backend, so it avoids extra Rust
+watchers and duplicate backend processes.
+
+<Note>
+The default backend is `http://127.0.0.1:4311`. Start the main local Vibe
+Kanban instance first, or set `VK_PREVIEW_BACKEND_PORT` to the backend port you
+want to reuse.
+</Note>
+
+## When to use it
+
+- Use this workflow for routine UI, layout, copy, and browser smoke tests.
+- Use full dev mode only when you changed backend behaviour, migrations,
+  executors, agent lifecycle code, or server-side APIs.
+- Run one preview per active worktree unless you have a specific reason to
+  compare multiple branches side by side.
+
+## Start a terminal-managed preview
+
+From the repository root, run:
+
+```bash
+pnpm run preview:light
+```
+
+The command starts the frontend in the background, picks the first available
+port from `3002`, and prints the preview URL.
+
+When Tailscale is available on the host, the workflow also provisions a
+tailnet HTTPS route and prints that reachable review URL instead of a localhost
+address.
+
+Check the running preview:
+
+```bash
+pnpm run preview:light:status
+```
+
+View recent logs:
+
+```bash
+pnpm run preview:light:logs
+```
+
+Stop the preview when you are done:
+
+```bash
+pnpm run preview:light:stop
+```
+
+## Use it from the Vibe Kanban preview panel
+
+If you configure a workspace dev-server command, use the foreground variant:
+
+```bash
+pnpm run preview:light:run
+```
+
+This lets Vibe Kanban own the process, stream the Vite logs, and stop the
+server from the preview panel. Do not use the background `preview:light` command
+as the panel command, because it exits after spawning the preview.
+
+## Choose ports explicitly
+
+Use `VK_PREVIEW_PORT` when you need a stable frontend URL:
+
+```bash
+VK_PREVIEW_PORT=3030 pnpm run preview:light
+```
+
+Use `VK_PREVIEW_PORT_START` when several worktrees are active and you want each
+stream to search a different port range:
+
+```bash
+VK_PREVIEW_PORT_START=3040 pnpm run preview:light
+```
+
+Use `VK_PREVIEW_BACKEND_PORT` when the live backend is not on `4311`:
+
+```bash
+VK_PREVIEW_BACKEND_PORT=3001 pnpm run preview:light
+```
+
+Use `VK_PREVIEW_TAILNET_PORT` when you need a stable Tailscale review URL:
+
+```bash
+VK_PREVIEW_TAILNET_PORT=18460 pnpm run preview:light
+```
+
+## Resource guardrails
+
+- Reuse the existing local Vibe Kanban backend instead of starting `pnpm run dev`
+  in every worktree.
+- Stop previews when you finish a smoke test.
+- Prefer `preview:light:run` inside the Vibe Kanban preview panel so the panel
+  can clean up the process.
+- Escalate to `pnpm run dev` only when the backend must rebuild or when you need
+  to verify backend-specific behaviour.
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="The preview says no backend responded">
+Start the main local Vibe Kanban instance first. If it is already running on a
+different backend port, pass that port:
+
+```bash
+VK_PREVIEW_BACKEND_PORT=3001 pnpm run preview:light
+```
+</Accordion>
+
+<Accordion title="The frontend port is already in use">
+Pick a specific free frontend port:
+
+```bash
+VK_PREVIEW_PORT=3030 pnpm run preview:light
+```
+
+Or start searching from a different range:
+
+```bash
+VK_PREVIEW_PORT_START=3040 pnpm run preview:light
+```
+</Accordion>
+
+<Accordion title="I need a reachable review URL, not localhost">
+If Tailscale is installed and running, `preview:light` prints a tailnet HTTPS
+URL automatically. To pin it to a specific external port, set:
+
+```bash
+VK_PREVIEW_TAILNET_PORT=18460 pnpm run preview:light
+```
+</Accordion>
+
+<Accordion title="The preview panel starts and immediately stops">
+Use the foreground command in the panel:
+
+```bash
+pnpm run preview:light:run
+```
+
+The background command is for terminal-managed previews only.
+</Accordion>
+</AccordionGroup>

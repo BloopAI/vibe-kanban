@@ -10,6 +10,7 @@ import {
   DownloadSimpleIcon,
   LinkIcon,
   PlusIcon,
+  ArchiveIcon,
   KanbanIcon,
   SpinnerIcon,
   StarIcon,
@@ -38,24 +39,30 @@ function getProjectInitials(name: string): string {
 
   const words = trimmed.split(/[\s_-]+/).filter(Boolean);
   if (words.length >= 2) {
-    return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
+    return (
+      words[0].charAt(0) + words[words.length - 1].charAt(0)
+    ).toUpperCase();
   }
   return trimmed.slice(0, 2).toUpperCase();
 }
 
 interface AppBarProps {
   projects: AppBarProject[];
-  archivedProjects?: AppBarProject[];
   hosts?: AppBarHost[];
   onPairHostClick?: () => void;
   activeHostId?: string | null;
   onCreateProject: () => void;
+  onOpenArchivedProjects?: () => void;
+  hasArchivedProjects?: boolean;
   onExportClick?: () => void;
   onWorkspacesClick: () => void;
   onHostClick?: (hostId: string, status: AppBarHostStatus) => void;
   showWorkspacesButton?: boolean;
+  showRemoteSection?: boolean;
+  showExportButton?: boolean;
+  showProfileButton?: boolean;
+  showSocialLinks?: boolean;
   onProjectClick: (projectId: string) => void;
-  onArchivedProjectClick?: (projectId: string) => void;
   onProjectsDragEnd: (result: DropResult) => void;
   isSavingProjectOrder?: boolean;
   isWorkspacesActive: boolean;
@@ -82,6 +89,7 @@ export interface AppBarProject {
   name: string;
   color: string;
   archived?: boolean;
+  hasNeedsReview?: boolean;
 }
 
 export type AppBarHostStatus = 'online' | 'offline' | 'unpaired';
@@ -201,17 +209,21 @@ function getHostButtonClassName({
 
 export function AppBar({
   projects,
-  archivedProjects = [],
   hosts = [],
   onPairHostClick,
   activeHostId = null,
   onCreateProject,
+  onOpenArchivedProjects,
+  hasArchivedProjects = false,
   onExportClick,
   onWorkspacesClick,
   onHostClick,
   showWorkspacesButton = true,
+  showRemoteSection = true,
+  showExportButton = true,
+  showProfileButton = true,
+  showSocialLinks = true,
   onProjectClick,
-  onArchivedProjectClick,
   onProjectsDragEnd,
   isSavingProjectOrder,
   isWorkspacesActive,
@@ -252,7 +264,7 @@ export function AppBar({
     });
   }
 
-  if (hosts.length > 0 || onPairHostClick) {
+  if (showRemoteSection && (hosts.length > 0 || onPairHostClick)) {
     sections.push({
       key: 'remote',
       label: 'Remote',
@@ -314,18 +326,6 @@ export function AppBar({
     });
   }
 
-  if (archivedProjects.length > 0 && onArchivedProjectClick) {
-    projectSectionItems.push({
-      key: 'archived-project-list',
-      kind: 'project-list',
-      projects: archivedProjects,
-      activeProjectId,
-      onProjectClick: onArchivedProjectClick,
-      onProjectsDragEnd,
-      archived: true,
-    });
-  }
-
   if (isSignedIn) {
     projectSectionItems.push({
       key: 'create-project',
@@ -336,6 +336,17 @@ export function AppBar({
       className: 'bg-primary text-muted hover:text-normal hover:bg-tertiary',
       wrapperClassName: 'pt-base',
     });
+
+    if (hasArchivedProjects && onOpenArchivedProjects) {
+      projectSectionItems.push({
+        key: 'open-archived-projects',
+        kind: 'icon-button',
+        label: 'Archived projects',
+        icon: ArchiveIcon,
+        onClick: onOpenArchivedProjects,
+        className: 'bg-primary text-muted hover:text-normal hover:bg-tertiary',
+      });
+    }
   }
 
   if (projectSectionItems.length > 0) {
@@ -346,7 +357,7 @@ export function AppBar({
     });
   }
 
-  if (isSignedIn && onExportClick) {
+  if (showExportButton && isSignedIn && onExportClick) {
     sections.push({
       key: 'export',
       label: 'Export',
@@ -480,7 +491,9 @@ export function AppBar({
                       draggableId={project.id}
                       index={index}
                       disableInteractiveElementBlocking
-                      isDragDisabled={item.isSavingProjectOrder || item.archived}
+                      isDragDisabled={
+                        item.isSavingProjectOrder || item.archived
+                      }
                     >
                       {(dragProvided, snapshot) => (
                         <div
@@ -491,31 +504,45 @@ export function AppBar({
                           style={dragProvided.draggableProps.style}
                         >
                           <Tooltip content={project.name} side="right">
-                            <button
-                              type="button"
-                              onClick={() => item.onProjectClick(project.id)}
-                              className={cn(
-                                appBarItemBaseClassName,
-                                item.archived ? 'cursor-pointer' : 'cursor-grab',
-                                snapshot.isDragging && 'shadow-lg',
-                                item.activeProjectId === project.id
-                                  ? ''
-                                  : item.archived
-                                    ? 'bg-primary text-low hover:bg-brand/10 hover:text-normal'
-                                    : 'bg-primary text-normal hover:opacity-80'
+                            <div className="relative">
+                              {project.hasNeedsReview && (
+                                <span
+                                  className="absolute -right-1 -top-1 z-10 h-3 w-3 rounded-full border border-secondary bg-brand"
+                                  aria-hidden="true"
+                                />
                               )}
-                              style={
-                                item.activeProjectId === project.id
-                                  ? {
-                                      color: `hsl(${project.color})`,
-                                      backgroundColor: `hsl(${project.color} / 0.2)`,
-                                    }
-                                  : undefined
-                              }
-                              aria-label={project.name}
-                            >
-                              {getProjectInitials(project.name)}
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => item.onProjectClick(project.id)}
+                                className={cn(
+                                  appBarItemBaseClassName,
+                                  item.archived
+                                    ? 'cursor-pointer'
+                                    : 'cursor-grab',
+                                  snapshot.isDragging && 'shadow-lg',
+                                  item.activeProjectId === project.id
+                                    ? ''
+                                    : item.archived
+                                      ? 'bg-primary text-low hover:bg-brand/10 hover:text-normal'
+                                      : 'bg-primary text-normal hover:opacity-80'
+                                )}
+                                style={
+                                  item.activeProjectId === project.id
+                                    ? {
+                                        color: `hsl(${project.color})`,
+                                        backgroundColor: `hsl(${project.color} / 0.2)`,
+                                      }
+                                    : undefined
+                                }
+                                aria-label={
+                                  project.hasNeedsReview
+                                    ? `${project.name} (needs review)`
+                                    : project.name
+                                }
+                              >
+                                {getProjectInitials(project.name)}
+                              </button>
+                            </div>
                           </Tooltip>
                         </div>
                       )}
@@ -558,28 +585,33 @@ export function AppBar({
       {/* Bottom section: Notifications + User popover + GitHub + Discord */}
       <div className="mt-auto pt-base flex flex-col items-center gap-4">
         {notificationBell}
-        {userPopover}
-        <AppBarSocialLink
-          href="https://github.com/BloopAI/vibe-kanban"
-          label="Star on GitHub"
-          iconPath={githubIconPath}
-          badge={
-            starCount != null && (
-              <>
-                <StarIcon size={10} weight="fill" />
-                {formatStarCount(starCount)}
-              </>
-            )
-          }
-        />
-        <AppBarSocialLink
-          href="https://discord.gg/AC4nwVtJM3"
-          label="Join our Discord"
-          iconPath={discordIconPath}
-          badge={
-            onlineCount != null && (onlineCount > 999 ? '999+' : onlineCount)
-          }
-        />
+        {showProfileButton ? userPopover : null}
+        {showSocialLinks ? (
+          <>
+            <AppBarSocialLink
+              href="https://github.com/BloopAI/vibe-kanban"
+              label="Star on GitHub"
+              iconPath={githubIconPath}
+              badge={
+                starCount != null && (
+                  <>
+                    <StarIcon size={10} weight="fill" />
+                    {formatStarCount(starCount)}
+                  </>
+                )
+              }
+            />
+            <AppBarSocialLink
+              href="https://discord.gg/AC4nwVtJM3"
+              label="Join our Discord"
+              iconPath={discordIconPath}
+              badge={
+                onlineCount != null &&
+                (onlineCount > 999 ? '999+' : onlineCount)
+              }
+            />
+          </>
+        ) : null}
         {updateVersion ? (
           <Tooltip content={`Update to v${updateVersion}`} side="right">
             <button
