@@ -29,6 +29,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: x86_64-pc-windows-msvc
 
       - name: Install Windows cross-compilation dependencies
         run: |
