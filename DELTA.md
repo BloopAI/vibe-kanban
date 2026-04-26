@@ -197,3 +197,25 @@
   - post-restart `https://vibe.local` returned `200`
 - Not complete / known gaps:
   - local-auth source hardening still needs commit/push/staging promotion
+
+## 2026-04-26T17:20:00Z | vk/ea3c-vk-auto-archive | Codex unforkable rollout fallback
+
+- Intent: stop stale Codex rollout ids from blocking prompts when Codex reports that a stored thread cannot be forked.
+- Completed:
+  - investigated `019dc44c-03d6-7401-a6f5-52353f438bcf` and confirmed the rollout JSONL existed, but current Codex still rejected it as `no rollout found`
+  - backed up the live DB to `/home/mcp/backups/vk-rollout-repair-20260426T-thread019dc44c/db.v2.sqlite`
+  - cleared only the live `coding_agent_turns.agent_session_id` pointer for `019dc44c-03d6-7401-a6f5-52353f438bcf`
+  - changed Codex prompt and review launch to fall back to `thread/start` when `thread/fork` reports a missing, empty, or unloadable rollout
+  - rebuilt and deployed `/home/mcp/.local/bin/vibe-kanban-serve` with SHA-256 `4a87753855846cde85227e582c3fb0fc3fe23b297b5cd5fd74c65b802f81cc6b`
+  - restarted `vibe-kanban.service`
+- Verified:
+  - live DB query returned zero rows for `agent_session_id = 019dc44c-03d6-7401-a6f5-52353f438bcf`
+  - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo check -p executors -p server`
+  - `pnpm run format`
+  - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo build --release -p server --bin server`
+  - deployed binary hash matched `target/release/server`
+  - `systemctl --user is-active vibe-kanban.service` returned `active`
+  - post-restart `/api/info` returned `login_status: loggedin` and `shared_api_base: null`
+  - post-restart `https://vibe.local` returned `200`
+- Not complete / known gaps:
+  - commit, push, and staging promotion are still pending

@@ -36,6 +36,7 @@
 - Execution-process streams are long-lived state streams; non-patch terminal messages must not make mounted workspace views keep stale running snapshots.
 - `vibe.local` requires the user service to bind `HOST=0.0.0.0` on `BACKEND_PORT=4311` for the external LAN nginx proxy.
 - Local-only installs with no shared API base must report `LoggedIn { profile: None }` so the UI does not show remote sign-in prompts.
+- If Codex rejects a stored rollout during `thread/fork`, start a fresh thread instead of failing the user prompt; stale rollout pointers are an optimization, not a hard dependency.
 
 ## Relevant Files / Modules
 
@@ -46,6 +47,8 @@
 - `crates/db/src/models/coding_agent_turn.rs`
 - `crates/services/src/services/events/streams.rs`
 - `crates/local-deployment/src/lib.rs`
+- `crates/executors/src/executors/codex.rs`
+- `crates/executors/src/executors/codex/review.rs`
 - `packages/web-core/src/shared/hooks/useJsonPatchWsStream.ts`
 - `packages/web-core/src/shared/hooks/useExecutionProcesses.ts`
 - `packages/web-core/src/features/workspace-chat/model/hooks/useConversationHistory.ts`
@@ -72,13 +75,18 @@
   - hardened source so local-only installs with no shared API base report `LoggedIn { profile: None }`
   - rebuilt and redeployed `/home/mcp/.local/bin/vibe-kanban-serve` with SHA-256 `8d348fb20f36bb25d0dc0737aa5ae3df6e8e8c2243003bff6ffc27f2985f6525`
   - verified `vibe.local` still returns `200` after restart
+  - repaired live pointer `019dc44c-03d6-7401-a6f5-52353f438bcf` by backing up the DB to `/home/mcp/backups/vk-rollout-repair-20260426T-thread019dc44c/db.v2.sqlite` and clearing only that stale `agent_session_id`
+  - added a Codex executor fallback so missing, empty, or unloadable stored rollouts start a fresh thread for both normal prompts and reviews
+  - rebuilt and redeployed `/home/mcp/.local/bin/vibe-kanban-serve` with SHA-256 `4a87753855846cde85227e582c3fb0fc3fe23b297b5cd5fd74c65b802f81cc6b`
+  - verified the service is active, `/api/info` is logged in with `shared_api_base: null`, and `vibe.local` returns `200`
 - In progress:
-  - committing, pushing, and promoting the local-auth source hardening into `staging`
+  - committing, pushing, and promoting the Codex unforkable-rollout fallback into `staging`
 
 ## Risks / Regression Traps
 
 - Trusting stale continuity docs instead of the checked-out branch and code
 - Treating any non-null `agent_session_id` as resumable without checking the source process outcome
+- Treating a DB-valid `agent_session_id` as forkable after Codex has already rejected the rollout
 - Nulling all historical agent session IDs instead of only invalid live-state pointers
 - Letting execution-process WebSocket streams treat clean closes or unrelated `finished` messages as terminal state for a mounted workspace
 - Removing the fixed `HOST=0.0.0.0`, `BACKEND_PORT=4311`, and `PREVIEW_PROXY_PORT=4312` systemd drop-in will break `vibe.local`
@@ -86,6 +94,6 @@
 
 ## Next Safe Steps
 
-1. Commit the local-auth source hardening and deployment docs.
-2. Push and promote the local-auth hotfix into `staging` so it survives future updates.
-3. Backfill to `main` only through the repo's normal staging-to-main promotion path unless an explicit direct production hotfix is requested.
+1. Finish validation and deploy the Codex unforkable-rollout fallback.
+2. Commit and push the fallback onto the existing hotfix PR branch.
+3. Promote the hotfix into `staging` once checks pass or after explicit human approval to bypass known failing checks.
