@@ -1,7 +1,7 @@
 {
-  "name": "vibe-kanban",
+  "name": "@toby/vibe-kanban",
   "private": false,
-  "version": "0.1.44",
+  "version": "0.1.44-toby.0",
   "main": "index.js",
   "bin": {
     "vibe-kanban": "bin/cli.js"
@@ -14,7 +14,7 @@
   "author": "bloop",
   "repository": {
     "type": "git",
-    "url": "https://github.com/BloopAI/vibe-kanban"
+    "url": "https://github.com/toby/vibe-kanban"
   },
   "engines": {
     "node": ">=20.19.0"

@@ -31,7 +31,6 @@ import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestinatio
 import {
   getDestinationHostId,
   getProjectDestination,
-  isProjectDestination,
   isLocalWorkspacesDestination,
 } from '@/shared/lib/routes/appNavigation';
 import {
@@ -54,7 +53,6 @@ import { AppBarNotificationBellContainer } from '@/pages/workspaces/AppBarNotifi
 import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebarContainer';
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
 import { useRemoteCloudHostsAppBarModel } from '@/shared/hooks/useRemoteCloudHosts';
-import { CloudShutdownExportBanner } from '@/shared/components/CloudShutdownExportBanner';
 
 export function SharedAppLayout() {
   const appNavigation = useAppNavigation();
@@ -173,8 +171,6 @@ export function SharedAppLayout() {
   );
   const isWorkspacesActive = isLocalWorkspacesDestination(currentDestination);
   const isExportActive = currentDestination?.kind === 'export';
-  const showCloudShutdownBanner =
-    isExportActive || (isSignedIn && isProjectDestination(currentDestination));
   const isWorkspaceSidebarPreviewEnabled =
     !isMobile && isWorkspacesActive && !isLeftSidebarVisible;
   const activeProjectId = projectDestination?.projectId ?? null;
@@ -303,21 +299,11 @@ export function SharedAppLayout() {
           'bg-primary',
           isMobile
             ? 'flex fixed inset-0 pb-[env(safe-area-inset-bottom)]'
-            : cn(
-                'grid grid-cols-[auto_1fr] h-screen',
-                showCloudShutdownBanner
-                  ? 'grid-rows-[auto_auto_1fr]'
-                  : 'grid-rows-[auto_1fr]'
-              )
+            : 'grid grid-cols-[auto_1fr] h-screen grid-rows-[auto_1fr]'
         )}
       >
         {!isMobile && (
           <>
-            {showCloudShutdownBanner && (
-              <div className="col-span-2">
-                <CloudShutdownExportBanner onClick={handleExportClick} />
-              </div>
-            )}
             {/* Desktop corner spacer. */}
             <div
               data-tauri-drag-region
@@ -405,9 +391,6 @@ export function SharedAppLayout() {
 
         {isMobile && (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-            {showCloudShutdownBanner && (
-              <CloudShutdownExportBanner onClick={handleExportClick} />
-            )}
             <NavbarContainer
               mobileMode={isMobile}
               onOrgSelect={setSelectedOrgId}

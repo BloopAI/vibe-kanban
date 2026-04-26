@@ -1,11 +1,11 @@
 // vite.config.ts
-import { sentryVitePlugin } from "@sentry/vite-plugin";
-import { createLogger, defineConfig, Plugin } from "vite";
-import react from "@vitejs/plugin-react";
-import { tanstackRouter } from "@tanstack/router-plugin/vite";
-import path from "path";
-import fs from "fs";
-import pkg from "./package.json";
+import { sentryVitePlugin } from '@sentry/vite-plugin';
+import { createLogger, defineConfig, Plugin } from 'vite';
+import react from '@vitejs/plugin-react';
+import { tanstackRouter } from '@tanstack/router-plugin/vite';
+import path from 'path';
+import fs from 'fs';
+import pkg from './package.json';
 
 function createFilteredLogger() {
   const logger = createLogger();
@@ -16,14 +16,14 @@ function createFilteredLogger() {
 
   logger.error = (msg, options) => {
     const isProxyError =
-      msg.includes("ws proxy socket error") ||
-      msg.includes("ws proxy error:") ||
-      msg.includes("http proxy error:");
+      msg.includes('ws proxy socket error') ||
+      msg.includes('ws proxy error:') ||
+      msg.includes('http proxy error:');
 
     if (isProxyError) {
       const now = Date.now();
       if (now - lastRestartLog > DEBOUNCE_MS) {
-        logger.warn("Proxy connection closed, auto-reconnecting...");
+        logger.warn('Proxy connection closed, auto-reconnecting...');
         lastRestartLog = now;
       }
       return;
@@ -86,7 +86,7 @@ export default defineConfig({
   },
   plugins: [
     tanstackRouter({
-      target: "react",
+      target: 'react',
       autoCodeSplitting: false,
     }),
     react({
@@ -108,7 +108,9 @@ export default defineConfig({
         ],
       },
     }),
-    sentryVitePlugin({ org: 'bloop-ai', project: 'vibe-kanban' }),
+    ...(process.env.SENTRY_AUTH_TOKEN
+      ? [sentryVitePlugin({ org: 'bloop-ai', project: 'vibe-kanban' })]
+      : []),
     executorSchemasPlugin(),
   ],
   resolve: {
