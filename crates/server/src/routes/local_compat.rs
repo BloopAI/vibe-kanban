@@ -130,6 +130,7 @@ struct ProjectQuery {
 
 #[derive(Debug, Deserialize)]
 struct CreateIssueRequest {
+    id: Option<Uuid>,
     project_id: Uuid,
     status_id: String,
     title: String,
@@ -1343,8 +1344,21 @@ async fn create_issue(
         Some(&TaskStatus::Todo),
     );
 
-    Task::create(
+    let id = request.id.unwrap_or_else(Uuid::new_v4);
+    if let Some(existing) = Task::find_by_id(&deployment.db().pool, id).await? {
+        if existing.project_id == request.project_id {
+            return Ok(ResponseJson(MutationTxidResponse {
+                txid: Utc::now().timestamp_millis(),
+            }));
+        }
+        return Err(ApiError::BadRequest(
+            "Issue id already exists in a different project".to_string(),
+        ));
+    }
+
+    Task::create_with_id(
         &deployment.db().pool,
+        id,
         request.project_id,
         request.title,
         ensure_status_metadata(request.description, &status_name),

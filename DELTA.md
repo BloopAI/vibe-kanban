@@ -219,3 +219,27 @@
   - post-restart `https://vibe.local` returned `200`
 - Not complete / known gaps:
   - commit, push, and staging promotion are still pending
+
+## 2026-04-26T22:25:00Z | vk/ea3c-vk-auto-archive | local workspace Issue-link hotfix
+
+- Intent: stop newly created local workspaces from disappearing from their Issues after the frontend creates an optimistic Issue id.
+- Completed:
+  - traced the regression to local fallback `/v1/issues` ignoring the caller-provided issue `id`
+  - confirmed workspace `915ede80-a3ba-46fc-8665-ed8b368a0bac` had `task_id = null` while matching task `b6d2320a-f63c-463f-97ec-d41f4b7f9617` existed
+  - backed up the live DB to `/home/mcp/backups/vk-issue-workspace-link-repair-20260426T2208/db.v2.sqlite`
+  - linked the orphaned `FR::Modernize Design` workspace to issue `b6d2320a-f63c-463f-97ec-d41f4b7f9617`
+  - added `Task::create_with_id` and changed local issue creation to preserve the frontend-generated UUID
+  - added same-project idempotency and different-project rejection for duplicate local issue ids
+  - rebuilt and deployed `/home/mcp/.local/bin/vibe-kanban-serve` with SHA-256 `aa04de0df56aad09c6180200c332c5cfa56f30125e84462355cf2f8a76a2c733`
+- Verified:
+  - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo check -p db -p server`
+  - `pnpm run format`
+  - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo build --release -p server --bin server`
+  - deployed binary hash matched `target/release/server`
+  - `systemctl --user is-active vibe-kanban.service` returned `active`
+  - post-restart `/api/info` returned `login_status: loggedin` and `shared_api_base: null`
+  - post-restart `https://vibe.local` returned `200`
+  - live `project_workspaces` showed the repaired workspace linked to its issue
+  - live `/v1/issues` smoke test preserved caller id `48344d12-121d-43cd-bb4f-5abde908d78c`; the temporary issue was deleted and the DB count returned `0`
+- Not complete / known gaps:
+  - commit, push, and staging promotion are still pending
