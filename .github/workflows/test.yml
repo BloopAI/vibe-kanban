@@ -305,10 +305,16 @@ jobs:
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
+      VK_PRIVATE_DEPLOY_KEY: ${{ secrets.VK_PRIVATE_DEPLOY_KEY }}
     steps:
       - uses: actions/checkout@v6
 
+      - name: Skip backend remote checks without deploy key
+        if: ${{ env.VK_PRIVATE_DEPLOY_KEY == '' }}
+        run: echo "::notice::VK_PRIVATE_DEPLOY_KEY is not configured; skipping backend remote checks that require private dependencies."
+
       - name: Setup Rust
+        if: ${{ env.VK_PRIVATE_DEPLOY_KEY != '' }}
         uses: ./.github/actions/cargo-checks-common-setup
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
@@ -318,29 +324,35 @@ jobs:
           setup-sqlx-cli: 'true'
 
       - name: Setup SSH Agent for private dependencies
+        if: ${{ env.VK_PRIVATE_DEPLOY_KEY != '' }}
         uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
         with:
-          ssh-private-key: ${{ secrets.VK_PRIVATE_DEPLOY_KEY }}
+          ssh-private-key: ${{ env.VK_PRIVATE_DEPLOY_KEY }}
 
       - name: Check remote Cargo.lock is consistent
+        if: ${{ env.VK_PRIVATE_DEPLOY_KEY != '' }}
         run: |
           cargo metadata --locked --format-version 1 --manifest-path crates/remote/Cargo.toml > /dev/null
           cargo metadata --locked --format-version 1 --manifest-path crates/relay-tunnel/Cargo.toml > /dev/null
 
       - name: Check formatting
+        if: ${{ env.VK_PRIVATE_DEPLOY_KEY != '' }}
         run: |
           cargo fmt --all --manifest-path crates/remote/Cargo.toml -- --check
           cargo fmt --all --manifest-path crates/relay-tunnel/Cargo.toml -- --check
 
       - name: Run Clippy
+        if: ${{ env.VK_PRIVATE_DEPLOY_KEY != '' }}
         run: |
           cargo clippy --all-targets --manifest-path crates/remote/Cargo.toml -- -D warnings
           cargo clippy --all-targets --manifest-path crates/relay-tunnel/Cargo.toml -- -D warnings
 
       - name: Check generated types
+        if: ${{ env.VK_PRIVATE_DEPLOY_KEY != '' }}
         run: npm run remote:generate-types:check
 
       - name: Sqlx checks
+        if: ${{ env.VK_PRIVATE_DEPLOY_KEY != '' }}
         run: npm run remote:prepare-db:check
 
   backend-clippy:
