@@ -381,9 +381,8 @@ export const useConversationHistory = ({
 
       emittedEmptyInitialRef.current = false;
 
-      const { state: allInitialEntries, truncated } = await loadHistoricEntries(
-        MIN_INITIAL_ENTRIES
-      );
+      const { state: allInitialEntries, truncated } =
+        await loadHistoricEntries(MIN_INITIAL_ENTRIES);
       if (cancelled) return;
       loadedInitialEntries.current = true;
       historyEntryLimitRef.current = MIN_INITIAL_ENTRIES;
@@ -399,13 +398,7 @@ export const useConversationHistory = ({
     return () => {
       cancelled = true;
     };
-  }, [
-    scopeKey,
-    idListKey,
-    isLoading,
-    loadHistoricEntries,
-    emitEntries,
-  ]); // include idListKey so new processes trigger reload
+  }, [scopeKey, idListKey, isLoading, loadHistoricEntries, emitEntries]); // include idListKey so new processes trigger reload
 
   useEffect(() => {
     const activeProcesses = getActiveAgentProcesses();
@@ -516,7 +509,8 @@ export const useConversationHistory = ({
     const nextLimit = historyEntryLimitRef.current + REMAINING_BATCH_SIZE;
 
     try {
-      const { state: moreHistory, truncated } = await loadHistoricEntries(nextLimit);
+      const { state: moreHistory, truncated } =
+        await loadHistoricEntries(nextLimit);
       historyEntryLimitRef.current = nextLimit;
       setHasMoreHistory(truncated);
       mergeIntoDisplayed((state) => {

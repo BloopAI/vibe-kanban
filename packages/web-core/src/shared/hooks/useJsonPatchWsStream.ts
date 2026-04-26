@@ -18,6 +18,11 @@ interface UseJsonPatchStreamOptions<T> {
    * Filter/deduplicate patches before applying them
    */
   deduplicatePatches?: (patches: Operation[]) => Operation[];
+  /**
+   * Long-lived state streams should reconnect after a normal close so they can
+   * refresh from the next initial snapshot instead of leaving stale UI state.
+   */
+  reconnectOnCleanClose?: boolean;
 }
 
 interface UseJsonPatchStreamResult<T> {
@@ -50,6 +55,7 @@ export const useJsonPatchWsStream = <T extends object>(
 
   const injectInitialEntry = options?.injectInitialEntry;
   const deduplicatePatches = options?.deduplicatePatches;
+  const reconnectOnCleanClose = options?.reconnectOnCleanClose ?? false;
 
   function scheduleReconnect() {
     if (retryTimerRef.current) return; // already scheduled
@@ -151,12 +157,14 @@ export const useJsonPatchWsStream = <T extends object>(
               }
 
               // Handle finished messages ({finished: true})
-              // Treat finished as terminal - do NOT reconnect
               if ('finished' in msg) {
                 finishedRef.current = true;
                 ws.close(1000, 'finished');
                 wsRef.current = null;
                 setIsConnected(false);
+                if (reconnectOnCleanClose) {
+                  scheduleReconnect();
+                }
               }
             } catch (err) {
               console.error('Failed to process WebSocket message:', err);
@@ -177,8 +185,8 @@ export const useJsonPatchWsStream = <T extends object>(
             // Do not reconnect if we received a finished message or clean close
             if (
               cancelled ||
-              finishedRef.current ||
-              (evt?.code === 1000 && evt?.wasClean)
+              (!reconnectOnCleanClose &&
+                (finishedRef.current || (evt?.code === 1000 && evt?.wasClean)))
             ) {
               return;
             }
@@ -235,6 +243,7 @@ export const useJsonPatchWsStream = <T extends object>(
     initialData,
     injectInitialEntry,
     deduplicatePatches,
+    reconnectOnCleanClose,
     retryNonce,
   ]);
 

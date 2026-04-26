@@ -139,3 +139,23 @@
 - Not complete / known gaps:
   - the zero-byte rollout cannot be reconstructed because no persisted session content exists
   - the upstream Codex late-finalization `thread not found` log may still appear, but it no longer points at an empty rollout anchor in the live DB
+
+## 2026-04-26T14:55:00Z | vk/ea3c-vk-auto-archive | execution status and vibe.local hotfix
+
+- Intent: stop mounted workspace pages from showing completed agents as still running until manual refresh, and restore `vibe.local` after the local deploy.
+- Completed:
+  - changed execution-process WebSocket consumers to reconnect after clean closes and reload a fresh process snapshot
+  - stopped the execution-process server stream from forwarding unrelated non-patch messages such as `finished`
+  - rebuilt `packages/local-web/dist` so the frontend fix is embedded in the local server binary
+  - rebuilt and redeployed `/home/mcp/.local/bin/vibe-kanban-serve`
+  - restored LAN proxy reachability by setting `HOST=0.0.0.0`, `BACKEND_PORT=4311`, and `PREVIEW_PROXY_PORT=4312` in the user service drop-in
+- Verified:
+  - `pnpm install`
+  - `pnpm run format`
+  - `pnpm --filter @vibe/local-web run build`
+  - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo check -p services -p db`
+  - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo build --release -p server --bin server`
+  - `https://vibe.local` returned `200`
+  - execution-process WebSocket returned initial snapshot plus `Ready`
+- Not complete / known gaps:
+  - no browser-driven long-running agent test was performed; the smoke test covered the stream path and deployed service health

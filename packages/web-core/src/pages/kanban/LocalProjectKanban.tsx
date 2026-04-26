@@ -16,7 +16,10 @@ import {
 } from '@/pages/kanban/ProjectKanban';
 import { projectsApi } from '@/shared/lib/api';
 
-function createLocalProjectView(projectId: string, name: string): RemoteProject {
+function createLocalProjectView(
+  projectId: string,
+  name: string
+): RemoteProject {
   const now = new Date().toISOString();
   return {
     id: projectId,

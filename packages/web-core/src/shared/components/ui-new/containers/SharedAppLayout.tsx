@@ -49,10 +49,7 @@ import { useCommandBarShortcut } from '@/shared/hooks/useCommandBarShortcut';
 import { useWorkspaceSidebarPreviewController } from '@/shared/hooks/useWorkspaceSidebarPreviewController';
 import { useShape } from '@/shared/integrations/electric/hooks';
 import { sortProjectsByOrder } from '@/shared/lib/projectOrder';
-import {
-  PROJECT_MUTATION,
-  PROJECTS_SHAPE,
-} from 'shared/remote-types';
+import { PROJECT_MUTATION, PROJECTS_SHAPE } from 'shared/remote-types';
 import { AppBarNotificationBellContainer } from '@/pages/workspaces/AppBarNotificationBellContainer';
 import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebarContainer';
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
@@ -134,15 +131,13 @@ export function SharedAppLayout() {
     }
   }, [organizations, selectedOrgId, setSelectedOrgId]);
 
-  const {
-    data: localProjects = [],
-    isLoading: isLocalProjectsLoading,
-  } = useQuery({
-    queryKey: ['local-projects'],
-    queryFn: () => projectsApi.list(),
-    enabled: isLocalAuthBypassed,
-    staleTime: 60_000,
-  });
+  const { data: localProjects = [], isLoading: isLocalProjectsLoading } =
+    useQuery({
+      queryKey: ['local-projects'],
+      queryFn: () => projectsApi.list(),
+      enabled: isLocalAuthBypassed,
+      staleTime: 60_000,
+    });
   const projectParams = useMemo(
     () => ({ organization_id: selectedOrgId || '' }),
     [selectedOrgId]
@@ -176,11 +171,17 @@ export function SharedAppLayout() {
     ? isLocalProjectsLoading
     : isLoading;
   const archivedProjects = useMemo(
-    () => allAppBarProjects.filter((project) => 'archived' in project && project.archived),
+    () =>
+      allAppBarProjects.filter(
+        (project) => 'archived' in project && project.archived
+      ),
     [allAppBarProjects]
   );
   const appBarProjects = useMemo(
-    () => allAppBarProjects.filter((project) => !('archived' in project) || !project.archived),
+    () =>
+      allAppBarProjects.filter(
+        (project) => !('archived' in project) || !project.archived
+      ),
     [allAppBarProjects]
   );
   const [orderedProjects, setOrderedProjects] =
@@ -321,7 +322,12 @@ export function SharedAppLayout() {
         setIsSavingProjectOrder(false);
       }
     },
-    [isLocalAuthBypassed, isSavingProjectOrder, orderedProjects, updateManyProjects]
+    [
+      isLocalAuthBypassed,
+      isSavingProjectOrder,
+      orderedProjects,
+      updateManyProjects,
+    ]
   );
 
   const handleCreateProject = useCallback(async () => {
@@ -353,7 +359,9 @@ export function SharedAppLayout() {
 
       await projectsApi.update(projectId, { archived: false });
       await queryClient.invalidateQueries({ queryKey: ['local-projects'] });
-      await queryClient.invalidateQueries({ queryKey: ['local-project', projectId] });
+      await queryClient.invalidateQueries({
+        queryKey: ['local-project', projectId],
+      });
       appNavigation.goToProject(projectId);
     },
     [appNavigation, isLocalAuthBypassed, queryClient]

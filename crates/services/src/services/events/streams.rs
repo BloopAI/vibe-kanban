@@ -131,8 +131,11 @@ impl EventService {
                             }
                             None
                         }
-                        Ok(other) => Some(Ok(other)), // Pass through non-patch messages
-                        Err(_) => None,               // Filter out broadcast errors
+                        // Execution-process streams are long-lived state streams. Only JSON
+                        // patches are meaningful here; forwarding unrelated Finished messages
+                        // can leave clients stuck on a stale "running" snapshot.
+                        Ok(_) => None,
+                        Err(_) => None, // Filter out broadcast errors
                     }
                 }
             });
