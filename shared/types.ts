@@ -148,7 +148,7 @@ kanban_project_view_selections: { [key in string]?: JsonValue },
  */
 kanban_project_view_preferences: { [key in string]?: JsonValue }, };
 
-export type ProjectStatusConfigData = { id: string, name: string, color: string, hidden: boolean, sort_order: bigint, };
+export type ProjectStatusConfigData = { id: string, name: string, color: string, hidden: boolean, sort_order: number, };
 
 export type ProjectRepoDefaultsData = { repos: Array<DraftWorkspaceRepo>, statuses: Array<ProjectStatusConfigData>, };
 

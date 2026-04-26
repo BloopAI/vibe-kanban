@@ -66,7 +66,17 @@ impl Task {
         description: Option<String>,
         status: TaskStatus,
     ) -> Result<Self, sqlx::Error> {
-        let id = Uuid::new_v4();
+        Self::create_with_id(pool, Uuid::new_v4(), project_id, title, description, status).await
+    }
+
+    pub async fn create_with_id(
+        pool: &SqlitePool,
+        id: Uuid,
+        project_id: Uuid,
+        title: String,
+        description: Option<String>,
+        status: TaskStatus,
+    ) -> Result<Self, sqlx::Error> {
         sqlx::query(
             r#"INSERT INTO tasks (id, project_id, title, description, status)
                VALUES (?, ?, ?, ?, ?)"#,
