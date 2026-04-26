@@ -47,7 +47,8 @@ export const useExecutionProcesses = (
     useJsonPatchWsStream<ExecutionProcessState>(
       endpoint,
       !!sessionId,
-      initialData
+      initialData,
+      { reconnectOnCleanClose: true }
     );
 
   const streamedExecutionProcesses = Object.values(

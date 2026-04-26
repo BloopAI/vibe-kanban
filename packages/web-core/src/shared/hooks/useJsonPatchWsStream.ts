@@ -18,6 +18,11 @@ interface UseJsonPatchStreamOptions<T> {
    * Filter/deduplicate patches before applying them
    */
   deduplicatePatches?: (patches: Operation[]) => Operation[];
+  /**
+   * Long-lived state streams should reconnect after a normal close so they can
+   * refresh from the next initial snapshot instead of leaving stale UI state.
+   */
+  reconnectOnCleanClose?: boolean;
 }
 
 interface UseJsonPatchStreamResult<T> {
@@ -50,6 +55,7 @@ export const useJsonPatchWsStream = <T extends object>(
 
   const injectInitialEntry = options?.injectInitialEntry;
   const deduplicatePatches = options?.deduplicatePatches;
+  const reconnectOnCleanClose = options?.reconnectOnCleanClose ?? false;
 
   useEffect(() => {
     if (!enabled || !endpoint) {
@@ -167,6 +173,9 @@ export const useJsonPatchWsStream = <T extends object>(
                 ws.close(1000, 'finished');
                 wsRef.current = null;
                 setIsConnected(false);
+                if (reconnectOnCleanClose) {
+                  scheduleReconnect();
+                }
               }
             } catch (err) {
               console.error('Failed to process WebSocket message:', err);
@@ -185,7 +194,7 @@ export const useJsonPatchWsStream = <T extends object>(
             // Only an explicit finished message is terminal for these streams.
             // A clean close without finished still needs reconnect so mounted
             // UI stays current through restarts and transient transport churn.
-            if (cancelled || finishedRef.current) {
+            if (cancelled || (finishedRef.current && !reconnectOnCleanClose)) {
               return;
             }
 
@@ -231,6 +240,7 @@ export const useJsonPatchWsStream = <T extends object>(
     initialData,
     injectInitialEntry,
     deduplicatePatches,
+    reconnectOnCleanClose,
     retryNonce,
   ]);
 

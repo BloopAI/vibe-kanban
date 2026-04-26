@@ -137,7 +137,10 @@ impl EventService {
                             }
                             None
                         }
-                        Ok(other) => Some(Ok(other)), // Pass through non-patch messages
+                        // Execution-process streams are long-lived state streams. Only JSON
+                        // patches are meaningful here; forwarding unrelated Finished messages
+                        // can leave clients stuck on a stale "running" snapshot.
+                        Ok(_) => None,
                         Err(BroadcastStreamRecvError::Lagged(n)) => {
                             Some(Err(Self::lagged_broadcast_error(n)))
                         }

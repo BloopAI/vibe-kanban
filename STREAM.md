@@ -2,71 +2,82 @@
 
 ## Stream Identifier
 
-- Branch: `vk/7b9a-vk-worktree-clea`
-- Repo: `/home/mcp/code/worktrees/7b9a-vk-worktree-clea/_vibe_kanban_repo`
+- Branch: `vk/ea3c-vk-auto-archive`
+- Repo: `/home/mcp/code/worktrees/ea3c-vk-auto-archive/_vibe_kanban_repo`
 - Base: `fork/staging`
-- Working mode: workspace lifecycle cleanup
+- Working mode: production hotfix promotion for local VK stability
 
 ## Objective
 
-- Delete workspace worktree folders as soon as a tracked PR into `staging` is merged, and archive linked workspaces plus clean up their worktrees automatically when an issue is moved into `In Staging`.
+- Repair local Codex rollout continuity and execution-status streaming so failed rollouts and stale "agent running" UI state do not block normal prompt flow, then promote the fix through the fork workflow so it survives updates/deploys.
 
 ## In Scope
 
-- PR-merge monitoring paths that already archive workspaces
-- Safe immediate worktree deletion for merged-to-`staging` workspaces
-- Local issue status transitions into `In Staging`
-- Workflow documentation for the new behaviour
-- Branch-local continuity docs for this stream
+- Truthful branch-local continuity for this worktree
+- Guarding resume/fork selection against failed coding-agent turns
+- Repairing live local DB continuity pointers that reference empty or missing rollout files
+- Keeping execution-process state streams alive/reconnected so completed agents stop showing as running without a page refresh
+- Keeping `vibe.local` reachable through the LAN reverse proxy
+- Preserving the local-only runtime baseline and staging merge compatibility
 
 ## Out of Scope
 
-- Changing merge behavior for direct local merges
-- Altering the general archived-workspace retention policy for other cases
-- Changing pin semantics for merged workspaces
+- Reconstructing the old backup-retention branch context as if it were still checked out here
+- Re-enabling shared/cloud API behavior
+- Reconstructing a zero-byte Codex rollout file that has no persisted content
+- Broad workspace lifecycle cleanup beyond what already exists on `fork/staging`
 
 ## Stream-Specific Decisions
 
-- Reuse the existing archive-on-merge flow instead of adding a separate post-merge job.
-- Only trigger immediate folder deletion for PRs merged into `staging`.
-- If an archive script is still running, defer deletion until that archive script exits.
-- Treat moving a local issue into `In Staging` as an explicit archive-and-cleanup signal for linked local workspaces.
-- Preserve the current pinned-workspace exception from auto-archiving.
+- Local runtime expectations from `STATE.md` remain in force, including `shared_api_base: null`.
+- Resume continuity should only anchor to successful coding-agent turns: completed process, exit code `0`, non-null agent session id, and non-empty final summary.
+- Empty or missing rollout files are live-state corruption, not valid resume anchors.
+- Execution-process streams are long-lived state streams; non-patch terminal messages must not make mounted workspace views keep stale running snapshots.
+- `vibe.local` requires the user service to bind `HOST=0.0.0.0` on `BACKEND_PORT=4311` for the external LAN nginx proxy.
 
 ## Relevant Files / Modules
 
-- `crates/services/src/services/container.rs`
-- `crates/services/src/services/pr_monitor.rs`
-- `crates/local-deployment/src/container.rs`
-- `crates/server/src/routes/local_compat.rs`
-- `crates/server/src/routes/workspaces/pr.rs`
-- `VK_WORKFLOW.md`
+- `STREAM.md`
 - `HANDOFF.md`
 - `DELTA.md`
+- `STATE.md`
+- `crates/db/src/models/coding_agent_turn.rs`
+- `crates/services/src/services/events/streams.rs`
+- `packages/web-core/src/shared/hooks/useJsonPatchWsStream.ts`
+- `packages/web-core/src/shared/hooks/useExecutionProcesses.ts`
+- `packages/web-core/src/features/workspace-chat/model/hooks/useConversationHistory.ts`
+- `/home/mcp/.local/share/vibe-kanban/db.v2.sqlite`
+- `/home/mcp/.local/share/vibe-kanban/codex-home/sessions`
+- `/home/mcp/.config/systemd/user/vibe-kanban.service.d/fixed-ports.conf`
 
 ## Current Status
 
-- Completed:
-  - added a shared container helper for safe immediate deletion of archived worktrees
-  - kept the merged-PR-to-`staging` cleanup path on top of that helper
-  - wired the PR monitor and attach-existing-PR route to clean up worktrees after archive-on-merge succeeds
-  - added a retry after archive-script completion so deletion waits for archive scripts to finish
-  - archived linked local workspaces and cleaned up their worktrees when a local issue transitions into `In Staging`, including bulk issue updates
-  - documented the new post-merge cleanup behaviour in `VK_WORKFLOW.md`
+- Confirmed:
+  - the reported zero-byte rollout was `019dc72a-9fba-7961-9c36-a3f8f8a63036`
+  - the reported `019dc9bd-ef72-76f2-b08e-4c83659f0369` rollout is non-empty
+  - the live DB repair cleared four invalid `agent_session_id` pointers whose rollout files were empty or missing
+  - a DB backup was saved at `/home/mcp/backups/vk-rollout-repair-20260426T122842Z`
+  - the local service is rebuilt/restarted with the rollout guard and execution-process stream hotfix
+  - `vibe.local` returns `200` through nginx after binding VK to `0.0.0.0:4311`
+- Completed locally:
+  - committed rollout continuity guard
+  - committed execution-status stream and `vibe.local` hotfix
+  - opened PR `#37` into `staging`
 - In progress:
-  - rebasing the branch onto current `fork/staging`
-- Pending:
-  - finish the rebase
-  - merge this branch into `staging`
+  - merging current `fork/staging` into this hotfix branch before completing PR `#37`
 
 ## Risks / Regression Traps
 
-- Deleting the worktree before an archive script finishes would break archive-script execution; the retry path must remain in place.
-- The merged-PR cleanup path relies on tracked PR metadata; workspaces without tracked PR rows still fall back to the existing time-based cleanup path unless `In Staging` is used.
-- Pinned workspaces still skip archive-on-merge, so they do not use the merged-PR immediate deletion path.
+- Trusting stale continuity docs instead of the checked-out branch and code
+- Treating any non-null `agent_session_id` as resumable without checking the source process outcome
+- Nulling all historical agent session IDs instead of only invalid live-state pointers
+- Letting execution-process WebSocket streams treat clean closes or unrelated `finished` messages as terminal state for a mounted workspace
+- Removing the fixed `HOST=0.0.0.0`, `BACKEND_PORT=4311`, and `PREVIEW_PROXY_PORT=4312` systemd drop-in will break `vibe.local`
 
 ## Next Safe Steps
 
-1. Resolve the current continuity-doc rebase conflict by keeping this branch’s stream notes.
-2. Continue the rebase onto `fork/staging`.
-3. Merge the rebased branch into the local `staging` checkout.
+1. Finish resolving the `fork/staging` merge.
+2. Run `pnpm run format`, frontend build, and targeted Rust checks.
+3. Push PR `#37` and merge it into `staging` if checks/permissions allow.
+4. If rebuilding again, build `packages/local-web` first, then force a server rebuild so `rust-embed` includes the real assets.
+5. After any service restart, verify `https://vibe.local`, `http://127.0.0.1:4311/api/info`, and an execution-process WebSocket snapshot.

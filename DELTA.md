@@ -97,5 +97,81 @@
   - added unit coverage for the merged-to-`staging` PR detection helper
   - `cargo fmt --all` completed
 - Not complete / known gaps:
+  - PR `#6` still needs merge
+  - backup retention validation was not rerun during the sync cleanup step
   - full test validation was not rerun after the final cleanup behavior adjustments
   - pinned workspaces still keep the existing auto-archive exception
+# 2026-04-19 Workspace Polling Hotfix
+
+- A second frontend churn path was identified after the earlier kanban/sidebar fix.
+- Root cause: mounted workspace views were still polling branch status and issue-linked workspaces every 5 seconds.
+- Primary files:
+  - `packages/web-core/src/shared/hooks/useBranchStatus.ts`
+  - `packages/web-core/src/shared/hooks/useTaskWorkspaces.ts`
+- Fix:
+  - disable default 5s polling for both hooks
+  - add `staleTime`
+  - disable `refetchOnWindowFocus`
+  - disable `refetchOnMount`
+- Why this mattered:
+  - the first stress test only exercised raw HTTP endpoints and missed the browser-mounted polling path
+  - real workspace UI usage could still drive repeated `/api/workspaces/:id/git/status` and `/api/workspaces?task_id=...` calls
+  - under sustained live use, that recreated the same multi-GB server bloat / timeout pattern
+- Post-fix validation:
+  - repeated workspace-open emulation for `OpsPB::Linking in reports`, `VK:: Wire Ntfy`, and `Vk::Ops`
+  - combined polling plus summaries POST load
+  - no endpoint failures
+  - RSS stayed roughly in the `32–51 MB` range instead of climbing into GB territory
+
+## 2026-04-20T00:00:00Z | vk/ea3c-vk-auto-archive | continuity refresh for staging-equivalent worktree
+
+- Intent: resume from the real checked-out workspace state and correct stale branch-local continuity notes.
+- Completed:
+  - confirmed the checked-out branch is `vk/ea3c-vk-auto-archive`
+  - confirmed the worktree is clean and matches `staging` at `88c0ebd59`
+  - replaced stale backup-retention stream notes in `STREAM.md` and `HANDOFF.md`
+- Verified:
+  - `git status --short --branch`
+  - `git diff --stat`
+  - `git diff --name-only staging...HEAD`
+  - `git log --oneline staging..HEAD`
+  - `curl -s http://127.0.0.1:4311/api/info` confirmed `shared_api_base: null`
+- Not complete / known gaps:
+  - `pnpm run format` did not complete because `packages/web-core` could not resolve `prettier`
+
+## 2026-04-26T12:35:00Z | vk/ea3c-vk-auto-archive | Codex rollout continuity repair
+
+- Intent: stop empty or failed Codex rollout launches from poisoning follow-up turns in the local Vibe Kanban install.
+- Completed:
+  - identified `019dc72a-9fba-7961-9c36-a3f8f8a63036` as a true zero-byte rollout file
+  - confirmed `019dc9bd-ef72-76f2-b08e-4c83659f0369` was non-empty despite the late `thread not found` log
+  - changed resume lookup to only use completed exit-0 coding-agent turns with a non-empty summary
+  - backed up the live DB to `/home/mcp/backups/vk-rollout-repair-20260426T122842Z`
+  - cleared four live DB `agent_session_id` pointers whose rollout files were empty or missing
+- Verified:
+  - `cargo fmt --all`
+  - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo check -p db`
+  - post-repair live DB scan returned `bad_rollout_agent_session_rows_after 0`
+- Not complete / known gaps:
+  - the zero-byte rollout cannot be reconstructed because no persisted session content exists
+  - the upstream Codex late-finalization `thread not found` log may still appear, but it no longer points at an empty rollout anchor in the live DB
+
+## 2026-04-26T14:55:00Z | vk/ea3c-vk-auto-archive | execution status and vibe.local hotfix
+
+- Intent: stop mounted workspace pages from showing completed agents as still running until manual refresh, and restore `vibe.local` after the local deploy.
+- Completed:
+  - changed execution-process WebSocket consumers to reconnect after clean closes and reload a fresh process snapshot
+  - stopped the execution-process server stream from forwarding unrelated non-patch messages such as `finished`
+  - rebuilt `packages/local-web/dist` so the frontend fix is embedded in the local server binary
+  - rebuilt and redeployed `/home/mcp/.local/bin/vibe-kanban-serve`
+  - restored LAN proxy reachability by setting `HOST=0.0.0.0`, `BACKEND_PORT=4311`, and `PREVIEW_PROXY_PORT=4312` in the user service drop-in
+- Verified:
+  - `pnpm install`
+  - `pnpm run format`
+  - `pnpm --filter @vibe/local-web run build`
+  - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo check -p services -p db`
+  - `env DATABASE_URL=sqlite:///home/mcp/.local/share/vibe-kanban/db.v2.sqlite cargo build --release -p server --bin server`
+  - `https://vibe.local` returned `200`
+  - execution-process WebSocket returned initial snapshot plus `Ready`
+- Not complete / known gaps:
+  - no browser-driven long-running agent test was performed; the smoke test covered the stream path and deployed service health
