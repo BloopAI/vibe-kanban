@@ -9,7 +9,7 @@
 当前 fork 版本：
 
 ```text
-0.1.44-toby.1
+0.1.44-toby.2
 ```
 
 版本规则使用 `-toby` 后缀：
@@ -89,7 +89,7 @@ Project functionality has been retired
 
 下载后的 artifact 中应包含：
 
-- `toby-vibe-kanban-0.1.44-toby.1.tgz`
+- `toby-vibe-kanban-0.1.44-toby.2.tgz`
 - `dist/windows-x64/vibe-kanban.zip`
 - `dist/windows-x64/vibe-kanban-mcp.zip`
 - `dist/windows-x64/vibe-kanban-review.zip`
@@ -102,30 +102,44 @@ Project functionality has been retired
 
 ```powershell
 cd .\toby-vibe-kanban-windows-x64-npx
-Get-Item .\toby-vibe-kanban-0.1.44-toby.1.tgz
+Get-Item .\toby-vibe-kanban-0.1.44-toby.2.tgz
 ```
 
 运行：
 
 ```powershell
 node -v
-$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.1.tgz
+$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.2.tgz
 npx --yes --package "$pkg" vibe-kanban
 ```
 
 Node 版本需要是 `20.19.0` 或更高。
 
+建议每次验证新包前先关闭旧实例，避免浏览器还停留在旧端口或旧 Tauri 桌面版：
+
+```powershell
+Get-Process vibe-kanban,vibe-kanban-tauri -ErrorAction SilentlyContinue | Stop-Process
+```
+
+启动后以新打开的浏览器地址为准。可以访问下面的地址检查当前实例是否是真本地模式：
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:<端口>/api/info | Select-Object -ExpandProperty data | Select-Object version,shared_api_base,login_status
+```
+
+其中 `shared_api_base` 应该为空；如果是 `https://api.vibekanban.com`，说明当前窗口仍在使用旧的远程/桌面实例。
+
 如果从仓库根目录直接运行：
 
 ```powershell
-$pkg = Resolve-Path .\toby-vibe-kanban-windows-x64-npx\toby-vibe-kanban-0.1.44-toby.1.tgz
+$pkg = Resolve-Path .\toby-vibe-kanban-windows-x64-npx\toby-vibe-kanban-0.1.44-toby.2.tgz
 npx --yes --package "$pkg" vibe-kanban
 ```
 
 全局安装：
 
 ```powershell
-$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.1.tgz
+$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.2.tgz
 npm install -g "$pkg"
 vibe-kanban
 ```
@@ -147,13 +161,53 @@ Expand-Archive .\dist\windows-x64\vibe-kanban.zip -DestinationPath .\vk-bin -For
 
 推荐优先测试 NPX 路径，因为这更接近最终用户实际使用方式。
 
+## 本地日志与排查
+
+普通启动时，后端日志会输出到运行 `npx` 的 PowerShell 窗口。需要更详细日志时：
+
+```powershell
+$env:RUST_LOG = "debug"
+$env:VIBE_KANBAN_DEBUG = "1"
+$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.2.tgz
+npx --yes --package "$pkg" vibe-kanban
+```
+
+本地数据目录在：
+
+```powershell
+$env:APPDATA\bloop\vibe-kanban\data
+```
+
+关键文件：
+
+- `db.v2.sqlite`：本地 SQLite 数据库。
+- `config.json`：本地配置。
+- `sessions/`：工作区和 agent 会话相关数据。agent 执行日志在 `sessions/<session-id前两位>/<session-id>/processes/<process-id>.jsonl`。
+
+如果前端只显示类似 `Failed to create Project` 或 `Failed to create Issue`，优先打开浏览器开发者工具的 Network 面板，看失败请求的 HTTP 状态码。`415 Unsupported Media Type` 通常表示请求缺少 JSON `Content-Type`；`403 Forbidden` 通常表示当前页面端口不是后端允许的同源地址，常见于手动用 Vite dev server 代理到已运行的生产后端。
+
+## 本地功能闭环自检
+
+每次下载新的 GitHub Actions 构建包后，建议按这个顺序验证：
+
+1. 关闭旧实例，重新运行新的 `.tgz`。
+2. 打开 `/api/info`，确认 `shared_api_base` 为空。
+3. 创建 Project。
+4. 进入 Project 创建 Issue。
+5. 拖动 Issue 到其他状态，确认状态能保存。
+6. 从 Issue 创建 Workspace，选择本地仓库、分支和 agent。
+7. 发送一条简单 prompt，确认 Workspace 创建成功、agent 有执行记录。
+
+如果第 3 到第 5 步失败，通常是本地看板数据 API 问题，先看 Network 面板中的 `/api/local/v1/...` 请求。
+如果第 6 到第 7 步失败，通常是本地 workspace/agent 链路问题，先看 PowerShell 启动窗口日志，再看本地数据目录下的 `sessions/.../processes/*.jsonl`。
+
 ## 可选：发布到 npm
 
 只有在本地确认 `.tgz` 可以正常运行后，再发布到 npm：
 
 ```powershell
 npm login
-npm publish .\toby-vibe-kanban-0.1.44-toby.1.tgz --access public
+npm publish .\toby-vibe-kanban-0.1.44-toby.2.tgz --access public
 ```
 
 发布成功后，用户可以运行：

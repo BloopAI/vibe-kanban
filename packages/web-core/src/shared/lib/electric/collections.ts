@@ -428,14 +428,25 @@ async function parseResponseError(
   response: Response,
   fallbackMessage: string
 ): Promise<string> {
+  const withStatus = (message: string) =>
+    `${message} (${response.status} ${response.statusText})`;
+  const textResponse = response.clone();
+
   try {
     const body = (await response.json()) as {
       message?: string;
       error?: string;
     };
-    return body.message || body.error || fallbackMessage;
+    return withStatus(body.message || body.error || fallbackMessage);
   } catch {
-    return fallbackMessage;
+    try {
+      const bodyText = (await textResponse.text()).trim();
+      if (bodyText) {
+        return withStatus(bodyText);
+      }
+    } catch {}
+
+    return withStatus(fallbackMessage);
   }
 }
 

@@ -31,6 +31,20 @@ export function isLocalRemoteApiEnabled(): boolean {
   return _localRemoteApiEnabled && !getRemoteApiUrl();
 }
 
+function withDefaultJsonHeaders<T extends RequestInit>(
+  options: T
+): T & { headers: Headers } {
+  const headers = new Headers(options.headers ?? {});
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  return {
+    ...options,
+    headers,
+  };
+}
+
 function toLocalRemoteApiPath(path: string): string {
   if (path.startsWith('/v1/')) {
     return `/api/local${path}`;
@@ -68,10 +82,13 @@ export const makeRequest = async (
   retryOn401 = true
 ): Promise<Response> => {
   if (isLocalRemoteApiEnabled()) {
-    return makeLocalApiRequest(toLocalRemoteApiPath(path), {
-      ...options,
-      hostScope: 'none',
-    });
+    return makeLocalApiRequest(
+      toLocalRemoteApiPath(path),
+      withDefaultJsonHeaders({
+        ...options,
+        hostScope: 'none' as const,
+      })
+    );
   }
 
   return makeAuthenticatedRequest(getRemoteApiUrl(), path, options, retryOn401);
@@ -89,16 +106,14 @@ async function makeAuthenticatedRequest(
     throw new Error('Not authenticated');
   }
 
-  const headers = new Headers(options.headers ?? {});
-  if (!headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
-  }
+  const requestOptions = withDefaultJsonHeaders(options);
+  const headers = new Headers(requestOptions.headers);
   headers.set('Authorization', `Bearer ${token}`);
   headers.set('X-Client-Version', __APP_VERSION__);
   headers.set('X-Client-Type', 'frontend');
 
   const response = await fetch(`${baseUrl}${path}`, {
-    ...options,
+    ...requestOptions,
     headers,
     credentials: 'include',
   });
@@ -110,7 +125,7 @@ async function makeAuthenticatedRequest(
       // Retry the request with the new token
       headers.set('Authorization', `Bearer ${newToken}`);
       return fetch(`${baseUrl}${path}`, {
-        ...options,
+        ...requestOptions,
         headers,
         credentials: 'include',
       });
