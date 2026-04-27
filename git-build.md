@@ -70,19 +70,35 @@ vibe-kanban
 
 ## 在 Windows 本地用 NPX 运行
 
-解压从 GitHub Actions 下载的 artifact，然后在该目录打开 PowerShell：
+解压从 GitHub Actions 下载的 artifact，然后进入解压后的目录。目录中应该能看到 `toby-vibe-kanban-0.1.44-toby.0.tgz`：
+
+```powershell
+cd .\toby-vibe-kanban-windows-x64-npx
+Get-Item .\toby-vibe-kanban-0.1.44-toby.0.tgz
+```
+
+再运行：
 
 ```powershell
 node -v
-npx --yes --package .\toby-vibe-kanban-0.1.44-toby.0.tgz vibe-kanban
+$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.0.tgz
+npx --yes --package "$pkg" vibe-kanban
 ```
 
 Node 版本需要是 `20.19.0` 或更高。
 
+如果你想从仓库根目录直接运行，也可以写完整相对路径：
+
+```powershell
+$pkg = Resolve-Path .\toby-vibe-kanban-windows-x64-npx\toby-vibe-kanban-0.1.44-toby.0.tgz
+npx --yes --package "$pkg" vibe-kanban
+```
+
 如果想全局安装：
 
 ```powershell
-npm install -g .\toby-vibe-kanban-0.1.44-toby.0.tgz
+$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.0.tgz
+npm install -g "$pkg"
 vibe-kanban
 ```
 
