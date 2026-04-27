@@ -44,6 +44,7 @@ promotion flow can land the fix.
 5. Build and deploy from a clean worktree, not from a dirty canonical checkout.
 6. Verify the live service after deploy:
    - `systemctl --user is-active vibe-kanban.service`
+   - `tr '\0' '\n' < /proc/$(systemctl --user show -p MainPID --value vibe-kanban.service)/environ | rg '^CODEX_HOME='`
    - `curl -s http://127.0.0.1:4311/api/info`
    - `curl -I http://127.0.0.1:4311/`
    - current frontend asset URL returns `200`
@@ -56,6 +57,7 @@ promotion flow can land the fix.
 - Do not rebuild or restart the live service from a dirty canonical repo.
 - Do not leave a production-only fix unmerged from both `main` and `staging`.
 - Do not restart `vibe-kanban.service` while active VK agents are running unless you explicitly accept killing those runs.
+- Do not let service rewrites drop the isolated Codex home. If agent sessions start repeating or resuming confusing context after a service change, follow `docs/self-hosting/codex-home-isolation.mdx`.
 
 ## What Counts As Local Validation
 

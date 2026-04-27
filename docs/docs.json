@@ -104,6 +104,7 @@
         "group": "Self-Hosting",
         "pages": [
           "self-hosting/local-backup-recovery",
+          "self-hosting/codex-home-isolation",
           "self-hosting/lightweight-agent-preview",
           "self-hosting/local-development",
           "self-hosting/tailscale-previews",

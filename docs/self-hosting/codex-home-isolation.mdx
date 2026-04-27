@@ -1,0 +1,174 @@
+---
+title: Codex home isolation
+description: Diagnose and repair Vibe Kanban instances that accidentally run Codex from a shared home directory.
+---
+
+Vibe Kanban should run Codex with its own `CODEX_HOME` when the same machine also runs interactive Codex sessions. If VK falls back to `~/.codex`, VK agents can share authentication state, rollout history, and session metadata with tmux or terminal Codex sessions.
+
+This can make agent sessions look confusing after restarts or service updates. Raw logs may include full previous thread history, repeated-looking turns, or unexpected fork/resume state from the shared Codex home.
+
+<Warning>
+Do not restart `vibe-kanban.service` while agents are running unless you are willing to interrupt those runs. Check for active execution processes first.
+</Warning>
+
+## Expected local configuration
+
+For the local MCP-managed VK instance, the expected Codex home is:
+
+```bash
+/home/mcp/.local/share/vibe-kanban/codex-home
+```
+
+The user service should include this drop-in:
+
+```ini
+[Service]
+Environment=CODEX_HOME=/home/mcp/.local/share/vibe-kanban/codex-home
+```
+
+A checked-in copy lives at:
+
+```text
+docs/self-hosting/systemd/codex-home.conf
+```
+
+## Fast diagnosis
+
+Use this when agents appear to repeat themselves, resume the wrong context, or produce unexplained `thread/fork` behaviour after a VK service change.
+
+<Steps>
+<Step title="Check for active agents">
+  Query the live database before restarting VK:
+
+  ```bash
+  python3 - <<'PY'
+  import sqlite3
+
+  con = sqlite3.connect(
+      'file:/home/mcp/.local/share/vibe-kanban/db.v2.sqlite?mode=ro',
+      uri=True,
+  )
+  con.row_factory = sqlite3.Row
+
+  rows = con.execute("""
+  SELECT lower(hex(ep.id)) process_id, ep.started_at, ep.status, w.name, w.branch
+  FROM execution_processes ep
+  JOIN sessions s ON s.id = ep.session_id
+  JOIN workspaces w ON w.id = s.workspace_id
+  WHERE ep.status = 'running'
+  ORDER BY ep.started_at DESC
+  """).fetchall()
+
+  print('running_count', len(rows))
+  for row in rows:
+      print(dict(row))
+  PY
+  ```
+
+  <Check>
+  It is safe to restart only when `running_count` is `0`, or when you explicitly accept interrupting the listed runs.
+  </Check>
+</Step>
+
+<Step title="Inspect the service environment">
+  Check the configured and live environments:
+
+  ```bash
+  systemctl --user cat vibe-kanban.service
+  systemctl --user show vibe-kanban.service -p Environment -p MainPID
+
+  pid="$(systemctl --user show -p MainPID --value vibe-kanban.service)"
+  tr '\0' '\n' < "/proc/$pid/environ" | rg '^CODEX_HOME='
+  ```
+
+  The live process should report:
+
+  ```bash
+  CODEX_HOME=/home/mcp/.local/share/vibe-kanban/codex-home
+  ```
+</Step>
+
+<Step title="Inspect a Codex app-server log">
+  Open a recent process JSONL file under:
+
+  ```text
+  /home/mcp/.local/share/vibe-kanban/sessions
+  ```
+
+  Search for `codexHome`:
+
+  ```bash
+  rg -n '"codexHome"' /home/mcp/.local/share/vibe-kanban/sessions
+  ```
+
+  A healthy VK-launched Codex process should report:
+
+  ```json
+  {"codexHome":"/home/mcp/.local/share/vibe-kanban/codex-home"}
+  ```
+
+  If it reports `"/home/mcp/.codex"`, VK is sharing the interactive Codex home.
+</Step>
+</Steps>
+
+## Repair the live service
+
+Only run these commands after active VK agents finish, or after you decide it is acceptable to interrupt them.
+
+<Steps>
+<Step title="Install the drop-in">
+  Copy or recreate the drop-in:
+
+  ```bash
+  mkdir -p ~/.config/systemd/user/vibe-kanban.service.d
+  cp docs/self-hosting/systemd/codex-home.conf \
+    ~/.config/systemd/user/vibe-kanban.service.d/codex-home.conf
+  ```
+</Step>
+
+<Step title="Reload and restart VK">
+  Apply the new environment:
+
+  ```bash
+  systemctl --user daemon-reload
+  systemctl --user restart vibe-kanban.service
+  ```
+</Step>
+
+<Step title="Verify the repair">
+  Confirm the process environment and health endpoint:
+
+  ```bash
+  systemctl --user is-active vibe-kanban.service
+
+  pid="$(systemctl --user show -p MainPID --value vibe-kanban.service)"
+  tr '\0' '\n' < "/proc/$pid/environ" | rg '^CODEX_HOME='
+
+  curl -fsS http://127.0.0.1:4311/api/info >/dev/null
+  ```
+
+  <Check>
+  New VK-launched Codex sessions should now report the isolated Codex home in their raw app-server logs.
+  </Check>
+</Step>
+</Steps>
+
+## Interpreting repeated-looking output
+
+Not all repetition has the same cause.
+
+- Full-thread payloads in raw JSONL logs can contain old turns. This is expected in `ThreadStartResponse`, `ThreadForkResponse`, and `thread/started` data.
+- Rebase or merge conflicts can make agents describe the same conflict several times if Git replays multiple commits that touch the same files.
+- A real isolation failure is present when VK-launched Codex app-server logs report `codexHome: /home/mcp/.codex`.
+
+If the isolated home is correct and the UI still displays duplicated transcript entries, investigate the log normalisation and chat rendering paths next.
+
+## Do not copy only auth.json
+
+When creating or restoring the isolated Codex home, carry forward the Codex session and rollout state as well as authentication files. Existing workspace thread fork/resume can depend on those files.
+
+Copying only `auth.json` can cause old workspace threads to fail with:
+
+```text
+thread/fork request failed: no rollout found for thread id ...
+```
