@@ -59,6 +59,25 @@ Project functionality has been retired
 
 这意味着本地版的目标使用方式是：一个 `npx` 启动本机服务和网页 UI，数据在本机，不依赖外部服务器。
 
+## 当前本地化范围
+
+已经改成本地 SQLite 的核心数据：
+
+- 固定本地用户和本地组织。
+- 项目、项目排序、项目状态。
+- issue、优先级、父子关系、排序、描述等字段。
+- 标签、issue 标签、负责人、关注者、issue 关联。
+- issue 评论和评论 reaction。
+- 工作区与项目/issue 的本地链接。
+- Electric shape 在本地包里走 `/api/local/v1/fallback/...`，不需要远程 Electric 服务。
+
+仍属于后续可继续本地化的范围：
+
+- issue/comment 附件上传目前仍沿用远程附件接口设计，完整离线附件需要单独接到本机文件存储。
+- PR、relay、云主机、组织计费、邀请等云功能不是本地 NPX 的核心路径。
+
+因此当前版本的目标是让项目、看板、issue、评论和工作区流程在本地可用；如果后续要做到“附件也完全本地”，下一阶段应优先改造附件 API。
+
 ## 在 GitHub 上构建 Windows 包
 
 1. 把当前分支 push 到 GitHub。
