@@ -1,15 +1,21 @@
 name: Test
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-      - .github/workflows/**
-      - '!.github/workflows/test.yml'
-  push:
-    branches:
-      - main
+  # Temporarily disabled for this local-only fork. The upstream test workflow
+  # runs the full cloud/remote/Tauri matrix on every main push, which is not
+  # required for building the Toby Windows NPX package and may depend on
+  # upstream-only CI assumptions. Re-enable these triggers when maintaining a
+  # full upstream-compatible branch.
+  #
+  # pull_request:
+  #   branches:
+  #     - main
+  #   paths-ignore:
+  #     - .github/workflows/**
+  #     - '!.github/workflows/test.yml'
+  # push:
+  #   branches:
+  #     - main
   workflow_dispatch:
 
 concurrency:
@@ -209,8 +215,8 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           cache-key: backend-schema-checks-${{ runner.os }}-${{ runner.arch }}-${{ env.RUNNER_LABEL }}
-          setup-node: 'true'
-          setup-sqlx-cli: 'true'
+          setup-node: "true"
+          setup-sqlx-cli: "true"
 
       - name: Check generated types
         run: npm run generate-types:check
@@ -237,8 +243,8 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           components: rustfmt, clippy
           cache-key: backend-remote-checks-${{ runner.os }}-${{ runner.arch }}-${{ env.RUNNER_LABEL }}
-          setup-node: 'true'
-          setup-sqlx-cli: 'true'
+          setup-node: "true"
+          setup-sqlx-cli: "true"
 
       - name: Setup SSH Agent for private dependencies
         uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
