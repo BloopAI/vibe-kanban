@@ -1,54 +1,63 @@
-# GitHub 构建与本地 NPX 安装流程
+# GitHub 构建与本地 NPX 使用流程
 
 这份文档用于维护本 fork 的 Windows 构建、下载、本地 NPX 安装和后续 npm 发布流程。
 
-当前目标是：先通过 GitHub Actions 构建 Windows 可用包，在本地验证 `.tgz` 和 zip 包可用，然后再决定是否发布到 npm。
+当前目标：通过 GitHub Actions 构建 Windows x64 可用包；下载 `.tgz` 后在 Windows 本地用 `npx` 启动；本地运行不依赖远程服务器、不要求登录，项目、看板和 issue 数据存放在本机 SQLite。
 
-## 已修复的问题
+## 当前版本
 
-上游提交 `97123d52` 把项目页改成了 export-only 页面。具体表现是 `ProjectKanban` 不再渲染真实看板，而是直接渲染 `ProjectSunsetPage`，因此本地运行 `npx vibe-kanban` 时也会看到：
+当前 fork 版本：
 
 ```text
-Project sunset
-Project functionality has been retired
+0.1.44-toby.1
 ```
 
-本 fork 已恢复本地项目页链路：
-
-- `packages/local-web/src/routes/_app.projects.$projectId.tsx`
-- `packages/web-core/src/pages/kanban/LocalProjectKanban.tsx`
-- `packages/web-core/src/pages/kanban/ProjectKanban.tsx`
-
-同时移除了 shared app layout 中的 cloud shutdown/export 横幅，避免本地项目页继续被引导到导出模式。
-
-## 版本规则
-
-本 fork 使用 `-toby` 预发布后缀：
+版本规则使用 `-toby` 后缀：
 
 ```text
-0.1.44-toby.0
 0.1.44-toby.1
+0.1.44-toby.2
 0.1.45-toby.0
 ```
 
-发布 NPX 包时，保持以下文件中的版本一致：
+发包前保持这些文件中的版本一致：
 
 - `package.json`
 - `packages/local-web/package.json`
 - `npx-cli/package.json`
 - `npx-cli/package-lock.json`
 
-当前 scoped npm 包名是：
+当前 npm 包名：
 
 ```text
 @toby/vibe-kanban
 ```
 
-包安装后的命令仍然是：
+安装后的命令仍然是：
 
 ```text
 vibe-kanban
 ```
+
+## 已修复的问题
+
+上游提交 `97123d52` 把项目页改成了 export-only 页面，导致本地运行 `npx vibe-kanban` 时也会看到：
+
+```text
+Project sunset
+Project functionality has been retired
+```
+
+本 fork 已恢复真实 Kanban 页面，并移除了本地界面里的 cloud shutdown/export 横幅。
+
+后续又完成了本地化改造：
+
+- 本地运行时默认视为已登录本地用户。
+- 组织、项目、状态、issue、标签、关联、评论等 Kanban 数据走本机 SQLite。
+- 前端原远程 `/v1/...` 请求在本地版中改写到 `/api/local/v1/...`。
+- Electric 同步在本地版中直接走本地 fallback，不再等待远程 token 或远程 shape 服务。
+
+这意味着本地版的目标使用方式是：一个 `npx` 启动本机服务和网页 UI，数据在本机，不依赖外部服务器。
 
 ## 在 GitHub 上构建 Windows 包
 
@@ -61,43 +70,43 @@ vibe-kanban
 
 下载后的 artifact 中应包含：
 
-- `toby-vibe-kanban-0.1.44-toby.0.tgz`
+- `toby-vibe-kanban-0.1.44-toby.1.tgz`
 - `dist/windows-x64/vibe-kanban.zip`
 - `dist/windows-x64/vibe-kanban-mcp.zip`
 - `dist/windows-x64/vibe-kanban-review.zip`
 
-其中 `.tgz` 是最推荐的本地验证方式。它已经包含 Windows zip 文件，因此本地测试时不依赖 R2，也不依赖 Bloop 的 secrets。
+其中 `.tgz` 是推荐的本地验证方式。它已经包含 Windows zip 文件，所以本地测试不依赖 R2，也不依赖上游 Bloop 的 secrets。
 
-## 在 Windows 本地用 NPX 运行
+## Windows 本地用 NPX 运行
 
-解压从 GitHub Actions 下载的 artifact，然后进入解压后的目录。目录中应该能看到 `toby-vibe-kanban-0.1.44-toby.0.tgz`：
+解压从 GitHub Actions 下载的 artifact，然后进入解压目录：
 
 ```powershell
 cd .\toby-vibe-kanban-windows-x64-npx
-Get-Item .\toby-vibe-kanban-0.1.44-toby.0.tgz
+Get-Item .\toby-vibe-kanban-0.1.44-toby.1.tgz
 ```
 
-再运行：
+运行：
 
 ```powershell
 node -v
-$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.0.tgz
+$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.1.tgz
 npx --yes --package "$pkg" vibe-kanban
 ```
 
 Node 版本需要是 `20.19.0` 或更高。
 
-如果你想从仓库根目录直接运行，也可以写完整相对路径：
+如果从仓库根目录直接运行：
 
 ```powershell
-$pkg = Resolve-Path .\toby-vibe-kanban-windows-x64-npx\toby-vibe-kanban-0.1.44-toby.0.tgz
+$pkg = Resolve-Path .\toby-vibe-kanban-windows-x64-npx\toby-vibe-kanban-0.1.44-toby.1.tgz
 npx --yes --package "$pkg" vibe-kanban
 ```
 
-如果想全局安装：
+全局安装：
 
 ```powershell
-$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.0.tgz
+$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.1.tgz
 npm install -g "$pkg"
 vibe-kanban
 ```
@@ -117,15 +126,15 @@ Expand-Archive .\dist\windows-x64\vibe-kanban.zip -DestinationPath .\vk-bin -For
 .\vk-bin\vibe-kanban.exe
 ```
 
-但推荐优先测试 NPX 路径，因为这更接近最终用户实际使用方式。
+推荐优先测试 NPX 路径，因为这更接近最终用户实际使用方式。
 
 ## 可选：发布到 npm
 
-只有在本地确认 `.tgz` 能正常运行后，再发布到 npm：
+只有在本地确认 `.tgz` 可以正常运行后，再发布到 npm：
 
 ```powershell
 npm login
-npm publish .\toby-vibe-kanban-0.1.44-toby.0.tgz --access public
+npm publish .\toby-vibe-kanban-0.1.44-toby.1.tgz --access public
 ```
 
 发布成功后，用户可以运行：
@@ -134,15 +143,15 @@ npm publish .\toby-vibe-kanban-0.1.44-toby.0.tgz --access public
 npx --yes --package @toby/vibe-kanban vibe-kanban
 ```
 
-如果你希望以后支持更短的命令：
+如果希望以后支持更短命令：
 
 ```powershell
 npx @toby/vibe-kanban
 ```
 
-需要在真实 npm 发布后再验证一次。当前文档推荐使用 `--package` 形式，因为 package 名称是 `@toby/vibe-kanban`，实际 bin 命令是 `vibe-kanban`，显式写法更稳定。
+需要在真实 npm 发布后再验证一次。当前文档推荐使用 `--package` 形式，因为 package 名是 `@toby/vibe-kanban`，实际 bin 命令是 `vibe-kanban`，显式写法更稳定。
 
-## 当前 workflow 的范围
+## Workflow 范围
 
 新增 workflow 文件：
 
@@ -150,13 +159,13 @@ npx @toby/vibe-kanban
 .github/workflows/toby-npx-windows.yml
 ```
 
-它目前只构建 Windows x64：
+目前只构建 Windows x64：
 
 ```text
 x86_64-pc-windows-msvc
 ```
 
-如果以后要支持 Windows ARM64，可以基于当前 workflow 增加一个目标：
+如果以后要支持 Windows ARM64，可以基于当前 workflow 增加目标：
 
 ```text
 aarch64-pc-windows-msvc
@@ -172,5 +181,5 @@ windows-arm64
 
 - 现有上游发布 workflow 仍依赖 Bloop 自有的 R2、Sentry、deploy key 等 secrets。
 - 本 fork 新增的 `Build Toby NPX Windows Package` workflow 不依赖 Bloop 的 R2。
-- `packages/local-web/vite.config.ts` 已改为仅在存在 `SENTRY_AUTH_TOKEN` 时启用 Sentry Vite 插件。
 - 本地 Windows 直接跑完整 Rust 构建需要安装 Rust、cargo 和对应 Windows 编译工具链；推荐优先使用 GitHub Actions 构建。
+- 如果 GitHub Actions 报 `x86_64-pc-windows-msvc target may not be installed`，确认 workflow 里有 `rustup target add x86_64-pc-windows-msvc` 或等价的 target 安装步骤。

@@ -42,9 +42,11 @@ fi
 echo "🔍 Detected platform: $PLATFORM"
 echo "🔧 Using target directory: $CARGO_TARGET_DIR"
 
-# Set API base URL for remote features
-export VK_SHARED_API_BASE="https://api.vibekanban.com"
-export VITE_VK_SHARED_API_BASE="https://api.vibekanban.com"
+# Leave the shared API base empty by default so local builds run without a
+# remote/cloud server. Set these env vars before running the script if you are
+# intentionally building a self-hosted remote-enabled package.
+export VK_SHARED_API_BASE="${VK_SHARED_API_BASE:-}"
+export VITE_VK_SHARED_API_BASE="${VITE_VK_SHARED_API_BASE:-$VK_SHARED_API_BASE}"
 
 echo "🧹 Cleaning previous builds..."
 rm -rf npx-cli/dist

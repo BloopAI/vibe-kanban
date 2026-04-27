@@ -2,7 +2,11 @@ import { electricCollectionOptions } from '@tanstack/electric-db-collection';
 import { createCollection } from '@tanstack/react-db';
 
 import { getAuthRuntime } from '@/shared/lib/auth/runtime';
-import { getRemoteApiUrl, makeRequest } from '@/shared/lib/remoteApi';
+import {
+  getRemoteApiUrl,
+  isLocalRemoteApiEnabled,
+  makeRequest,
+} from '@/shared/lib/remoteApi';
 import type { MutationDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { CollectionConfig, SyncError } from '@/shared/lib/electric/types';
 
@@ -799,17 +803,26 @@ export function createShapeCollection<TRow extends ElectricRow>(
 
   const electricSyncConfig = electricOptions.sync as unknown as SyncConfigLike;
 
+  const localFallbackSync = createFallbackSync({
+    sourceKey,
+    shape,
+    params,
+    reportError,
+  });
+
   const collectionOptions = {
     ...electricOptions,
     sync: {
       ...electricSyncConfig,
-      sync: createHybridSync({
-        sourceKey,
-        shape,
-        params,
-        reportError,
-        electricSync: electricSyncConfig.sync,
-      }),
+      sync: isLocalRemoteApiEnabled()
+        ? localFallbackSync
+        : createHybridSync({
+            sourceKey,
+            shape,
+            params,
+            reportError,
+            electricSync: electricSyncConfig.sync,
+          }),
     },
   };
 

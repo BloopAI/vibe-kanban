@@ -13,6 +13,7 @@ import type {
   UpdateProjectStatusRequest,
 } from 'shared/remote-types';
 import { getAuthRuntime } from '@/shared/lib/auth/runtime';
+import { makeLocalApiRequest } from '@/shared/lib/localApiTransport';
 import { syncRelayApiBaseWithRemote } from '@/shared/lib/relayBackendApi';
 
 const BUILD_TIME_API_BASE = import.meta.env.VITE_VK_SHARED_API_BASE || '';
@@ -20,6 +21,23 @@ const BUILD_TIME_API_BASE = import.meta.env.VITE_VK_SHARED_API_BASE || '';
 // Mutable module-level variable — overridden at runtime by ConfigProvider
 // when VK_SHARED_API_BASE is set (for self-hosting support)
 let _remoteApiBase: string = BUILD_TIME_API_BASE;
+let _localRemoteApiEnabled = false;
+
+export function setLocalRemoteApiEnabled(enabled: boolean) {
+  _localRemoteApiEnabled = enabled;
+}
+
+export function isLocalRemoteApiEnabled(): boolean {
+  return _localRemoteApiEnabled && !getRemoteApiUrl();
+}
+
+function toLocalRemoteApiPath(path: string): string {
+  if (path.startsWith('/v1/')) {
+    return `/api/local${path}`;
+  }
+
+  return `/api/local/${path.replace(/^\/+/, '')}`;
+}
 
 /**
  * Set the remote API base URL at runtime.
@@ -49,6 +67,13 @@ export const makeRequest = async (
   options: RequestInit = {},
   retryOn401 = true
 ): Promise<Response> => {
+  if (isLocalRemoteApiEnabled()) {
+    return makeLocalApiRequest(toLocalRemoteApiPath(path), {
+      ...options,
+      hostScope: 'none',
+    });
+  }
+
   return makeAuthenticatedRequest(getRemoteApiUrl(), path, options, retryOn401);
 };
 

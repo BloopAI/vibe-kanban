@@ -17,6 +17,7 @@ pub mod execution_processes;
 pub mod frontend;
 pub mod health;
 pub mod host_relay;
+pub mod local_remote;
 pub mod oauth;
 pub mod organizations;
 pub mod preview;
@@ -54,6 +55,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(sessions::router(&deployment))
         .merge(terminal::router())
         .route("/ssh-session", get(ssh_session::ssh_session_ws))
+        .nest("/local", local_remote::router(&deployment))
         .nest("/remote", remote::router())
         .merge(webrtc::router())
         .nest("/attachments", attachments::routes())

@@ -14,6 +14,7 @@ import { OAuthSignInButton } from '@vibe/ui/components/OAuthButtons';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { oauthApi, type AuthMethodsResponse } from '@/shared/lib/api';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
+import { isLocalRemoteApiEnabled } from '@/shared/lib/remoteApi';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { isTauriApp } from '@/shared/lib/platform';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
@@ -95,6 +96,7 @@ export function OnboardingSignInPage() {
   } = useQuery({
     queryKey: ['auth', 'methods'],
     queryFn: (): Promise<AuthMethodsResponse> => oauthApi.authMethods(),
+    enabled: !isLocalRemoteApiEnabled(),
     staleTime: 60_000,
   });
   const hasLocalAuth = authMethods?.local_auth_enabled ?? false;

@@ -74,6 +74,8 @@ npx-cli/bin/
 npx-cli/dist
 npx-cli/vibe-kanban-*
 vibe-kanban-*.tgz
+toby-vibe-kanban-windows-x64-npx/
+toby-vibe-kanban-windows-x64-npx.zip
 
 # Development ports file
 .dev-ports.json

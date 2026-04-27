@@ -12,6 +12,8 @@ import { router } from '@web/app/router';
 import { oauthApi } from '@/shared/lib/api';
 import { tokenManager } from '@/shared/lib/auth/tokenManager';
 import { configureAuthRuntime } from '@/shared/lib/auth/runtime';
+import { isLocalRemoteApiEnabled } from '@/shared/lib/remoteApi';
+import { LOCAL_USER_ID } from '@/shared/lib/localIdentity';
 import '@/shared/types/modals';
 import { queryClient } from '@/shared/lib/queryClient';
 import { isTauriApp } from '@/shared/lib/platform';
@@ -81,7 +83,10 @@ configureAuthRuntime({
   getToken: () => tokenManager.getToken(),
   triggerRefresh: () => tokenManager.triggerRefresh(),
   registerShape: (shape) => tokenManager.registerShape(shape),
-  getCurrentUser: () => oauthApi.getCurrentUser(),
+  getCurrentUser: () =>
+    isLocalRemoteApiEnabled()
+      ? Promise.resolve({ user_id: LOCAL_USER_ID })
+      : oauthApi.getCurrentUser(),
 });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
