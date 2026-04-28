@@ -9,7 +9,7 @@
 当前 fork 版本：
 
 ```text
-0.1.44-toby.3
+0.1.44-toby.4
 ```
 
 版本规则使用 `-toby` 后缀：
@@ -89,7 +89,7 @@ Project functionality has been retired
 
 下载后的 artifact 中应包含：
 
-- `toby-vibe-kanban-0.1.44-toby.3.tgz`
+- `toby-vibe-kanban-0.1.44-toby.4.tgz`
 - `dist/windows-x64/vibe-kanban.zip`
 - `dist/windows-x64/vibe-kanban-mcp.zip`
 - `dist/windows-x64/vibe-kanban-review.zip`
@@ -102,14 +102,14 @@ Project functionality has been retired
 
 ```powershell
 cd .\toby-vibe-kanban-windows-x64-npx
-Get-Item .\toby-vibe-kanban-0.1.44-toby.3.tgz
+Get-Item .\toby-vibe-kanban-0.1.44-toby.4.tgz
 ```
 
 运行：
 
 ```powershell
 node -v
-$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.3.tgz
+$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.4.tgz
 npx --yes --package "$pkg" vibe-kanban
 ```
 
@@ -132,14 +132,14 @@ Invoke-RestMethod http://127.0.0.1:<端口>/api/info | Select-Object -ExpandProp
 如果从仓库根目录直接运行：
 
 ```powershell
-$pkg = Resolve-Path .\toby-vibe-kanban-windows-x64-npx\toby-vibe-kanban-0.1.44-toby.3.tgz
+$pkg = Resolve-Path .\toby-vibe-kanban-windows-x64-npx\toby-vibe-kanban-0.1.44-toby.4.tgz
 npx --yes --package "$pkg" vibe-kanban
 ```
 
 全局安装：
 
 ```powershell
-$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.3.tgz
+$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.4.tgz
 npm install -g "$pkg"
 vibe-kanban
 ```
@@ -168,7 +168,7 @@ Expand-Archive .\dist\windows-x64\vibe-kanban.zip -DestinationPath .\vk-bin -For
 ```powershell
 $env:RUST_LOG = "debug"
 $env:VIBE_KANBAN_DEBUG = "1"
-$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.3.tgz
+$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.4.tgz
 npx --yes --package "$pkg" vibe-kanban
 ```
 
@@ -183,6 +183,8 @@ $env:APPDATA\bloop\vibe-kanban\data
 - `db.v2.sqlite`：本地 SQLite 数据库。
 - `config.json`：本地配置。
 - `sessions/`：工作区和 agent 会话相关数据。agent 执行日志在 `sessions/<session-id前两位>/<session-id>/processes/<process-id>.jsonl`。
+
+从 `0.1.44-toby.4` 开始，如果 Codex agent 在初始化阶段失败，`LaunchError` 会额外写入 `Codex launch context`，其中包含实际启动的可执行文件、参数、工作目录、Codex 配置文件路径、模型和 provider。看到类似 `'openai' 不是内部或外部命令` 时，优先对照这段上下文判断是 Vibe Kanban 启动命令问题，还是 Codex 配置/MCP 子进程里的命令问题。
 
 如果前端只显示类似 `Failed to create Project` 或 `Failed to create Issue`，优先打开浏览器开发者工具的 Network 面板，看失败请求的 HTTP 状态码。`415 Unsupported Media Type` 通常表示请求缺少 JSON `Content-Type`；`403 Forbidden` 通常表示当前页面端口不是后端允许的同源地址，常见于手动用 Vite dev server 代理到已运行的生产后端。
 
@@ -207,7 +209,7 @@ $env:APPDATA\bloop\vibe-kanban\data
 
 ```powershell
 npm login
-npm publish .\toby-vibe-kanban-0.1.44-toby.3.tgz --access public
+npm publish .\toby-vibe-kanban-0.1.44-toby.4.tgz --access public
 ```
 
 发布成功后，用户可以运行：

@@ -448,6 +448,43 @@ impl Codex {
         "npx -y @openai/codex@0.124.0"
     }
 
+    fn launch_context(&self, program_path: &Path, args: &[String], current_dir: &Path) -> String {
+        let codex_config = codex_home()
+            .map(|home| home.join("config.toml").display().to_string())
+            .unwrap_or_else(|| "<unresolved>".to_string());
+
+        let mut lines = vec![
+            format!("base command: {}", Self::base_command()),
+            format!(
+                "base_command_override: {}",
+                if self.cmd.base_command_override.is_some() {
+                    "set"
+                } else {
+                    "not set"
+                }
+            ),
+            format!("resolved executable: {}", program_path.display()),
+            format!("args: {args:?}"),
+            format!("cwd: {}", current_dir.display()),
+            format!("codex config: {codex_config}"),
+        ];
+
+        if let Some(model) = &self.model {
+            lines.push(format!("model: {model}"));
+        }
+        if let Some(model_provider) = &self.model_provider {
+            lines.push(format!("model_provider: {model_provider}"));
+        }
+        if let Some(profile) = &self.profile {
+            lines.push(format!("profile: {profile}"));
+        }
+        if let Some(additional_params) = &self.cmd.additional_params {
+            lines.push(format!("additional_params: {additional_params:?}"));
+        }
+
+        lines.join("\n")
+    }
+
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
         let mut builder = CommandBuilder::new(Self::base_command());
         builder = builder.extend_params(["app-server"]);
@@ -649,8 +686,10 @@ impl Codex {
         Fut: std::future::Future<Output = Result<(), ExecutorError>> + Send + 'static,
     {
         let (program_path, args) = command_parts.into_resolved().await?;
+        let launch_context = self.launch_context(&program_path, &args, current_dir);
+        tracing::debug!("Launching Codex app-server:\n{}", launch_context);
 
-        let mut process = Command::new(program_path);
+        let mut process = Command::new(&program_path);
         process
             .kill_on_drop(true)
             .stdin(std::process::Stdio::piped())
@@ -667,7 +706,13 @@ impl Codex {
             .with_profile(&self.cmd)
             .apply_to_command(&mut process);
 
-        let mut child = process.group_spawn_no_window()?;
+        let spawn_error_context = launch_context.clone();
+        let mut child = process.group_spawn_no_window().map_err(|err| {
+            ExecutorError::Io(std::io::Error::other(format!(
+                "failed to spawn Codex app-server: {err}\n\nCodex launch context:\n{}",
+                spawn_error_context
+            )))
+        })?;
 
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {
             ExecutorError::Io(std::io::Error::other("Codex app server missing stdout"))
@@ -741,8 +786,10 @@ impl Codex {
                     }
                     _ => {
                         tracing::error!("Codex spawn error: {}", err);
+                        let error =
+                            format!("{}\n\nCodex launch context:\n{}", err, launch_context);
                         log_writer
-                            .log_raw(&Error::launch_error(err.to_string()).raw())
+                            .log_raw(&Error::launch_error(error).raw())
                             .await
                             .ok();
                     }
