@@ -31,6 +31,7 @@ ed25519-dalek = "2.2.0"
 anyhow = { workspace = true }
 tracing = { workspace = true }
 uuid = { version = "1.0", features = ["v4", "serde"] }
+sha2 = "0.10"
 async-trait = { workspace = true }
 thiserror = { workspace = true }
 command-group = { version = "5.0", features = ["with-tokio"] }

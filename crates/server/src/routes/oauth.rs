@@ -92,11 +92,13 @@ pub fn router() -> Router<DeploymentImpl> {
 }
 
 async fn auth_methods(
-    State(deployment): State<DeploymentImpl>,
+    State(_deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<AuthMethodsResponse>>, ApiError> {
-    let client = deployment.remote_client()?;
-    let methods = client.auth_methods().await?;
-    Ok(ResponseJson(ApiResponse::success(methods)))
+    // Local-only deployment: no external auth methods are available.
+    Ok(ResponseJson(ApiResponse::success(AuthMethodsResponse {
+        local_auth_enabled: false,
+        oauth_providers: Vec::new(),
+    })))
 }
 
 #[derive(Debug, Deserialize)]
@@ -278,39 +280,30 @@ async fn status(
     }
 }
 
-/// Returns the current access token (auto-refreshes if needed)
+/// Returns the current access token (auto-refreshes if needed).
+///
+/// In this local-only fork there is no remote auth service; we return an
+/// empty placeholder so callers know there is nothing to send.
 async fn get_token(
-    State(deployment): State<DeploymentImpl>,
+    State(_deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<TokenResponse>>, ApiError> {
-    let remote_client = deployment.remote_client()?;
-
-    // This will auto-refresh the token if expired
-    let access_token = remote_client.access_token().await.map_err(ApiError::from)?;
-
-    let creds = deployment.auth_context().get_credentials().await;
-    let expires_at = creds.and_then(|c| c.expires_at);
-
     Ok(ResponseJson(ApiResponse::success(TokenResponse {
-        access_token,
-        expires_at,
+        access_token: String::new(),
+        expires_at: None,
     })))
 }
 
 async fn get_current_user(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<CurrentUserResponse>>, ApiError> {
-    let remote_client = deployment.remote_client()?;
-
-    // Get the access token from remote client
-    let access_token = remote_client.access_token().await.map_err(ApiError::from)?;
-
-    // Extract user ID from the JWT token's 'sub' claim
-    let user_id = utils::jwt::extract_subject(&access_token)
-        .map_err(|e| {
-            tracing::error!("Failed to extract user ID from token: {}", e);
-            ApiError::Unauthorized
-        })?
-        .to_string();
+    // Local-only deployment: report the synthetic local user id derived from
+    // the always-on local profile.
+    let user_id = match deployment.get_login_status().await {
+        api_types::LoginStatus::LoggedIn {
+            profile: Some(profile),
+        } => profile.user_id.to_string(),
+        _ => return Err(ApiError::Unauthorized),
+    };
 
     Ok(ResponseJson(ApiResponse::success(CurrentUserResponse {
         user_id,
