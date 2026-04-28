@@ -106,6 +106,7 @@ struct LocalTaskRow {
     title: String,
     description: Option<String>,
     status: TaskStatus,
+    #[allow(dead_code)]
     parent_workspace_id: Option<Uuid>,
     created_at: chrono::DateTime<chrono::Utc>,
     updated_at: chrono::DateTime<chrono::Utc>,
@@ -589,12 +590,12 @@ fn task_to_issue(task: LocalTaskRow, issue_number: i64, status_id: String) -> Co
 }
 
 fn synthetic_issue_prefix(workspace: &Workspace) -> String {
-    if let Some(name) = workspace.name.as_deref() {
-        if let Some((prefix, _)) = name.split_once("::") {
-            let trimmed = prefix.trim();
-            if !trimmed.is_empty() {
-                return trimmed.to_string();
-            }
+    if let Some(name) = workspace.name.as_deref()
+        && let Some((prefix, _)) = name.split_once("::")
+    {
+        let trimmed = prefix.trim();
+        if !trimmed.is_empty() {
+            return trimmed.to_string();
         }
     }
 
@@ -619,6 +620,7 @@ fn synthetic_issue_prefix(workspace: &Workspace) -> String {
     }
 }
 
+#[allow(dead_code)]
 fn workspace_to_issue(project_id: Uuid, workspace: &Workspace, issue_number: i64) -> CompatIssue {
     workspace_to_issue_with_pr_state(project_id, workspace, issue_number, None)
 }
@@ -692,9 +694,7 @@ fn synthetic_project_from_repos(
     scratch: &Scratch,
     repos: &[Repo],
 ) -> Option<SyntheticProjectContext> {
-    let Some(primary_repo) = repos.first() else {
-        return None;
-    };
+    let primary_repo = repos.first()?;
 
     Some(SyntheticProjectContext {
         project: Project {
@@ -989,11 +989,9 @@ async fn list_fallback_projects(
     for project in &mut projects {
         if let Some(synthetic_project) =
             synthetic_by_name.get(&normalize_project_name(&project.name))
+            && project.default_agent_working_dir.is_none()
         {
-            if project.default_agent_working_dir.is_none() {
-                project.default_agent_working_dir =
-                    synthetic_project.default_agent_working_dir.clone();
-            }
+            project.default_agent_working_dir = synthetic_project.default_agent_working_dir.clone();
         }
     }
 
@@ -1504,10 +1502,9 @@ async fn get_project(
         Ok(mut project) => {
             if let Some(context) =
                 find_named_synthetic_project_context(&deployment, &project.name).await?
+                && project.default_agent_working_dir.is_none()
             {
-                if project.default_agent_working_dir.is_none() {
-                    project.default_agent_working_dir = context.project.default_agent_working_dir;
-                }
+                project.default_agent_working_dir = context.project.default_agent_working_dir;
             }
             project
         }

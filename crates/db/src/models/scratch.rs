@@ -143,12 +143,14 @@ pub struct UiPreferencesData {
     pub selected_project_id: Option<String>,
     /// Preferred order for local-only project icons in the app bar
     #[serde(default)]
+    #[ts(skip)]
     pub local_project_order: Vec<String>,
     /// Default setting for creating a draft workspace from new issues
     #[serde(default)]
     pub create_draft_workspace_by_default: Option<bool>,
     /// Whether to show optional links and profile controls in the left app bar
     #[serde(default)]
+    #[ts(skip)]
     pub show_left_column_links: Option<bool>,
     /// Kanban project view selections (active view per project)
     #[serde(default)]
