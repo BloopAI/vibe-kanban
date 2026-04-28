@@ -128,17 +128,9 @@ selected_org_id: string | null,
  */
 selected_project_id: string | null, 
 /**
- * Preferred order for local-only project icons in the app bar
- */
-local_project_order: Array<string>, 
-/**
  * Default setting for creating a draft workspace from new issues
  */
 create_draft_workspace_by_default: boolean | null, 
-/**
- * Whether to show optional links and profile controls in the left app bar
- */
-show_left_column_links: boolean | null, 
 /**
  * Kanban project view selections (active view per project)
  */

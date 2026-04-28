@@ -280,6 +280,7 @@ fn coalesce_patch_ops(ops: Vec<PatchOperation>) -> Vec<PatchOperation> {
 }
 
 #[cfg(test)]
+#[allow(clippy::items_after_test_module)]
 mod tests {
     use json_patch::{AddOperation, PatchOperation, RemoveOperation, ReplaceOperation};
     use serde_json::json;
