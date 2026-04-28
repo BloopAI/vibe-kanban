@@ -445,7 +445,7 @@ impl StandardCodingAgentExecutor for Codex {
 
 impl Codex {
     pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.124.0"
+        "npx -y --package @openai/codex@0.124.0 codex"
     }
 
     fn launch_context(&self, program_path: &Path, args: &[String], current_dir: &Path) -> String {
