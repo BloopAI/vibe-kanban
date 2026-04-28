@@ -50,6 +50,9 @@ interface DraftState {
   linkedIssue: LinkedIssue | null;
   executorConfig: ExecutorConfig | null;
   attachments: DraftWorkspaceAttachment[];
+  projectId: string | null;
+  workspaceName: string;
+  workspaceBranch: string;
 }
 
 type DraftAction =
@@ -60,10 +63,13 @@ type DraftAction =
   | { type: 'INIT_ERROR'; error: string }
   | { type: 'SET_PROJECT'; projectId: string | null }
   | { type: 'ADD_REPO'; repo: Repo; targetBranch: string | null }
+  | { type: 'SET_REPOS'; repos: SelectedRepo[] }
   | { type: 'SET_REPOS_IF_EMPTY'; repos: SelectedRepo[] }
   | { type: 'REMOVE_REPO'; repoId: string }
   | { type: 'SET_TARGET_BRANCH'; repoId: string; branch: string }
   | { type: 'SET_MESSAGE'; message: string }
+  | { type: 'SET_WORKSPACE_NAME'; name: string }
+  | { type: 'SET_WORKSPACE_BRANCH'; branch: string }
   | { type: 'CLEAR_REPOS' }
   | { type: 'CLEAR' }
   | { type: 'CLEAR_LINKED_ISSUE' }
@@ -86,6 +92,9 @@ const draftInitialState: DraftState = {
   linkedIssue: null,
   executorConfig: null,
   attachments: [],
+  projectId: null,
+  workspaceName: '',
+  workspaceBranch: '',
 };
 
 function draftReducer(state: DraftState, action: DraftAction): DraftState {
@@ -105,6 +114,9 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
         error: action.error,
       };
 
+    case 'SET_PROJECT':
+      return { ...state, projectId: action.projectId };
+
     case 'ADD_REPO': {
       // Don't add duplicate repos
       if (state.repos.some((r) => r.repo.id === action.repo.id)) {
@@ -118,6 +130,9 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
         ],
       };
     }
+
+    case 'SET_REPOS':
+      return { ...state, repos: action.repos };
 
     case 'SET_REPOS_IF_EMPTY':
       if (state.repos.length > 0) {
@@ -143,6 +158,12 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
 
     case 'SET_MESSAGE':
       return { ...state, message: action.message };
+
+    case 'SET_WORKSPACE_NAME':
+      return { ...state, workspaceName: action.name };
+
+    case 'SET_WORKSPACE_BRANCH':
+      return { ...state, workspaceBranch: action.branch };
 
     case 'CLEAR_REPOS':
       return { ...state, repos: [] };
@@ -243,6 +264,15 @@ interface UseCreateModeStateResult {
   setExecutorConfig: (config: ExecutorConfig | null) => void;
   attachments: DraftWorkspaceAttachment[];
   setAttachments: (attachments: DraftWorkspaceAttachment[]) => void;
+  projectId: string | null;
+  setProjectId: (projectId: string | null) => void;
+  workspaceName: string;
+  setWorkspaceName: (name: string) => void;
+  workspaceBranch: string;
+  setWorkspaceBranch: (branch: string) => void;
+  setReposWithBranches: (
+    entries: { repo: Repo; targetBranch: string | null }[]
+  ) => void;
 }
 
 export function useCreateModeState({
@@ -614,6 +644,25 @@ export function useCreateModeState({
     dispatch({ type: 'SET_TARGET_BRANCH', repoId, branch });
   }, []);
 
+  const setProjectId = useCallback((projectId: string | null) => {
+    dispatch({ type: 'SET_PROJECT', projectId });
+  }, []);
+
+  const setWorkspaceName = useCallback((name: string) => {
+    dispatch({ type: 'SET_WORKSPACE_NAME', name });
+  }, []);
+
+  const setWorkspaceBranch = useCallback((branch: string) => {
+    dispatch({ type: 'SET_WORKSPACE_BRANCH', branch });
+  }, []);
+
+  const setReposWithBranches = useCallback(
+    (entries: { repo: Repo; targetBranch: string | null }[]) => {
+      dispatch({ type: 'SET_REPOS', repos: entries });
+    },
+    []
+  );
+
   const clearDraft = useCallback(async () => {
     try {
       await deleteScratch();
@@ -658,5 +707,12 @@ export function useCreateModeState({
     setExecutorConfig,
     attachments: state.attachments,
     setAttachments,
+    projectId: state.projectId,
+    setProjectId,
+    workspaceName: state.workspaceName,
+    setWorkspaceName,
+    workspaceBranch: state.workspaceBranch,
+    setWorkspaceBranch,
+    setReposWithBranches,
   };
 }

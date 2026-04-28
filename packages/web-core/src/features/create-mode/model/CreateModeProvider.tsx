@@ -67,6 +67,13 @@ export function CreateModeProvider({
       setExecutorConfig: state.setExecutorConfig,
       attachments: state.attachments,
       setAttachments: state.setAttachments,
+      projectId: state.projectId,
+      setProjectId: state.setProjectId,
+      workspaceName: state.workspaceName,
+      setWorkspaceName: state.setWorkspaceName,
+      workspaceBranch: state.workspaceBranch,
+      setWorkspaceBranch: state.setWorkspaceBranch,
+      setReposWithBranches: state.setReposWithBranches,
     }),
     [
       state.repos,
@@ -87,6 +94,13 @@ export function CreateModeProvider({
       state.setExecutorConfig,
       state.attachments,
       state.setAttachments,
+      state.projectId,
+      state.setProjectId,
+      state.workspaceName,
+      state.setWorkspaceName,
+      state.workspaceBranch,
+      state.setWorkspaceBranch,
+      state.setReposWithBranches,
     ]
   );
 

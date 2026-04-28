@@ -36,6 +36,16 @@ pub struct CreateAndStartWorkspaceRequest {
     pub executor_config: ExecutorConfig,
     pub prompt: String,
     pub attachment_ids: Option<Vec<Uuid>>,
+    /// Optional project to associate the workspace with. When provided and `repos`
+    /// is empty, the workspace will be seeded with the project's repos using each
+    /// repo's configured UAT branch as the default `target_branch`.
+    #[ts(optional, type = "string | null")]
+    pub project_id: Option<Uuid>,
+    /// Optional explicit branch name for the workspace's primary branch. When set,
+    /// it is sanitized and used as the workspace's git branch. If omitted, a branch
+    /// name is auto-derived from the workspace `name`.
+    #[ts(optional, type = "string | null")]
+    pub branch: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]

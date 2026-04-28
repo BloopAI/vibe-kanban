@@ -39,6 +39,20 @@ export interface CreateModeContextValue {
   attachments: DraftWorkspaceAttachment[];
   /** Update draft attachments (triggers debounced scratch save) */
   setAttachments: (attachments: DraftWorkspaceAttachment[]) => void;
+  /** Optional local project the workspace is associated with. */
+  projectId: string | null;
+  /** Set the associated project. Pass null to clear. */
+  setProjectId: (projectId: string | null) => void;
+  /** Custom workspace name (defaults to the first line of the prompt when empty). */
+  workspaceName: string;
+  setWorkspaceName: (name: string) => void;
+  /** Custom branch name; sanitized server-side. Empty string falls back to auto-naming. */
+  workspaceBranch: string;
+  setWorkspaceBranch: (branch: string) => void;
+  /** Bulk-replace the selected repos and their target branches in one shot. */
+  setReposWithBranches: (
+    entries: { repo: Repo; targetBranch: string | null }[]
+  ) => void;
 }
 
 export const CreateModeContext =

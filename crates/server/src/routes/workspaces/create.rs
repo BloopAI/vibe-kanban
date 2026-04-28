@@ -2,14 +2,16 @@ use std::collections::HashMap;
 
 use axum::{Json, extract::State, response::Json as ResponseJson};
 use db::models::{
+    project_repo::ProjectRepo,
     requests::{
         CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, CreateWorkspaceApiRequest,
+        WorkspaceRepoInput,
     },
     workspace::{CreateWorkspace, Workspace},
 };
 use deployment::Deployment;
 use services::services::container::ContainerService;
-use utils::response::ApiResponse;
+use utils::{response::ApiResponse, text::git_branch_id};
 use uuid::Uuid;
 
 use crate::{
@@ -24,15 +26,38 @@ pub(crate) async fn create_workspace_record(
     deployment: &DeploymentImpl,
     name: Option<String>,
 ) -> Result<Workspace, ApiError> {
+    create_workspace_record_with_branch(deployment, name, None).await
+}
+
+/// Create a workspace record. If `explicit_branch` is provided and non-empty,
+/// it is sanitized via `git_branch_id` and used directly (without the auto-prefix
+/// or short-uuid suffix), which lets callers pin the workspace's primary branch
+/// from a UI input.
+pub(crate) async fn create_workspace_record_with_branch(
+    deployment: &DeploymentImpl,
+    name: Option<String>,
+    explicit_branch: Option<String>,
+) -> Result<Workspace, ApiError> {
     let workspace_id = Uuid::new_v4();
-    let branch_label = name
+    let sanitized_explicit = explicit_branch
         .as_deref()
-        .filter(|branch_label| !branch_label.is_empty())
-        .unwrap_or("workspace");
-    let git_branch_name = deployment
-        .container()
-        .git_branch_from_workspace(&workspace_id, branch_label)
-        .await;
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(git_branch_id)
+        .filter(|s| !s.is_empty());
+
+    let git_branch_name = if let Some(branch) = sanitized_explicit {
+        branch
+    } else {
+        let branch_label = name
+            .as_deref()
+            .filter(|branch_label| !branch_label.is_empty())
+            .unwrap_or("workspace");
+        deployment
+            .container()
+            .git_branch_from_workspace(&workspace_id, branch_label)
+            .await
+    };
 
     let workspace = Workspace::create(
         &deployment.db().pool,
@@ -220,6 +245,8 @@ pub async fn create_and_start_workspace(
         executor_config,
         prompt,
         attachment_ids,
+        project_id,
+        branch,
     } = payload;
 
     let mut workspace_prompt = normalize_prompt(&prompt).ok_or_else(|| {
@@ -227,6 +254,33 @@ pub async fn create_and_start_workspace(
             "A workspace prompt is required. Provide a non-empty `prompt`.".to_string(),
         )
     })?;
+
+    // If no repos were supplied but a project is provided, seed from the
+    // project's configured repos using each repo's UAT branch (or the repo's
+    // default_target_branch as a fallback).
+    let repos = if repos.is_empty() {
+        if let Some(project_id) = project_id {
+            let project_repos =
+                ProjectRepo::list_for_project(&deployment.db().pool, project_id).await?;
+            project_repos
+                .into_iter()
+                .filter_map(|entry| {
+                    let target_branch = entry
+                        .uat_branch
+                        .clone()
+                        .or_else(|| entry.repo.default_target_branch.clone());
+                    target_branch.map(|target_branch| WorkspaceRepoInput {
+                        repo_id: entry.repo.id,
+                        target_branch,
+                    })
+                })
+                .collect()
+        } else {
+            repos
+        }
+    } else {
+        repos
+    };
 
     if repos.is_empty() {
         return Err(ApiError::BadRequest(
@@ -236,7 +290,9 @@ pub async fn create_and_start_workspace(
 
     let mut managed_workspace = deployment
         .workspace_manager()
-        .load_managed_workspace(create_workspace_record(&deployment, name).await?)
+        .load_managed_workspace(
+            create_workspace_record_with_branch(&deployment, name, branch).await?,
+        )
         .await?;
 
     for repo in &repos {

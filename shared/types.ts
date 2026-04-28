@@ -8,6 +8,16 @@ export type Repo = { id: string, path: string, name: string, display_name: strin
 
 export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
 
+export type CreateProject = { name: string, };
+
+export type UpdateProject = { name: string | null, };
+
+export type ProjectRepo = { id: string, project_id: string, repo_id: string, uat_branch: string | null, };
+
+export type ProjectRepoWithRepo = { uat_branch: string | null, id: string, path: string, name: string, display_name: string, setup_script: string | null, cleanup_script: string | null, archive_script: string | null, copy_files: string | null, parallel_setup_script: boolean, dev_server_script: string | null, default_target_branch: string | null, default_working_dir: string | null, created_at: Date, updated_at: Date, };
+
+export type ProjectRepoInput = { repo_id: string, uat_branch: string | null, };
+
 export type UpdateRepo = { display_name?: string | null, setup_script?: string | null, cleanup_script?: string | null, archive_script?: string | null, copy_files?: string | null, parallel_setup_script?: boolean | null, dev_server_script?: string | null, default_target_branch?: string | null, default_working_dir?: string | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, 
@@ -262,6 +272,25 @@ export type RegisterRepoRequest = { path: string, display_name: string | null, }
 
 export type InitRepoRequest = { parent_path: string, folder_name: string, };
 
+export type ScanDirectoryRequest = { path: string, 
+/**
+ * Maximum directory depth to descend when scanning for `.git` folders.
+ * Defaults to 3 if omitted.
+ */
+max_depth?: number | null, };
+
+export type ScanDirectoryResponse = { repos: Array<ScannedRepo>, };
+
+export type ScannedRepo = { name: string, path: string, };
+
+export type BulkRegisterReposRequest = { paths: Array<string>, };
+
+export type BulkRegisterReposResponse = { registered: Array<Repo>, failed: Array<BulkRegisterFailure>, };
+
+export type BulkRegisterFailure = { path: string, error: string, };
+
+export type SetProjectReposRequest = { repos: Array<ProjectRepoInput>, };
+
 export type TagSearchParams = { search: string | null, };
 
 export type TokenResponse = { access_token: string, expires_at: string | null, };
@@ -398,7 +427,19 @@ export type GetPrCommentsError = { "type": "no_pr_attached" } | { "type": "cli_n
 
 export type GetPrCommentsQuery = { repo_id: string, };
 
-export type CreateAndStartWorkspaceRequest = { name: string | null, repos: Array<WorkspaceRepoInput>, linked_issue: LinkedIssueInfo | null, executor_config: ExecutorConfig, prompt: string, attachment_ids: Array<string> | null, };
+export type CreateAndStartWorkspaceRequest = { name: string | null, repos: Array<WorkspaceRepoInput>, linked_issue: LinkedIssueInfo | null, executor_config: ExecutorConfig, prompt: string, attachment_ids: Array<string> | null, 
+/**
+ * Optional project to associate the workspace with. When provided and `repos`
+ * is empty, the workspace will be seeded with the project's repos using each
+ * repo's configured UAT branch as the default `target_branch`.
+ */
+project_id?: string | null, 
+/**
+ * Optional explicit branch name for the workspace's primary branch. When set,
+ * it is sanitized and used as the workspace's git branch. If omitted, a branch
+ * name is auto-derived from the workspace `name`.
+ */
+branch?: string | null, };
 
 export type CreateAndStartWorkspaceResponse = { workspace: Workspace, execution_process: ExecutionProcess, };
 

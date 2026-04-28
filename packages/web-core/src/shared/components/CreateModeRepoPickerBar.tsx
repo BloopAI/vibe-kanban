@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import {
   ClockCounterClockwiseIcon,
+  FolderSimpleIcon,
   GitBranchIcon,
   MagnifyingGlassIcon,
   PlusIcon,
@@ -9,9 +10,9 @@ import {
   XIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import type { Repo } from 'shared/types';
+import type { Project, Repo } from 'shared/types';
 import type { BranchItem, RepoItem } from '@/shared/types/selectionItems';
-import { repoApi } from '@/shared/lib/api';
+import { projectsApi, repoApi } from '@/shared/lib/api';
 import { cn } from '@/shared/lib/utils';
 import { useCreateMode } from '@/features/create-mode/model/useCreateMode';
 import { FolderPickerDialog } from '@/shared/dialogs/shared/FolderPickerDialog';
@@ -52,7 +53,14 @@ function getRepoDisplayName(repo: Repo): string {
   return repo.display_name || repo.name;
 }
 
-type PendingAction = 'choose' | 'browse' | 'create' | 'branch' | null;
+type PendingAction =
+  | 'choose'
+  | 'browse'
+  | 'create'
+  | 'branch'
+  | 'scan'
+  | 'project'
+  | null;
 
 const inlineControlButtonClassName =
   'inline-flex items-center gap-half rounded-sm px-half py-half text-sm text-normal ' +
@@ -75,13 +83,70 @@ export function CreateModeRepoPickerBar({
 }: CreateModeRepoPickerBarProps) {
   const { t } = useTranslation('common');
   const queryClient = useQueryClient();
-  const { repos, targetBranches, addRepo, removeRepo, setTargetBranch } =
-    useCreateMode();
+  const {
+    repos,
+    targetBranches,
+    addRepo,
+    removeRepo,
+    setTargetBranch,
+    projectId,
+    setProjectId,
+    workspaceName,
+    setWorkspaceName,
+    workspaceBranch,
+    setWorkspaceBranch,
+    setReposWithBranches,
+  } = useCreateMode();
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [branchRepoId, setBranchRepoId] = useState<string | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
   const [setupHintDismissed, setSetupHintDismissed] = useState(false);
   const isBusy = pendingAction !== null;
+
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => projectsApi.list(),
+    staleTime: 30_000,
+  });
+
+  const selectedProject = useMemo(
+    () => (projectId ? projects?.find((p) => p.id === projectId) : null),
+    [projectId, projects]
+  );
+
+  // When a project is selected, load its associated repos with their UAT
+  // branches and pre-populate the workspace's repo selection. This only fires
+  // once per project change so we don't overwrite manual edits.
+  useEffect(() => {
+    if (!projectId) return;
+    let cancelled = false;
+    setPickerError(null);
+    (async () => {
+      try {
+        const projectRepos = await projectsApi.listRepos(projectId);
+        if (cancelled) return;
+        const entries = projectRepos.map((entry) => {
+          const { uat_branch: uatBranch, ...repo } = entry;
+          return {
+            repo: repo as Repo,
+            targetBranch: uatBranch ?? entry.default_target_branch ?? null,
+          };
+        });
+        setReposWithBranches(entries);
+      } catch (err) {
+        if (!cancelled) {
+          setPickerError(
+            err instanceof Error
+              ? err.message
+              : 'Failed to load project repositories'
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, setReposWithBranches]);
 
   const hasUnconfiguredRepo = useMemo(
     () => repos.some((repo) => !repo.setup_script),
@@ -227,6 +292,108 @@ export function CreateModeRepoPickerBar({
     );
   }, [addRepoWithBranchSelection, runPickerAction, t]);
 
+  const handleScanDirectory = useCallback(async () => {
+    await runPickerAction(
+      'scan',
+      async () => {
+        const selectedPath = await FolderPickerDialog.show({
+          title: t('dialogs.selectGitRepository'),
+          description: t('dialogs.chooseExistingRepo'),
+        });
+        if (!selectedPath) return;
+
+        const { repos: discovered } = await repoApi.scanDirectory({
+          path: selectedPath,
+          max_depth: 4,
+        });
+        if (discovered.length === 0) {
+          setPickerError(`No git repositories found under ${selectedPath}`);
+          return;
+        }
+
+        const { registered, failed } = await repoApi.bulkRegister({
+          paths: discovered.map((r) => r.path),
+        });
+        queryClient.invalidateQueries({ queryKey: ['repos'] });
+
+        for (const repo of registered) {
+          if (selectedRepoIds.has(repo.id)) continue;
+          addRepo(repo);
+          const fallbackBranch = repo.default_target_branch;
+          if (fallbackBranch) {
+            setTargetBranch(repo.id, fallbackBranch);
+          }
+        }
+
+        if (failed.length > 0) {
+          setPickerError(
+            `Imported ${registered.length} repositories. ${failed.length} failed: ${failed
+              .map((f) => `${f.path} (${f.error})`)
+              .join('; ')}`
+          );
+        }
+      },
+      'Failed to scan directory for git repositories'
+    );
+  }, [
+    addRepo,
+    queryClient,
+    runPickerAction,
+    selectedRepoIds,
+    setTargetBranch,
+    t,
+  ]);
+
+  const handlePickProject = useCallback(async () => {
+    setPickerError(null);
+    setPendingAction('project');
+    try {
+      const list = (projects ?? (await projectsApi.list())).slice();
+      list.sort((a, b) => a.name.localeCompare(b.name));
+
+      const projectItems: RepoItem[] = list.map((p: Project) => ({
+        id: p.id,
+        display_name: p.name,
+      }));
+
+      const result = (await SelectionDialog.show({
+        initialPageId: 'selectRepo',
+        pages: buildRepoSelectionPages(projectItems) as Record<
+          string,
+          SelectionPage
+        >,
+      })) as RepoSelectionResult | undefined;
+
+      if (!result?.repoId) return;
+      setProjectId(result.repoId);
+    } catch (err) {
+      setPickerError(
+        err instanceof Error ? err.message : 'Failed to load projects'
+      );
+    } finally {
+      setPendingAction(null);
+    }
+  }, [projects, setProjectId]);
+
+  const handleClearProject = useCallback(() => {
+    setProjectId(null);
+  }, [setProjectId]);
+
+  const handleCreateProject = useCallback(async () => {
+    const name = window.prompt('New project name')?.trim();
+    if (!name) return;
+    setPickerError(null);
+    try {
+      const project = await projectsApi.create({ name });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setProjectId(project.id);
+    } catch (err) {
+      setPickerError(
+        err instanceof Error ? err.message : 'Failed to create project'
+      );
+    }
+  }, [queryClient, setProjectId]);
+
   const handleChangeBranch = useCallback(
     async (repo: Repo) => {
       setBranchRepoId(repo.id);
@@ -246,6 +413,84 @@ export function CreateModeRepoPickerBar({
   return (
     <div className="w-chat max-w-full">
       <div className="px-plusfifty py-base">
+        <div className="mb-base flex flex-col gap-half">
+          <div className="flex items-center gap-half">
+            <span className="text-xs uppercase tracking-wide text-low w-24 shrink-0">
+              项目
+            </span>
+            <div className="flex flex-1 flex-wrap items-center gap-half">
+              {selectedProject ? (
+                <>
+                  <span className="rounded-sm border border-border/60 px-half py-half text-sm text-normal">
+                    {selectedProject.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleClearProject}
+                    disabled={isBusy}
+                    className={cn(repoRowButtonClassName, 'hover:text-error')}
+                    title="清除关联项目"
+                    aria-label="Clear project"
+                  >
+                    <XIcon className="size-icon-2xs" weight="bold" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handlePickProject}
+                  disabled={isBusy}
+                  className={inlineControlButtonClassName}
+                >
+                  {pendingAction === 'project' ? (
+                    <SpinnerIcon className="size-icon-xs animate-spin" />
+                  ) : (
+                    <PlusIcon className="size-icon-xs" weight="bold" />
+                  )}
+                  <span>选择项目</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleCreateProject}
+                disabled={isBusy}
+                className={inlineControlButtonClassName}
+              >
+                <PlusIcon className="size-icon-xs" weight="bold" />
+                <span>新建项目</span>
+              </button>
+            </div>
+          </div>
+
+          <label className="flex items-center gap-half">
+            <span className="text-xs uppercase tracking-wide text-low w-24 shrink-0">
+              工作区名称
+            </span>
+            <input
+              type="text"
+              value={workspaceName}
+              onChange={(e) => setWorkspaceName(e.target.value)}
+              placeholder="留空则使用提示词第一行"
+              disabled={isBusy}
+              className="flex-1 rounded-sm border border-border/60 bg-transparent px-half py-half text-sm text-normal placeholder:text-low/70 focus:outline-none focus:ring-1 focus:ring-brand"
+            />
+          </label>
+
+          <label className="flex items-center gap-half">
+            <span className="text-xs uppercase tracking-wide text-low w-24 shrink-0">
+              工作区分支
+            </span>
+            <input
+              type="text"
+              value={workspaceBranch}
+              onChange={(e) => setWorkspaceBranch(e.target.value)}
+              placeholder="留空则按工作区名自动生成"
+              disabled={isBusy}
+              className="flex-1 rounded-sm border border-border/60 bg-transparent px-half py-half font-mono text-sm text-normal placeholder:text-low/70 focus:outline-none focus:ring-1 focus:ring-brand"
+            />
+          </label>
+        </div>
+
         {repos.length > 0 && (
           <div>
             <div className="rounded-sm border border-border/60">
@@ -346,6 +591,20 @@ export function CreateModeRepoPickerBar({
               <PlusIcon className="size-icon-xs" weight="bold" />
             )}
             <span>{t('createMode.repoPicker.actions.create')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleScanDirectory}
+            disabled={isBusy}
+            className={inlineControlButtonClassName}
+            title="扫描目录批量导入 git 仓库"
+          >
+            {pendingAction === 'scan' ? (
+              <SpinnerIcon className="size-icon-xs animate-spin" />
+            ) : (
+              <FolderSimpleIcon className="size-icon-xs" weight="bold" />
+            )}
+            <span>扫描目录</span>
           </button>
 
           <div className="ml-auto">

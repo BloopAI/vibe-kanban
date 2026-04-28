@@ -12,7 +12,7 @@ use deployment::Deployment;
 use git::{GitBranch, GitRemote};
 use git_host::{GitHostError, GitHostProvider, GitHostService, ProviderKind, PullRequestDetail};
 use serde::{Deserialize, Serialize};
-use services::services::file_search::SearchQuery;
+use services::services::{file_search::SearchQuery, filesystem::FilesystemError};
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -45,6 +45,43 @@ pub struct InitRepoRequest {
 #[derive(Debug, Deserialize, TS)]
 pub struct BatchRepoRequest {
     pub ids: Vec<Uuid>,
+}
+
+#[derive(Debug, Deserialize, TS)]
+pub struct ScanDirectoryRequest {
+    pub path: String,
+    /// Maximum directory depth to descend when scanning for `.git` folders.
+    /// Defaults to 3 if omitted.
+    #[ts(optional, type = "number | null")]
+    pub max_depth: Option<usize>,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct ScannedRepo {
+    pub name: String,
+    pub path: String,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct ScanDirectoryResponse {
+    pub repos: Vec<ScannedRepo>,
+}
+
+#[derive(Debug, Deserialize, TS)]
+pub struct BulkRegisterReposRequest {
+    pub paths: Vec<String>,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct BulkRegisterReposResponse {
+    pub registered: Vec<Repo>,
+    pub failed: Vec<BulkRegisterFailure>,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct BulkRegisterFailure {
+    pub path: String,
+    pub error: String,
 }
 
 pub async fn register_repo(
@@ -104,6 +141,72 @@ pub async fn get_repo_remotes(
 
     let remotes = deployment.git().list_remotes(&repo.path)?;
     Ok(ResponseJson(ApiResponse::success(remotes)))
+}
+
+pub async fn scan_directory_for_repos(
+    State(deployment): State<DeploymentImpl>,
+    ResponseJson(payload): ResponseJson<ScanDirectoryRequest>,
+) -> Result<ResponseJson<ApiResponse<ScanDirectoryResponse>>, ApiError> {
+    let trimmed = payload.path.trim();
+    if trimmed.is_empty() {
+        return Err(ApiError::BadRequest(
+            "Scan directory path is required".to_string(),
+        ));
+    }
+
+    let max_depth = payload.max_depth.or(Some(3));
+    let entries = deployment
+        .filesystem()
+        .list_git_repos(Some(trimmed.to_string()), 5_000, 10_000, max_depth)
+        .await
+        .map_err(|err| match err {
+            FilesystemError::DirectoryDoesNotExist => {
+                ApiError::BadRequest("Directory does not exist".to_string())
+            }
+            FilesystemError::PathIsNotDirectory => {
+                ApiError::BadRequest("Path is not a directory".to_string())
+            }
+            FilesystemError::Io(e) => ApiError::Io(e),
+        })?;
+
+    let repos = entries
+        .into_iter()
+        .filter(|entry| entry.is_git_repo)
+        .map(|entry| ScannedRepo {
+            name: entry.name,
+            path: entry.path.to_string_lossy().to_string(),
+        })
+        .collect();
+
+    Ok(ResponseJson(ApiResponse::success(ScanDirectoryResponse {
+        repos,
+    })))
+}
+
+pub async fn bulk_register_repos(
+    State(deployment): State<DeploymentImpl>,
+    ResponseJson(payload): ResponseJson<BulkRegisterReposRequest>,
+) -> Result<ResponseJson<ApiResponse<BulkRegisterReposResponse>>, ApiError> {
+    let mut registered = Vec::new();
+    let mut failed = Vec::new();
+
+    for path in payload.paths {
+        match deployment
+            .repo()
+            .register(&deployment.db().pool, &path, None)
+            .await
+        {
+            Ok(repo) => registered.push(repo),
+            Err(err) => failed.push(BulkRegisterFailure {
+                path,
+                error: err.to_string(),
+            }),
+        }
+    }
+
+    Ok(ResponseJson(ApiResponse::success(
+        BulkRegisterReposResponse { registered, failed },
+    )))
 }
 
 pub async fn get_repos_batch(
@@ -370,6 +473,8 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/repos", get(get_repos).post(register_repo))
         .route("/repos/recent", get(get_recent_repos))
         .route("/repos/init", post(init_repo))
+        .route("/repos/scan", post(scan_directory_for_repos))
+        .route("/repos/bulk-register", post(bulk_register_repos))
         .route("/repos/batch", post(get_repos_batch))
         .route(
             "/repos/{repo_id}",

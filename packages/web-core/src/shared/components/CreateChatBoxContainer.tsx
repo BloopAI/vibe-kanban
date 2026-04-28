@@ -56,6 +56,9 @@ export function CreateChatBoxContainer({
     setExecutorConfig: setDraftConfig,
     attachments: draftAttachments,
     setAttachments: setDraftAttachments,
+    projectId,
+    workspaceName,
+    workspaceBranch,
   } = useCreateMode();
 
   const { createWorkspace } = useCreateWorkspace();
@@ -226,9 +229,11 @@ export function CreateChatBoxContainer({
     if (!canSubmit || !executorConfig) return;
 
     const { title } = splitMessageToTitleDescription(message);
+    const trimmedName = workspaceName.trim();
+    const trimmedBranch = workspaceBranch.trim();
     const data = {
       executor_config: executorConfig,
-      name: title,
+      name: trimmedName.length > 0 ? trimmedName : title,
       prompt: message,
       repos: repos.map((r) => ({
         repo_id: r.id,
@@ -241,6 +246,8 @@ export function CreateChatBoxContainer({
           }
         : null,
       attachment_ids: getAttachmentIds(),
+      project_id: projectId,
+      branch: trimmedBranch.length > 0 ? trimmedBranch : null,
     };
     const linkToIssue = linkedIssue
       ? {
@@ -278,6 +285,9 @@ export function CreateChatBoxContainer({
     clearAttachments,
     clearDraft,
     linkedIssue,
+    projectId,
+    workspaceName,
+    workspaceBranch,
   ]);
 
   // Determine error to display

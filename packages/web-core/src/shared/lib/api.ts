@@ -89,6 +89,16 @@ import {
   CreateFromPrError,
   CreateAndStartWorkspaceRequest,
   CreateAndStartWorkspaceResponse,
+  Project,
+  CreateProject,
+  UpdateProject,
+  ProjectRepoInput,
+  ProjectRepoWithRepo,
+  SetProjectReposRequest,
+  ScanDirectoryRequest,
+  ScanDirectoryResponse,
+  BulkRegisterReposRequest,
+  BulkRegisterReposResponse,
   RelayPairedClient,
   ListRelayPairedClientsResponse,
   RemoveRelayPairedClientResponse,
@@ -963,6 +973,79 @@ export const repoApi = {
   listRemotes: async (repoId: string): Promise<GitRemote[]> => {
     const response = await makeRequest(`/api/repos/${repoId}/remotes`);
     return handleApiResponse<GitRemote[]>(response);
+  },
+
+  scanDirectory: async (
+    data: ScanDirectoryRequest
+  ): Promise<ScanDirectoryResponse> => {
+    const response = await makeRequest('/api/repos/scan', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ScanDirectoryResponse>(response);
+  },
+
+  bulkRegister: async (
+    data: BulkRegisterReposRequest
+  ): Promise<BulkRegisterReposResponse> => {
+    const response = await makeRequest('/api/repos/bulk-register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<BulkRegisterReposResponse>(response);
+  },
+};
+
+// Project APIs
+export const projectsApi = {
+  list: async (): Promise<Project[]> => {
+    const response = await makeRequest('/api/projects');
+    return handleApiResponse<Project[]>(response);
+  },
+
+  getById: async (projectId: string): Promise<Project> => {
+    const response = await makeRequest(`/api/projects/${projectId}`);
+    return handleApiResponse<Project>(response);
+  },
+
+  create: async (data: CreateProject): Promise<Project> => {
+    const response = await makeRequest('/api/projects', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Project>(response);
+  },
+
+  update: async (projectId: string, data: UpdateProject): Promise<Project> => {
+    const response = await makeRequest(`/api/projects/${projectId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Project>(response);
+  },
+
+  delete: async (projectId: string): Promise<void> => {
+    const response = await makeRequest(`/api/projects/${projectId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  listRepos: async (projectId: string): Promise<ProjectRepoWithRepo[]> => {
+    const response = await makeRequest(`/api/projects/${projectId}/repos`);
+    return handleApiResponse<ProjectRepoWithRepo[]>(response);
+  },
+
+  setRepos: async (
+    projectId: string,
+    repos: ProjectRepoInput[]
+  ): Promise<ProjectRepoWithRepo[]> => {
+    const body: SetProjectReposRequest = { repos };
+    const response = await makeRequest(`/api/projects/${projectId}/repos`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    return handleApiResponse<ProjectRepoWithRepo[]>(response);
   },
 };
 
