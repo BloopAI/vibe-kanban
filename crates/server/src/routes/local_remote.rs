@@ -35,6 +35,13 @@ const DEFAULT_STATUSES: [(&str, &str, i32, bool); 5] = [
     ("Cancelled", "0 0% 50%", 500, true),
 ];
 
+const DEFAULT_TAGS: [(&str, &str); 4] = [
+    ("bug", "355 65% 53%"),
+    ("feature", "124 82% 30%"),
+    ("documentation", "205 100% 40%"),
+    ("enhancement", "181 72% 78%"),
+];
+
 #[derive(Debug, Deserialize)]
 struct OrganizationQuery {
     organization_id: Option<Uuid>,
@@ -374,6 +381,7 @@ async fn create_local_project(
     .await?;
 
     ensure_default_statuses(pool, project_id).await?;
+    ensure_default_tags(pool, project_id).await?;
     get_local_project(pool, project_id).await
 }
 
@@ -788,6 +796,35 @@ async fn list_project_tags(pool: &SqlitePool, project_id: Uuid) -> Result<Vec<Ta
         .map(tag_from_row)
         .collect::<Result<Vec<_>, _>>()
         .map_err(ApiError::from)
+}
+
+async fn ensure_default_tags(pool: &SqlitePool, project_id: Uuid) -> Result<Vec<Tag>, ApiError> {
+    if !project_exists(pool, project_id).await? {
+        return Ok(Vec::new());
+    }
+
+    for (name, color) in DEFAULT_TAGS {
+        sqlx::query(
+            r#"
+            INSERT INTO local_tags (id, project_id, name, color)
+            SELECT ?, ?, ?, ?
+            WHERE NOT EXISTS (
+                SELECT 1 FROM local_tags
+                WHERE project_id = ? AND name = ?
+            )
+            "#,
+        )
+        .bind(Uuid::new_v4())
+        .bind(project_id)
+        .bind(name)
+        .bind(color)
+        .bind(project_id)
+        .bind(name)
+        .execute(pool)
+        .await?;
+    }
+
+    list_project_tags(pool, project_id).await
 }
 
 async fn get_local_tag(pool: &SqlitePool, tag_id: Uuid) -> Result<Tag, ApiError> {
@@ -1718,7 +1755,7 @@ async fn delete_issue_comment_reaction(
 
 #[cfg(test)]
 mod tests {
-    use api_types::{CreateIssueRequest, IssuePriority};
+    use api_types::{CreateIssueRequest, CreateProjectRequest, IssuePriority};
     use serde_json::Value;
     use sqlx::{SqlitePool, sqlite::SqlitePoolOptions};
     use uuid::Uuid;
@@ -1735,6 +1772,16 @@ mod tests {
             CREATE TABLE projects (
                 id BLOB PRIMARY KEY,
                 name TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now', 'subsec')),
+                updated_at TEXT NOT NULL DEFAULT (datetime('now', 'subsec'))
+            )
+            "#,
+            r#"
+            CREATE TABLE local_project_metadata (
+                project_id BLOB PRIMARY KEY,
+                organization_id BLOB NOT NULL,
+                color TEXT NOT NULL DEFAULT '210 80% 52%',
+                sort_order INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT (datetime('now', 'subsec')),
                 updated_at TEXT NOT NULL DEFAULT (datetime('now', 'subsec'))
             )
@@ -1770,6 +1817,14 @@ mod tests {
                 creator_user_id BLOB,
                 created_at TEXT NOT NULL DEFAULT (datetime('now', 'subsec')),
                 updated_at TEXT NOT NULL DEFAULT (datetime('now', 'subsec'))
+            )
+            "#,
+            r#"
+            CREATE TABLE local_tags (
+                id BLOB PRIMARY KEY,
+                project_id BLOB NOT NULL,
+                name TEXT NOT NULL,
+                color TEXT NOT NULL
             )
             "#,
         ] {
@@ -1829,5 +1884,32 @@ mod tests {
         assert_eq!(issue.simple_id, "LOCAL-1");
         assert_eq!(issue.title, "First local issue");
         assert_eq!(issue.priority, Some(IssuePriority::High));
+    }
+
+    #[tokio::test]
+    async fn local_project_create_seeds_default_tags() {
+        let pool = setup_pool().await;
+
+        let project = super::create_local_project(
+            &pool,
+            CreateProjectRequest {
+                id: None,
+                organization_id: super::local_org_id(),
+                name: "Tagged Project".to_string(),
+                color: "210 80% 52%".to_string(),
+            },
+        )
+        .await
+        .expect("create local project");
+
+        let tags = super::list_project_tags(&pool, project.id)
+            .await
+            .expect("list default tags");
+
+        let tag_names: Vec<_> = tags.iter().map(|tag| tag.name.as_str()).collect();
+        assert_eq!(
+            tag_names,
+            vec!["bug", "documentation", "enhancement", "feature"]
+        );
     }
 }
