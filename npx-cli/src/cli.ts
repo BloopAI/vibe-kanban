@@ -206,7 +206,7 @@ function checkForUpdates(): void {
       if (latest && latest !== CLI_VERSION) {
         setTimeout(() => {
           console.log(`\nUpdate available: ${CLI_VERSION} -> ${latest}`);
-          console.log(`Run: npx vibe-kanban@latest`);
+          console.log(`Run: npx easy-vibe-kanban@latest`);
         }, 2000);
       }
     })
@@ -307,7 +307,7 @@ function runOrExit(task: Promise<void>): void {
 
 async function main(): Promise<void> {
   fs.mkdirSync(versionCacheDir, { recursive: true });
-  const cli = cac("vibe-kanban");
+  const cli = cac("easy-vibe-kanban");
 
   cli
     .command("[...args]", "Launch the local vibe-kanban app")

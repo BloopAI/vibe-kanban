@@ -1,4 +1,4 @@
-name: Build Toby NPX Windows Package
+name: Build Easy NPX Windows Package
 
 on:
   workflow_dispatch:
@@ -98,7 +98,7 @@ jobs:
       - name: Upload local install artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: toby-vibe-kanban-windows-x64-npx
+          name: easy-vibe-kanban-windows-x64-npx
           path: |
             npx-cli/*.tgz
             npx-cli/dist/windows-x64/*.zip

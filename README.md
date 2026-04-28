@@ -10,7 +10,7 @@
 
 <p align="center">Get 10X more out of Claude Code, Gemini CLI, Codex, Amp and other coding agents...</p>
 <p align="center">
-  <a href="https://www.npmjs.com/package/vibe-kanban"><img alt="npm" src="https://img.shields.io/npm/v/vibe-kanban?style=flat-square" /></a>
+  <a href="https://www.npmjs.com/package/easy-vibe-kanban"><img alt="npm" src="https://img.shields.io/npm/v/easy-vibe-kanban?style=flat-square" /></a>
   <a href="https://github.com/BloopAI/vibe-kanban/blob/main/.github/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/BloopAI/vibe-kanban/.github%2Fworkflows%2Fpublish.yml" /></a>
   <a href="https://deepwiki.com/BloopAI/vibe-kanban"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
@@ -40,7 +40,7 @@ Vibe Kanban is built for this. Use kanban issues to plan work, either privately 
 One command. Describe the work, review the diff, ship it.
 
 ```bash
-npx vibe-kanban
+npx easy-vibe-kanban
 ```
 
 
@@ -49,7 +49,7 @@ npx vibe-kanban
 Make sure you have authenticated with your favourite coding agent. A full list of supported coding agents can be found in the [docs](https://vibekanban.com/docs/supported-coding-agents). Then in your terminal run:
 
 ```bash
-npx vibe-kanban
+npx easy-vibe-kanban
 ```
 
 ## Documentation
