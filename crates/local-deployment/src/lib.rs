@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use api_types::LoginStatus;
+use api_types::{LoginStatus, ProfileResponse};
 use async_trait::async_trait;
 use client_info::ClientInfo;
 use db::DBService;
@@ -28,7 +28,7 @@ use services::services::{
     oauth_credentials::OAuthCredentials,
     pr_monitor::PrMonitorService,
     queued_message::QueuedMessageService,
-    remote_client::{RemoteClient, RemoteClientError},
+    remote_client::RemoteClient,
     repo::RepoService,
 };
 use tokio::sync::{Notify, RwLock};
@@ -402,52 +402,40 @@ impl LocalDeployment {
         self.remote_client.clone()
     }
 
-    pub async fn get_login_status(&self) -> LoginStatus {
-        if self.auth_context.get_credentials().await.is_none() {
-            self.auth_context.clear_profile().await;
-            self.auth_context.clear_remote_auth_degraded_slug().await;
-            return LoginStatus::LoggedOut;
-        };
-
-        if let Some(cached_profile) = self.auth_context.cached_profile().await {
-            return LoginStatus::LoggedIn {
-                profile: Some(cached_profile),
-            };
+    /// Build a synthetic profile for the always-on local user.
+    ///
+    /// This deployment has been forked for personal/single-user use, so we
+    /// skip remote authentication entirely and pretend the user is signed in
+    /// with a stable local identity derived from the machine's user_id.
+    fn local_profile(&self) -> ProfileResponse {
+        // Stable per-machine UUID derived from the analytics user_id via a
+        // SHA-256 hash. Avoids needing the uuid `v5` cargo feature.
+        use sha2::{Digest, Sha256};
+        let digest = Sha256::digest(self.user_id.as_bytes());
+        let mut bytes = [0u8; 16];
+        bytes.copy_from_slice(&digest[..16]);
+        let user_id = Uuid::from_bytes(bytes);
+        ProfileResponse {
+            user_id,
+            username: Some("local".to_string()),
+            email: "local@vibe-kanban.local".to_string(),
+            providers: Vec::new(),
         }
+    }
 
-        let Ok(client) = self.remote_client() else {
-            return LoginStatus::LoggedOut;
+    pub async fn get_login_status(&self) -> LoginStatus {
+        // Local-only deployment: always logged in as the synthetic local user,
+        // regardless of stored credentials or remote service availability.
+        let profile = match self.auth_context.cached_profile().await {
+            Some(p) => p,
+            None => {
+                let p = self.local_profile();
+                self.auth_context.set_profile(p.clone()).await;
+                p
+            }
         };
-
-        match client.profile().await {
-            Ok(profile) => {
-                self.auth_context.clear_remote_auth_degraded_slug().await;
-                self.auth_context.set_profile(profile.clone()).await;
-                LoginStatus::LoggedIn {
-                    profile: Some(profile),
-                }
-            }
-            Err(RemoteClientError::Auth) => {
-                let _ = self.auth_context.clear_credentials().await;
-                self.auth_context.clear_profile().await;
-                self.auth_context.clear_remote_auth_degraded_slug().await;
-                LoginStatus::LoggedOut
-            }
-            Err(err) => {
-                if self.auth_context.get_credentials().await.is_none() {
-                    self.auth_context.clear_profile().await;
-                    self.auth_context.clear_remote_auth_degraded_slug().await;
-                    return LoginStatus::LoggedOut;
-                }
-
-                self.auth_context
-                    .set_remote_auth_degraded_slug(
-                        err.degraded_slug()
-                            .unwrap_or_else(RemoteClientError::generic_degraded_slug),
-                    )
-                    .await;
-                LoginStatus::LoggedIn { profile: None }
-            }
+        LoginStatus::LoggedIn {
+            profile: Some(profile),
         }
     }
 

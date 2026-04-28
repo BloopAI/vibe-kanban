@@ -10,7 +10,6 @@ import { CrashScreen } from '@vibe/ui/components/CrashScreen';
 import '@/i18n';
 import { router } from '@web/app/router';
 import { oauthApi } from '@/shared/lib/api';
-import { tokenManager } from '@/shared/lib/auth/tokenManager';
 import { configureAuthRuntime } from '@/shared/lib/auth/runtime';
 import '@/shared/types/modals';
 import { queryClient } from '@/shared/lib/queryClient';
@@ -77,10 +76,14 @@ if (isTauriApp()) {
   document.addEventListener('gesturechange', (e) => e.preventDefault());
 }
 
+// Local-only deployment: no remote auth, so we wire a no-op token runtime.
+// Anything that needs a remote bearer token gets `null` and skips the call,
+// avoiding the "remote auth degraded" banner that the real tokenManager would
+// trigger when /auth/token returns nothing.
 configureAuthRuntime({
-  getToken: () => tokenManager.getToken(),
-  triggerRefresh: () => tokenManager.triggerRefresh(),
-  registerShape: (shape) => tokenManager.registerShape(shape),
+  getToken: async () => null,
+  triggerRefresh: async () => null,
+  registerShape: () => () => {},
   getCurrentUser: () => oauthApi.getCurrentUser(),
 });
 
