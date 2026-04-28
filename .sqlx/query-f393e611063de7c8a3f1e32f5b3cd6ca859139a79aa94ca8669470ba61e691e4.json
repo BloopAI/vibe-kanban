@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO pull_requests (id, workspace_id, repo_id, pr_url, pr_number, pr_status, target_branch_name, created_at)\n            VALUES (?, ?, ?, ?, ?, 'open', ?, ?)\n            ON CONFLICT(pr_url) DO UPDATE SET\n                workspace_id = COALESCE(pull_requests.workspace_id, excluded.workspace_id),\n                repo_id = COALESCE(pull_requests.repo_id, excluded.repo_id),\n                updated_at = CURRENT_TIMESTAMP",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "f393e611063de7c8a3f1e32f5b3cd6ca859139a79aa94ca8669470ba61e691e4"
+}

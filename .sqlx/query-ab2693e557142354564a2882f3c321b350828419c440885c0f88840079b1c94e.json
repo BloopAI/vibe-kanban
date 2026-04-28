@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE coding_agent_turns\n               SET seen = 1, updated_at = $1\n               WHERE execution_process_id IN (\n                   SELECT ep.id FROM execution_processes ep\n                   JOIN sessions s ON ep.session_id = s.id\n                   WHERE s.workspace_id = $2\n               ) AND seen = 0",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "ab2693e557142354564a2882f3c321b350828419c440885c0f88840079b1c94e"
+}

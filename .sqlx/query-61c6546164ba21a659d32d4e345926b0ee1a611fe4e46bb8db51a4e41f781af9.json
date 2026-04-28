@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE coding_agent_turns\n               SET summary = $1, updated_at = $2\n               WHERE execution_process_id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "61c6546164ba21a659d32d4e345926b0ee1a611fe4e46bb8db51a4e41f781af9"
+}

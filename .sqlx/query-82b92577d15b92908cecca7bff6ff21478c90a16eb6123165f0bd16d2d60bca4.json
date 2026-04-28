@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT DISTINCT s.workspace_id as \"workspace_id!: Uuid\"\n               FROM coding_agent_turns cat\n               JOIN execution_processes ep ON cat.execution_process_id = ep.id\n               JOIN sessions s ON ep.session_id = s.id\n               JOIN workspaces w ON s.workspace_id = w.id\n               WHERE cat.seen = 0 AND w.archived = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "workspace_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "82b92577d15b92908cecca7bff6ff21478c90a16eb6123165f0bd16d2d60bca4"
+}
