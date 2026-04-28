@@ -1,11 +1,25 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import { useJsonPatchWsStream } from '@/shared/hooks/useJsonPatchWsStream';
 import { useHostId } from '@/shared/providers/HostIdProvider';
-import type { ExecutionProcess } from 'shared/types';
+import { executionProcessesApi } from '@/shared/lib/api';
+import { ExecutionProcessStatus, type ExecutionProcess } from 'shared/types';
 
 type ExecutionProcessState = {
   execution_processes: Record<string, ExecutionProcess>;
 };
+
+const RUNNING_PROCESS_RECONCILE_INTERVAL_MS = 3000;
+
+function isBlockingRunningProcess(process: ExecutionProcess): boolean {
+  return (
+    (process.run_reason === 'codingagent' ||
+      process.run_reason === 'setupscript' ||
+      process.run_reason === 'cleanupscript' ||
+      process.run_reason === 'archivescript') &&
+    process.status === ExecutionProcessStatus.running
+  );
+}
 
 interface UseExecutionProcessesResult {
   executionProcesses: ExecutionProcess[];
@@ -60,11 +74,64 @@ export const useExecutionProcesses = (
   );
 
   // Guard against stale buffered stream data when switching sessions quickly.
-  const executionProcesses = sessionId
+  const scopedExecutionProcesses = sessionId
     ? streamedExecutionProcesses.filter(
         (executionProcess) => executionProcess.session_id === sessionId
       )
     : streamedExecutionProcesses;
+
+  const runningProcessIds = useMemo(
+    () =>
+      scopedExecutionProcesses
+        .filter(isBlockingRunningProcess)
+        .map((process) => process.id)
+        .sort(),
+    [scopedExecutionProcesses]
+  );
+
+  const runningProcessDetailQueries = useQueries({
+    queries: runningProcessIds.map((processId) => ({
+      queryKey: ['executionProcess', processId, 'running-reconcile', hostId],
+      queryFn: () => executionProcessesApi.getDetails(processId),
+      enabled: !!sessionId,
+      staleTime: 0,
+      refetchInterval: RUNNING_PROCESS_RECONCILE_INTERVAL_MS,
+      refetchIntervalInBackground: false,
+      refetchOnWindowFocus: true,
+    })),
+  });
+
+  const executionProcesses = useMemo(() => {
+    if (!runningProcessDetailQueries.length) {
+      return scopedExecutionProcesses;
+    }
+
+    const detailById = new Map<string, ExecutionProcess>();
+    for (const query of runningProcessDetailQueries) {
+      const process = query.data;
+      if (!process || (sessionId && process.session_id !== sessionId)) {
+        continue;
+      }
+      detailById.set(process.id, process);
+    }
+
+    if (detailById.size === 0) {
+      return scopedExecutionProcesses;
+    }
+
+    return scopedExecutionProcesses.map((process) => {
+      if (!isBlockingRunningProcess(process)) {
+        return process;
+      }
+
+      const detail = detailById.get(process.id);
+      if (!detail) {
+        return process;
+      }
+
+      return detail;
+    });
+  }, [scopedExecutionProcesses, runningProcessDetailQueries, sessionId]);
 
   const executionProcessesById = executionProcesses.reduce<
     Record<string, ExecutionProcess>
