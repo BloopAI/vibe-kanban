@@ -355,6 +355,7 @@ export function KanbanIssuePanelContainer({
   }, [displayData.assigneeIds, membersWithProfilesById]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Save status for description (shown in WYSIWYG toolbar)
   const [descriptionSaveStatus, setDescriptionSaveStatus] = useState<
@@ -656,6 +657,8 @@ export function KanbanIssuePanelContainer({
       field: K,
       value: IssueFormData[K]
     ) => {
+      setSubmitError(null);
+
       // Create mode: update in-panel form state and composer draft.
       if (kanbanCreateMode) {
         // For statusId, open the status selection dialog with callback
@@ -818,6 +821,7 @@ export function KanbanIssuePanelContainer({
   const handleSubmit = useCallback(async () => {
     if (!displayData.title.trim() || hasPendingAttachments) return;
 
+    setSubmitError(null);
     setIsSubmitting(true);
     try {
       if (mode === 'create') {
@@ -941,6 +945,9 @@ export function KanbanIssuePanelContainer({
       }
     } catch (error) {
       console.error('Failed to save issue:', error);
+      setSubmitError(
+        error instanceof Error ? error.message : 'Failed to save issue'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -965,6 +972,10 @@ export function KanbanIssuePanelContainer({
     onExpectIssueOpen,
     t,
   ]);
+
+  useEffect(() => {
+    setSubmitError(null);
+  }, [mode, selectedKanbanIssueId, projectId]);
 
   const handleCmdEnterSubmit = useCallback(() => {
     if (mode !== 'create') return;
@@ -1077,6 +1088,8 @@ export function KanbanIssuePanelContainer({
         />
       )}
       isSubmitting={isSubmitting}
+      submitError={submitError}
+      onDismissSubmitError={() => setSubmitError(null)}
       descriptionSaveStatus={
         mode === 'edit' ? descriptionSaveStatus : undefined
       }

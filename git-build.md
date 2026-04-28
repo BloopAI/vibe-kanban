@@ -9,7 +9,7 @@
 当前 fork 版本：
 
 ```text
-0.1.44-toby.2
+0.1.44-toby.3
 ```
 
 版本规则使用 `-toby` 后缀：
@@ -89,7 +89,7 @@ Project functionality has been retired
 
 下载后的 artifact 中应包含：
 
-- `toby-vibe-kanban-0.1.44-toby.2.tgz`
+- `toby-vibe-kanban-0.1.44-toby.3.tgz`
 - `dist/windows-x64/vibe-kanban.zip`
 - `dist/windows-x64/vibe-kanban-mcp.zip`
 - `dist/windows-x64/vibe-kanban-review.zip`
@@ -102,14 +102,14 @@ Project functionality has been retired
 
 ```powershell
 cd .\toby-vibe-kanban-windows-x64-npx
-Get-Item .\toby-vibe-kanban-0.1.44-toby.2.tgz
+Get-Item .\toby-vibe-kanban-0.1.44-toby.3.tgz
 ```
 
 运行：
 
 ```powershell
 node -v
-$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.2.tgz
+$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.3.tgz
 npx --yes --package "$pkg" vibe-kanban
 ```
 
@@ -132,14 +132,14 @@ Invoke-RestMethod http://127.0.0.1:<端口>/api/info | Select-Object -ExpandProp
 如果从仓库根目录直接运行：
 
 ```powershell
-$pkg = Resolve-Path .\toby-vibe-kanban-windows-x64-npx\toby-vibe-kanban-0.1.44-toby.2.tgz
+$pkg = Resolve-Path .\toby-vibe-kanban-windows-x64-npx\toby-vibe-kanban-0.1.44-toby.3.tgz
 npx --yes --package "$pkg" vibe-kanban
 ```
 
 全局安装：
 
 ```powershell
-$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.2.tgz
+$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.3.tgz
 npm install -g "$pkg"
 vibe-kanban
 ```
@@ -168,7 +168,7 @@ Expand-Archive .\dist\windows-x64\vibe-kanban.zip -DestinationPath .\vk-bin -For
 ```powershell
 $env:RUST_LOG = "debug"
 $env:VIBE_KANBAN_DEBUG = "1"
-$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.2.tgz
+$pkg = Resolve-Path .\toby-vibe-kanban-0.1.44-toby.3.tgz
 npx --yes --package "$pkg" vibe-kanban
 ```
 
@@ -207,7 +207,7 @@ $env:APPDATA\bloop\vibe-kanban\data
 
 ```powershell
 npm login
-npm publish .\toby-vibe-kanban-0.1.44-toby.2.tgz --access public
+npm publish .\toby-vibe-kanban-0.1.44-toby.3.tgz --access public
 ```
 
 发布成功后，用户可以运行：

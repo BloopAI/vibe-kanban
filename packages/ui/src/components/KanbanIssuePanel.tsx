@@ -123,6 +123,8 @@ export interface KanbanIssuePanelProps {
 
   // Loading states
   isSubmitting?: boolean;
+  submitError?: string | null;
+  onDismissSubmitError?: () => void;
 
   // Save status for description field
   descriptionSaveStatus?: 'idle' | 'saved';
@@ -179,6 +181,8 @@ export function KanbanIssuePanel({
   renderAddTagControl,
   renderDescriptionEditor,
   isSubmitting,
+  submitError,
+  onDismissSubmitError,
   descriptionSaveStatus,
   titleInputRef,
   onCopyLink,
@@ -502,24 +506,34 @@ export function KanbanIssuePanel({
 
         {/* Create Issue Button (Create mode only) */}
         {isCreateMode && (
-          <div className="px-base pb-base flex items-center gap-half">
-            <PrimaryButton
-              value={t('kanban.createIssue')}
-              onClick={onSubmit}
-              disabled={isSubmitting || isUploading || !formData.title.trim()}
-              actionIcon={isSubmitting ? 'spinner' : undefined}
-              variant="default"
-            />
-            {onDeleteDraft && (
-              <IconButton
-                icon={TrashIcon}
-                onClick={onDeleteDraft}
-                disabled={isSubmitting}
-                aria-label="Delete draft"
-                title="Delete draft"
-                className="hover:text-error hover:bg-error/10"
+          <div className="px-base pb-base">
+            {submitError && (
+              <ErrorAlert
+                message={submitError}
+                className="mb-base"
+                onDismiss={onDismissSubmitError}
+                dismissLabel={t('buttons.close')}
               />
             )}
+            <div className="flex items-center gap-half">
+              <PrimaryButton
+                value={t('kanban.createIssue')}
+                onClick={onSubmit}
+                disabled={isSubmitting || isUploading || !formData.title.trim()}
+                actionIcon={isSubmitting ? 'spinner' : undefined}
+                variant="default"
+              />
+              {onDeleteDraft && (
+                <IconButton
+                  icon={TrashIcon}
+                  onClick={onDeleteDraft}
+                  disabled={isSubmitting}
+                  aria-label="Delete draft"
+                  title="Delete draft"
+                  className="hover:text-error hover:bg-error/10"
+                />
+              )}
+            </div>
           </div>
         )}
 

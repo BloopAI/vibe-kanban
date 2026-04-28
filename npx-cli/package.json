@@ -1,7 +1,7 @@
 {
   "name": "@toby/vibe-kanban",
   "private": false,
-  "version": "0.1.44-toby.2",
+  "version": "0.1.44-toby.3",
   "main": "index.js",
   "bin": {
     "vibe-kanban": "bin/cli.js"
