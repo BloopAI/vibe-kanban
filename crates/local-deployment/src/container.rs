@@ -854,9 +854,15 @@ impl LocalContainerService {
         format!("{}-{}", short_uuid(workspace_id), task_title_id)
     }
 
-    async fn track_child_msgs_in_store(&self, id: Uuid, child: &mut AsyncGroupChild) {
-        let store = Arc::new(MsgStore::new());
-
+    async fn track_child_msgs_in_store(
+        &self,
+        id: Uuid,
+        child: &mut AsyncGroupChild,
+    ) -> Result<(), ContainerError> {
+        let store = self
+            .get_msg_store_by_id(&id)
+            .await
+            .ok_or_else(|| ContainerError::Other(anyhow!("MsgStore not found for execution")))?;
         let out = child.inner().stdout.take().expect("no stdout");
         let err = child.inner().stderr.take().expect("no stderr");
 
@@ -873,9 +879,7 @@ impl LocalContainerService {
         // Merge and forward into the store
         let merged = select(out, err); // Stream<Item = Result<LogMsg, io::Error>>
         store.clone().spawn_forwarder(merged);
-
-        let mut map = self.msg_stores().write().await;
-        map.insert(id, store);
+        Ok(())
     }
 
     /// Create a live diff log stream for ongoing attempts for WebSocket
@@ -1374,8 +1378,13 @@ impl ContainerService for LocalContainerService {
             ))
         })??;
 
-        self.track_child_msgs_in_store(execution_process.id, &mut spawned.child)
-            .await;
+        if let Err(e) = self
+            .track_child_msgs_in_store(execution_process.id, &mut spawned.child)
+            .await
+        {
+            let _ = command::kill_process_group(&mut spawned.child).await;
+            return Err(e);
+        }
 
         self.add_child_to_store(execution_process.id, spawned.child)
             .await;

@@ -31,7 +31,7 @@ env:
 
 jobs:
   bump-version:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     outputs:
       new_tag: ${{ steps.version.outputs.new_tag }}
       new_version: ${{ steps.version.outputs.new_version }}
@@ -162,7 +162,7 @@ jobs:
 
   build-frontend:
     needs: bump-version
-    runs-on: blacksmith-16vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     env:
       VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY: ${{ secrets.PUBLIC_REACT_VIRTUOSO_LICENSE_KEY }}
       VITE_VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
@@ -218,13 +218,13 @@ jobs:
       matrix:
         include:
           - target: x86_64-unknown-linux-musl
-            os: blacksmith-16vcpu-ubuntu-2404
+            os: ubuntu-24.04
             name: linux-x64
           - target: aarch64-unknown-linux-musl
-            os: blacksmith-16vcpu-ubuntu-2404-arm
+            os: ubuntu-24.04-arm
             name: linux-arm64
           - target: x86_64-pc-windows-msvc
-            os: blacksmith-16vcpu-ubuntu-2404
+            os: ubuntu-24.04
             name: windows-x64
           - target: x86_64-apple-darwin
             os: macos-15-xlarge
@@ -233,7 +233,7 @@ jobs:
             os: macos-15-xlarge
             name: macos-arm64
           - target: aarch64-pc-windows-msvc
-            os: blacksmith-16vcpu-ubuntu-2404
+            os: ubuntu-24.04
             name: windows-arm64
     env:
       CARGO_INCREMENTAL: "0"
@@ -515,7 +515,7 @@ jobs:
 
   package-npx-cli:
     needs: [bump-version, build-frontend, build-backend]
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     strategy:
       # NOTE: This matrix must be kept in sync with build-backend job above
       # GitHub Actions doesn't support YAML anchors, so duplication is unavoidable
@@ -607,7 +607,7 @@ jobs:
 
   upload-to-r2:
     needs: [bump-version, package-npx-cli]
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
         with:
@@ -715,16 +715,16 @@ jobs:
             os: macos-15-xlarge
             platform: darwin-x86_64
           - target: x86_64-unknown-linux-gnu
-            os: blacksmith-16vcpu-ubuntu-2404
+            os: ubuntu-24.04
             platform: linux-x86_64
           - target: aarch64-unknown-linux-gnu
-            os: blacksmith-16vcpu-ubuntu-2404-arm
+            os: ubuntu-24.04-arm
             platform: linux-aarch64
           - target: x86_64-pc-windows-msvc
-            os: blacksmith-16vcpu-ubuntu-2404
+            os: ubuntu-24.04
             platform: windows-x86_64
           - target: aarch64-pc-windows-msvc
-            os: blacksmith-16vcpu-ubuntu-2404
+            os: ubuntu-24.04
             platform: windows-aarch64
     env:
       CARGO_INCREMENTAL: "0"
@@ -1011,7 +1011,7 @@ jobs:
 
   upload-tauri-update:
     needs: [bump-version, build-tauri]
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1098,7 +1098,7 @@ jobs:
 
   create-prerelease:
     needs: [bump-version, build-frontend, upload-to-r2, upload-tauri-update]
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
         with:

@@ -2,7 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DropResult } from '@hello-pangea/dnd';
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
 import { siDiscord, siGithub } from 'simple-icons';
-import { XIcon, PlusIcon, LayoutIcon, KanbanIcon } from '@phosphor-icons/react';
+import {
+  XIcon,
+  PlusIcon,
+  LayoutIcon,
+  KanbanIcon,
+  DownloadSimpleIcon,
+} from '@phosphor-icons/react';
 import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
 import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
@@ -25,12 +31,9 @@ import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestinatio
 import {
   getDestinationHostId,
   getProjectDestination,
+  isProjectDestination,
   isLocalWorkspacesDestination,
 } from '@/shared/lib/routes/appNavigation';
-import {
-  CreateOrganizationDialog,
-  type CreateOrganizationResult,
-} from '@/shared/dialogs/org/CreateOrganizationDialog';
 import {
   CreateRemoteProjectDialog,
   type CreateRemoteProjectResult,
@@ -51,11 +54,11 @@ import { AppBarNotificationBellContainer } from '@/pages/workspaces/AppBarNotifi
 import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebarContainer';
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
 import { useRemoteCloudHostsAppBarModel } from '@/shared/hooks/useRemoteCloudHosts';
+import { CloudShutdownExportBanner } from '@/shared/components/CloudShutdownExportBanner';
 
 export function SharedAppLayout() {
   const appNavigation = useAppNavigation();
   const currentDestination = useCurrentAppDestination();
-  const isMigrateRoute = currentDestination?.kind === 'migrate';
   const isMobile = useIsMobile();
   const mobileFontScale = useUiPreferencesStore((s) => s.mobileFontScale);
   const isLeftSidebarVisible = useUiPreferencesStore(
@@ -146,12 +149,6 @@ export function SharedAppLayout() {
 
   // Navigate to the first ordered project when org changes
   useEffect(() => {
-    // Skip auto-navigation when on migration flow
-    if (isMigrateRoute) {
-      prevOrgIdRef.current = selectedOrgId;
-      return;
-    }
-
     if (
       prevOrgIdRef.current !== null &&
       prevOrgIdRef.current !== selectedOrgId &&
@@ -167,7 +164,7 @@ export function SharedAppLayout() {
     } else if (prevOrgIdRef.current === null && selectedOrgId) {
       prevOrgIdRef.current = selectedOrgId;
     }
-  }, [selectedOrgId, sortedProjects, isLoading, isMigrateRoute, appNavigation]);
+  }, [selectedOrgId, sortedProjects, isLoading, appNavigation]);
 
   // Navigation state for AppBar active indicators
   const projectDestination = useMemo(
@@ -175,6 +172,9 @@ export function SharedAppLayout() {
     [currentDestination]
   );
   const isWorkspacesActive = isLocalWorkspacesDestination(currentDestination);
+  const isExportActive = currentDestination?.kind === 'export';
+  const showCloudShutdownBanner =
+    isExportActive || (isSignedIn && isProjectDestination(currentDestination));
   const isWorkspaceSidebarPreviewEnabled =
     !isMobile && isWorkspacesActive && !isLeftSidebarVisible;
   const activeProjectId = projectDestination?.projectId ?? null;
@@ -198,6 +198,10 @@ export function SharedAppLayout() {
   const handleWorkspacesClick = useCallback(() => {
     void navigate({ to: '/workspaces' });
   }, [navigate]);
+
+  const handleExportClick = useCallback(() => {
+    appNavigation.goToExport();
+  }, [appNavigation]);
 
   const handleProjectClick = useCallback(
     (projectId: string) => {
@@ -244,19 +248,6 @@ export function SharedAppLayout() {
     [isSavingProjectOrder, orderedProjects, updateManyProjects]
   );
 
-  const handleCreateOrg = useCallback(async () => {
-    try {
-      const result: CreateOrganizationResult =
-        await CreateOrganizationDialog.show();
-
-      if (result.action === 'created' && result.organizationId) {
-        setSelectedOrgId(result.organizationId);
-      }
-    } catch {
-      // Dialog cancelled
-    }
-  }, [setSelectedOrgId]);
-
   const handleCreateProject = useCallback(async () => {
     if (!selectedOrgId) return;
 
@@ -279,21 +270,6 @@ export function SharedAppLayout() {
       // Dialog cancelled
     }
   }, []);
-
-  const handleMigrate = useCallback(async () => {
-    if (!isSignedIn) {
-      try {
-        const didSignIn = await OAuthDialog.show({});
-        if (didSignIn) {
-          appNavigation.goToMigrate();
-        }
-      } catch {
-        // Dialog cancelled
-      }
-    } else {
-      appNavigation.goToMigrate();
-    }
-  }, [isSignedIn, appNavigation]);
 
   const openRelaySettings = useCallback((hostId?: string) => {
     void SettingsDialog.show({
@@ -327,31 +303,39 @@ export function SharedAppLayout() {
           'bg-primary',
           isMobile
             ? 'flex fixed inset-0 pb-[env(safe-area-inset-bottom)]'
-            : !isMigrateRoute
-              ? 'grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] h-screen'
-              : 'flex h-screen'
+            : cn(
+                'grid grid-cols-[auto_1fr] h-screen',
+                showCloudShutdownBanner
+                  ? 'grid-rows-[auto_auto_1fr]'
+                  : 'grid-rows-[auto_1fr]'
+              )
         )}
       >
-        {!isMobile && !isMigrateRoute && (
+        {!isMobile && (
           <>
-            {/* Row 1, col 1: corner spacer — seamless with AppBar bg */}
+            {showCloudShutdownBanner && (
+              <div className="col-span-2">
+                <CloudShutdownExportBanner onClick={handleExportClick} />
+              </div>
+            )}
+            {/* Desktop corner spacer. */}
             <div
               data-tauri-drag-region
               className="bg-secondary"
               style={isTauriMac() ? { minWidth: 56 } : undefined}
             />
-            {/* Row 1, col 2: Navbar stretches full width */}
+            {/* Desktop navbar. */}
             <NavbarContainer
-              onCreateOrg={handleCreateOrg}
               onOrgSelect={setSelectedOrgId}
               onOpenDrawer={() => setIsDrawerOpen(true)}
             />
-            {/* Row 2, col 1: AppBar sidebar */}
+            {/* Desktop AppBar sidebar. */}
             <AppBar
               projects={orderedProjects}
               hosts={remoteCloudHosts}
               activeHostId={activeHostId}
               onCreateProject={handleCreateProject}
+              onExportClick={handleExportClick}
               onWorkspacesClick={handleWorkspacesClick}
               onHostClick={handleHostClick}
               onPairHostClick={handlePairHostClick}
@@ -359,11 +343,11 @@ export function SharedAppLayout() {
               onProjectsDragEnd={handleProjectsDragEnd}
               isSavingProjectOrder={isSavingProjectOrder}
               isWorkspacesActive={isWorkspacesActive}
+              isExportActive={isExportActive}
               activeProjectId={activeProjectId}
               isSignedIn={isSignedIn}
               isLoadingProjects={isLoading}
               onSignIn={handleSignIn}
-              onMigrate={handleMigrate}
               onHoverStart={() => setIsAppBarHovered(true)}
               onHoverEnd={() => setIsAppBarHovered(false)}
               notificationBell={
@@ -374,7 +358,6 @@ export function SharedAppLayout() {
                   organizations={organizations}
                   selectedOrgId={selectedOrgId ?? ''}
                   onOrgSelect={setSelectedOrgId}
-                  onCreateOrg={handleCreateOrg}
                 />
               }
               starCount={starCount}
@@ -385,7 +368,7 @@ export function SharedAppLayout() {
               githubIconPath={siGithub.path}
               discordIconPath={siDiscord.path}
             />
-            {/* Row 2, col 2: Content */}
+            {/* Desktop content. */}
             <div className="relative min-h-0 overflow-hidden">
               {isWorkspaceSidebarPreviewEnabled && (
                 <div className="absolute inset-y-0 left-0 z-20 flex items-center">
@@ -420,11 +403,13 @@ export function SharedAppLayout() {
           </>
         )}
 
-        {(isMobile || isMigrateRoute) && (
+        {isMobile && (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+            {showCloudShutdownBanner && (
+              <CloudShutdownExportBanner onClick={handleExportClick} />
+            )}
             <NavbarContainer
               mobileMode={isMobile}
-              onCreateOrg={handleCreateOrg}
               onOrgSelect={setSelectedOrgId}
               onOpenDrawer={() => setIsDrawerOpen(true)}
             />
@@ -471,6 +456,27 @@ export function SharedAppLayout() {
             {/* Divider */}
             <div className="border-t border-border mx-4" />
 
+            {/* Export link */}
+            {isSignedIn && (
+              <div className="px-4 py-3">
+                <p className="mb-2 text-xs font-medium text-low">Export</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleExportClick();
+                    setIsDrawerOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-sm text-normal hover:bg-secondary cursor-pointer"
+                >
+                  <DownloadSimpleIcon className="h-4 w-4" />
+                  Export data
+                </button>
+              </div>
+            )}
+
+            {/* Divider */}
+            {isSignedIn && <div className="border-t border-border mx-4" />}
+
             {/* Project list */}
             <div className="flex-1 overflow-y-auto p-2">
               {isSignedIn ? (
@@ -509,7 +515,7 @@ export function SharedAppLayout() {
                   <p className="mt-1 text-xs text-low">
                     Sign in to organise your coding agents with kanban boards.
                   </p>
-                  <div className="mt-4 flex flex-col gap-2">
+                  <div className="mt-4">
                     <button
                       type="button"
                       onClick={() => {
@@ -519,16 +525,6 @@ export function SharedAppLayout() {
                       className="w-full px-3 py-2 rounded-md text-sm font-medium bg-brand text-on-brand hover:bg-brand-hover cursor-pointer"
                     >
                       Sign in
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleMigrate();
-                        setIsDrawerOpen(false);
-                      }}
-                      className="w-full px-3 py-2 rounded-md text-sm text-normal bg-secondary hover:bg-panel border border-border cursor-pointer"
-                    >
-                      Migrate old projects
                     </button>
                   </div>
                 </div>

@@ -12,14 +12,12 @@ interface AppBarUserPopoverContainerProps {
   organizations: OrganizationWithRole[];
   selectedOrgId: string;
   onOrgSelect: (orgId: string) => void;
-  onCreateOrg: () => void;
 }
 
 export function AppBarUserPopoverContainer({
   organizations,
   selectedOrgId,
   onOrgSelect,
-  onCreateOrg,
 }: AppBarUserPopoverContainerProps) {
   const { executeAction } = useActions();
   const { isSignedIn } = useAuth();
@@ -62,7 +60,6 @@ export function AppBarUserPopoverContainer({
       open={open}
       onOpenChange={setOpen}
       onOrgSelect={onOrgSelect}
-      onCreateOrg={onCreateOrg}
       onOrgSettings={handleOrgSettings}
       onSignIn={handleSignIn}
       onLogout={handleLogout}

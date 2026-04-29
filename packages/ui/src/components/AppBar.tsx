@@ -7,6 +7,7 @@ import {
 import type { ReactNode } from 'react';
 import {
   LayoutIcon,
+  DownloadSimpleIcon,
   LinkIcon,
   PlusIcon,
   KanbanIcon,
@@ -48,6 +49,7 @@ interface AppBarProps {
   onPairHostClick?: () => void;
   activeHostId?: string | null;
   onCreateProject: () => void;
+  onExportClick?: () => void;
   onWorkspacesClick: () => void;
   onHostClick?: (hostId: string, status: AppBarHostStatus) => void;
   showWorkspacesButton?: boolean;
@@ -55,11 +57,11 @@ interface AppBarProps {
   onProjectsDragEnd: (result: DropResult) => void;
   isSavingProjectOrder?: boolean;
   isWorkspacesActive: boolean;
+  isExportActive?: boolean;
   activeProjectId: string | null;
   isSignedIn?: boolean;
   isLoadingProjects?: boolean;
   onSignIn?: () => void;
-  onMigrate?: () => void;
   onHoverStart?: () => void;
   onHoverEnd?: () => void;
   notificationBell?: ReactNode;
@@ -111,7 +113,7 @@ const appBarItemBaseClassName =
   'flex items-center justify-center w-10 h-10 rounded-lg text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand';
 
 type AppBarSection = {
-  key: 'local' | 'remote' | 'projects';
+  key: 'local' | 'remote' | 'projects' | 'export';
   label: string;
   items: AppBarSectionItem[];
 };
@@ -140,7 +142,6 @@ type AppBarSectionItem =
       kind: 'kanban-cta';
       label: string;
       onSignIn?: () => void;
-      onMigrate?: () => void;
     }
   | {
       key: string;
@@ -200,6 +201,7 @@ export function AppBar({
   onPairHostClick,
   activeHostId = null,
   onCreateProject,
+  onExportClick,
   onWorkspacesClick,
   onHostClick,
   showWorkspacesButton = true,
@@ -207,11 +209,11 @@ export function AppBar({
   onProjectsDragEnd,
   isSavingProjectOrder,
   isWorkspacesActive,
+  isExportActive = false,
   activeProjectId,
   isSignedIn,
   isLoadingProjects,
   onSignIn,
-  onMigrate,
   onHoverStart,
   onHoverEnd,
   notificationBell,
@@ -287,7 +289,6 @@ export function AppBar({
       kind: 'kanban-cta',
       label: t('appBar.kanban.tooltip'),
       onSignIn,
-      onMigrate,
     });
   }
 
@@ -324,6 +325,23 @@ export function AppBar({
       key: 'projects',
       label: 'Projects',
       items: projectSectionItems,
+    });
+  }
+
+  if (isSignedIn && onExportClick) {
+    sections.push({
+      key: 'export',
+      label: 'Export',
+      items: [
+        {
+          key: 'export-data',
+          kind: 'icon-button',
+          label: 'Export data',
+          icon: DownloadSimpleIcon,
+          isActive: isExportActive,
+          onClick: onExportClick,
+        },
+      ],
     });
   }
 
@@ -399,7 +417,7 @@ export function AppBar({
               <p className="text-xs text-low mt-1">
                 {t('appBar.kanban.description')}
               </p>
-              <div className="mt-base flex items-center gap-half">
+              <div className="mt-base">
                 <PopoverClose asChild>
                   <button
                     type="button"
@@ -410,18 +428,6 @@ export function AppBar({
                     )}
                   >
                     {t('signIn')}
-                  </button>
-                </PopoverClose>
-                <PopoverClose asChild>
-                  <button
-                    type="button"
-                    onClick={item.onMigrate}
-                    className={cn(
-                      'px-base py-1 rounded-sm text-xs',
-                      'bg-secondary text-normal hover:bg-panel border border-border cursor-pointer'
-                    )}
-                  >
-                    {t('appBar.kanban.migrateOldProjects')}
                   </button>
                 </PopoverClose>
               </div>

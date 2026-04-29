@@ -40,10 +40,10 @@ function resolveLocalDestinationFromPath(path: string): AppDestination | null {
       return { kind: 'onboarding' };
     case '/onboarding_/sign-in':
       return { kind: 'onboarding-sign-in' };
-    case '/_app/migrate':
-      return { kind: 'migrate' };
     case '/_app/workspaces':
       return { kind: 'workspaces' };
+    case '/_app/export':
+      return { kind: 'export' };
     case '/_app/hosts/$hostId/workspaces': {
       const hostId = getPathParam(routeParams, 'hostId');
       return hostId ? { kind: 'workspaces', hostId } : null;
@@ -187,8 +187,6 @@ function destinationToLocalTarget(
       return { to: '/onboarding' } as const;
     case 'onboarding-sign-in':
       return { to: '/onboarding/sign-in' } as const;
-    case 'migrate':
-      return { to: '/migrate' } as const;
     case 'workspaces':
       if (effectiveHostId) {
         return {
@@ -233,6 +231,8 @@ function destinationToLocalTarget(
         to: '/workspaces/$workspaceId/vscode',
         params: { workspaceId: destination.workspaceId },
       } as const;
+    case 'export':
+      return { to: '/export' } as const;
     case 'project':
       return {
         to: '/projects/$projectId',
@@ -332,7 +332,6 @@ export function createLocalAppNavigation(): AppNavigation {
       navigateTo({ kind: 'onboarding' }, transition),
     goToOnboardingSignIn: (transition) =>
       navigateTo({ kind: 'onboarding-sign-in' }, transition),
-    goToMigrate: (transition) => navigateTo({ kind: 'migrate' }, transition),
     goToWorkspaces: (transition) =>
       navigateTo({ kind: 'workspaces' }, transition),
     goToWorkspacesCreate: (transition) =>
@@ -341,6 +340,7 @@ export function createLocalAppNavigation(): AppNavigation {
       navigateTo({ kind: 'workspace', workspaceId }, transition),
     goToWorkspaceVsCode: (workspaceId, transition) =>
       navigateTo({ kind: 'workspace-vscode', workspaceId }, transition),
+    goToExport: (transition) => navigateTo({ kind: 'export' }, transition),
     goToProject: (projectId, transition) =>
       navigateTo({ kind: 'project', projectId }, transition),
     goToProjectIssue: (projectId, issueId, transition) =>

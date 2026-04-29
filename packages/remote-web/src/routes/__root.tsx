@@ -134,7 +134,6 @@ function RootLayout() {
   const isStandaloneRoute =
     location.pathname.startsWith("/account") ||
     location.pathname.startsWith("/login") ||
-    location.pathname.startsWith("/upgrade") ||
     location.pathname.startsWith("/invitations");
   const destination = resolveRemoteDestinationFromPath(location.pathname);
   const isWorkspaceProviderRoute =

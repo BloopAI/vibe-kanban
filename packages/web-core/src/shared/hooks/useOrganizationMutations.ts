@@ -1,13 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { organizationsApi } from '@/shared/lib/api';
 import type {
-  MemberRole,
-  UpdateMemberRoleResponse,
   CreateOrganizationRequest,
   CreateOrganizationResponse,
+  MemberRole,
   CreateInvitationRequest,
   CreateInvitationResponse,
   ListOrganizationsResponse,
+  UpdateMemberRoleResponse,
 } from 'shared/types';
 import { organizationKeys } from '@/shared/hooks/organizationKeys';
 
@@ -36,7 +36,6 @@ export function useOrganizationMutations(
     mutationFn: (data: CreateOrganizationRequest) =>
       organizationsApi.createOrganization(data),
     onSuccess: (result: CreateOrganizationResponse) => {
-      // Immediately add new org to cache to prevent race condition with selection
       queryClient.setQueryData<ListOrganizationsResponse>(
         organizationKeys.userList(),
         (old) => {
@@ -46,8 +45,6 @@ export function useOrganizationMutations(
           };
         }
       );
-
-      // Then invalidate to ensure server data stays fresh
       queryClient.invalidateQueries({ queryKey: organizationKeys.userList() });
       options?.onCreateSuccess?.(result);
     },

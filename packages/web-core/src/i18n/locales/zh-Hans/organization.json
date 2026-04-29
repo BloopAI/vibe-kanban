@@ -1,14 +1,14 @@
 {
   "createDialog": {
-    "title": "创建新组织",
-    "description": "创建新组织以与您的团队协作。",
-    "nameLabel": "组织名称",
-    "namePlaceholder": "例如：Acme 公司",
-    "slugLabel": "短标识",
-    "slugPlaceholder": "例如：acme-corporation",
-    "slugHelper": "用于 URL。仅限小写字母、数字和连字符。",
-    "creating": "创建中...",
-    "createButton": "创建组织"
+    "title": "Create New Organization",
+    "description": "Create a new organization to collaborate with your team.",
+    "nameLabel": "Organization Name",
+    "namePlaceholder": "e.g., Acme Corporation",
+    "slugLabel": "Slug",
+    "slugPlaceholder": "e.g., acme-corporation",
+    "slugHelper": "Used in URLs. Lowercase letters, numbers, and hyphens only.",
+    "creating": "Creating...",
+    "createButton": "Create Organization"
   },
   "inviteDialog": {
     "title": "邀请成员",
@@ -19,10 +19,7 @@
     "rolePlaceholder": "选择角色",
     "roleHelper": "管理员可以管理成员和组织设置。",
     "sending": "发送中...",
-    "sendButton": "发送邀请",
-    "subscriptionRequired": "添加更多成员需要订阅",
-    "upgradePrompt": "升级您的组织计划以邀请更多成员。",
-    "upgradeButton": "升级计划"
+    "sendButton": "发送邀请"
   },
   "roles": {
     "member": "成员",
@@ -74,7 +71,7 @@
   },
   "personalOrg": {
     "cannotInvite": "个人组织不能添加其他成员。",
-    "createOrgPrompt": "创建组织以与他人协作。",
-    "createOrgButton": "创建组织"
+    "createOrgPrompt": "Create an organization to collaborate with others.",
+    "createOrgButton": "Create Organization"
   }
 }

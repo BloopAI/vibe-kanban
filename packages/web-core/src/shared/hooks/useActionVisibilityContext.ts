@@ -85,9 +85,7 @@ export function useActionVisibilityContext(
   // Derive layoutMode from current route instead of persisted state
   const layoutMode: LayoutMode = isProjectDestination(destination)
     ? 'kanban'
-    : destination?.kind === 'migrate'
-      ? 'migrate'
-      : 'workspaces';
+    : 'workspaces';
   const { config } = useUserSystem();
   const { isStarting, isStopping, runningDevServers } =
     useDevServer(workspaceId);

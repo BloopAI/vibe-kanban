@@ -146,11 +146,6 @@ Date: 2026-02-21
 | `ui-new/containers/KanbanContainer.tsx` | `keep-app` | `frontend-app` | State/data container; keep with app feature logic. |
 | `ui-new/containers/KanbanIssuePanelContainer.tsx` | `keep-app` | `frontend-app` | State/data container; keep with app feature logic. |
 | `ui-new/containers/LogsContentContainer.tsx` | `keep-app` | `frontend-app` | State/data container; keep with app feature logic. |
-| `ui-new/containers/MigrateChooseProjectsContainer.tsx` | `keep-app` | `frontend-app` | State/data container; keep with app feature logic. |
-| `ui-new/containers/MigrateFinishContainer.tsx` | `keep-app` | `frontend-app` | State/data container; keep with app feature logic. |
-| `ui-new/containers/MigrateIntroductionContainer.tsx` | `keep-app` | `frontend-app` | State/data container; keep with app feature logic. |
-| `ui-new/containers/MigrateLayout.tsx` | `keep-app` | `frontend-app` | State/data container; keep with app feature logic. |
-| `ui-new/containers/MigrateMigrateContainer.tsx` | `keep-app` | `frontend-app` | State/data container; keep with app feature logic. |
 | `ui-new/containers/ModelSelectorContainer.tsx` | `keep-app` | `frontend-app` | State/data container; keep with app feature logic. |
 | `ui-new/containers/NavbarContainer.tsx` | `keep-app` | `frontend-app` | State/data container; keep with app feature logic. |
 | `ui-new/containers/NewDisplayConversationEntry.tsx` | `keep-app` | `frontend-app` | State/data container; keep with app feature logic. |
@@ -234,11 +229,6 @@ Date: 2026-02-21
 | `ui-new/views/KanbanCardContent.tsx` | `keep-app` | `frontend-app` | Feature view composition. |
 | `ui-new/views/KanbanFilterBar.tsx` | `keep-app` | `frontend-app` | Feature view composition. |
 | `ui-new/views/KanbanIssuePanel.tsx` | `keep-app` | `frontend-app` | Feature view composition. |
-| `ui-new/views/MigrateChooseProjects.tsx` | `keep-app` | `frontend-app` | Feature view composition. |
-| `ui-new/views/MigrateFinish.tsx` | `keep-app` | `frontend-app` | Feature view composition. |
-| `ui-new/views/MigrateIntroduction.tsx` | `keep-app` | `frontend-app` | Feature view composition. |
-| `ui-new/views/MigrateMigrate.tsx` | `keep-app` | `frontend-app` | Feature view composition. |
-| `ui-new/views/MigrateSidebar.tsx` | `keep-app` | `frontend-app` | Feature view composition. |
 | `ui-new/views/Navbar.tsx` | `keep-app` | `frontend-app` | Feature view composition. |
 | `ui-new/views/PreviewBrowser.tsx` | `keep-app` | `frontend-app` | Feature view composition. |
 | `ui-new/views/PreviewControls.tsx` | `keep-app` | `frontend-app` | Feature view composition. |
@@ -257,7 +247,6 @@ Date: 2026-02-21
 | `dialogs/git/ForcePushDialog.tsx` | `keep-app` | `frontend-app` | Feature component tied to app domain/data. |
 | `dialogs/global/OAuthDialog.tsx` | `keep-app` | `frontend-app` | Feature component tied to app domain/data. |
 | `dialogs/global/ReleaseNotesDialog.tsx` | `keep-app` | `frontend-app` | Feature component tied to app domain/data. |
-| `dialogs/org/CreateOrganizationDialog.tsx` | `keep-app` | `frontend-app` | Feature component tied to app domain/data. |
 | `dialogs/org/CreateRemoteProjectDialog.tsx` | `keep-app` | `frontend-app` | Feature component tied to app domain/data. |
 | `dialogs/org/DeleteRemoteProjectDialog.tsx` | `keep-app` | `frontend-app` | Feature component tied to app domain/data. |
 | `dialogs/org/InviteMemberDialog.tsx` | `keep-app` | `frontend-app` | Feature component tied to app domain/data. |

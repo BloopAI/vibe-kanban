@@ -1120,10 +1120,11 @@ fn handle_direct_item_completed(
                             ),
                         });
                     } else {
+                        let content = result.content;
                         mcp_tool_state.result = Some(ToolResult {
                             r#type: ToolResultValueType::Json,
                             value: result.structured_content.unwrap_or_else(|| {
-                                serde_json::to_value(result.content).unwrap_or_default()
+                                serde_json::to_value(content).unwrap_or_default()
                             }),
                         });
                     }
@@ -1180,7 +1181,7 @@ fn handle_direct_item_completed(
             }
         }
         AppThreadItem::ImageView { path, .. } => {
-            let relative_path = make_path_relative(&path, worktree_path);
+            let relative_path = make_path_relative(&path.to_string_lossy(), worktree_path);
             add_normalized_entry(
                 msg_store,
                 entry_index,
@@ -1878,6 +1879,7 @@ pub fn normalize_logs(
                 EventMsg::McpToolCallBegin(McpToolCallBeginEvent {
                     call_id,
                     invocation,
+                    ..
                 }) => {
                     state.assistant = None;
                     state.thinking = None;
@@ -2393,7 +2395,6 @@ pub fn normalize_logs(
                 | EventMsg::AgentMessageContentDelta(..)
                 | EventMsg::ReasoningContentDelta(..)
                 | EventMsg::ReasoningRawContentDelta(..)
-                | EventMsg::ListCustomPromptsResponse(..)
                 | EventMsg::ListSkillsResponse(..)
                 | EventMsg::SkillsUpdateAvailable
                 | EventMsg::TurnAborted(..)
@@ -2413,14 +2414,19 @@ pub fn normalize_logs(
                 | EventMsg::CollabResumeEnd(..)
                 | EventMsg::ThreadNameUpdated(..)
                 | EventMsg::RealtimeConversationStarted(..)
+                | EventMsg::RealtimeConversationSdp(..)
                 | EventMsg::RealtimeConversationRealtime(..)
                 | EventMsg::RealtimeConversationClosed(..)
+                | EventMsg::RealtimeConversationListVoicesResponse(..)
                 | EventMsg::ImageGenerationBegin(..)
                 | EventMsg::ImageGenerationEnd(..)
                 | EventMsg::RequestPermissions(..)
                 | EventMsg::HookCompleted(..)
                 | EventMsg::HookStarted(..)
-                | EventMsg::GuardianAssessment(..) => {}
+                | EventMsg::GuardianAssessment(..)
+                | EventMsg::GuardianWarning(..)
+                | EventMsg::ModelVerification(..)
+                | EventMsg::PatchApplyUpdated(..) => {}
             }
         }
     });
