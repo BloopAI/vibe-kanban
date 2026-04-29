@@ -7,6 +7,7 @@ pub mod github;
 use std::path::Path;
 
 use async_trait::async_trait;
+pub use db::models::merge::PullRequestInfo;
 use detection::detect_provider_from_url;
 use enum_dispatch::enum_dispatch;
 pub use types::{
@@ -41,6 +42,13 @@ pub trait GitHostProvider: Send + Sync {
         remote_url: &str,
         pr_number: i64,
     ) -> Result<Vec<UnifiedPrComment>, GitHostError>;
+
+    async fn squash_merge_pr(
+        &self,
+        repo_path: &Path,
+        remote_url: &str,
+        pr_number: i64,
+    ) -> Result<PullRequestInfo, GitHostError>;
 
     async fn list_open_prs(
         &self,

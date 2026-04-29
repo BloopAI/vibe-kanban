@@ -236,19 +236,26 @@
       "forcePush": "Force Push",
       "forcePushing": "Force Pushing...",
       "creating": "Creating...",
-      "createPr": "Create PR"
+      "createPr": "Create PR",
+      "prAndSquashMerge": "PR & squash-merge",
+      "squashMerge": "Squash-merge",
+      "squashMerging": "Squash-merging...",
+      "squashMerged": "Squash-merged!"
     },
     "errors": {
       "changeTargetBranch": "Failed to change target branch",
       "pushChanges": "Failed to push changes",
       "mergeChanges": "Failed to merge changes",
       "rebaseBranch": "Failed to rebase branch",
+      "squashMerge": "Failed to squash-merge PR",
+      "createPr": "Failed to create PR",
       "branchStatusUnavailable": "Unable to fetch branch status. You can still change the target branch."
     },
     "pr": {
       "open": "Open PR #{{number}}",
       "number": "PR #{{number}}",
-      "merged": "Merged PR #{{prNumber}}"
+      "merged": "Merged PR #{{prNumber}}",
+      "squashMerge": "Squash-merge"
     },
     "actions": {
       "title": "Git Actions",
@@ -358,6 +365,8 @@
     "loadingBranches": "Loading branches...",
     "selectBaseBranch": "Select base branch",
     "draftLabel": "Create as draft",
+    "squashMergeLabel": "Also squash-merge the PR",
+    "squashMergeDraftHint": "cannot merge draft PRs",
     "autoGenerateLabel": "Auto-generate PR description with AI",
     "creating": "Creating...",
     "createButton": "Create PR",
