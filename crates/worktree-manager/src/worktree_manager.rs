@@ -105,8 +105,16 @@ impl WorktreeManager {
         let _guard = lock.lock().await;
 
         // Check if worktree already exists and is properly set up
-        if Self::is_worktree_properly_set_up(repo_path, worktree_path).await? {
+        if Self::is_worktree_properly_set_up(repo_path, branch_name, worktree_path).await? {
             trace!("Worktree already properly set up at path: {}", path_str);
+            return Ok(());
+        }
+
+        if Self::move_existing_branch_checkout_async(repo_path, branch_name, worktree_path).await? {
+            info!(
+                "Recovered workspace branch '{}' by moving its existing worktree to {}",
+                branch_name, path_str
+            );
             return Ok(());
         }
 
@@ -155,9 +163,11 @@ impl WorktreeManager {
     /// Check if a worktree is properly set up (filesystem + git metadata)
     async fn is_worktree_properly_set_up(
         repo_path: &Path,
+        branch_name: &str,
         worktree_path: &Path,
     ) -> Result<bool, WorktreeError> {
         let repo_path = repo_path.to_path_buf();
+        let branch_name = branch_name.to_string();
         let worktree_path = worktree_path.to_path_buf();
 
         tokio::task::spawn_blocking(move || -> Result<bool, WorktreeError> {
@@ -175,8 +185,116 @@ impl WorktreeManager {
                 return Ok(false);
             };
 
-            // Try to find the worktree - if it exists and is valid, we're good
-            Ok(git_service.validate_worktree(&repo_path, &worktree_name)?)
+            if !git_service.validate_worktree(&repo_path, &worktree_name)? {
+                return Ok(false);
+            }
+
+            let current_branch = git_service.get_current_branch(&worktree_path)?;
+            Ok(current_branch == branch_name)
+        })
+        .await
+        .map_err(|e| WorktreeError::TaskJoin(format!("{e}")))?
+    }
+
+    fn canonicalize_for_compare(path: &Path) -> PathBuf {
+        dunce::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+    }
+
+    fn equivalent_path(left: &Path, right: &Path) -> bool {
+        Self::canonicalize_for_compare(&normalize_macos_private_alias(left))
+            == Self::canonicalize_for_compare(&normalize_macos_private_alias(right))
+    }
+
+    fn is_managed_worktree_path(path: &Path) -> bool {
+        let path = Self::canonicalize_for_compare(&normalize_macos_private_alias(path));
+
+        [
+            Self::get_worktree_base_dir(),
+            Self::get_default_worktree_base_dir(),
+        ]
+        .into_iter()
+        .map(|base| Self::canonicalize_for_compare(&normalize_macos_private_alias(&base)))
+        .any(|base| path.starts_with(base))
+    }
+
+    fn cleanup_empty_parent_dir(path: &Path) {
+        let Some(parent) = path.parent() else {
+            return;
+        };
+
+        if !Self::is_managed_worktree_path(parent) {
+            return;
+        }
+
+        match std::fs::read_dir(parent) {
+            Ok(mut entries) => {
+                if entries.next().is_none()
+                    && let Err(e) = std::fs::remove_dir(parent)
+                {
+                    debug!(
+                        "Failed to remove empty old workspace directory {}: {}",
+                        parent.display(),
+                        e
+                    );
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn move_existing_branch_checkout(
+        git_repo_path: &Path,
+        branch_name: &str,
+        worktree_path: &Path,
+    ) -> Result<bool, WorktreeError> {
+        let git_service = GitService::new();
+        let Some(existing_path) =
+            git_service.find_checkout_path_for_branch(git_repo_path, branch_name)?
+        else {
+            return Ok(false);
+        };
+
+        if Self::equivalent_path(&existing_path, worktree_path) {
+            return Ok(worktree_path.exists());
+        }
+
+        if !Self::is_managed_worktree_path(&existing_path) {
+            return Err(WorktreeError::Repository(format!(
+                "Branch '{branch_name}' is already checked out at unmanaged path {}",
+                existing_path.display()
+            )));
+        }
+
+        if worktree_path.exists() {
+            std::fs::remove_dir_all(worktree_path).map_err(WorktreeError::Io)?;
+        }
+
+        if let Some(parent) = worktree_path.parent() {
+            std::fs::create_dir_all(parent).map_err(WorktreeError::Io)?;
+        }
+
+        info!(
+            "Moving existing worktree for branch '{}' from {} to {}",
+            branch_name,
+            existing_path.display(),
+            worktree_path.display()
+        );
+        git_service.move_worktree(git_repo_path, &existing_path, worktree_path)?;
+        Self::cleanup_empty_parent_dir(&existing_path);
+        Ok(true)
+    }
+
+    async fn move_existing_branch_checkout_async(
+        git_repo_path: &Path,
+        branch_name: &str,
+        worktree_path: &Path,
+    ) -> Result<bool, WorktreeError> {
+        let git_repo_path = git_repo_path.to_path_buf();
+        let branch_name = branch_name.to_string();
+        let worktree_path = worktree_path.to_path_buf();
+
+        tokio::task::spawn_blocking(move || {
+            Self::move_existing_branch_checkout(&git_repo_path, &branch_name, &worktree_path)
         })
         .await
         .map_err(|e| WorktreeError::TaskJoin(format!("{e}")))?
@@ -186,11 +304,8 @@ impl WorktreeManager {
         git_repo_path: &Path,
         worktree_path: &Path,
     ) -> Result<Option<String>, WorktreeError> {
-        fn canonicalize_for_compare(path: &Path) -> PathBuf {
-            dunce::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
-        }
-
-        let worktree_root = canonicalize_for_compare(&normalize_macos_private_alias(worktree_path));
+        let worktree_root =
+            Self::canonicalize_for_compare(&normalize_macos_private_alias(worktree_path));
         let worktree_metadata_path = Self::get_worktree_metadata_path(git_repo_path)?;
         let worktree_metadata_folders = match fs::read_dir(&worktree_metadata_path) {
             Ok(read_dir) => read_dir
@@ -212,7 +327,7 @@ impl WorktreeManager {
                 && let Ok(gitdir_content) = fs::read_to_string(&gitdir_path)
                 && normalize_macos_private_alias(Path::new(gitdir_content.trim()))
                     .parent()
-                    .map(canonicalize_for_compare)
+                    .map(Self::canonicalize_for_compare)
                     .is_some_and(|p| p == worktree_root)
             {
                 return Ok(Some(entry.file_name().to_string_lossy().to_string()));
@@ -314,6 +429,10 @@ impl WorktreeManager {
         tokio::task::spawn_blocking(move || -> Result<(), WorktreeError> {
             // Prefer git CLI for worktree add to inherit sparse-checkout semantics
             let git_service = GitService::new();
+            if Self::move_existing_branch_checkout(&git_repo_path, &branch_name, &worktree_path)? {
+                return Ok(());
+            }
+
             match git_service.add_worktree(&git_repo_path, &worktree_path, &branch_name, false) {
                 Ok(()) => {
                     if !worktree_path.exists() {
@@ -338,6 +457,13 @@ impl WorktreeManager {
                     // Needed if previous attempt failed after directory creation
                     if worktree_path.exists() {
                         std::fs::remove_dir_all(&worktree_path).map_err(WorktreeError::Io)?;
+                    }
+                    if Self::move_existing_branch_checkout(
+                        &git_repo_path,
+                        &branch_name,
+                        &worktree_path,
+                    )? {
+                        return Ok(());
                     }
                     if let Err(e2) = git_service.add_worktree(
                         &git_repo_path,
@@ -576,4 +702,48 @@ async fn create_worktree_when_repo_path_is_a_worktree() {
     )
     .await
     .unwrap();
+}
+
+#[tokio::test]
+async fn ensure_worktree_moves_existing_managed_checkout_for_branch() {
+    use tempfile::TempDir;
+    let td = TempDir::new().unwrap();
+
+    let repo_path = td.path().join("repo");
+    let git_service = GitService::new();
+    git_service
+        .initialize_repo_with_main_branch(&repo_path)
+        .unwrap();
+
+    let managed_root = td.path().join("worktrees");
+    WorktreeManager::set_workspace_dir_override(managed_root.clone());
+
+    let old_workspace = managed_root.join("old-workspace");
+    let old_worktree_path = old_workspace.join("repo");
+    WorktreeManager::create_worktree(
+        &repo_path,
+        "codex/program-generation-v3-llm-first",
+        &old_worktree_path,
+        "main",
+        true,
+    )
+    .await
+    .unwrap();
+    assert!(old_worktree_path.join(".git").is_file());
+
+    let new_worktree_path = managed_root.join("new-workspace").join("repo");
+    WorktreeManager::ensure_worktree_exists(
+        &repo_path,
+        "codex/program-generation-v3-llm-first",
+        &new_worktree_path,
+    )
+    .await
+    .unwrap();
+
+    assert!(new_worktree_path.join(".git").is_file());
+    assert!(!old_worktree_path.exists());
+    assert_eq!(
+        git_service.get_current_branch(&new_worktree_path).unwrap(),
+        "codex/program-generation-v3-llm-first"
+    );
 }

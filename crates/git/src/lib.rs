@@ -551,7 +551,7 @@ impl GitService {
     }
 
     /// Find where a branch is currently checked out
-    fn find_checkout_path_for_branch(
+    pub fn find_checkout_path_for_branch(
         &self,
         repo_path: &Path,
         branch_name: &str,
