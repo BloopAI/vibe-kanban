@@ -7,7 +7,13 @@ import {
   type ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowDownIcon, ArrowsOutIcon, XIcon } from '@phosphor-icons/react';
+import {
+  ArchiveIcon,
+  ArrowDownIcon,
+  ArrowsOutIcon,
+  XIcon,
+} from '@phosphor-icons/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useUserContext } from '@/shared/hooks/useUserContext';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
@@ -17,7 +23,9 @@ import { EntriesProvider } from '@/features/workspace-chat/model/contexts/Entrie
 import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/MessageEditContext';
 import { CreateModeProvider } from '@/features/create-mode/model/CreateModeProvider';
 import { useWorkspaceSessions } from '@/shared/hooks/useWorkspaceSessions';
-import { useWorkspaceRecord } from '@/shared/hooks/useWorkspaceRecord';
+import { useWorkspaceRecord, workspaceRecordKeys } from '@/shared/hooks/useWorkspaceRecord';
+import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
+import { workspacesApi } from '@/shared/lib/api';
 import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
 import { CreateChatBoxContainer } from '@/shared/components/CreateChatBoxContainer';
 import { KanbanIssuePanelContainer } from './KanbanIssuePanelContainer';
@@ -139,6 +147,8 @@ function WorkspaceSessionPanel({
   workspaceId,
   onClose,
 }: WorkspaceSessionPanelProps) {
+  const { t } = useTranslation('common');
+  const queryClient = useQueryClient();
   const appNavigation = useAppNavigation();
   const { projectId, getIssue } = useProjectContext();
   const routeState = useCurrentKanbanRouteState();
@@ -230,6 +240,22 @@ function WorkspaceSessionPanel({
     setIsAtBottom(atBottom);
   }, []);
 
+  const isArchived = workspace?.archived ?? false;
+
+  const handleArchiveWorkspace = useCallback(async () => {
+    try {
+      await workspacesApi.update(workspaceId, { archived: !isArchived });
+      queryClient.invalidateQueries({
+        queryKey: workspaceRecordKeys.byId(workspaceId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: workspaceSummaryKeys.all,
+      });
+    } catch {
+      // Silent failure — UI will reflect actual state on next query
+    }
+  }, [workspaceId, isArchived, queryClient]);
+
   return (
     <ExecutionProcessesProvider
       key={`${workspaceId}-${selectedSessionId ?? 'new'}`}
@@ -240,24 +266,46 @@ function WorkspaceSessionPanel({
           <MessageEditProvider>
             <div className="relative flex h-full flex-1 flex-col bg-primary">
               <div className="flex items-center justify-between px-base py-half border-b shrink-0">
-                <div className="flex items-center gap-half min-w-0 font-ibm-plex-mono">
+                <div className="flex items-center gap-half min-w-0">
                   <button
                     type="button"
-                    onClick={handleOpenIssuePanel}
-                    className={`${breadcrumbButtonClass} shrink-0`}
-                    aria-label="Open linked issue"
+                    onClick={handleArchiveWorkspace}
+                    className="p-half rounded-sm text-low hover:text-normal hover:bg-panel transition-colors shrink-0"
+                    aria-label={
+                      isArchived
+                        ? t('workspaces.unarchive')
+                        : t('workspaces.archive')
+                    }
+                    title={
+                      isArchived
+                        ? t('workspaces.unarchive')
+                        : t('workspaces.archive')
+                    }
                   >
-                    {issueSimpleId ?? 'Issue'}
+                    <ArchiveIcon
+                      className="size-icon-sm"
+                      weight={isArchived ? 'fill' : 'bold'}
+                    />
                   </button>
-                  <span className="text-low text-sm shrink-0">/</span>
-                  <button
-                    type="button"
-                    onClick={handleOpenWorkspaceView}
-                    className={breadcrumbButtonClass}
-                    aria-label="Open workspace"
-                  >
-                    {workspaceBranch ?? 'Workspace'}
-                  </button>
+                  <div className="flex items-center gap-half min-w-0 font-ibm-plex-mono">
+                    <button
+                      type="button"
+                      onClick={handleOpenIssuePanel}
+                      className={`${breadcrumbButtonClass} shrink-0`}
+                      aria-label="Open linked issue"
+                    >
+                      {issueSimpleId ?? 'Issue'}
+                    </button>
+                    <span className="text-low text-sm shrink-0">/</span>
+                    <button
+                      type="button"
+                      onClick={handleOpenWorkspaceView}
+                      className={breadcrumbButtonClass}
+                      aria-label="Open workspace"
+                    >
+                      {workspaceBranch ?? 'Workspace'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-half">
