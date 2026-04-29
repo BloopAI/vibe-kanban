@@ -110,8 +110,10 @@ function httpsGet(
     }
 
     // Pass the tunnel socket so TLS is established over it via tls.connect()
+    const port = target.port ? parseInt(target.port, 10) : 443;
     const opts = {
       hostname: target.hostname,
+      port,
       path: target.pathname + target.search,
       agent: false,
       socket,
