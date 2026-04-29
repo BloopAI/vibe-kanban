@@ -1,0 +1,154 @@
+---
+title: "Gitea & Forgejo Integration"
+description: "Connect to Gitea or Forgejo to create pull requests and manage your workflow directly from Vibe Kanban"
+---
+
+Vibe Kanban integrates with [Gitea](https://gitea.com/) and [Forgejo](https://forgejo.org/) to let you create pull requests directly from your task attempts. This includes any Gitea-compatible instance, such as [Codeberg](https://codeberg.org/). Unlike the GitHub and Azure integrations, this integration communicates directly with the Gitea REST API — no external CLI is required.
+
+## Setup
+
+<Steps>
+<Step title="Generate a personal access token">
+
+You need an API token so Vibe Kanban can authenticate with your Gitea instance.
+
+1. Sign in to your Gitea instance (e.g. `https://gitea.example.com`).
+2. Navigate to **Settings → Applications** (direct URL: `https://gitea.example.com/user/settings/applications`).
+3. Under **Manage Access Tokens**, enter a name for the token (e.g. `vibe-kanban`).
+4. Select the permissions the token needs:
+   - **repository**: `Read and Write` — required to create and list pull requests.
+   - **issue**: `Read` — required to fetch PR comments.
+5. Click **Generate Token**.
+6. Copy the token immediately — it will only be shown once.
+
+<Warning>
+Treat this token like a password. Do not commit it to version control or share it publicly.
+</Warning>
+
+</Step>
+<Step title="Set the GITEA_TOKEN environment variable">
+
+Vibe Kanban reads the token from the `GITEA_TOKEN` environment variable. Choose the method that suits your setup:
+
+<Tabs>
+<Tab title="macOS / Linux">
+
+Add the following to your shell profile (`~/.zshrc`, `~/.bashrc`, or equivalent):
+
+```bash
+export GITEA_TOKEN="your-token-here"
+```
+
+Then reload your shell:
+
+```bash
+source ~/.zshrc   # or source ~/.bashrc
+```
+
+</Tab>
+<Tab title="Windows (PowerShell)">
+
+Set the variable for the current user:
+
+```powershell
+[System.Environment]::SetEnvironmentVariable("GITEA_TOKEN", "your-token-here", "User")
+```
+
+Restart your terminal for the change to take effect.
+
+</Tab>
+<Tab title=".env file">
+
+If you run Vibe Kanban with a `.env` file, add:
+
+```bash .env
+GITEA_TOKEN=your-token-here
+```
+
+</Tab>
+</Tabs>
+
+<Check>
+Verify the variable is set by running `echo $GITEA_TOKEN` (or `$env:GITEA_TOKEN` on PowerShell). You should see your token value.
+</Check>
+
+</Step>
+<Step title="Set the GITEA_URL environment variable (self-hosted instances)">
+
+Vibe Kanban auto-detects well-known Gitea hostnames (domains containing `gitea.`, `forgejo.`, or `codeberg.org`). If your instance uses a custom domain (e.g. `git.company.com`), you also need to set `GITEA_URL` so Vibe Kanban can identify it as a Gitea instance:
+
+```bash
+export GITEA_URL="https://git.company.com"
+```
+
+<Tip>
+If your Gitea instance runs on a non-standard port, include the port in the URL: `https://git.company.com:3000`.
+</Tip>
+
+<Note>
+You do not need `GITEA_URL` if your instance hostname already contains `gitea.` or `forgejo.`, or if you use Codeberg.
+</Note>
+
+</Step>
+</Steps>
+
+## Supported URL formats
+
+Vibe Kanban supports standard Gitea remote URLs:
+
+- **HTTPS**: `https://gitea.example.com/owner/repo.git`
+- **SSH**: `git@gitea.example.com:owner/repo.git`
+
+Pull request URLs follow the Gitea convention:
+
+- `https://gitea.example.com/owner/repo/pulls/123`
+
+<Info>
+Forgejo is a Gitea fork with full API compatibility. All features described here work identically with Forgejo instances.
+</Info>
+
+## Creating a pull request
+
+Once the environment variables are set, you can create pull requests directly from a task:
+
+1. Open a task that has changes you want to merge.
+2. Click the **Create PR** button.
+3. A dialog will appear pre-filled with:
+   - **Title**: Derived from the task title.
+   - **Description**: Derived from the task description.
+   - **Base Branch**: The target branch for your changes (defaults to the repository's default branch or the one specified in the attempt).
+4. Click **Create** to open the PR on your Gitea instance.
+
+If the operation is successful, the task status will update, and a link to the new pull request will be available.
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="Unsupported git hosting provider error">
+
+This means Vibe Kanban could not identify your remote URL as a Gitea instance. Make sure you have set `GITEA_URL` to your instance's base URL:
+
+```bash
+export GITEA_URL="https://git.company.com"
+```
+
+</Accordion>
+
+<Accordion title="Authentication failed error">
+
+- Verify your token is valid by testing it directly:
+  ```bash
+  curl -H "Authorization: token $GITEA_TOKEN" https://gitea.example.com/api/v1/user
+  ```
+  You should see your user profile JSON. If you get a `401` response, generate a new token.
+- Ensure the `GITEA_TOKEN` environment variable is set in the same shell session where Vibe Kanban is running.
+
+</Accordion>
+
+<Accordion title="Repository not found error">
+
+- Confirm the token has **repository Read and Write** permissions.
+- Verify the remote URL matches your Gitea instance by running `git remote -v` in your repository.
+
+</Accordion>
+</AccordionGroup>
