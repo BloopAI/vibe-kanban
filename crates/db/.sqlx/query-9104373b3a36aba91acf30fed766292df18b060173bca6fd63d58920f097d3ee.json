@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT ep.completed_at AS \"completed_at!: DateTime<Utc>\"\n            FROM execution_processes ep\n            JOIN sessions s ON ep.session_id = s.id\n            WHERE s.workspace_id = $1\n              AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')\n              AND ep.completed_at IS NOT NULL\n            ORDER BY ep.created_at DESC\n            LIMIT 1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "completed_at!: DateTime<Utc>",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "9104373b3a36aba91acf30fed766292df18b060173bca6fd63d58920f097d3ee"
+}
