@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     session::{CreateSession, Session},
@@ -87,7 +89,7 @@ async fn get_setup_helper_action(codex: &Codex) -> Result<ExecutorAction, ApiErr
         .into_resolved()
         .await
         .map_err(ApiError::Executor)?;
-    let login_script = format!("{} {}", program_path.to_string_lossy(), args.join(" "));
+    let login_script = script_command_line(&program_path, &args);
     let login_request = ScriptRequest {
         script: login_script,
         language: ScriptRequestLanguage::Bash,
@@ -99,4 +101,93 @@ async fn get_setup_helper_action(codex: &Codex) -> Result<ExecutorAction, ApiErr
         ExecutorActionType::ScriptRequest(login_request),
         None,
     ))
+}
+
+fn script_command_line(program_path: &Path, args: &[String]) -> String {
+    std::iter::once(program_path.to_string_lossy().into_owned())
+        .chain(args.iter().cloned())
+        .map(|arg| quote_script_arg(&arg))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn quote_script_arg(arg: &str) -> String {
+    if cfg!(windows) {
+        quote_cmd_arg(arg)
+    } else {
+        quote_posix_arg(arg)
+    }
+}
+
+fn quote_cmd_arg(arg: &str) -> String {
+    if arg.is_empty()
+        || arg
+            .chars()
+            .any(|ch| {
+                ch.is_whitespace()
+                    || matches!(ch, '"' | '&' | '|' | '<' | '>' | '^' | '(' | ')')
+            })
+    {
+        format!("\"{}\"", arg.replace('"', "\\\""))
+    } else {
+        arg.to_string()
+    }
+}
+
+fn quote_posix_arg(arg: &str) -> String {
+    if arg.is_empty()
+        || arg
+            .chars()
+            .any(|ch| ch.is_whitespace() || matches!(ch, '\'' | '"' | '\\' | '$' | '`'))
+    {
+        format!("'{}'", arg.replace('\'', "'\\''"))
+    } else {
+        arg.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn quotes_windows_cmd_program_files_paths() {
+        assert_eq!(
+            quote_cmd_arg(r#"C:\Program Files\nodejs\npx.cmd"#),
+            r#""C:\Program Files\nodejs\npx.cmd""#
+        );
+    }
+
+    #[test]
+    fn quotes_posix_arguments_with_spaces() {
+        assert_eq!(
+            quote_posix_arg("/Applications/OpenAI Codex/bin/codex"),
+            "'/Applications/OpenAI Codex/bin/codex'"
+        );
+    }
+
+    #[test]
+    fn setup_command_line_preserves_argument_boundaries() {
+        let args = vec![
+            "-y".to_string(),
+            "--package".to_string(),
+            "@openai/codex@0.124.0".to_string(),
+            "codex".to_string(),
+            "login".to_string(),
+            "--flag=value with spaces".to_string(),
+        ];
+        let line = script_command_line(Path::new(r#"C:\Program Files\nodejs\npx.cmd"#), &args);
+
+        if cfg!(windows) {
+            assert_eq!(
+                line,
+                r#""C:\Program Files\nodejs\npx.cmd" -y --package @openai/codex@0.124.0 codex login "--flag=value with spaces""#
+            );
+        } else {
+            assert_eq!(
+                line,
+                r#"'C:\Program Files\nodejs\npx.cmd' -y --package @openai/codex@0.124.0 codex login '--flag=value with spaces'"#
+            );
+        }
+    }
 }

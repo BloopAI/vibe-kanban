@@ -49,8 +49,6 @@ jsonc-parser = { version = "0.29", features = ["cst", "serde"] }
 lru = "0.12"
 async-stream = "0.3"
 
-[target.'cfg(windows)'.dependencies]
-winsplit = "0.1.0"
 
 # On Linux, codex-protocol → reqwest → hyper-tls → native-tls pulls in
 # openssl-sys. Vendor it so musl cross-compile (no system OpenSSL) builds.

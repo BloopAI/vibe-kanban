@@ -192,7 +192,8 @@ impl CodingAgent {
             Self::Gemini(_) | Self::QwenCode(_) => {
                 vec![BaseAgentCapability::SessionFork]
             }
-            Self::CursorAgent(_) => vec![BaseAgentCapability::SetupHelper],
+            Self::CursorAgent(_) if cfg!(unix) => vec![BaseAgentCapability::SetupHelper],
+            Self::CursorAgent(_) => vec![],
             Self::Amp(_) | Self::Copilot(_) | Self::Droid(_) => vec![],
             #[cfg(feature = "qa-mode")]
             Self::QaMock(_) => vec![], // QA mock doesn't need special capabilities
@@ -419,5 +420,22 @@ mod tests {
         let result: Result<BaseCodingAgent, _> = serde_json::from_str(r#""CURSOR""#);
         assert!(result.is_ok(), "CURSOR should deserialize via serde");
         assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
+    }
+
+    #[test]
+    fn cursor_setup_helper_capability_matches_platform_support() {
+        let agent = CodingAgent::CursorAgent(CursorAgent {
+            append_prompt: AppendPrompt::default(),
+            force: None,
+            model: None,
+            reasoning: None,
+            cmd: Default::default(),
+        });
+
+        assert_eq!(
+            agent.capabilities()
+                .contains(&BaseAgentCapability::SetupHelper),
+            cfg!(unix)
+        );
     }
 }

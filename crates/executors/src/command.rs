@@ -16,8 +16,6 @@ pub enum CommandBuildError {
     EmptyCommand,
     #[error("failed to quote command: {0}")]
     QuoteError(#[from] shlex::QuoteError),
-    #[error("invalid shell parameters: {0}")]
-    InvalidShellParams(String),
 }
 
 #[derive(Debug, Clone)]
@@ -92,31 +90,6 @@ impl CommandBuilder {
         self
     }
 
-    fn extend_shell_params<I>(mut self, more: I) -> Result<Self, CommandBuildError>
-    where
-        I: IntoIterator,
-        I::Item: Into<String>,
-    {
-        let joined = more
-            .into_iter()
-            .map(|p| p.into())
-            .collect::<Vec<String>>()
-            .join(" ");
-
-        if joined.trim().is_empty() {
-            return Ok(self);
-        }
-
-        let extra: Vec<String> = split_command_line(&joined)
-            .map_err(|err| CommandBuildError::InvalidShellParams(format!("{joined}: {err}")))?;
-
-        match &mut self.params {
-            Some(p) => p.extend(extra),
-            None => self.params = Some(extra),
-        }
-        Ok(self)
-    }
-
     pub fn extend_params<I>(mut self, more: I) -> Self
     where
         I: IntoIterator,
@@ -162,7 +135,7 @@ impl CommandBuilder {
 fn split_command_line(input: &str) -> Result<Vec<String>, CommandBuildError> {
     #[cfg(windows)]
     {
-        let parts = winsplit::split(input);
+        let parts = split_windows_command_line(input)?;
         if parts.is_empty() {
             Err(CommandBuildError::EmptyCommand)
         } else {
@@ -176,6 +149,59 @@ fn split_command_line(input: &str) -> Result<Vec<String>, CommandBuildError> {
     }
 }
 
+#[cfg(windows)]
+fn split_windows_command_line(input: &str) -> Result<Vec<String>, CommandBuildError> {
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    let mut chars = input.chars().peekable();
+    let mut in_single_quote = false;
+    let mut in_double_quote = false;
+    let mut token_started = false;
+
+    while let Some(ch) = chars.next() {
+        match ch {
+            '\'' if !in_double_quote => {
+                in_single_quote = !in_single_quote;
+                token_started = true;
+            }
+            '"' if !in_single_quote => {
+                in_double_quote = !in_double_quote;
+                token_started = true;
+            }
+            '\\' => {
+                if matches!(chars.peek(), Some(&'"') | Some(&'\'')) {
+                    if let Some(next) = chars.next() {
+                        current.push(next);
+                    }
+                } else {
+                    current.push(ch);
+                }
+                token_started = true;
+            }
+            ch if ch.is_whitespace() && !in_single_quote && !in_double_quote => {
+                if token_started {
+                    parts.push(std::mem::take(&mut current));
+                    token_started = false;
+                }
+            }
+            _ => {
+                current.push(ch);
+                token_started = true;
+            }
+        }
+    }
+
+    if in_single_quote || in_double_quote {
+        return Err(CommandBuildError::InvalidBase(input.to_string()));
+    }
+
+    if token_started {
+        parts.push(current);
+    }
+
+    Ok(parts)
+}
+
 pub fn apply_overrides(
     builder: CommandBuilder,
     overrides: &CmdOverrides,
@@ -186,8 +212,154 @@ pub fn apply_overrides(
         builder
     };
     if let Some(ref extra) = overrides.additional_params {
-        builder.extend_shell_params(extra.clone())
+        Ok(builder.extend_params(extra.clone()))
     } else {
         Ok(builder)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_scoped_npm_package_names() {
+        let parts = CommandBuilder::new("npx -y @google/gemini-cli@0.29.3")
+            .build_initial()
+            .expect("command should parse");
+
+        assert_eq!(parts.program, "npx");
+        assert_eq!(parts.args, vec!["-y", "@google/gemini-cli@0.29.3"]);
+    }
+
+    #[test]
+    fn parses_anthropic_scoped_npm_package_name() {
+        let parts = CommandBuilder::new("npx -y @anthropic-ai/claude-code@2.1.119")
+            .build_initial()
+            .expect("command should parse");
+
+        assert_eq!(parts.program, "npx");
+        assert_eq!(parts.args, vec!["-y", "@anthropic-ai/claude-code@2.1.119"]);
+    }
+
+    #[test]
+    fn parses_builtin_scoped_npm_executor_commands() {
+        let cases = [
+            (
+                "npx -y @musistudio/claude-code-router@1.0.66 code",
+                vec!["-y", "@musistudio/claude-code-router@1.0.66", "code"],
+            ),
+            (
+                "npx -y @sourcegraph/amp@latest",
+                vec!["-y", "@sourcegraph/amp@latest"],
+            ),
+            (
+                "npx -y --package @openai/codex@0.124.0 codex",
+                vec!["-y", "--package", "@openai/codex@0.124.0", "codex"],
+            ),
+            (
+                "npx -y @qwen-code/qwen-code@0.9.1",
+                vec!["-y", "@qwen-code/qwen-code@0.9.1"],
+            ),
+            (
+                "npx -y @github/copilot@0.0.403",
+                vec!["-y", "@github/copilot@0.0.403"],
+            ),
+        ];
+
+        for (command, expected_args) in cases {
+            let parts = CommandBuilder::new(command)
+                .build_initial()
+                .expect("command should parse");
+
+            assert_eq!(parts.program, "npx");
+            assert_eq!(parts.args, expected_args);
+        }
+    }
+
+    #[test]
+    fn parses_builtin_unscoped_and_binary_executor_commands() {
+        let cases = [
+            (
+                "npx -y opencode-ai@1.4.7",
+                "npx",
+                vec!["-y", "opencode-ai@1.4.7"],
+            ),
+            ("droid exec", "droid", vec!["exec"]),
+            ("cursor-agent", "cursor-agent", vec![]),
+        ];
+
+        for (command, expected_program, expected_args) in cases {
+            let parts = CommandBuilder::new(command)
+                .build_initial()
+                .expect("command should parse");
+
+            assert_eq!(parts.program, expected_program);
+            assert_eq!(parts.args, expected_args);
+        }
+    }
+
+    #[test]
+    fn parses_quoted_windows_paths() {
+        let parts = CommandBuilder::new(
+            r#""C:\Program Files\nodejs\npx.cmd" -y @google/gemini-cli@0.29.3"#,
+        )
+        .build_initial()
+        .expect("command should parse");
+
+        assert_eq!(parts.program, r#"C:\Program Files\nodejs\npx.cmd"#);
+        assert_eq!(parts.args, vec!["-y", "@google/gemini-cli@0.29.3"]);
+    }
+
+    #[test]
+    fn base_command_override_preserves_scoped_package_and_params() {
+        let builder = CommandBuilder::new("npx -y @google/gemini-cli@0.29.3")
+            .extend_params(["--experimental-acp"]);
+        let overrides = CmdOverrides {
+            base_command_override: Some(
+                r#""C:\Program Files\nodejs\npx.cmd" -y @google/gemini-cli@0.29.3"#.to_string(),
+            ),
+            ..Default::default()
+        };
+
+        let parts = apply_overrides(builder, &overrides)
+            .expect("overrides should apply")
+            .build_initial()
+            .expect("command should parse");
+
+        assert_eq!(parts.program, r#"C:\Program Files\nodejs\npx.cmd"#);
+        assert_eq!(
+            parts.args,
+            vec!["-y", "@google/gemini-cli@0.29.3", "--experimental-acp"]
+        );
+    }
+
+    #[test]
+    fn additional_params_preserve_argument_boundaries() {
+        let builder = CommandBuilder::new("npx -y @anthropic-ai/claude-code@2.1.119");
+        let overrides = CmdOverrides {
+            additional_params: Some(vec![
+                "--model".to_string(),
+                "claude sonnet".to_string(),
+                "--flag=value with spaces".to_string(),
+            ]),
+            ..Default::default()
+        };
+
+        let parts = apply_overrides(builder, &overrides)
+            .expect("overrides should apply")
+            .build_initial()
+            .expect("command should parse");
+
+        assert_eq!(
+            parts.args,
+            vec![
+                "-y",
+                "@anthropic-ai/claude-code@2.1.119",
+                "--model",
+                "claude sonnet",
+                "--flag=value with spaces",
+            ]
+        );
     }
 }
