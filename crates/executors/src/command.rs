@@ -62,7 +62,7 @@ pub struct CmdOverrides {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct CommandBuilder {
-    /// Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
+    /// Base executable command (e.g., "npx -y --package @anthropic-ai/claude-code@latest claude")
     pub base: String,
     /// Optional parameters to append to the base command
     pub params: Option<Vec<String>>,
@@ -246,24 +246,43 @@ mod tests {
     fn parses_builtin_scoped_npm_executor_commands() {
         let cases = [
             (
-                "npx -y @musistudio/claude-code-router@1.0.66 code",
-                vec!["-y", "@musistudio/claude-code-router@1.0.66", "code"],
+                "npx -y --package @musistudio/claude-code-router@1.0.66 ccr code",
+                vec![
+                    "-y",
+                    "--package",
+                    "@musistudio/claude-code-router@1.0.66",
+                    "ccr",
+                    "code",
+                ],
             ),
             (
-                "npx -y @sourcegraph/amp@latest",
-                vec!["-y", "@sourcegraph/amp@latest"],
+                "npx -y --package @sourcegraph/amp@latest amp",
+                vec!["-y", "--package", "@sourcegraph/amp@latest", "amp"],
+            ),
+            (
+                "npx -y --package @anthropic-ai/claude-code@2.1.119 claude",
+                vec![
+                    "-y",
+                    "--package",
+                    "@anthropic-ai/claude-code@2.1.119",
+                    "claude",
+                ],
             ),
             (
                 "npx -y --package @openai/codex@0.124.0 codex",
                 vec!["-y", "--package", "@openai/codex@0.124.0", "codex"],
             ),
             (
-                "npx -y @qwen-code/qwen-code@0.9.1",
-                vec!["-y", "@qwen-code/qwen-code@0.9.1"],
+                "npx -y --package @qwen-code/qwen-code@0.9.1 qwen",
+                vec!["-y", "--package", "@qwen-code/qwen-code@0.9.1", "qwen"],
             ),
             (
-                "npx -y @github/copilot@0.0.403",
-                vec!["-y", "@github/copilot@0.0.403"],
+                "npx -y --package @github/copilot@0.0.403 copilot",
+                vec!["-y", "--package", "@github/copilot@0.0.403", "copilot"],
+            ),
+            (
+                "npx -y --package @google/gemini-cli@0.29.3 gemini",
+                vec!["-y", "--package", "@google/gemini-cli@0.29.3", "gemini"],
             ),
         ];
 

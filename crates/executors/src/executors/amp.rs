@@ -34,7 +34,7 @@ pub struct Amp {
 
 impl Amp {
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
-        let mut builder = CommandBuilder::new("npx -y @sourcegraph/amp@latest")
+        let mut builder = CommandBuilder::new("npx -y --package @sourcegraph/amp@latest amp")
             .params(["--execute", "--stream-json"]);
         if self.dangerously_allow_all.unwrap_or(false) {
             builder = builder.extend_params(["--dangerously-allow-all"]);
