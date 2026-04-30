@@ -226,19 +226,15 @@ impl WorktreeManager {
             return;
         }
 
-        match std::fs::read_dir(parent) {
-            Ok(mut entries) => {
-                if entries.next().is_none()
-                    && let Err(e) = std::fs::remove_dir(parent)
-                {
-                    debug!(
-                        "Failed to remove empty old workspace directory {}: {}",
-                        parent.display(),
-                        e
-                    );
-                }
-            }
-            _ => {}
+        if let Ok(mut entries) = std::fs::read_dir(parent)
+            && entries.next().is_none()
+            && let Err(e) = std::fs::remove_dir(parent)
+        {
+            debug!(
+                "Failed to remove empty old workspace directory {}: {}",
+                parent.display(),
+                e
+            );
         }
     }
 
