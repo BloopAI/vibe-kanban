@@ -8,15 +8,16 @@ use api_types::{
     CreateIssueRequest, CreateIssueTagRequest, CreateOrganizationRequest,
     CreateOrganizationResponse, CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest,
     GetInvitationResponse, GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse,
-    HandoffRedeemRequest, HandoffRedeemResponse, Issue, IssueAssignee, IssueRelationship, IssueTag,
-    ListAttachmentsResponse, ListInvitationsResponse, ListIssueAssigneesResponse,
-    ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse,
-    ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse,
-    ListPullRequestsResponse, ListTagsResponse, LocalLoginRequest, LocalLoginResponse,
-    MutationResponse, Organization, ProfileResponse, PullRequest, RevokeInvitationRequest,
-    SearchIssuesRequest, Tag, TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest,
-    UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
-    UpdatePullRequestApiRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
+    HandoffPollRequest, HandoffPollResponse, HandoffRedeemRequest, HandoffRedeemResponse, Issue,
+    IssueAssignee, IssueRelationship, IssueTag, ListAttachmentsResponse, ListInvitationsResponse,
+    ListIssueAssigneesResponse, ListIssueRelationshipsResponse, ListIssueTagsResponse,
+    ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse,
+    ListProjectStatusesResponse, ListProjectsResponse, ListPullRequestsResponse, ListTagsResponse,
+    LocalLoginRequest, LocalLoginResponse, MutationResponse, Organization, ProfileResponse,
+    PullRequest, RevokeInvitationRequest, SearchIssuesRequest, Tag, TokenRefreshRequest,
+    TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
+    UpdateOrganizationRequest, UpdatePullRequestApiRequest, UpdateWorkspaceRequest,
+    UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
@@ -59,12 +60,16 @@ impl RemoteClientError {
     }
 
     /// Returns true if the error is transient and should be retried.
-    fn should_retry(&self) -> bool {
+    pub fn is_transient(&self) -> bool {
         match self {
             Self::Transport(_) | Self::Timeout => true,
             Self::Http { status, .. } => (500..=599).contains(status),
             _ => false,
         }
+    }
+
+    fn should_retry(&self) -> bool {
+        self.is_transient()
     }
 
     fn is_definitive_auth_failure(&self) -> bool {
@@ -303,6 +308,16 @@ impl RemoteClient {
         request: &HandoffRedeemRequest,
     ) -> Result<HandoffRedeemResponse, RemoteClientError> {
         self.post_public("/v1/oauth/web/redeem", Some(request))
+            .await
+            .map_err(|e| self.map_api_error(e))
+    }
+
+    /// Polls for handoff completion (desktop flow).
+    pub async fn handoff_poll(
+        &self,
+        request: &HandoffPollRequest,
+    ) -> Result<HandoffPollResponse, RemoteClientError> {
+        self.post_public("/v1/oauth/web/poll", Some(request))
             .await
             .map_err(|e| self.map_api_error(e))
     }
