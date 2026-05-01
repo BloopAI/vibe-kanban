@@ -24,6 +24,11 @@ import esSettings from './locales/es/settings.json';
 import esProjects from './locales/es/projects.json';
 import esTasks from './locales/es/tasks.json';
 import esOrganization from './locales/es/organization.json';
+import ptCommon from './locales/pt/common.json';
+import ptSettings from './locales/pt/settings.json';
+import ptProjects from './locales/pt/projects.json';
+import ptTasks from './locales/pt/tasks.json';
+import ptOrganization from './locales/pt/organization.json';
 import koCommon from './locales/ko/common.json';
 import koSettings from './locales/ko/settings.json';
 import koProjects from './locales/ko/projects.json';
@@ -69,6 +74,13 @@ const resources = {
     tasks: esTasks,
     organization: esOrganization,
   },
+  pt: {
+    common: ptCommon,
+    settings: ptSettings,
+    projects: ptProjects,
+    tasks: ptTasks,
+    organization: ptOrganization,
+  },
   ko: {
     common: koCommon,
     settings: koSettings,
@@ -98,6 +110,8 @@ i18n
   .init({
     resources,
     fallbackLng: {
+      'pt-BR': ['pt'],
+      'pt-PT': ['pt'],
       'zh-TW': ['zh-Hant'],
       'zh-HK': ['zh-Hant'],
       'zh-MO': ['zh-Hant'],
@@ -107,7 +121,7 @@ i18n
     defaultNS: 'common',
     debug: import.meta.env.DEV,
     // Include 'zh' + Traditional Chinese locales for browser detection
-    supportedLngs: [...SUPPORTED_I18N_CODES, 'zh', 'zh-TW', 'zh-HK', 'zh-MO'],
+    supportedLngs: [...SUPPORTED_I18N_CODES, 'zh', 'zh-TW', 'zh-HK', 'zh-MO', 'pt-BR', 'pt-PT'],
     nonExplicitSupportedLngs: true, // Accept zh -> zh-Hans mapping
     load: 'currentOnly', // Load exact language code
 
