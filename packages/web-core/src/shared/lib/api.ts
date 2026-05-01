@@ -45,11 +45,11 @@ import {
   GhCliSetupError,
   RunScriptError,
   StatusResponse,
+  CreateOrganizationRequest,
+  CreateOrganizationResponse,
   ListOrganizationsResponse,
   OrganizationMemberWithProfile,
   ListMembersResponse,
-  CreateOrganizationRequest,
-  CreateOrganizationResponse,
   CreateInvitationRequest,
   CreateInvitationResponse,
   RevokeInvitationRequest,
@@ -87,9 +87,6 @@ import {
   CreateWorkspaceFromPrBody,
   CreateWorkspaceFromPrResponse,
   CreateFromPrError,
-  MigrationRequest,
-  MigrationResponse,
-  Project,
   CreateAndStartWorkspaceRequest,
   CreateAndStartWorkspaceResponse,
   RelayPairedClient,
@@ -196,6 +193,7 @@ export type OrganizationBillingStatus =
 export interface OrganizationBillingStatusResponse {
   status: OrganizationBillingStatus;
   billing_enabled: boolean;
+  can_manage_billing: boolean;
   seat_info: {
     current_members: number;
     free_seats: number;
@@ -1450,25 +1448,6 @@ export const organizationsApi = {
     return handleRemoteResponse<OrganizationBillingStatusResponse>(response);
   },
 
-  createCheckoutSession: async (
-    orgId: string,
-    successUrl: string,
-    cancelUrl: string
-  ): Promise<{ url: string }> => {
-    const response = await makeRemoteRequest(
-      `/v1/organizations/${orgId}/billing/checkout`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          success_url: successUrl,
-          cancel_url: cancelUrl,
-        }),
-      }
-    );
-    return handleRemoteResponse<{ url: string }>(response);
-  },
-
   createPortalSession: async (
     orgId: string,
     returnUrl: string
@@ -1609,22 +1588,6 @@ export const queueApi = {
   getStatus: async (sessionId: string): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`);
     return handleApiResponse<QueueStatus>(response);
-  },
-};
-
-// Migration API
-export const migrationApi = {
-  listProjects: async (): Promise<Project[]> => {
-    const response = await makeRequest('/api/migration/projects');
-    return handleApiResponse<Project[]>(response);
-  },
-
-  start: async (data: MigrationRequest): Promise<MigrationResponse> => {
-    const response = await makeRequest('/api/migration/start', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<MigrationResponse>(response);
   },
 };
 

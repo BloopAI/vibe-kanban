@@ -1,10 +1,35 @@
+import { useEffect } from 'react';
+import { isTauriApp } from '@/shared/lib/platform';
+import { router } from '@web/app/router';
+
 /**
- * Listens for `navigate-to-workspace` events emitted by the Tauri backend
- * when a notification fires.
- *
- * Auto-navigation is temporarily disabled — the user handles navigation
- * manually for now.
+ * Listens for `notification-clicked` events emitted by the macOS native
+ * notification delegate when the user clicks an OS notification.
+ * Navigates to the `deeplinkPath` carried in the event payload.
  */
 export function useTauriNotificationNavigation() {
-  // noop — auto-navigation disabled for now
+  useEffect(() => {
+    if (!isTauriApp()) return;
+
+    let unlisten: (() => void) | undefined;
+
+    async function setup() {
+      const { listen } = await import('@tauri-apps/api/event');
+
+      unlisten = await listen<{ deeplinkPath: string }>(
+        'notification-clicked',
+        (event) => {
+          const path = event.payload.deeplinkPath;
+          if (path) {
+            router.navigate({ to: path as '/' });
+          }
+        }
+      );
+    }
+
+    setup();
+    return () => {
+      unlisten?.();
+    };
+  }, []);
 }

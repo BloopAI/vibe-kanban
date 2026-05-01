@@ -25,7 +25,7 @@ mod state;
 use std::env;
 
 pub use app::Server;
-pub use billing::{BillingCheckError, BillingService};
+pub use billing::BillingService;
 use opentelemetry::trace::TracerProvider as _;
 pub use state::AppState;
 use tracing_error::ErrorLayer;

@@ -15,7 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as OnboardingSignInRouteImport } from './routes/onboarding_.sign-in'
 import { Route as AppWorkspacesRouteImport } from './routes/_app.workspaces'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
-import { Route as AppMigrateRouteImport } from './routes/_app.migrate'
+import { Route as AppExportRouteImport } from './routes/_app.export'
 import { Route as WorkspacesWorkspaceIdVscodeRouteImport } from './routes/workspaces.$workspaceId.vscode'
 import { Route as AppWorkspacesElectricTestRouteImport } from './routes/_app.workspaces_.electric-test'
 import { Route as AppWorkspacesCreateRouteImport } from './routes/_app.workspaces_.create'
@@ -62,9 +62,9 @@ const AppNotificationsRoute = AppNotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => AppRoute,
 } as any)
-const AppMigrateRoute = AppMigrateRouteImport.update({
-  id: '/migrate',
-  path: '/migrate',
+const AppExportRoute = AppExportRouteImport.update({
+  id: '/export',
+  path: '/export',
   getParentRoute: () => AppRoute,
 } as any)
 const WorkspacesWorkspaceIdVscodeRoute =
@@ -169,7 +169,7 @@ const AppProjectsProjectIdIssuesIssueIdHostsHostIdWorkspacesCreateDraftIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
-  '/migrate': typeof AppMigrateRoute
+  '/export': typeof AppExportRoute
   '/notifications': typeof AppNotificationsRoute
   '/workspaces': typeof AppWorkspacesRoute
   '/onboarding/sign-in': typeof OnboardingSignInRoute
@@ -193,7 +193,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
-  '/migrate': typeof AppMigrateRoute
+  '/export': typeof AppExportRoute
   '/notifications': typeof AppNotificationsRoute
   '/workspaces': typeof AppWorkspacesRoute
   '/onboarding/sign-in': typeof OnboardingSignInRoute
@@ -219,7 +219,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/onboarding': typeof OnboardingRoute
-  '/_app/migrate': typeof AppMigrateRoute
+  '/_app/export': typeof AppExportRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/workspaces': typeof AppWorkspacesRoute
   '/onboarding_/sign-in': typeof OnboardingSignInRoute
@@ -245,7 +245,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/onboarding'
-    | '/migrate'
+    | '/export'
     | '/notifications'
     | '/workspaces'
     | '/onboarding/sign-in'
@@ -269,7 +269,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/onboarding'
-    | '/migrate'
+    | '/export'
     | '/notifications'
     | '/workspaces'
     | '/onboarding/sign-in'
@@ -294,7 +294,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/onboarding'
-    | '/_app/migrate'
+    | '/_app/export'
     | '/_app/notifications'
     | '/_app/workspaces'
     | '/onboarding_/sign-in'
@@ -369,11 +369,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppNotificationsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/migrate': {
-      id: '/_app/migrate'
-      path: '/migrate'
-      fullPath: '/migrate'
-      preLoaderRoute: typeof AppMigrateRouteImport
+    '/_app/export': {
+      id: '/_app/export'
+      path: '/export'
+      fullPath: '/export'
+      preLoaderRoute: typeof AppExportRouteImport
       parentRoute: typeof AppRoute
     }
     '/workspaces/$workspaceId/vscode': {
@@ -492,7 +492,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
-  AppMigrateRoute: typeof AppMigrateRoute
+  AppExportRoute: typeof AppExportRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppWorkspacesRoute: typeof AppWorkspacesRoute
   AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRoute
@@ -512,7 +512,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppMigrateRoute: AppMigrateRoute,
+  AppExportRoute: AppExportRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppWorkspacesRoute: AppWorkspacesRoute,
   AppProjectsProjectIdRoute: AppProjectsProjectIdRoute,

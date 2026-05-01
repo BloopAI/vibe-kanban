@@ -144,6 +144,12 @@ pub struct UiPreferencesData {
     /// Default setting for creating a draft workspace from new issues
     #[serde(default)]
     pub create_draft_workspace_by_default: Option<bool>,
+    /// Kanban project view selections (active view per project)
+    #[serde(default)]
+    pub kanban_project_view_selections: std::collections::HashMap<String, serde_json::Value>,
+    /// Kanban project view preferences (filters, toggles per project per view)
+    #[serde(default)]
+    pub kanban_project_view_preferences: std::collections::HashMap<String, serde_json::Value>,
 }
 
 /// Linked issue data for draft workspace scratch

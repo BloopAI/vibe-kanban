@@ -35,7 +35,7 @@ async fn create_organization(
     Json(payload): Json<CreateOrganizationRequest>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let name = payload.name.trim();
-    let slug = payload.slug.trim().to_lowercase();
+    let slug = payload.slug.trim();
 
     if name.is_empty() || name.len() > 100 {
         return Err(ErrorResponse::new(
@@ -44,27 +44,16 @@ async fn create_organization(
         ));
     }
 
-    if slug.len() < 3 || slug.len() > 63 {
+    if slug.is_empty() || slug.len() > 100 {
         return Err(ErrorResponse::new(
             StatusCode::BAD_REQUEST,
-            "Organization slug must be between 3 and 63 characters",
-        ));
-    }
-
-    if !slug
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
-    {
-        return Err(ErrorResponse::new(
-            StatusCode::BAD_REQUEST,
-            "Organization slug can only contain lowercase letters, numbers, hyphens, and underscores",
+            "Organization slug must be between 1 and 100 characters",
         ));
     }
 
     let org_repo = OrganizationRepository::new(&state.pool);
-
     let organization = org_repo
-        .create_organization(name, &slug, ctx.user.id)
+        .create_organization(name, slug, ctx.user.id)
         .await
         .map_err(|e| match e {
             IdentityError::OrganizationConflict(msg) => {

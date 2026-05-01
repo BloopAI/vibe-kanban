@@ -6,6 +6,7 @@ import {
 import type {
   Issue,
   IssueAssignee,
+  IssueRelationship,
   IssueTag,
   IssuePriority,
 } from 'shared/remote-types';
@@ -14,8 +15,12 @@ type UseKanbanFiltersParams = {
   issues: Issue[];
   issueAssignees: IssueAssignee[];
   issueTags: IssueTag[];
+  issueRelationships: IssueRelationship[];
+  issuesById: Map<string, Issue>;
+  doneStatusIds: Set<string>;
   filters: KanbanFilterState;
   showSubIssues: boolean;
+  hideBlocked: boolean;
   currentUserId: string | null;
 };
 
@@ -34,8 +39,12 @@ export function useKanbanFilters({
   issues,
   issueAssignees,
   issueTags,
+  issueRelationships,
+  issuesById,
+  doneStatusIds,
   filters,
   showSubIssues,
+  hideBlocked,
   currentUserId,
 }: UseKanbanFiltersParams): UseKanbanFiltersResult {
   // Create lookup maps for efficient filtering
@@ -136,6 +145,20 @@ export function useKanbanFilters({
       });
     }
 
+    // Hide blocked: filter out issues that are blocked by an unresolved issue
+    if (hideBlocked) {
+      result = result.filter((issue) => {
+        return !issueRelationships.some((r) => {
+          if (r.relationship_type !== 'blocking') return false;
+          if (r.related_issue_id !== issue.id) return false;
+          const blockingIssue = issuesById.get(r.issue_id);
+          if (blockingIssue == null) return false;
+          // Blocker is resolved if it's in a done status
+          return !doneStatusIds.has(blockingIssue.status_id);
+        });
+      });
+    }
+
     // Note: Sorting is handled in KanbanContainer after grouping by status
     // so that sort order is applied within each column
 
@@ -146,6 +169,10 @@ export function useKanbanFilters({
     assigneesByIssue,
     tagsByIssue,
     showSubIssues,
+    hideBlocked,
+    issueRelationships,
+    issuesById,
+    doneStatusIds,
     currentUserId,
   ]);
 

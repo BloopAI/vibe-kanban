@@ -136,6 +136,7 @@ export function KanbanContainer() {
     tags,
     issueAssignees,
     issueTags,
+    issueRelationships,
     getTagObjectsForIssue,
     getTagsForIssue,
     getPullRequestsForIssue,
@@ -223,6 +224,9 @@ export function KanbanContainer() {
   const setKanbanProjectViewShowWorkspaces = useUiPreferencesStore(
     (s) => s.setKanbanProjectViewShowWorkspaces
   );
+  const setKanbanProjectViewHideBlocked = useUiPreferencesStore(
+    (s) => s.setKanbanProjectViewHideBlocked
+  );
   const clearKanbanProjectViewPreferences = useUiPreferencesStore(
     (s) => s.clearKanbanProjectViewPreferences
   );
@@ -235,6 +239,7 @@ export function KanbanContainer() {
     filters: defaultKanbanFilters,
     showSubIssues: defaultShowSubIssues,
     showWorkspaces: defaultShowWorkspaces,
+    hideBlocked: defaultHideBlocked,
   } = resolvedProjectState;
   const projectViewPreferences = projectViewPreferencesById?.[activeViewId];
   const kanbanFilters = projectViewPreferences?.filters ?? defaultKanbanFilters;
@@ -242,12 +247,14 @@ export function KanbanContainer() {
     projectViewPreferences?.showSubIssues ?? defaultShowSubIssues;
   const showWorkspaces =
     projectViewPreferences?.showWorkspaces ?? defaultShowWorkspaces;
+  const hideBlocked = projectViewPreferences?.hideBlocked ?? defaultHideBlocked;
 
   const hasActiveFilters = useMemo(
     () =>
       !areKanbanFiltersEqual(kanbanFilters, defaultKanbanFilters) ||
       showSubIssues !== defaultShowSubIssues ||
-      showWorkspaces !== defaultShowWorkspaces,
+      showWorkspaces !== defaultShowWorkspaces ||
+      hideBlocked !== defaultHideBlocked,
     [
       kanbanFilters,
       defaultKanbanFilters,
@@ -255,16 +262,39 @@ export function KanbanContainer() {
       defaultShowSubIssues,
       showWorkspaces,
       defaultShowWorkspaces,
+      hideBlocked,
+      defaultHideBlocked,
     ]
   );
   const shouldAnimateCreateButton = issues.length === 0;
+
+  // Compute resolved status IDs for the blocked filter.
+  // A blocking issue is considered resolved when it's in:
+  // - The last visible status (rightmost kanban column, e.g. "Done")
+  // - Any hidden status (terminal states like "Cancelled" that don't appear as columns)
+  const doneStatusIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const s of statuses) {
+      if (s.hidden) ids.add(s.id);
+    }
+    const sorted = statuses
+      .filter((s) => !s.hidden)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    const lastVisible = sorted[sorted.length - 1];
+    if (lastVisible) ids.add(lastVisible.id);
+    return ids;
+  }, [statuses]);
 
   const { filteredIssues } = useKanbanFilters({
     issues,
     issueAssignees,
     issueTags,
+    issueRelationships,
+    issuesById,
+    doneStatusIds,
     filters: kanbanFilters,
     showSubIssues,
+    hideBlocked,
     currentUserId: userId,
   });
 
@@ -331,6 +361,13 @@ export function KanbanContainer() {
       setKanbanProjectViewShowWorkspaces(projectId, activeViewId, show);
     },
     [activeViewId, projectId, setKanbanProjectViewShowWorkspaces]
+  );
+
+  const setHideBlocked = useCallback(
+    (hide: boolean) => {
+      setKanbanProjectViewHideBlocked(projectId, activeViewId, hide);
+    },
+    [activeViewId, projectId, setKanbanProjectViewHideBlocked]
   );
 
   const clearKanbanFilters = useCallback(() => {
@@ -926,6 +963,8 @@ export function KanbanContainer() {
             onSortChange={setKanbanSort}
             onShowSubIssuesChange={setShowSubIssues}
             onShowWorkspacesChange={setShowWorkspaces}
+            hideBlocked={hideBlocked}
+            onHideBlockedChange={setHideBlocked}
             onClearFilters={clearKanbanFilters}
             onCreateIssue={handleAddTask}
             shouldAnimateCreateButton={shouldAnimateCreateButton}

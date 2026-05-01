@@ -5,11 +5,7 @@ import {
   useQueries,
 } from '@tanstack/react-query';
 import { workspacesApi, executionProcessesApi } from '@/shared/lib/api';
-import {
-  useExecutionProcessesVisible,
-  useIsAttemptRunningVisible,
-  useExecutionProcessesIsLoading,
-} from '@/shared/stores/useExecutionProcessesStore';
+import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import type { AttemptData } from '@/shared/lib/types';
 import type { ExecutionProcess } from 'shared/types';
 
@@ -35,9 +31,11 @@ export function useWorkspaceExecution(workspaceId?: string) {
       },
     }).length > 0;
 
-  const executionProcesses = useExecutionProcessesVisible();
-  const isAttemptRunning = useIsAttemptRunningVisible();
-  const streamLoading = useExecutionProcessesIsLoading();
+  const {
+    executionProcessesVisible: executionProcesses,
+    isAttemptRunningVisible: isAttemptRunning,
+    isLoading: streamLoading,
+  } = useExecutionProcessesContext();
 
   // Get setup script processes that need detailed info
   const setupProcesses = useMemo(() => {

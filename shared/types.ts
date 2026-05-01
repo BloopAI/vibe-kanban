@@ -130,7 +130,15 @@ selected_project_id: string | null,
 /**
  * Default setting for creating a draft workspace from new issues
  */
-create_draft_workspace_by_default: boolean | null, };
+create_draft_workspace_by_default: boolean | null, 
+/**
+ * Kanban project view selections (active view per project)
+ */
+kanban_project_view_selections: { [key in string]?: JsonValue }, 
+/**
+ * Kanban project view preferences (filters, toggles per project per view)
+ */
+kanban_project_view_preferences: { [key in string]?: JsonValue }, };
 
 export type ProjectRepoDefaultsData = { repos: Array<DraftWorkspaceRepo>, };
 
@@ -249,20 +257,6 @@ export type ListMembersResponse = { members: Array<OrganizationMemberWithProfile
 export type UpdateMemberRoleRequest = { role: MemberRole, };
 
 export type UpdateMemberRoleResponse = { user_id: string, role: MemberRole, };
-
-export type MigrationRequest = { organization_id: string, 
-/**
- * List of local project IDs to migrate.
- */
-project_ids: Array<string>, };
-
-export type MigrationResponse = { report: MigrationReport, };
-
-export type MigrationReport = { projects: EntityReport, tasks: EntityReport, pr_merges: EntityReport, workspaces: EntityReport, warnings: Array<string>, };
-
-export type EntityReport = { total: number, migrated: number, failed: number, skipped: number, errors: Array<EntityError>, };
-
-export type EntityError = { local_id: string, error: string, };
 
 export type RegisterRepoRequest = { path: string, display_name: string | null, };
 
@@ -627,7 +621,7 @@ export type ExecutorConfigs = { executors: { [key in BaseCodingAgent]?: Executor
 
 export enum BaseAgentCapability { SESSION_FORK = "SESSION_FORK", SETUP_HELPER = "SETUP_HELPER", CONTEXT_USAGE = "CONTEXT_USAGE" }
 
-export type ClaudeEffort = "low" | "medium" | "high" | "max";
+export type ClaudeEffort = "low" | "medium" | "high" | "xhigh" | "max";
 
 export type ClaudeCode = { append_prompt: AppendPrompt, claude_code_router?: boolean | null, plan?: boolean | null, approvals?: boolean | null, model?: string | null, effort?: ClaudeEffort | null, agent?: string | null, dangerously_skip_permissions?: boolean | null, disable_api_key?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 

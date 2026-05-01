@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   SpinnerIcon,
@@ -28,7 +29,7 @@ import { MemberListItem } from '@/shared/components/org/MemberListItem';
 import { PendingInvitationItem } from '@/shared/components/org/PendingInvitationItem';
 import type { MemberRole } from 'shared/types';
 import { MemberRole as MemberRoleEnum } from 'shared/types';
-import { ApiError, organizationsApi } from '@/shared/lib/api';
+import { organizationsApi } from '@/shared/lib/api';
 import { cn } from '@/shared/lib/utils';
 import { getRemoteApiUrl } from '@/shared/lib/remoteApi';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
@@ -71,6 +72,11 @@ export function OrganizationsSettingsSection() {
   const isAdmin = currentUserRole === MemberRoleEnum.ADMIN;
   const isPersonalOrg = selectedOrg?.is_personal ?? false;
   const currentUserId = userId;
+  const showBillingStatus =
+    Boolean(selectedOrgId) &&
+    isAdmin &&
+    !isPersonalOrg &&
+    Boolean(getRemoteApiUrl());
 
   // Fetch members
   const { data: members = [], isLoading: loadingMembers } =
@@ -84,8 +90,17 @@ export function OrganizationsSettingsSection() {
       isPersonal: isPersonalOrg,
     });
 
+  const { data: billingStatus } = useQuery({
+    queryKey: ['organization-billing-status', selectedOrgId],
+    queryFn: () => organizationsApi.getBillingStatus(selectedOrgId!),
+    enabled: showBillingStatus,
+    staleTime: 60_000,
+    retry: false,
+  });
+
   // Organization mutations
   const {
+    createOrganization,
     removeMember,
     updateMemberRole,
     revokeInvitation,
@@ -140,7 +155,7 @@ export function OrganizationsSettingsSection() {
         await CreateOrganizationDialog.show();
 
       if (result.action === 'created' && result.organizationId) {
-        handleOrgSelect(result.organizationId ?? '');
+        handleOrgSelect(result.organizationId);
         setSuccess('Organization created successfully');
         setTimeout(() => setSuccess(null), 3000);
       }
@@ -212,41 +227,10 @@ export function OrganizationsSettingsSection() {
 
     try {
       const returnUrl = window.location.href;
-      const billingStatus =
-        await organizationsApi.getBillingStatus(selectedOrgId);
-
-      const createCheckoutUrl = async () => {
-        const { url: checkoutUrl } =
-          await organizationsApi.createCheckoutSession(
-            selectedOrgId,
-            returnUrl,
-            returnUrl
-          );
-        return checkoutUrl;
-      };
-
-      const url = await (async () => {
-        if (billingStatus.status === 'requires_subscription') {
-          return createCheckoutUrl();
-        }
-
-        try {
-          const { url: portalUrl } = await organizationsApi.createPortalSession(
-            selectedOrgId,
-            returnUrl
-          );
-          return portalUrl;
-        } catch (err) {
-          if (
-            err instanceof ApiError &&
-            (err.statusCode === 402 || err.statusCode === 503)
-          ) {
-            return createCheckoutUrl();
-          }
-
-          throw err;
-        }
-      })();
+      const { url } = await organizationsApi.createPortalSession(
+        selectedOrgId,
+        returnUrl
+      );
 
       if (stripeTab) {
         stripeTab.opener = null;
@@ -340,6 +324,7 @@ export function OrganizationsSettingsSection() {
             variant="secondary"
             value={t('createDialog.createButton')}
             onClick={handleCreateOrganization}
+            disabled={createOrganization.isPending}
           >
             <PlusIcon className="size-icon-xs mr-1" weight="bold" />
           </PrimaryButton>
@@ -450,6 +435,7 @@ export function OrganizationsSettingsSection() {
                     value={t('personalOrg.createOrgButton')}
                     onClick={handleCreateOrganization}
                     className="mt-3"
+                    disabled={createOrganization.isPending}
                   >
                     <PlusIcon className="size-icon-xs mr-1" weight="bold" />
                   </PrimaryButton>
@@ -488,7 +474,7 @@ export function OrganizationsSettingsSection() {
       )}
 
       {/* Billing CTA (admin only, non-personal orgs, when remote URL is configured) */}
-      {selectedOrg && isAdmin && !isPersonalOrg && getRemoteApiUrl() && (
+      {selectedOrg && billingStatus?.can_manage_billing && (
         <SettingsCard
           title={t('billing.title')}
           description={t('billing.description')}

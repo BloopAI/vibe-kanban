@@ -25,15 +25,54 @@ use uuid::Uuid;
 
 const UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(60 * 60);
 
-/// Native push notifier using Tauri's notification plugin.
-/// Emits a `navigate-to-workspace` event so the frontend can navigate to the
-/// relevant workspace when the user clicks the notification and the app activates.
+#[cfg(target_os = "linux")]
+mod linux_notifications;
+#[cfg(target_os = "macos")]
+mod macos_notifications;
+#[cfg(target_os = "windows")]
+mod windows_notifications;
+
+/// Native push notifier for backend-initiated notifications.
+/// Uses platform-native APIs with click handling where available,
+/// falls back to `tauri-plugin-notification` otherwise.
 struct TauriNotifier {
     app_handle: tauri::AppHandle,
 }
 
+/// Whether platform-native notifications with click handling are available.
+fn use_native_notifications() -> bool {
+    #[cfg(target_os = "macos")]
+    return macos_notifications::is_available();
+    #[cfg(target_os = "windows")]
+    return windows_notifications::is_available();
+    #[cfg(target_os = "linux")]
+    return linux_notifications::is_available();
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    false
+}
+
+/// Show a notification using the platform-native API (with click handling).
+fn show_native_notification(title: &str, body: &str, deeplink_path: Option<&str>) {
+    #[cfg(target_os = "macos")]
+    macos_notifications::show_notification(title, body, deeplink_path);
+    #[cfg(target_os = "windows")]
+    windows_notifications::show_notification(title, body, deeplink_path);
+    #[cfg(target_os = "linux")]
+    linux_notifications::show_notification(title, body, deeplink_path);
+}
+
 #[tauri::command]
-async fn show_system_notification(title: String, body: String) -> Result<(), String> {
+async fn show_system_notification(
+    title: String,
+    body: String,
+    deeplink_path: Option<String>,
+) -> Result<(), String> {
+    if use_native_notifications() {
+        show_native_notification(&title, &body, deeplink_path.as_deref());
+        return Ok(());
+    }
+
+    // Fallback: generic NotificationService (e.g. macOS dev mode).
     let config = load_config_from_file(&config_path()).await;
     let notification_service = NotificationService::new(Arc::new(tokio::sync::RwLock::new(config)));
     notification_service.notify(&title, &body, None).await;
@@ -49,6 +88,14 @@ fn read_clipboard_text() -> Result<String, String> {
 #[async_trait]
 impl PushNotifier for TauriNotifier {
     async fn send(&self, title: &str, message: &str, workspace_id: Option<Uuid>) {
+        let deeplink_path = workspace_id.map(|id| format!("/workspaces/{id}"));
+
+        if use_native_notifications() {
+            show_native_notification(title, message, deeplink_path.as_deref());
+            return;
+        }
+
+        // Fallback: tauri-plugin-notification (no click handling).
         if let Err(e) = self
             .app_handle
             .notification()
@@ -58,13 +105,6 @@ impl PushNotifier for TauriNotifier {
             .show()
         {
             tracing::warn!("Failed to send Tauri notification: {}", e);
-        }
-
-        if let Some(id) = workspace_id {
-            let _ = self.app_handle.emit(
-                "navigate-to-workspace",
-                serde_json::json!({ "workspaceId": id.to_string() }),
-            );
         }
     }
 }
@@ -124,6 +164,15 @@ fn main() {
 
     builder
         .setup(move |app| {
+            // Initialize platform-native notifications (request permission,
+            // install click-handling delegates) before anything else.
+            #[cfg(target_os = "macos")]
+            macos_notifications::initialize(app.handle().clone());
+            #[cfg(target_os = "windows")]
+            windows_notifications::initialize(app.handle().clone());
+            #[cfg(target_os = "linux")]
+            linux_notifications::initialize(app.handle().clone());
+
             if cfg!(debug_assertions) {
                 // Dev mode: frontend dev server (Vite) and backend are started
                 // externally. Use WebviewUrl::External so that macOS WKWebView

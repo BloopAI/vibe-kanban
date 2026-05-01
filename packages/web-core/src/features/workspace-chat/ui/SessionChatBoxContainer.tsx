@@ -9,6 +9,8 @@ import {
   ExecutionProcessStatus,
 } from 'shared/types';
 import { AgentIcon } from '@/shared/components/AgentIcon';
+import { useHostId } from '@/shared/providers/HostIdProvider';
+import { workspaceSessionKeys } from '@/shared/hooks/workspaceSessionKeys';
 import { useWorkspaceExecution } from '@/shared/hooks/useWorkspaceExecution';
 import { useWorkspaceRepo } from '@/shared/hooks/useWorkspaceRepo';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
@@ -169,6 +171,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   const sessionId = session?.id;
   const queryClient = useQueryClient();
+  const hostId = useHostId();
 
   const handleRenameSession = useCallback(
     (targetSessionId: string, currentName: string) => {
@@ -177,12 +180,12 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         onRename: async (newName: string) => {
           await sessionsApi.update(targetSessionId, { name: newName });
           void queryClient.invalidateQueries({
-            queryKey: ['workspaceSessions', workspaceId],
+            queryKey: workspaceSessionKeys.byWorkspace(workspaceId, hostId),
           });
         },
       });
     },
-    [queryClient, workspaceId]
+    [queryClient, hostId, workspaceId]
   );
   const appNavigation = useAppNavigation();
 

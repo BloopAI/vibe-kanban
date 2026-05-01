@@ -1,7 +1,10 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import type { ExecutionProcess } from 'shared/types';
-import { useExecutionProcessesStore } from '@/shared/stores/useExecutionProcessesStore';
+import {
+  ExecutionProcessesContext,
+  type ExecutionProcessesContextType,
+} from '@/shared/hooks/useExecutionProcessesContext';
 
 export const ExecutionProcessesProvider: React.FC<{
   sessionId?: string | undefined;
@@ -38,8 +41,8 @@ export const ExecutionProcessesProvider: React.FC<{
     [visible]
   );
 
-  useEffect(() => {
-    useExecutionProcessesStore.getState().setExecutionProcessesData({
+  const value = useMemo<ExecutionProcessesContextType>(
+    () => ({
       executionProcessesAll: executionProcesses,
       executionProcessesByIdAll: executionProcessesById,
       isAttemptRunningAll: isAttemptRunning,
@@ -49,24 +52,23 @@ export const ExecutionProcessesProvider: React.FC<{
       isLoading,
       isConnected,
       error,
-    });
-  }, [
-    executionProcesses,
-    executionProcessesById,
-    isAttemptRunning,
-    visible,
-    executionProcessesByIdVisible,
-    isAttemptRunningVisible,
-    isLoading,
-    isConnected,
-    error,
-  ]);
+    }),
+    [
+      executionProcesses,
+      executionProcessesById,
+      isAttemptRunning,
+      visible,
+      executionProcessesByIdVisible,
+      isAttemptRunningVisible,
+      isLoading,
+      isConnected,
+      error,
+    ]
+  );
 
-  useEffect(() => {
-    return () => {
-      useExecutionProcessesStore.getState().clearExecutionProcessesData();
-    };
-  }, []);
-
-  return <>{children}</>;
+  return (
+    <ExecutionProcessesContext.Provider value={value}>
+      {children}
+    </ExecutionProcessesContext.Provider>
+  );
 };

@@ -3,11 +3,7 @@ import {
   ExecutionProcessStatus,
   PatchType,
 } from 'shared/types';
-import {
-  useExecutionProcessesVisible,
-  useExecutionProcessesIsLoading,
-  useExecutionProcessesIsConnected,
-} from '@/shared/stores/useExecutionProcessesStore';
+import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamJsonPatchEntries } from '@/shared/lib/streamJsonPatchEntries';
 import type {
@@ -34,9 +30,11 @@ export const useConversationHistory = ({
   onTimelineUpdated,
   scopeKey,
 }: UseConversationHistoryParams): UseConversationHistoryResult => {
-  const executionProcessesRaw = useExecutionProcessesVisible();
-  const isLoading = useExecutionProcessesIsLoading();
-  const isConnected = useExecutionProcessesIsConnected();
+  const {
+    executionProcessesVisible: executionProcessesRaw,
+    isLoading,
+    isConnected,
+  } = useExecutionProcessesContext();
   const executionProcesses = useRef<ExecutionProcess[]>(executionProcessesRaw);
   const displayedExecutionProcesses = useRef<ExecutionProcessStateStore>({});
   const loadedInitialEntries = useRef(false);
@@ -400,16 +398,15 @@ export const useConversationHistory = ({
       if (executionProcesses.current.length === 0) {
         if (emittedEmptyInitialRef.current) return;
         emittedEmptyInitialRef.current = true;
-        loadedInitialEntries.current = true;
         emitEntries(displayedExecutionProcesses.current, 'initial', false);
         return;
       }
 
       emittedEmptyInitialRef.current = false;
-      loadedInitialEntries.current = true;
 
       const allInitialEntries = await loadHistoricEntries(MIN_INITIAL_ENTRIES);
       if (cancelled) return;
+      loadedInitialEntries.current = true;
       mergeIntoDisplayed((state) => {
         Object.assign(state, allInitialEntries);
       });

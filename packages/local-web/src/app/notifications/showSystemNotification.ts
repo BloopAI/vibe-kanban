@@ -5,6 +5,7 @@ interface NotificationPayload {
   id: string;
   title: string;
   body: string;
+  deeplinkPath?: string;
 }
 
 export async function showSystemNotification(
@@ -18,6 +19,7 @@ export async function showSystemNotification(
     await invoke('show_system_notification', {
       title: notification.title,
       body: notification.body,
+      deeplinkPath: notification.deeplinkPath,
     });
   } catch (error) {
     console.error(

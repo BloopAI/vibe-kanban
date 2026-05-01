@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useExecutionProcessesVisible } from '@/shared/stores/useExecutionProcessesStore';
+import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { ProcessListItem } from '@vibe/ui/components/ProcessListItem';
 import { InputField } from '@vibe/ui/components/InputField';
@@ -31,7 +31,7 @@ export function ProcessListContainer() {
     logsPanelContent?.type === 'tool' || logsPanelContent?.type === 'terminal';
   const matchCount = logMatchIndices.length;
   const { t } = useTranslation('common');
-  const executionProcessesVisible = useExecutionProcessesVisible();
+  const { executionProcessesVisible } = useExecutionProcessesContext();
 
   // Sort processes by created_at descending (newest first)
   const sortedProcesses = useMemo(() => {

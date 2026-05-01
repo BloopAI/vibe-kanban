@@ -11,7 +11,6 @@ interface RemoteAppBarUserPopoverContainerProps {
   organizations: OrganizationWithRole[];
   selectedOrgId: string;
   onOrgSelect: (orgId: string) => void;
-  onCreateOrg: () => void;
 }
 
 function toNextPath({
@@ -26,7 +25,6 @@ export function RemoteAppBarUserPopoverContainer({
   organizations,
   selectedOrgId,
   onOrgSelect,
-  onCreateOrg,
 }: RemoteAppBarUserPopoverContainerProps) {
   const { isSignedIn } = useAuth();
   const { loginStatus } = useUserSystem();
@@ -89,7 +87,6 @@ export function RemoteAppBarUserPopoverContainer({
       open={open}
       onOpenChange={setOpen}
       onOrgSelect={onOrgSelect}
-      onCreateOrg={onCreateOrg}
       onOrgSettings={(orgId) => {
         void handleOrgSettings(orgId);
       }}

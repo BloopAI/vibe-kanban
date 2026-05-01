@@ -72,7 +72,6 @@
   },
   "orgSwitcher": {
     "organizations": "Organizaciones",
-    "createOrganization": "Crear organización",
     "orgSettings": "Configuración de la organización"
   },
   "ok": "OK",
@@ -477,7 +476,7 @@
       },
       "organizations": {
         "title": "Invite your team",
-        "content": "We've automatically created a personal organization, and initial project so you can easily get started with Vibe Kanban. You can also create new organizations and invite your team to collaborate."
+        "content": "We've automatically created a personal organization and initial project so you can get started with Vibe Kanban. Export your cloud data before shutdown."
       }
     }
   },
@@ -534,16 +533,11 @@
     "yes": "Yes",
     "no": "No"
   },
-  "migration": {
-    "allProjectsMigrated": "Todos tus proyectos ya han sido migrados a la nube.",
-    "continueToProjects": "Continuar a los proyectos"
-  },
   "appBar": {
     "kanban": {
       "tooltip": "Inicia sesión para ver proyectos",
       "title": "Tableros Kanban",
-      "description": "Inicia sesión para organizar tus agentes de codificación con tableros kanban.",
-      "migrateOldProjects": "Migrar proyectos antiguos"
+      "description": "Inicia sesión para organizar tus agentes de codificación con tableros kanban."
     }
   },
   "errors": {

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { sessionsApi } from '@/shared/lib/api';
 import { useHostId } from '@/shared/providers/HostIdProvider';
+import { workspaceSessionKeys } from '@/shared/hooks/workspaceSessionKeys';
 import type { Session } from 'shared/types';
 
 interface UseWorkspaceSessionsOptions {
@@ -43,7 +44,7 @@ export function useWorkspaceSessions(
   const prevWorkspaceIdRef = useRef(workspaceId);
 
   const { data: sessions = [], isLoading } = useQuery<Session[]>({
-    queryKey: ['workspaceSessions', hostId ?? 'local', workspaceId],
+    queryKey: workspaceSessionKeys.byWorkspace(workspaceId, hostId),
     queryFn: () => sessionsApi.getByWorkspace(workspaceId!),
     enabled: enabled && !!workspaceId,
   });

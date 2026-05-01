@@ -280,7 +280,7 @@ impl LogState {
             SdkEvent::SessionStatus(event) => {
                 self.handle_session_status(event.status);
             }
-            SdkEvent::SessionIdle => {}
+            SdkEvent::SessionIdle | SdkEvent::SessionUpdated => {}
             SdkEvent::SessionCompacted => {
                 self.add_normalized_entry(system_message("Session compacted".to_string()));
             }
