@@ -38,6 +38,8 @@
     "remote:generate-types:check": "cargo run --manifest-path crates/remote/Cargo.toml --bin remote-generate-types -- --check",
     "prepare-db": "node scripts/prepare-db.js",
     "prepare-db:check": "node scripts/prepare-db.js --check",
+    "locale:new": "node scripts/create-locale.mjs",
+    "locale:check": "node scripts/check-locale-translation.mjs",
     "build:bippy-bundle": "node scripts/build-bippy-bundle.mjs",
     "build:npx": "bash ./local-build.sh",
     "build:npx-cli": "cd npx-cli && npm ci && npm run build",
