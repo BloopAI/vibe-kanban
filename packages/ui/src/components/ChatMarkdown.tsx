@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import { cn } from '../lib/cn';
+import { linkifyGitHubRefs } from '../lib/github-ref-preprocessor';
 
 export interface ChatMarkdownRenderProps {
   content: string;
@@ -22,11 +24,12 @@ export function ChatMarkdown({
   renderContent,
 }: ChatMarkdownProps) {
   const contentClassName = cn('whitespace-pre-wrap break-words', className);
+  const processedContent = useMemo(() => linkifyGitHubRefs(content), [content]);
 
   return (
     <div className="text-sm" style={{ maxWidth }}>
       {renderContent({
-        content,
+        content: processedContent,
         className: contentClassName,
         workspaceId,
       })}
