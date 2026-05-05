@@ -63,8 +63,13 @@ Want to host your own Vibe Kanban Cloud instance? See our [self-hosting guide](h
 When building for a private/self-hosted deployment, set `VITE_DISABLE_SHUTDOWN_NOTIFICATION=true` at build time to suppress the cloud-shutdown banner and restore full kanban functionality:
 
 ```bash
-# Docker
+# Docker (root Dockerfile — local app)
 docker build --build-arg VITE_DISABLE_SHUTDOWN_NOTIFICATION=true .
+
+# Docker Compose (remote stack)
+VITE_DISABLE_SHUTDOWN_NOTIFICATION=true \
+  docker compose -f crates/remote/docker-compose.prod.yml \
+  --env-file crates/remote/.env.remote up --build
 
 # pnpm build
 VITE_DISABLE_SHUTDOWN_NOTIFICATION=true pnpm run build

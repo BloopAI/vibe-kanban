@@ -1,0 +1,85 @@
+services:
+  remote-db:
+    image: postgres:16-alpine
+    command: ["postgres", "-c", "wal_level=logical"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: remote
+      POSTGRES_USER: remote
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-remote}
+    volumes:
+      - remote-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U remote -d remote"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  electric:
+    image: electricsql/electric:1.4.13
+    working_dir: /app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://electric_sync:${ELECTRIC_ROLE_PASSWORD}@remote-db:5432/remote?sslmode=disable
+      PG_PROXY_PORT: 65432
+      LOGICAL_PUBLISHER_HOST: electric
+      AUTH_MODE: insecure
+      ELECTRIC_INSECURE: true
+      ELECTRIC_MANUAL_TABLE_PUBLISHING: true
+      ELECTRIC_USAGE_REPORTING: false
+      ELECTRIC_FEATURE_FLAGS: allow_subqueries,tagged_subqueries
+    volumes:
+      - electric-data:/app/persistent
+    depends_on:
+      remote-db:
+        condition: service_healthy
+      remote-server:
+        condition: service_healthy
+
+  remote-server:
+    build:
+      context: ../..
+      dockerfile: crates/remote/Dockerfile
+      args:
+        VITE_RELAY_API_BASE_URL: ${VITE_RELAY_API_BASE_URL:-}
+        VITE_DISABLE_SHUTDOWN_NOTIFICATION: ${VITE_DISABLE_SHUTDOWN_NOTIFICATION:-}
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    depends_on:
+      remote-db:
+        condition: service_healthy
+    environment:
+      RUST_LOG: info,remote=info
+      SERVER_DATABASE_URL: postgres://remote:${DB_PASSWORD:-remote}@remote-db:5432/remote
+      SERVER_LISTEN_ADDR: 0.0.0.0:8081
+      ELECTRIC_URL: http://electric:3000
+      SERVER_PUBLIC_BASE_URL: ${SERVER_PUBLIC_BASE_URL:-http://localhost:8081}
+      GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:-}
+      GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET}
+      ELECTRIC_ROLE_PASSWORD: ${ELECTRIC_ROLE_PASSWORD}
+      LOOPS_EMAIL_API_KEY: ${LOOPS_EMAIL_API_KEY:-}
+      LOOPS_INVITE_TEMPLATE_ID: ${LOOPS_INVITE_TEMPLATE_ID:-cmhvy2wgs3s13z70i1pxakij9}
+      LOOPS_REVIEW_READY_TEMPLATE_ID: ${LOOPS_REVIEW_READY_TEMPLATE_ID:-cmj47k5ge16990iylued9by17}
+      LOOPS_REVIEW_FAILED_TEMPLATE_ID: ${LOOPS_REVIEW_FAILED_TEMPLATE_ID:-cmj49ougk1c8s0iznavijdqpo}
+      SELF_HOST_LOCAL_AUTH_EMAIL: ${SELF_HOST_LOCAL_AUTH_EMAIL:-}
+      SELF_HOST_LOCAL_AUTH_PASSWORD: ${SELF_HOST_LOCAL_AUTH_PASSWORD:-}
+      AZURE_STORAGE_ACCOUNT_NAME:
+      AZURE_STORAGE_ACCOUNT_KEY:
+      AZURE_STORAGE_CONTAINER_NAME:
+      AZURE_STORAGE_ENDPOINT_URL:
+      AZURE_STORAGE_PUBLIC_ENDPOINT_URL:
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8081/v1/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  remote-db-data:
+  electric-data:
