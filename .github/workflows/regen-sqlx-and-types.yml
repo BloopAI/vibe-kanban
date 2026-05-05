@@ -1,0 +1,71 @@
+name: Regenerate SQLx + TS types
+
+# One-shot helper to regenerate `crates/db/.sqlx/*.json` (SQLx offline metadata)
+# and `shared/types.ts` (ts-rs output) on a target branch.
+#
+# Use this when local toolchain cannot run `cargo sqlx prepare` (e.g. Windows
+# without MSVC linker) and the in-repo .sqlx cache is stale because of a new
+# migration or query! invocation.
+#
+# After running, the workflow commits both regenerated artifacts back to the
+# branch the workflow was dispatched on (the [skip ci] tag prevents recursion).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: regen-sqlx-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_TOOLCHAIN: nightly-2025-12-04
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-24.04
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.ref }}
+
+      - name: Setup Rust + Node + sqlx-cli
+        uses: ./.github/actions/cargo-checks-common-setup
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          cache-key: regen-sqlx-${{ runner.os }}-${{ runner.arch }}
+          setup-node: "true"
+          setup-sqlx-cli: "true"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Regenerate SQLx offline metadata
+        run: pnpm run prepare-db
+
+      - name: Regenerate shared/types.ts
+        run: pnpm run generate-types
+
+      - name: Show diff
+        run: |
+          git status
+          git --no-pager diff --stat
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- crates/db/.sqlx shared/types.ts; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git add crates/db/.sqlx shared/types.ts
+          git commit -m "chore: regenerate SQLx metadata and shared/types.ts [skip ci]"
+          git push origin HEAD:${GITHUB_REF#refs/heads/}
