@@ -1,0 +1,17 @@
+{
+  "name": "gh-auth-coder",
+  "version": "0.1.0",
+  "description": "Lightweight GitHub CLI auth helper for Coder workspaces (PoC)",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "auth:device": "node device-flow.mjs",
+    "auth:coder": "node coder-bridge.mjs"
+  },
+  "dependencies": {
+    "@octokit/auth-oauth-device": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

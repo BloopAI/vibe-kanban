@@ -1,0 +1,10 @@
+agent_arch          = "arm64"
+image_tag           = "2.1.0"
+cpu_default         = 2
+cpu_max             = 8
+memory_default      = 4
+memory_min          = 2
+memory_max          = 16
+use_dokploy_network = "false" # Removed in 2.0.0 — workspace routing uses Coder agent tunnel (HOL-467)
+use_ipv6_network    = "true"  # ARM host Docker daemon has IPv6 enabled; needed for Supabase direct connections
+docker_gid          = "988" # GID of docker group on ARM host; update if different

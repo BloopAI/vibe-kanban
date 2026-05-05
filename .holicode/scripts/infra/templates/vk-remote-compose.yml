@@ -1,0 +1,103 @@
+# VK Remote docker-compose template for Dokploy deployment
+# Structural vars (__VAR__) are substituted at generation time by provision-server.sh
+# ${VAR} references are resolved by Dokploy from the service's Environment tab
+services:
+  remote-db:
+    image: postgres:16-alpine
+    command: ["postgres", "-c", "wal_level=logical"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: remote
+      POSTGRES_USER: remote
+      POSTGRES_PASSWORD: "${ELECTRIC_ROLE_PASSWORD}"
+    volumes:
+      - holicode-vk-remote-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U remote -d remote"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - internal
+      - dokploy-network
+
+  electric:
+    image: electricsql/electric:1.3.3
+    restart: on-failure
+    environment:
+      DATABASE_URL: "postgresql://electric_sync:${ELECTRIC_ROLE_PASSWORD}@remote-db:5432/remote?sslmode=disable"
+      PG_PROXY_PORT: "65432"
+      LOGICAL_PUBLISHER_HOST: electric
+      AUTH_MODE: insecure
+      ELECTRIC_INSECURE: "true"
+      ELECTRIC_MANUAL_TABLE_PUBLISHING: "true"
+      ELECTRIC_USAGE_REPORTING: "false"
+      ELECTRIC_FEATURE_FLAGS: "allow_subqueries,tagged_subqueries"
+    volumes:
+      - holicode-vk-electric:/app/persistent
+    depends_on:
+      remote-db:
+        condition: service_healthy
+      remote-server:
+        condition: service_healthy
+    networks:
+      - internal
+      - dokploy-network
+
+  remote-server:
+    build:
+      context: /etc/dokploy/vk-remote/repo
+      dockerfile: crates/remote/Dockerfile
+    image: vk-remote:latest
+    restart: unless-stopped
+    depends_on:
+      remote-db:
+        condition: service_healthy
+    environment:
+      RUST_LOG: "info,remote=info"
+      SERVER_DATABASE_URL: "postgres://remote:${ELECTRIC_ROLE_PASSWORD}@remote-db:5432/remote"
+      SERVER_LISTEN_ADDR: "0.0.0.0:8081"
+      ELECTRIC_URL: "http://electric:3000"
+      GITHUB_OAUTH_CLIENT_ID: "${GITHUB_OAUTH_CLIENT_ID}"
+      GITHUB_OAUTH_CLIENT_SECRET: "${GITHUB_OAUTH_CLIENT_SECRET}"
+      GITHUB_APP_ID: "${GITHUB_APP_ID}"
+      GOOGLE_OAUTH_CLIENT_ID: "${GOOGLE_OAUTH_CLIENT_ID}"
+      GOOGLE_OAUTH_CLIENT_SECRET: "${GOOGLE_OAUTH_CLIENT_SECRET}"
+      VIBEKANBAN_REMOTE_JWT_SECRET: "${VIBEKANBAN_REMOTE_JWT_SECRET}"
+      LOOPS_EMAIL_API_KEY: "${LOOPS_EMAIL_API_KEY}"
+      FRONTEND_PORT: "8081"
+      SERVER_PUBLIC_BASE_URL: "${SERVER_PUBLIC_BASE_URL}"
+      VITE_APP_BASE_URL: "${SERVER_PUBLIC_BASE_URL}"
+      VITE_API_BASE_URL: "${SERVER_PUBLIC_BASE_URL}"
+      ELECTRIC_ROLE_PASSWORD: "${ELECTRIC_ROLE_PASSWORD}"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8081/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - internal
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.http.routers.vk-remote.rule=Host(`vk-remote.__DOMAIN__`)"
+      - "traefik.http.routers.vk-remote.entrypoints=websecure"
+      - "traefik.http.routers.vk-remote.tls=true"
+      - "traefik.http.routers.vk-remote.tls.certresolver=letsencrypt-dns"
+      - "traefik.http.routers.vk-remote.tls.domains[0].main=vk-remote.__DOMAIN__"
+      - "traefik.http.services.vk-remote.loadbalancer.server.port=8081"
+
+networks:
+  internal:
+    driver: bridge
+  dokploy-network:
+    external: true
+
+volumes:
+  holicode-vk-remote-db:
+    external: true
+  holicode-vk-electric:
+    external: true

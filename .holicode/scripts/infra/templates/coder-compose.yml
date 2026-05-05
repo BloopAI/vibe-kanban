@@ -1,0 +1,135 @@
+# Coder docker-compose template for Dokploy deployment
+# Structural vars (__VAR__) are substituted at generation time by provision-server.sh
+# ${VAR} references are resolved by Dokploy from the service's Environment tab
+services:
+  coder:
+    image: ghcr.io/coder/coder:__CODER_VERSION__
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      CODER_PG_CONNECTION_URL: "postgresql://coder:${CODER_DB_PASSWORD}@database/coder?sslmode=disable"
+      CODER_HTTP_ADDRESS: "0.0.0.0:7080"
+      CODER_ACCESS_URL: "https://coder.__DOMAIN__"
+      CODER_WILDCARD_ACCESS_URL: "*.coder.__DOMAIN__"
+      CODER_REDIRECT_TO_ACCESS_URL: "false"
+      CODER_OAUTH2_GITHUB_CLIENT_ID: "${GITHUB_OAUTH_CLIENT_ID}"
+      CODER_OAUTH2_GITHUB_CLIENT_SECRET: "${GITHUB_OAUTH_CLIENT_SECRET}"
+      CODER_OAUTH2_GITHUB_ALLOW_SIGNUPS: "false"
+      CODER_OAUTH2_GITHUB_ALLOW_EVERYONE: "true"
+      # CODER_OAUTH2_GITHUB_ALLOWED_ORGS: "${GITHUB_ORG}"
+      CODER_EXTERNAL_AUTH_0_ID: "github"
+      CODER_EXTERNAL_AUTH_0_TYPE: "github"
+      CODER_EXTERNAL_AUTH_0_CLIENT_ID: "${GITHUB_EXT_CLIENT_ID}"
+      CODER_EXTERNAL_AUTH_0_CLIENT_SECRET: "${GITHUB_EXT_CLIENT_SECRET}"
+      CODER_DANGEROUS_ALLOW_CORS_REQUESTS: "true"
+      CODER_SSH_KEYGEN_ALGORITHM: "__CODER_SSH_KEYGEN_ALGORITHM__"
+      CODER_TELEMETRY_ENABLE: "false"
+      CODER_HIDE_AI_TASKS: "true"
+    group_add:
+      - "${DOCKER_GID}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - holicode-coder-config:/home/coder/.config
+    networks:
+      - internal
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.http.routers.coder.rule=Host(`coder.__DOMAIN__`) || HostRegexp(`^.+\\.coder\\.__DOMAIN__$$`)"
+      - "traefik.http.routers.coder.entrypoints=websecure"
+      - "traefik.http.routers.coder.tls=true"
+      - "traefik.http.routers.coder.tls.certresolver=letsencrypt-dns"
+      - "traefik.http.routers.coder.tls.domains[0].main=coder.__DOMAIN__"
+      - "traefik.http.routers.coder.tls.domains[0].sans=*.coder.__DOMAIN__"
+      - "traefik.http.routers.coder.service=coder"
+      - "traefik.http.services.coder.loadbalancer.server.port=7080"
+
+  database:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: coder
+      POSTGRES_PASSWORD: "${CODER_DB_PASSWORD}"
+      POSTGRES_DB: coder
+    volumes:
+      - holicode-coder-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coder"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1000", "--loglevel", "warning"]
+    volumes:
+      - holicode-holibot-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  holibot:
+    image: ghcr.io/holagence/holibot:__HOLIBOT_IMAGE_TAG__
+    restart: unless-stopped
+    init: true
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN}"
+      SLACK_APP_TOKEN: "${SLACK_APP_TOKEN}"
+      CODER_URL: "https://coder.__DOMAIN__"
+      CODER_API_TOKEN: "${CODER_API_TOKEN}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      GITHUB_TOKEN: "${HOLIBOT_GITHUB_TOKEN}"
+      REPO_URL: "${HOLIBOT_REPO_URL}"
+      REPO_BASE_BRANCH: "${HOLIBOT_REPO_BASE_BRANCH:-main}"
+      AGENT_MAX_TURNS: "${HOLIBOT_AGENT_MAX_TURNS:-50}"
+      AGENT_MAX_BUDGET_USD: "${HOLIBOT_AGENT_MAX_BUDGET_USD:-5.00}"
+      AGENT_TIMEOUT_MS: "${HOLIBOT_AGENT_TIMEOUT_MS:-1800000}"
+      NODE_ENV: "production"
+      LOG_LEVEL: "${HOLIBOT_LOG_LEVEL:-info}"
+    volumes:
+      - holicode-holibot-workspace:/workspace
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 1536m
+    stop_grace_period: 30s
+    networks:
+      - internal
+      - dokploy-network
+    labels:
+      - "traefik.enable=false"
+
+networks:
+  internal:
+    driver: bridge
+  dokploy-network:
+    external: true
+
+volumes:
+  holicode-coder-config:
+    external: true
+  holicode-coder-db:
+    external: true
+  holicode-holibot-redis:
+    external: true
+  holicode-holibot-workspace:
+    external: true

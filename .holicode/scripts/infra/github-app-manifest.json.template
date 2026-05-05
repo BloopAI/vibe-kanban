@@ -1,0 +1,20 @@
+{
+  "name": "HoliCode Agent (__PROJECT__)",
+  "url": "https://github.com/holagence/holicode",
+  "description": "Unified authentication and scoped repository access for HoliCode agentic stack. Handles Coder login, Coder external auth (git in workspaces), VK Remote login, and scoped gh CLI access. Grants read/write only to repositories you explicitly select during installation.",
+  "public": false,
+  "redirect_url": "http://localhost:23847/callback",
+  "callback_urls": [
+    "https://coder.__DOMAIN__/api/v2/users/oauth2/github/callback",
+    "https://coder.__DOMAIN__/external-auth/github/callback",
+    "https://vk-remote.__DOMAIN__/api/auth/github/callback"
+  ],
+  "request_oauth_on_install": false,
+  "default_permissions": {
+    "contents": "write",
+    "pull_requests": "write",
+    "issues": "write",
+    "metadata": "read"
+  },
+  "default_events": []
+}
