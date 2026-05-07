@@ -332,7 +332,13 @@ impl AcpAgentHarness {
 
                         // Initialize
                         let _ = conn
-                            .initialize(proto::InitializeRequest::new(proto::ProtocolVersion::V1))
+                            .initialize(
+                                proto::InitializeRequest::new(proto::ProtocolVersion::V1)
+                                    .client_info(proto::Implementation::new(
+                                        "vibe-kanban",
+                                        env!("CARGO_PKG_VERSION"),
+                                    )),
+                            )
                             .await;
 
                         // Handle session creation/forking
