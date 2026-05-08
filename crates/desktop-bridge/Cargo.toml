@@ -1,6 +1,6 @@
 [package]
 name = "desktop-bridge"
-version = "0.1.43"
+version = "0.1.44"
 edition = "2024"
 publish = false
 

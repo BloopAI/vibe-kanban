@@ -1120,10 +1120,11 @@ fn handle_direct_item_completed(
                             ),
                         });
                     } else {
+                        let content = result.content;
                         mcp_tool_state.result = Some(ToolResult {
                             r#type: ToolResultValueType::Json,
                             value: result.structured_content.unwrap_or_else(|| {
-                                serde_json::to_value(result.content).unwrap_or_default()
+                                serde_json::to_value(content).unwrap_or_default()
                             }),
                         });
                     }
@@ -1878,6 +1879,7 @@ pub fn normalize_logs(
                 EventMsg::McpToolCallBegin(McpToolCallBeginEvent {
                     call_id,
                     invocation,
+                    ..
                 }) => {
                     state.assistant = None;
                     state.thinking = None;
@@ -2421,7 +2423,10 @@ pub fn normalize_logs(
                 | EventMsg::RequestPermissions(..)
                 | EventMsg::HookCompleted(..)
                 | EventMsg::HookStarted(..)
-                | EventMsg::GuardianAssessment(..) => {}
+                | EventMsg::GuardianAssessment(..)
+                | EventMsg::GuardianWarning(..)
+                | EventMsg::ModelVerification(..)
+                | EventMsg::PatchApplyUpdated(..) => {}
             }
         }
     });

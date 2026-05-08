@@ -328,6 +328,18 @@ impl StandardCodingAgentExecutor for Codex {
             model_selector: ModelSelectorConfig {
                 models: vec![
                     ModelInfo {
+                        id: "gpt-5.5".to_string(),
+                        name: "GPT-5.5".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options.clone(),
+                    },
+                    ModelInfo {
+                        id: "gpt-5.5-fast".to_string(),
+                        name: "GPT-5.5 Fast".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options.clone(),
+                    },
+                    ModelInfo {
                         id: "gpt-5.4".to_string(),
                         name: "GPT-5.4".to_string(),
                         provider_id: None,
@@ -340,26 +352,26 @@ impl StandardCodingAgentExecutor for Codex {
                         reasoning_options: xhigh_reasoning_options.clone(),
                     },
                     ModelInfo {
+                        id: "gpt-5.4-mini".to_string(),
+                        name: "GPT-5.4 Mini".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options.clone(),
+                    },
+                    ModelInfo {
                         id: "gpt-5.3-codex".to_string(),
                         name: "GPT-5.3 Codex".to_string(),
                         provider_id: None,
                         reasoning_options: xhigh_reasoning_options.clone(),
                     },
                     ModelInfo {
-                        id: "gpt-5.2-codex".to_string(),
-                        name: "GPT-5.2 Codex".to_string(),
+                        id: "gpt-5.3-codex-spark".to_string(),
+                        name: "GPT-5.3 Codex Spark".to_string(),
                         provider_id: None,
                         reasoning_options: xhigh_reasoning_options.clone(),
                     },
                     ModelInfo {
                         id: "gpt-5.2".to_string(),
                         name: "GPT-5.2".to_string(),
-                        provider_id: None,
-                        reasoning_options: xhigh_reasoning_options.clone(),
-                    },
-                    ModelInfo {
-                        id: "gpt-5.1-codex-max".to_string(),
-                        name: "GPT-5.1 Codex Max".to_string(),
                         provider_id: None,
                         reasoning_options: xhigh_reasoning_options,
                     },
@@ -393,6 +405,10 @@ impl StandardCodingAgentExecutor for Codex {
                 SlashCommandDescription {
                     name: "mcp".to_string(),
                     description: Some("list configured MCP tools".to_string()),
+                },
+                SlashCommandDescription {
+                    name: "model".to_string(),
+                    description: Some("view or switch the active model".to_string()),
                 },
                 SlashCommandDescription {
                     name: "fast".to_string(),
@@ -429,7 +445,7 @@ impl StandardCodingAgentExecutor for Codex {
 
 impl Codex {
     pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.121.0"
+        "npx -y @openai/codex@0.124.0"
     }
 
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
@@ -742,5 +758,26 @@ impl Codex {
             exit_signal: Some(exit_signal_rx),
             cancel: Some(cancel),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_model;
+
+    #[test]
+    fn resolve_model_detects_fast_suffix() {
+        assert_eq!(resolve_model(Some("gpt-5.5-fast")), (Some("gpt-5.5"), true));
+        assert_eq!(resolve_model(Some("gpt-5.4-fast")), (Some("gpt-5.4"), true));
+    }
+
+    #[test]
+    fn resolve_model_leaves_non_fast_models_unchanged() {
+        assert_eq!(resolve_model(Some("gpt-5.5")), (Some("gpt-5.5"), false));
+        assert_eq!(
+            resolve_model(Some("gpt-5.4-mini")),
+            (Some("gpt-5.4-mini"), false)
+        );
+        assert_eq!(resolve_model(None), (None, false));
     }
 }

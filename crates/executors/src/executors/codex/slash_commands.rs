@@ -30,7 +30,7 @@ pub enum CodexSlashCommand {
     Compact { instructions: Option<String> },
     Status,
     Mcp,
-    Fast { enable: Option<bool> },
+    Fast { enable: Option<bool>, status: bool },
 }
 
 impl CodexSlashCommand {
@@ -48,6 +48,7 @@ impl CodexSlashCommand {
             "status" => Some(Self::Status),
             "mcp" => Some(Self::Mcp),
             "fast" => Some(Self::Fast {
+                status: matches!(cmd.arguments.trim(), "status"),
                 enable: match cmd.arguments.trim() {
                     "on" | "true" | "1" | "yes" | "enable" => Some(true),
                     "off" | "false" | "0" | "no" | "disable" => Some(false),
@@ -183,7 +184,7 @@ impl Codex {
                             .send_exit_signal(ExecutorExitResult::Success)
                             .await;
                     }
-                    CodexSlashCommand::Fast { enable } => {
+                    CodexSlashCommand::Fast { enable, status } => {
                         // Read current config to support toggle
                         let current_is_fast = client
                             .config_read(None)
@@ -192,6 +193,18 @@ impl Codex {
                             .and_then(|r| r.config.service_tier)
                             .map(|t| matches!(t, ServiceTier::Fast))
                             .unwrap_or(false);
+                        if status {
+                            let message = if current_is_fast || session_fast {
+                                "**Fast mode is enabled.**".to_string()
+                            } else {
+                                "**Fast mode is disabled.**".to_string()
+                            };
+                            log_event_raw(client.log_writer(), message).await?;
+                            exit_signal_tx
+                                .send_exit_signal(ExecutorExitResult::Success)
+                                .await;
+                            return Ok(());
+                        }
                         let want_fast = match enable {
                             Some(v) => v,
                             None => !current_is_fast, // toggle
@@ -649,5 +662,50 @@ fn format_mcp_auth_status(status: &codex_app_server_protocol::McpAuthStatus) -> 
         codex_app_server_protocol::McpAuthStatus::NotLoggedIn => "not logged in",
         codex_app_server_protocol::McpAuthStatus::BearerToken => "bearer token",
         codex_app_server_protocol::McpAuthStatus::OAuth => "oauth",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CodexSlashCommand;
+
+    #[test]
+    fn parses_fast_enable_and_disable() {
+        assert!(matches!(
+            CodexSlashCommand::parse("/fast on"),
+            Some(CodexSlashCommand::Fast {
+                enable: Some(true),
+                status: false,
+            })
+        ));
+        assert!(matches!(
+            CodexSlashCommand::parse("/fast off"),
+            Some(CodexSlashCommand::Fast {
+                enable: Some(false),
+                status: false,
+            })
+        ));
+    }
+
+    #[test]
+    fn parses_fast_status() {
+        assert!(matches!(
+            CodexSlashCommand::parse("/fast status"),
+            Some(CodexSlashCommand::Fast {
+                enable: None,
+                status: true,
+            })
+        ));
+    }
+
+    #[test]
+    fn parses_fast_toggle_without_argument() {
+        assert!(matches!(
+            CodexSlashCommand::parse("/fast"),
+            Some(CodexSlashCommand::Fast {
+                enable: None,
+                status: false,
+            })
+        ));
     }
 }

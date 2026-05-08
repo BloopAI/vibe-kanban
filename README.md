@@ -16,7 +16,8 @@
 </p>
 
 <h1 align="center">
-  <a href="https://jobs.polymer.co/vibe-kanban?source=github"><strong>We're hiring!</strong></a>
+  <strong>Vibe Kanban is sunsetting.</strong>
+  <a href="https://www.vibekanban.com/blog/shutdown">Read the announcement.</a>
 </h1>
 
 ![](packages/public/vibe-kanban-screenshot-overview.png)

@@ -18,8 +18,6 @@ import {
 import { ModelProviderIcon } from './ModelProviderIcon';
 import { ModelList, type ModelListModel } from './ModelList';
 
-type RecentAlignment = 'top' | 'bottom';
-
 interface ModelSelectorProvider {
   id: string;
   name: string;
@@ -58,87 +56,26 @@ function getModelKey(model: ModelListModel): string {
   return model.provider_id ? `${model.provider_id}/${model.id}` : model.id;
 }
 
-function getRecentIndex(
-  recentEntries: string[],
-  model: ModelListModel
-): number {
-  const key = getModelKey(model).toLowerCase();
-  return recentEntries.findIndex((entry) => entry.toLowerCase() === key);
+function getModelSortLabel(model: ModelListModel): string {
+  return model.name || model.id;
 }
 
-function sortByRecency(
-  models: ModelListModel[],
-  recentEntries: string[],
-  align: RecentAlignment = 'bottom'
-): ModelListModel[] {
-  if (recentEntries.length === 0) {
-    return align === 'bottom' ? [...models].reverse() : [...models];
-  }
+function sortModelsAlphabetically(models: ModelListModel[]): ModelListModel[] {
+  return [...models].sort((a, b) => {
+    const labelComparison = getModelSortLabel(a).localeCompare(
+      getModelSortLabel(b),
+      undefined,
+      {
+        numeric: true,
+        sensitivity: 'base',
+      }
+    );
+    if (labelComparison !== 0) return labelComparison;
 
-  const recentMap = new Map(
-    recentEntries.map((entry, idx) => [entry.toLowerCase(), idx])
-  );
-  const nonRecent: ModelListModel[] = [];
-  const recent: { model: ModelListModel; idx: number }[] = [];
-
-  for (const model of models) {
-    const key = getModelKey(model).toLowerCase();
-    const idx = recentMap.get(key) ?? -1;
-    if (idx === -1) {
-      nonRecent.push(model);
-    } else {
-      recent.push({ model, idx });
-    }
-  }
-
-  if (align === 'bottom') {
-    nonRecent.reverse();
-  }
-
-  recent.sort((a, b) => (align === 'bottom' ? a.idx - b.idx : b.idx - a.idx));
-
-  if (align === 'top') {
-    return [...recent.map((entry) => entry.model), ...nonRecent];
-  }
-
-  return [...nonRecent, ...recent.map((entry) => entry.model)];
-}
-
-function sortProvidersByRecency(
-  providers: ModelSelectorProvider[],
-  models: ModelListModel[],
-  recentEntries: string[]
-): ModelSelectorProvider[] {
-  const baseProviders = [...providers].reverse();
-  if (recentEntries.length === 0) return baseProviders;
-
-  const recencyByProvider = new Map<string, number>();
-  for (const model of models) {
-    if (!model.provider_id) continue;
-    const idx = getRecentIndex(recentEntries, model);
-    if (idx === -1) continue;
-    const current = recencyByProvider.get(model.provider_id) ?? -1;
-    if (idx > current) {
-      recencyByProvider.set(model.provider_id, idx);
-    }
-  }
-
-  const order = new Map(
-    baseProviders.map((provider, idx) => [provider.id, idx])
-  );
-
-  return [...baseProviders].sort((a, b) => {
-    const aRecent = recencyByProvider.get(a.id) ?? -1;
-    const bRecent = recencyByProvider.get(b.id) ?? -1;
-    if (aRecent === -1 && bRecent === -1) {
-      return (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0);
-    }
-    if (aRecent === -1) return -1;
-    if (bRecent === -1) return 1;
-    if (aRecent === bRecent) {
-      return (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0);
-    }
-    return aRecent - bRecent;
+    return getModelKey(a).localeCompare(getModelKey(b), undefined, {
+      numeric: true,
+      sensitivity: 'base',
+    });
   });
 }
 
@@ -182,7 +119,6 @@ interface ProviderAccordionProps {
   searchQuery: string;
   onModelSelect: (id: string, providerId?: string) => void;
   onReasoningSelect: (reasoningId: string | null) => void;
-  recentModelEntries: string[];
   showDefaultOption?: boolean;
   onSelectDefault?: () => void;
   scrollRef?: Ref<HTMLDivElement>;
@@ -199,7 +135,6 @@ function ProviderAccordion({
   searchQuery,
   onModelSelect,
   onReasoningSelect,
-  recentModelEntries,
   showDefaultOption = false,
   onSelectDefault,
   scrollRef,
@@ -224,11 +159,7 @@ function ProviderAccordion({
   }
 
   const isDefaultSelected = selectedModelId === null;
-  const providers = sortProvidersByRecency(
-    config.providers,
-    config.models,
-    recentModelEntries
-  );
+  const providers = config.providers;
 
   return (
     <div
@@ -243,10 +174,8 @@ function ProviderAccordion({
           onValueChange={onExpandedProviderIdChange}
         >
           {providers.map((provider) => {
-            const providerModels = sortByRecency(
-              modelsByProvider.get(provider.id) ?? [],
-              recentModelEntries,
-              'top'
+            const providerModels = sortModelsAlphabetically(
+              modelsByProvider.get(provider.id) ?? []
             );
             const isSelectedProvider =
               Boolean(selectedModelId) &&
@@ -362,7 +291,6 @@ export function ModelSelectorPopover({
   onSearchChange,
   onModelSelect,
   onReasoningSelect,
-  recentModelEntries = [],
   showDefaultOption = false,
   onSelectDefault,
   scrollRef,
@@ -392,7 +320,6 @@ export function ModelSelectorPopover({
         searchQuery={searchQuery}
         onModelSelect={onModelSelect}
         onReasoningSelect={onReasoningSelect}
-        recentModelEntries={recentModelEntries}
         showDefaultOption={showDefaultOption}
         onSelectDefault={onSelectDefault}
         scrollRef={scrollRef}
@@ -402,7 +329,7 @@ export function ModelSelectorPopover({
       />
     );
   } else {
-    const sortedModels = sortByRecency(models, recentModelEntries);
+    const sortedModels = sortModelsAlphabetically(models);
     const selectedModel = getSelectedModel(
       models,
       selectedProviderId,
