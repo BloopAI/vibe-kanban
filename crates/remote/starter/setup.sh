@@ -73,7 +73,7 @@ for cmd in docker git openssl; do
   fi
 done
 if ! docker info >/dev/null 2>&1; then
-  echo "error: docker daemon is not running (start OrbStack / Docker Desktop)" >&2
+  echo "error: docker daemon is not running (start your Docker engine)" >&2
   exit 1
 fi
 

@@ -8,7 +8,7 @@
 #   make rebuild   → up with --build (pulls in upstream changes)
 #   make logs      → tail remote-server logs
 #   make status    → docker compose ps
-#   make backup    → pg_dump to backup-<timestamp>.sql
+#   make backup    → pg_dump to $SELFHOST_DATA_DIR/backups/<timestamp>.sql
 #   make clean     → tear down and wipe volumes + data dir (destructive)
 
 SHELL := /bin/bash
@@ -80,7 +80,9 @@ status: _ensure_setup
 
 backup: _ensure_setup
 	@. "$(ENV_FILE)" && \
-	  f="backup-$$(date +%Y%m%d-%H%M%S).sql"; \
+	  dest="$$SELFHOST_DATA_DIR/backups" && \
+	  mkdir -p "$$dest" && \
+	  f="$$dest/backup-$$(date +%Y%m%d-%H%M%S).sql" && \
 	  PGPASSWORD=remote pg_dump -h localhost -p "$${REMOTE_DB_PORT:-15433}" -U remote remote > "$$f" && \
 	  echo "wrote $$f"
 

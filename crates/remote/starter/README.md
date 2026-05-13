@@ -1,12 +1,21 @@
 # crates/remote/starter
 
 Opinionated one-command bootstrap for running a local self-hosted Vibe Kanban
-remote (Postgres + Electric + remote-server) on top of `crates/remote/docker-compose.yml`,
-with a frontend app pointed at it.
+remote (Postgres + Electric + remote-server) on top of
+`crates/remote/docker-compose.yml`, with a frontend app pointed at it.
 
 Single-user, local-only. Bootstrap admin login (no OAuth wiring required).
 Layered on top of upstream compose via `-f` overrides — does not modify the
 base `docker-compose.yml`.
+
+## Prerequisites
+
+- Docker Engine with the `compose` plugin (Docker Desktop, OrbStack, Colima,
+  Rancher Desktop, or a plain `docker.io` install). `docker compose version`
+  should print `v2.x`.
+- `make`, `bash`, `git`, `openssl`, `sed`, `grep` — standard on Linux and
+  macOS, available via your package manager.
+- Windows: run from WSL.
 
 ## Quickstart
 
@@ -32,20 +41,21 @@ When it's up you'll have:
 
 ## Defaults
 
-Defaults are picked to avoid common port conflicts on Windows / Hyper-V / WSL,
-where 3000-3009 and 5432-5433 can be dynamically reserved at boot:
+Defaults are picked to avoid common port conflicts. Hyper-V / WSL2 can
+dynamically reserve `3000-3009` and `5432-5433` at boot, so the starter
+defaults to ports outside those ranges:
 
 | | default |
 |---|---|
 | Backend host port | `13000` |
 | Frontend host port | `13333` |
 | Postgres host port | `15433` |
-| Data dir | `~/vibe-kanban-data` |
+| Data dir | `$HOME/vibe-kanban-data` |
 | Admin email | `admin@local` |
 | Admin password | randomly generated, in `.env.remote` |
 
-Everything is overridable interactively or by editing `.env.remote` after the
-fact.
+Everything is overridable interactively at setup time or by editing
+`.env.remote` after the fact.
 
 ## Make targets
 
@@ -56,14 +66,14 @@ fact.
 | `make up` | Bring docker up only. Useful from a second terminal. |
 | `make stop` | `docker compose down` |
 | `make restart` | stop + up (docker only, doesn't re-spawn the frontend app) |
-| `make rebuild` | `up -d --build` — pulls in upstream changes |
+| `make rebuild` | `up -d --build` — picks up upstream code or compose changes |
 | `make logs` | tail `remote-server` logs |
 | `make status` | `docker compose ps` |
-| `make backup` | `pg_dump` into `crates/remote/starter/backup-<timestamp>.sql` |
+| `make backup` | `pg_dump` into `$SELFHOST_DATA_DIR/backups/backup-<timestamp>.sql` |
 | `make clean` | Destroy volumes + data dir + `.env.remote` (asks for confirmation) |
 
-`./setup.sh -y` skips all prompts and uses defaults (handy for CI or
-re-provisioning).
+`./setup.sh -y` skips all prompts and uses defaults — handy for CI or
+re-provisioning.
 
 ## Files in this directory
 
@@ -73,7 +83,7 @@ re-provisioning).
 | `setup.sh` | One-shot configurator. Writes `<repo>/.env.remote` and runs `docker compose config` to validate the merge. |
 | `env.remote.template` | Template with `__PLACEHOLDERS__` filled in by `setup.sh`. |
 | `docker-compose.override.yml` | Bind-mounts `postgres/` and `electric/` data dirs under `SELFHOST_DATA_DIR`. |
-| `docker-compose.ports.yml` | Pins host ports to Windows-safe ranges via `REMOTE_SERVER_PORT`, `REMOTE_DB_PORT`. |
+| `docker-compose.ports.yml` | Pins host ports to safer defaults via `REMOTE_SERVER_PORT`, `REMOTE_DB_PORT`. |
 | `docker-compose.no-ssh.yml` | Removes upstream's build-time SSH agent forwarding — not needed when `FEATURES` is empty, and fails on machines without an SSH agent. |
 
 ## Caveats
@@ -85,8 +95,6 @@ re-provisioning).
   cannot reach your instance.
 - **Attachments disabled.** The Azurite profile is not enabled here. Issue
   attachments won't work until you enable that profile and add the env vars.
-- **Linux/macOS focus.** The Makefile assumes GNU/BSD make + a POSIX shell.
-  On Windows, run from WSL.
 
 ## Troubleshooting
 
@@ -94,8 +102,8 @@ re-provisioning).
 the `electric_sync` Postgres role on first startup, Electric retries until it
 succeeds. Wait ~30s or `make logs` and watch.
 
-**Frontend app shows your old hosted-cloud data.** Sign out of the old cloud
-account first, quit the app. `make start` always launches with
+**Frontend app shows the hosted-cloud data instead of local.** Sign out of the
+old cloud account first, quit the app. `make start` always launches with
 `VK_SHARED_API_BASE` pointed at your local backend.
 
 **Want a fresh start.** `make clean` tears everything down (asks first), then
