@@ -145,6 +145,44 @@ function getToolOutput(
 }
 
 /**
+ * Render MCP/tool input as compact JSON when available.
+ */
+function getToolInput(
+  entryType: Extract<NormalizedEntry['entry_type'], { type: 'tool_use' }>
+): string {
+  const { action_type } = entryType;
+
+  if (action_type.action !== 'tool' || action_type.arguments == null) {
+    return '';
+  }
+
+  return typeof action_type.arguments === 'string'
+    ? action_type.arguments
+    : JSON.stringify(action_type.arguments, null, 2);
+}
+
+/**
+ * Build tool content for logs panel with MCP input and output.
+ */
+function getToolLogContent(
+  entryType: Extract<NormalizedEntry['entry_type'], { type: 'tool_use' }>,
+  entryContent: string
+): string {
+  const output = getToolOutput(entryType, entryContent);
+  const input = getToolInput(entryType);
+
+  if (!input) {
+    return output;
+  }
+
+  if (!output.trim()) {
+    return `Input\n${input}`;
+  }
+
+  return `Input\n${input}\n\nOutput\n${output}`;
+}
+
+/**
  * Extract the command from action_type for command_run actions
  */
 function getToolCommand(
@@ -288,7 +326,7 @@ function renderToolUseEntry(
       summary={getToolSummary(entryType, t)}
       expansionKey={expansionKey}
       status={status}
-      content={getToolOutput(entryType, entry.content)}
+      content={getToolLogContent(entryType, entry.content)}
       toolName={entryType.tool_name}
       command={getToolCommand(entryType)}
       actionType={action_type.action}
