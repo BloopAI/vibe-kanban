@@ -26,7 +26,7 @@
     },
     "model": {
       "title": "Model",
-      "description": "Model to use (e.g., gpt-5-codex, claude-sonnet-4-5-20250929, gpt-5-2025-08-07, claude-opus-4-1-20250805, claude-haiku-4-5-20251001, glm-4.6)",
+      "description": "Model to use (e.g., gpt-5.5, gpt-5.3-codex, claude-sonnet-4-5-20250929, claude-opus-4-6, claude-haiku-4-5-20251001, glm-5)",
       "type": [
         "string",
         "null"
