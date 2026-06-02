@@ -1,6 +1,7 @@
 use axum::{extract::ws::Message, response::sse::Event};
-use json_patch::Patch;
+use json_patch::{Patch, PatchOperation};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 pub const EV_STDOUT: &str = "stdout";
 pub const EV_STDERR: &str = "stderr";
@@ -71,14 +72,54 @@ impl LogMsg {
         match self {
             LogMsg::Stdout(s) => EV_STDOUT.len() + s.len() + OVERHEAD,
             LogMsg::Stderr(s) => EV_STDERR.len() + s.len() + OVERHEAD,
-            LogMsg::JsonPatch(patch) => {
-                let json_len = serde_json::to_string(patch).map(|s| s.len()).unwrap_or(2);
-                EV_JSON_PATCH.len() + json_len + OVERHEAD
-            }
+            LogMsg::JsonPatch(patch) => EV_JSON_PATCH.len() + patch_approx_bytes(patch) + OVERHEAD,
             LogMsg::SessionId(s) => EV_SESSION_ID.len() + s.len() + OVERHEAD,
             LogMsg::MessageId(s) => EV_MESSAGE_ID.len() + s.len() + OVERHEAD,
             LogMsg::Ready => EV_READY.len() + OVERHEAD,
             LogMsg::Finished => EV_FINISHED.len() + OVERHEAD,
+        }
+    }
+
+    pub fn json_patch_approx_bytes(patch: &Patch) -> usize {
+        patch_approx_bytes(patch)
+    }
+}
+
+fn patch_approx_bytes(patch: &Patch) -> usize {
+    patch.0.iter().map(patch_op_approx_bytes).sum::<usize>() + 2
+}
+
+fn patch_op_approx_bytes(op: &PatchOperation) -> usize {
+    const OP_OVERHEAD: usize = 32;
+    match op {
+        PatchOperation::Add(add) => OP_OVERHEAD + add.path.len() + value_approx_bytes(&add.value),
+        PatchOperation::Remove(remove) => OP_OVERHEAD + remove.path.len(),
+        PatchOperation::Replace(replace) => {
+            OP_OVERHEAD + replace.path.len() + value_approx_bytes(&replace.value)
+        }
+        PatchOperation::Move(move_op) => OP_OVERHEAD + move_op.path.len() + move_op.from.len(),
+        PatchOperation::Copy(copy) => OP_OVERHEAD + copy.path.len() + copy.from.len(),
+        PatchOperation::Test(test) => {
+            OP_OVERHEAD + test.path.len() + value_approx_bytes(&test.value)
+        }
+    }
+}
+
+fn value_approx_bytes(value: &Value) -> usize {
+    match value {
+        Value::Null => 4,
+        Value::Bool(_) => 5,
+        Value::Number(n) => n.to_string().len(),
+        Value::String(s) => s.len() + 2,
+        Value::Array(items) => {
+            items.iter().map(value_approx_bytes).sum::<usize>() + items.len() + 2
+        }
+        Value::Object(map) => {
+            map.iter()
+                .map(|(key, value)| key.len() + value_approx_bytes(value) + 4)
+                .sum::<usize>()
+                + map.len()
+                + 2
         }
     }
 }

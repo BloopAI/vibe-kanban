@@ -65,6 +65,14 @@ pub struct StatusDiffEntry {
     pub old_path: Option<String>,
 }
 
+/// One entry from `git diff --numstat`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NumstatEntry {
+    pub additions: Option<usize>,
+    pub deletions: Option<usize>,
+    pub path: String,
+}
+
 /// Parsed worktree entry from `git worktree list --porcelain`
 #[derive(Debug, Clone)]
 pub struct WorktreeEntry {
@@ -171,7 +179,52 @@ impl GitCli {
         base_commit: &Commit,
         opts: StatusDiffOptions,
     ) -> Result<Vec<StatusDiffEntry>, GitCliError> {
-        // Create a temp index file
+        let (_tmp_dir, envs) = self.create_staged_temp_index(worktree_path)?;
+        // git diff --cached
+        let mut args: Vec<OsString> = vec![
+            "-c".into(),
+            "core.quotepath=false".into(),
+            "diff".into(),
+            "--cached".into(),
+            "-M".into(),
+            "--name-status".into(),
+            OsString::from(base_commit.to_string()),
+        ];
+        args = Self::apply_pathspec_filter(args, opts.path_filter.as_ref());
+        let out = self.git_with_env(worktree_path, args, &envs)?;
+        Ok(Self::parse_name_status(&out))
+    }
+
+    /// Diff line/file stats vs a base commit using a temporary index.
+    ///
+    /// This follows `diff_status` staging semantics so committed, uncommitted,
+    /// and untracked changes are counted without materializing file contents.
+    pub fn diff_numstat(
+        &self,
+        worktree_path: &Path,
+        base_commit: &Commit,
+        opts: StatusDiffOptions,
+    ) -> Result<Vec<NumstatEntry>, GitCliError> {
+        let (_tmp_dir, envs) = self.create_staged_temp_index(worktree_path)?;
+
+        let mut args: Vec<OsString> = vec![
+            "-c".into(),
+            "core.quotepath=false".into(),
+            "diff".into(),
+            "--cached".into(),
+            "-M".into(),
+            "--numstat".into(),
+            OsString::from(base_commit.to_string()),
+        ];
+        args = Self::apply_pathspec_filter(args, opts.path_filter.as_ref());
+        let out = self.git_with_env(worktree_path, args, &envs)?;
+        Ok(Self::parse_numstat(&out))
+    }
+
+    fn create_staged_temp_index(
+        &self,
+        worktree_path: &Path,
+    ) -> Result<(tempfile::TempDir, Vec<(OsString, OsString)>), GitCliError> {
         let tmp_dir = tempfile::TempDir::new()
             .map_err(|e| GitCliError::CommandFailed(format!("temp dir create failed: {e}")))?;
         let tmp_index = tmp_dir.path().join("index");
@@ -180,11 +233,8 @@ impl GitCli {
             tmp_index.as_os_str().to_os_string(),
         )];
 
-        // Use a temp index from HEAD to accurately track renames in untracked files
         let _ = self.git_with_env(worktree_path, ["read-tree", "HEAD"], &envs)?;
 
-        // Stage changed and untracked files explicitly, which is faster than `git add -A` for large repos.
-        // Use raw paths from `get_worktree_status` to avoid lossy UTF-8 conversions for odd filenames.
         let status = self.get_worktree_status(worktree_path)?;
         let mut paths_to_add: Vec<Vec<u8>> = Vec::new();
         for entry in status.entries {
@@ -212,19 +262,7 @@ impl GitCli {
             ];
             self.git_with_stdin(worktree_path, args, Some(&envs), &input)?;
         }
-        // git diff --cached
-        let mut args: Vec<OsString> = vec![
-            "-c".into(),
-            "core.quotepath=false".into(),
-            "diff".into(),
-            "--cached".into(),
-            "-M".into(),
-            "--name-status".into(),
-            OsString::from(base_commit.to_string()),
-        ];
-        args = Self::apply_pathspec_filter(args, opts.path_filter.as_ref());
-        let out = self.git_with_env(worktree_path, args, &envs)?;
-        Ok(Self::parse_name_status(&out))
+        Ok((tmp_dir, envs))
     }
 
     /// Return `git status --porcelain` parsed into a structured summary
@@ -504,6 +542,29 @@ impl GitCli {
                         });
                     }
                 }
+            }
+        }
+        out
+    }
+
+    fn parse_numstat(output: &str) -> Vec<NumstatEntry> {
+        let mut out = Vec::new();
+        for line in output.lines() {
+            let line = line.trim_end();
+            if line.is_empty() {
+                continue;
+            }
+            let mut parts = line.splitn(3, '\t');
+            let additions = parts.next().and_then(|v| v.parse::<usize>().ok());
+            let deletions = parts.next().and_then(|v| v.parse::<usize>().ok());
+            if let Some(path) = parts.next()
+                && !path.is_empty()
+            {
+                out.push(NumstatEntry {
+                    additions,
+                    deletions,
+                    path: path.to_string(),
+                });
             }
         }
         out
@@ -942,4 +1003,22 @@ pub struct WorktreeStatus {
     pub uncommitted_tracked: usize,
     pub untracked: usize,
     pub entries: Vec<StatusEntry>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GitCli;
+
+    #[test]
+    fn parse_numstat_counts_text_and_binary_files() {
+        let entries = GitCli::parse_numstat("12\t3\tsrc/main.rs\n-\t-\tassets/logo.png\n");
+
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].additions, Some(12));
+        assert_eq!(entries[0].deletions, Some(3));
+        assert_eq!(entries[0].path, "src/main.rs");
+        assert_eq!(entries[1].additions, None);
+        assert_eq!(entries[1].deletions, None);
+        assert_eq!(entries[1].path, "assets/logo.png");
+    }
 }

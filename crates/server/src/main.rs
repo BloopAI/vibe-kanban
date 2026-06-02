@@ -141,8 +141,11 @@ async fn main() -> Result<(), VibeKanbanError> {
 
     let app_router = routes::router(deployment.clone());
 
-    // Production only: open browser
-    if !cfg!(debug_assertions) {
+    // Production only: open browser unless disabled for diagnostics.
+    let disable_auto_open_browser = std::env::var("VK_DISABLE_AUTO_OPEN_BROWSER")
+        .ok()
+        .is_some_and(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"));
+    if !cfg!(debug_assertions) && !disable_auto_open_browser {
         tracing::info!("Opening browser...");
         let browser_port = actual_main_port;
         tokio::spawn(async move {

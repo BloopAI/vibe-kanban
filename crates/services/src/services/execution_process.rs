@@ -15,7 +15,12 @@ use db::{
 use futures::{StreamExt, TryStreamExt};
 use indicatif::{ProgressBar, ProgressStyle};
 use sqlx::SqlitePool;
-use tokio::{io::AsyncWriteExt, sync::RwLock, task::JoinHandle};
+use tokio::{
+    fs::File,
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    sync::RwLock,
+    task::JoinHandle,
+};
 use utils::{
     assets::prod_asset_dir_path,
     execution_logs::{
@@ -26,6 +31,8 @@ use utils::{
     msg_store::MsgStore,
 };
 use uuid::Uuid;
+
+const MAX_HISTORICAL_LOG_LINE_BYTES: usize = 1024 * 1024;
 
 pub async fn migrate_execution_logs_to_files() -> Result<()> {
     let pool = DBService::new_migration_pool()
@@ -238,6 +245,29 @@ pub async fn load_raw_log_messages(pool: &SqlitePool, execution_id: Uuid) -> Opt
     }
 }
 
+pub async fn stream_raw_log_messages(
+    pool: &SqlitePool,
+    execution_id: Uuid,
+) -> Option<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>> {
+    if let Some(lines) = open_execution_log_lines(pool, execution_id)
+        .await
+        .inspect_err(|e| {
+            tracing::warn!(
+                "Failed to open execution log file for execution {}: {:#}",
+                execution_id,
+                e
+            );
+        })
+        .ok()
+        .flatten()
+    {
+        return Some(stream_log_lines_lossy(execution_id, lines));
+    }
+
+    let messages = load_raw_log_messages(pool, execution_id).await?;
+    Some(futures::stream::iter(messages.into_iter().map(Ok::<_, std::io::Error>)).boxed())
+}
+
 pub async fn append_log_message(session_id: Uuid, execution_id: Uuid, msg: &LogMsg) -> Result<()> {
     let mut log_writer = ExecutionLogWriter::new_for_execution(session_id, execution_id)
         .await
@@ -346,6 +376,164 @@ pub fn spawn_stream_raw_logs_to_storage(
             }
         }
     })
+}
+
+async fn open_execution_log_lines(
+    pool: &SqlitePool,
+    execution_id: Uuid,
+) -> Result<Option<BufReader<File>>> {
+    let session_id = if let Some(process) = ExecutionProcess::find_by_id(pool, execution_id).await?
+    {
+        process.session_id
+    } else {
+        return Ok(None);
+    };
+
+    let path = process_log_file_path(session_id, execution_id);
+    match File::open(&path).await {
+        Ok(file) => return Ok(Some(BufReader::new(file))),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => {
+            return Err(e).with_context(|| {
+                format!(
+                    "open execution log file for execution {execution_id} at {}",
+                    path.display()
+                )
+            });
+        }
+    }
+
+    if cfg!(debug_assertions) {
+        // Convenience for local development with a clone of a prod db. Read only access to prod logs.
+        let prod_path =
+            process_log_file_path_in_root(&prod_asset_dir_path(), session_id, execution_id);
+        match File::open(&prod_path).await {
+            Ok(file) => return Ok(Some(BufReader::new(file))),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(err) => {
+                return Err(err).with_context(|| {
+                    format!(
+                        "open execution log file for execution {execution_id} from {}",
+                        prod_path.display()
+                    )
+                });
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+fn stream_log_lines_lossy(
+    execution_id: Uuid,
+    reader: BufReader<File>,
+) -> futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>> {
+    futures::stream::unfold(
+        (reader, 0usize, 0usize),
+        move |(mut reader, mut bad_lines, mut oversized_lines)| async move {
+            loop {
+                match read_bounded_line(&mut reader, MAX_HISTORICAL_LOG_LINE_BYTES).await {
+                    Ok(Some((line, oversized))) => {
+                        if oversized {
+                            oversized_lines += 1;
+                            if oversized_lines <= 3 {
+                                tracing::warn!(
+                                    "Skipping oversized historical log line for execution {}",
+                                    execution_id
+                                );
+                            }
+                            return Some((
+                                Ok(LogMsg::Stderr(format!(
+                                    "[vibe-kanban] Skipped an oversized historical log entry larger than {} bytes.",
+                                    MAX_HISTORICAL_LOG_LINE_BYTES
+                                ))),
+                                (reader, bad_lines, oversized_lines),
+                            ));
+                        }
+
+                        if line.iter().all(|byte| byte.is_ascii_whitespace()) {
+                            continue;
+                        }
+                        match serde_json::from_slice::<LogMsg>(&line) {
+                            Ok(msg) => return Some((Ok(msg), (reader, bad_lines, oversized_lines))),
+                            Err(e) => {
+                                bad_lines += 1;
+                                if bad_lines <= 3 {
+                                    tracing::warn!(
+                                        "Skipping unparsable log line for execution {}: {}",
+                                        execution_id,
+                                        e
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    Ok(None) => {
+                        if bad_lines > 3 {
+                            tracing::warn!(
+                                "Skipped {} unparsable log lines for execution {}",
+                                bad_lines,
+                                execution_id
+                            );
+                        }
+                        if oversized_lines > 3 {
+                            tracing::warn!(
+                                "Skipped {} oversized historical log lines for execution {}",
+                                oversized_lines,
+                                execution_id
+                            );
+                        }
+                        return None;
+                    }
+                    Err(e) => return Some((Err(e), (reader, bad_lines, oversized_lines))),
+                }
+            }
+        },
+    )
+    .boxed()
+}
+
+async fn read_bounded_line(
+    reader: &mut BufReader<File>,
+    max_bytes: usize,
+) -> std::io::Result<Option<(Vec<u8>, bool)>> {
+    let mut line = Vec::with_capacity(4096);
+    let mut oversized = false;
+
+    loop {
+        let available = reader.fill_buf().await?;
+        if available.is_empty() {
+            if line.is_empty() && !oversized {
+                return Ok(None);
+            }
+            return Ok(Some((line, oversized)));
+        }
+
+        let consumed = if let Some(newline_index) = available.iter().position(|b| *b == b'\n') {
+            newline_index + 1
+        } else {
+            available.len()
+        };
+        let found_newline = available
+            .get(consumed.saturating_sub(1))
+            .is_some_and(|byte| *byte == b'\n');
+
+        if !oversized {
+            let remaining = max_bytes.saturating_sub(line.len());
+            if consumed <= remaining {
+                line.extend_from_slice(&available[..consumed]);
+            } else {
+                line.extend_from_slice(&available[..remaining]);
+                oversized = true;
+            }
+        }
+
+        reader.consume(consumed);
+
+        if found_newline {
+            return Ok(Some((line, oversized)));
+        }
+    }
 }
 
 async fn read_execution_logs_for_execution(
