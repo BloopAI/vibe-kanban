@@ -9,6 +9,7 @@ backon = "1.5.1"
 chrono = { version = "0.4", features = ["serde"] }
 db = { path = "../db" }
 enum_dispatch = "0.3.13"
+reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tempfile = "3.21"
