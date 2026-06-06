@@ -20,6 +20,10 @@ export interface UseConversationHistoryResult {
   isFirstTurn: boolean;
   /** Whether background batches are still loading older history entries */
   isLoadingHistory: boolean;
+  /** Whether older historical execution processes remain unloaded */
+  hasMoreHistory: boolean;
+  /** Load the next batch of older historical execution processes */
+  loadMoreHistory: () => Promise<void>;
 }
 import {
   MIN_INITIAL_ENTRIES,
@@ -47,6 +51,8 @@ export const useConversationHistory = ({
     new Map()
   );
   const [isLoadingHistoryState, setIsLoadingHistory] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
+  const isLoadingMoreHistoryRef = useRef(false);
 
   // Derive whether this is the first turn (no follow-up processes exist)
   const isFirstTurn = useMemo(() => {
@@ -298,6 +304,7 @@ export const useConversationHistory = ({
       if (!executionProcesses?.current) return false;
 
       let anyUpdated = false;
+      let loadedEntries = 0;
       for (const executionProcess of [
         ...executionProcesses.current,
       ].reverse()) {
@@ -313,6 +320,7 @@ export const useConversationHistory = ({
         const entriesWithKey = entries.map((e, idx) =>
           patchWithKey(e, executionProcess.id, idx)
         );
+        loadedEntries += entriesWithKey.length;
 
         mergeIntoDisplayed((state) => {
           state[executionProcess.id] = {
@@ -321,9 +329,7 @@ export const useConversationHistory = ({
           };
         });
 
-        if (
-          flattenEntries(displayedExecutionProcesses.current).length > batchSize
-        ) {
+        if (loadedEntries > batchSize) {
           anyUpdated = true;
           break;
         }
@@ -333,6 +339,44 @@ export const useConversationHistory = ({
     },
     [executionProcesses]
   );
+
+  const hasUnloadedHistoricProcesses = useCallback(() => {
+    if (!executionProcesses?.current) return false;
+
+    return executionProcesses.current.some((executionProcess) => {
+      return (
+        executionProcess.status !== ExecutionProcessStatus.running &&
+        !displayedExecutionProcesses.current[executionProcess.id]
+      );
+    });
+  }, [executionProcesses]);
+
+  const loadMoreHistory = useCallback(async () => {
+    if (isLoadingMoreHistoryRef.current) return;
+    if (!hasUnloadedHistoricProcesses()) {
+      setHasMoreHistory(false);
+      return;
+    }
+
+    isLoadingMoreHistoryRef.current = true;
+    setIsLoadingHistory(true);
+
+    try {
+      const anyUpdated =
+        await loadRemainingEntriesInBatches(REMAINING_BATCH_SIZE);
+      if (anyUpdated) {
+        emitEntries(displayedExecutionProcesses.current, 'historic', false);
+      }
+      setHasMoreHistory(hasUnloadedHistoricProcesses());
+    } finally {
+      isLoadingMoreHistoryRef.current = false;
+      setIsLoadingHistory(false);
+    }
+  }, [
+    emitEntries,
+    hasUnloadedHistoricProcesses,
+    loadRemainingEntriesInBatches,
+  ]);
 
   const ensureProcessVisible = useCallback((p: ExecutionProcess) => {
     mergeIntoDisplayed((state) => {
@@ -385,6 +429,9 @@ export const useConversationHistory = ({
     emittedEmptyInitialRef.current = false;
     streamingProcessIdsRef.current.clear();
     previousStatusMapRef.current.clear();
+    isLoadingMoreHistoryRef.current = false;
+    setHasMoreHistory(false);
+    setIsLoadingHistory(false);
     emitEntries(displayedExecutionProcesses.current, 'initial', true);
   }, [scopeKey, emitEntries]);
 
@@ -411,16 +458,7 @@ export const useConversationHistory = ({
         Object.assign(state, allInitialEntries);
       });
       emitEntries(displayedExecutionProcesses.current, 'initial', false);
-
-      setIsLoadingHistory(true);
-      while (
-        !cancelled &&
-        (await loadRemainingEntriesInBatches(REMAINING_BATCH_SIZE))
-      ) {
-        if (cancelled) return;
-        emitEntries(displayedExecutionProcesses.current, 'historic', false);
-      }
-      if (!cancelled) setIsLoadingHistory(false);
+      setHasMoreHistory(hasUnloadedHistoricProcesses());
     })();
     return () => {
       cancelled = true;
@@ -429,8 +467,8 @@ export const useConversationHistory = ({
     scopeKey,
     idListKey,
     isLoading,
+    hasUnloadedHistoricProcesses,
     loadHistoricEntries,
-    loadRemainingEntriesInBatches,
     emitEntries,
   ]); // include idListKey so new processes trigger reload
 
@@ -535,5 +573,10 @@ export const useConversationHistory = ({
     }
   }, [scopeKey, idListKey, executionProcessesRaw]);
 
-  return { isFirstTurn, isLoadingHistory: isLoadingHistoryState };
+  return {
+    isFirstTurn,
+    isLoadingHistory: isLoadingHistoryState,
+    hasMoreHistory,
+    loadMoreHistory,
+  };
 };
