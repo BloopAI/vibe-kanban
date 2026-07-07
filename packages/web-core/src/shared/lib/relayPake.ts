@@ -31,10 +31,18 @@ export interface Spake2EnrollmentClientState {
 }
 
 export function normalizeEnrollmentCode(rawCode: string): string {
-  return rawCode
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '');
+  return (
+    rawCode
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      // Map visually ambiguous characters to their intended equivalents.
+      // New codes no longer contain O/I/L/U, but users may still type them.
+      .replace(/O/g, '0')
+      .replace(/I/g, '1')
+      .replace(/L/g, '1')
+      .replace(/U/g, 'V')
+  );
 }
 
 export async function startSpake2Enrollment(

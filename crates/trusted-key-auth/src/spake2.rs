@@ -7,7 +7,8 @@ use crate::error::TrustedKeyAuthError;
 const SPAKE2_CLIENT_ID: &[u8] = b"vibe-kanban-browser";
 const SPAKE2_SERVER_ID: &[u8] = b"vibe-kanban-server";
 pub const ENROLLMENT_CODE_LENGTH: usize = 6;
-const ENROLLMENT_CODE_CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+// Excludes visually ambiguous characters: O (vs 0), I (vs 1), L (vs 1), U (vs V)
+const ENROLLMENT_CODE_CHARSET: &[u8] = b"ABCDEFGHJKMNPQRSTVWXYZ0123456789";
 
 #[derive(Debug)]
 pub struct Spake2StartOutcome {
@@ -68,6 +69,14 @@ pub fn normalize_enrollment_code(raw_code: &str) -> Result<String, TrustedKeyAut
         ));
     }
 
+    // Map visually ambiguous characters to their intended equivalents.
+    // New codes no longer contain O/I/L/U, but users may still type them
+    // when reading a code displayed in a font where 0≈O or 1≈I≈L.
+    let code = code
+        .replace('O', "0")
+        .replace(['I', 'L'], "1")
+        .replace('U', "V");
+
     Ok(code)
 }
 
@@ -98,7 +107,31 @@ mod tests {
         assert_eq!(code.len(), ENROLLMENT_CODE_LENGTH);
         assert!(
             code.bytes()
-                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
+                .all(|byte| ENROLLMENT_CODE_CHARSET.contains(&byte))
         );
+    }
+
+    #[test]
+    fn generate_one_time_code_excludes_ambiguous_characters() {
+        // Generate many codes and verify none contain O, I, L, or U
+        for _ in 0..1000 {
+            let code = generate_one_time_code();
+            assert!(!code.contains('O'), "Code should not contain 'O': {code}");
+            assert!(!code.contains('I'), "Code should not contain 'I': {code}");
+            assert!(!code.contains('L'), "Code should not contain 'L': {code}");
+            assert!(!code.contains('U'), "Code should not contain 'U': {code}");
+        }
+    }
+
+    #[test]
+    fn normalize_enrollment_code_maps_ambiguous_characters() {
+        // O → 0
+        assert_eq!(normalize_enrollment_code("ABO1Z9").unwrap(), "AB01Z9");
+        // I → 1
+        assert_eq!(normalize_enrollment_code("ABI2Z9").unwrap(), "AB12Z9");
+        // L → 1
+        assert_eq!(normalize_enrollment_code("ABL2Z9").unwrap(), "AB12Z9");
+        // U → V
+        assert_eq!(normalize_enrollment_code("ABU2Z9").unwrap(), "ABV2Z9");
     }
 }
