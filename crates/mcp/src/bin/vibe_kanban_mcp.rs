@@ -97,6 +97,28 @@ where
     Ok(LaunchConfig { mode })
 }
 
+/// Probe a candidate backend URL by sending a lightweight GET request.
+/// Returns `true` if the backend responds (any HTTP status), `false` on
+/// connection failure or timeout.
+async fn probe_backend(url: &str, log_prefix: &str) -> bool {
+    let probe_url = format!("{}/api/health", url.trim_end_matches('/'));
+    tracing::debug!("[{}] Probing backend at {}", log_prefix, probe_url);
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(2))
+        .build()
+        .unwrap_or_default();
+    match client.get(&probe_url).send().await {
+        Ok(_) => {
+            tracing::debug!("[{}] Backend alive at {}", log_prefix, url);
+            true
+        }
+        Err(e) => {
+            tracing::debug!("[{}] Backend probe failed at {}: {}", log_prefix, url, e);
+            false
+        }
+    }
+}
+
 async fn resolve_base_url(log_prefix: &str) -> anyhow::Result<String> {
     if let Ok(url) = std::env::var("VIBE_BACKEND_URL") {
         tracing::info!(
@@ -128,9 +150,46 @@ async fn resolve_base_url(log_prefix: &str) -> anyhow::Result<String> {
         }
     };
 
-    let url = format!("http://{}:{}", host, port);
-    tracing::info!("[{}] Using backend URL: {}", log_prefix, url);
-    Ok(url)
+    // Build candidate URL and validate it with a health-check probe.
+    // If the primary host fails, try alternate loopback addresses to handle
+    // the case where the backend binds to `localhost` (which may resolve to
+    // `::1` on macOS) while we default to `127.0.0.1`, or vice versa.
+    let primary_url = format!("http://{}:{}", host, port);
+    if probe_backend(&primary_url, log_prefix).await {
+        tracing::info!("[{}] Using backend URL: {}", log_prefix, primary_url);
+        return Ok(primary_url);
+    }
+
+    // Try alternate loopback hosts
+    let alternates: &[&str] = if host == "127.0.0.1" {
+        &["localhost", "[::1]"]
+    } else if host == "localhost" {
+        &["127.0.0.1", "[::1]"]
+    } else {
+        &["localhost", "127.0.0.1"]
+    };
+
+    for alt_host in alternates {
+        let alt_url = format!("http://{}:{}", alt_host, port);
+        if probe_backend(&alt_url, log_prefix).await {
+            tracing::info!(
+                "[{}] Primary host {} unreachable, using alternate: {}",
+                log_prefix,
+                host,
+                alt_url
+            );
+            return Ok(alt_url);
+        }
+    }
+
+    // Fall through to original URL — downstream will report the real error
+    tracing::warn!(
+        "[{}] No backend responded on port {}. Using {} (may fail).",
+        log_prefix,
+        port,
+        primary_url
+    );
+    Ok(primary_url)
 }
 
 fn init_process_logging(log_prefix: &str, version: &str) {
