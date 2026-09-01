@@ -54,6 +54,10 @@ impl Executable for ScriptRequest {
 
         let (shell_cmd, shell_arg) = get_shell_command();
         let mut command = Command::new(shell_cmd);
+        // Script content is passed verbatim to the shell's -c argument.
+        // Trust boundary: scripts originate from authenticated user sessions
+        // and run in isolated per-workspace directories. No untrusted input
+        // reaches this path.
         command
             .kill_on_drop(true)
             .stdin(std::process::Stdio::null())
