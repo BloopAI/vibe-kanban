@@ -8,3 +8,25 @@ onlyBuiltDependencies:
 
 patchedDependencies:
   '@pierre/diffs@1.1.4': patches/@pierre__diffs@1.1.4.patch
+
+overrides:
+  devalue: ">=5.8.1"
+  flatted: ">=3.4.2"
+  preact: ">=10.29.2"
+  fast-uri: ">=3.1.2"
+  js-yaml: ">=4.1.1"
+  yaml: ">=2.8.3"
+  "glob@10": ">=10.5.0"
+  lodash-es: ">=4.18.0"
+  uuid: ">=13.0.1"
+  "diff@8": ">=8.0.3"
+  "ajv@6": "^6.14.0"
+  "ajv@8": ">=8.20.0"
+  "brace-expansion@1": ">=1.1.13"
+  "brace-expansion@2": ">=2.0.3"
+  "minimatch@3": ">=3.1.4"
+  "minimatch@8": ">=8.0.6"
+  "minimatch@9": ">=9.0.9"
+  "eslint>minimatch": ">=9.0.9"
+  "@git-diff-view/file>diff": ">=8.0.3"
+  shell-quote: ">=1.8.4"
