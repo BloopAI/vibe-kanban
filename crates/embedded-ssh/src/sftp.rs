@@ -7,8 +7,11 @@
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::{collections::HashMap, fs as std_fs, path::PathBuf};
 
-use russh_sftp::protocol::{
-    Attrs, Data, File, FileAttributes, Handle, Name, OpenFlags, Status, StatusCode, Version,
+use russh_sftp::{
+    protocol::{
+        Attrs, Data, File, FileAttributes, Handle, Name, OpenFlags, Status, StatusCode, Version,
+    },
+    server::StatusReply,
 };
 use tokio::{
     fs,
@@ -54,9 +57,9 @@ impl From<std::io::Error> for SftpError {
     }
 }
 
-impl From<SftpError> for StatusCode {
-    fn from(err: SftpError) -> StatusCode {
-        err.code
+impl From<SftpError> for StatusReply {
+    fn from(err: SftpError) -> StatusReply {
+        StatusReply::new(err.code).with_message(err.message)
     }
 }
 
