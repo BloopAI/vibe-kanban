@@ -10,7 +10,7 @@ use workspace_utils::msg_store::MsgStore;
 pub use super::acp::AcpAgentHarness;
 use crate::{
     approvals::ExecutorApprovalService,
-    command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
+    command::{apply_overrides, CmdOverrides, CommandBuildError, CommandBuilder},
     env::ExecutionEnv,
     executor_discovery::ExecutorDiscoveredOptions,
     executors::{
@@ -49,7 +49,7 @@ pub struct Copilot {
 
 impl Copilot {
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
-        let mut builder = CommandBuilder::new("npx -y @github/copilot@0.0.403");
+        let mut builder = CommandBuilder::new("npx -y @github/copilot@1.0.83");
 
         if self.allow_all_tools.unwrap_or(false) {
             builder = builder.extend_params(["--allow-all-tools"]);
