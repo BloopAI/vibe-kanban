@@ -147,10 +147,19 @@ impl MsgStore {
             .take_while(|res| future::ready(!matches!(res, Ok(LogMsg::Finished))))
             .filter_map(|res| async move {
                 match res {
-                    Ok(LogMsg::Stderr(s)) => Some(Ok(s)),
+                    Ok(LogMsg::Stderr(s)) => Some(s),
                     _ => None,
                 }
             })
+            // Coalesce chunks that are already available into a single chunk.
+            // Every consumer feeds these to a PlainTextLogProcessor, which
+            // rebuilds and re-emits the whole buffered entry on each chunk it is
+            // given. Replaying a stored session makes the entire history ready
+            // at once, so without this that rebuild runs once per chunk and
+            // replay costs O(chunks * total bytes). A live stream yields one
+            // chunk at a time, so batches are size 1 and behaviour is unchanged.
+            .ready_chunks(1024)
+            .map(|chunks| Ok(chunks.concat()))
             .boxed()
     }
 
@@ -170,5 +179,57 @@ impl MsgStore {
                 }
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    async fn collect(
+        stream: futures::stream::BoxStream<'static, Result<String, std::io::Error>>,
+    ) -> Vec<String> {
+        stream.map(|res| res.expect("stream item")).collect().await
+    }
+
+    #[tokio::test]
+    async fn stderr_chunked_stream_coalesces_replayed_history() {
+        // A stored session is replayed by pushing its whole history before
+        // anyone reads it, so every chunk is ready at once.
+        let store = Arc::new(MsgStore::new());
+        for chunk in ["one\n", "two\n", "three\n", "four\n"] {
+            store.push(LogMsg::Stderr(chunk.to_string()));
+        }
+        store.push_finished();
+
+        let chunks = collect(store.stderr_chunked_stream()).await;
+
+        assert_eq!(chunks, vec!["one\ntwo\nthree\nfour\n".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn stderr_chunked_stream_keeps_order_and_ignores_stdout() {
+        let store = Arc::new(MsgStore::new());
+        store.push(LogMsg::Stderr("a".to_string()));
+        store.push_stdout("not stderr");
+        store.push(LogMsg::Stderr("b".to_string()));
+        store.push(LogMsg::Stderr("c".to_string()));
+        store.push_finished();
+
+        let chunks = collect(store.stderr_chunked_stream()).await;
+
+        assert_eq!(chunks.concat(), "abc");
+    }
+
+    #[tokio::test]
+    async fn stderr_chunked_stream_stops_at_finished() {
+        let store = Arc::new(MsgStore::new());
+        store.push(LogMsg::Stderr("before".to_string()));
+        store.push_finished();
+        store.push(LogMsg::Stderr("after".to_string()));
+
+        let chunks = collect(store.stderr_chunked_stream()).await;
+
+        assert_eq!(chunks.concat(), "before");
     }
 }
