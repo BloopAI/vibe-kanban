@@ -71,6 +71,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(relay_auth::router())
         .merge(host_relay::router(&deployment))
         .merge(relay_signed_routes)
+        .layer(CompressionLayer::new())
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,
         ))
@@ -81,6 +82,5 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .route("/", get(frontend::serve_frontend_root))
         .route("/{*path}", get(frontend::serve_frontend))
         .nest("/api", api_routes)
-        .layer(CompressionLayer::new())
         .into_make_service()
 }

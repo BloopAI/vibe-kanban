@@ -185,6 +185,7 @@ export const ConversationList = forwardRef<
   // ensuring every frame reflects the latest data.
   const rafIdRef = useRef<number | null>(null);
   const planRevealSpacerRef = useRef<HTMLDivElement | null>(null);
+  const historyLoadSentinelRef = useRef<HTMLDivElement | null>(null);
   const pendingInteractionAnchorRef = useRef<{
     element: HTMLElement;
     top: number;
@@ -383,11 +384,14 @@ export const ConversationList = forwardRef<
     }
   };
 
-  const { isFirstTurn, isLoadingHistory } = useConversationHistory({
-    attempt,
-    onTimelineUpdated,
-    scopeKey: conversationScopeKey,
-  });
+  const { isFirstTurn, isLoadingHistory, hasMoreHistory, loadMoreHistory } =
+    useConversationHistory({
+      attempt,
+      onTimelineUpdated,
+      scopeKey: conversationScopeKey,
+    });
+  const loadMoreHistoryRef = useRef(loadMoreHistory);
+  loadMoreHistoryRef.current = loadMoreHistory;
 
   const prevEntriesRef = useRef<DisplayEntry[]>([]);
   const prevRowsRef = useRef<ConversationRow[]>([]);
@@ -548,6 +552,38 @@ export const ConversationList = forwardRef<
     scrollToAbsoluteIndex,
   });
   scrollOnEntriesChangedRef.current = scrollExecutor.onEntriesChanged;
+
+  useEffect(() => {
+    const sentinel = historyLoadSentinelRef.current;
+    const scrollContainer = tanstackScrollRef.current;
+    if (
+      !sentinel ||
+      !scrollContainer ||
+      !hasMoreHistory ||
+      isLoadingHistory ||
+      loading
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          void loadMoreHistoryRef.current();
+        }
+      },
+      {
+        root: scrollContainer,
+        rootMargin: '200px 0px 0px 0px',
+      }
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMoreHistory, isLoadingHistory, loading]);
 
   // Determine if there are entries to show placeholders
   const hasEntries = conversationRows.length > 0;
@@ -767,6 +803,8 @@ export const ConversationList = forwardRef<
           onClickCapture={handleConversationClickCapture}
         >
           <div className="pt-2">
+            {hasMoreHistory && <div ref={historyLoadSentinelRef} />}
+
             {showSetupPlaceholder && (
               <div className="my-base px-double">
                 <ChatScriptPlaceholder

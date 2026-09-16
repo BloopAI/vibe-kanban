@@ -252,7 +252,9 @@ impl Deployment for LocalDeployment {
             None => None,
         };
         let pr_sync_notify = Arc::new(Notify::new());
-        {
+        if std::env::var("VK_DISABLE_PR_MONITOR").is_ok() {
+            tracing::info!("PR monitoring service disabled by VK_DISABLE_PR_MONITOR");
+        } else {
             let db = db.clone();
             let analytics = analytics.as_ref().map(|s| AnalyticsContext {
                 user_id: user_id.clone(),

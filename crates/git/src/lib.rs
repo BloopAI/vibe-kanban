@@ -29,6 +29,13 @@ pub struct FileStat {
     pub last_time: DateTime<Utc>,
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct DiffStats {
+    pub files_changed: usize,
+    pub lines_added: usize,
+    pub lines_removed: usize,
+}
+
 #[derive(Debug, Error)]
 pub enum GitServiceError {
     #[error(transparent)]
@@ -369,6 +376,30 @@ impl GitService {
             )
             .map_err(|e| GitServiceError::InvalidRepository(format!("git diff failed: {e}")))?;
         Ok(entries.into_iter().map(|e| e.path).collect())
+    }
+
+    /// Returns diff counts without loading file contents.
+    pub fn get_diff_stats(
+        &self,
+        worktree_path: &Path,
+        base_commit: &Commit,
+    ) -> Result<DiffStats, GitServiceError> {
+        let git = GitCli::new();
+        let entries = git
+            .diff_numstat(
+                worktree_path,
+                base_commit,
+                cli::StatusDiffOptions { path_filter: None },
+            )
+            .map_err(|e| GitServiceError::InvalidRepository(format!("git diff failed: {e}")))?;
+
+        let mut stats = DiffStats::default();
+        for entry in entries {
+            stats.files_changed += 1;
+            stats.lines_added += entry.additions.unwrap_or(0);
+            stats.lines_removed += entry.deletions.unwrap_or(0);
+        }
+        Ok(stats)
     }
 
     /// Extract file path from a Diff (for indexing and ConversationPatch)

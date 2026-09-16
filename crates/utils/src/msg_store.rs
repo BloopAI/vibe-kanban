@@ -21,6 +21,7 @@ struct StoredMsg {
 struct Inner {
     history: VecDeque<StoredMsg>,
     total_bytes: usize,
+    max_history_bytes: usize,
 }
 
 pub struct MsgStore {
@@ -36,11 +37,16 @@ impl Default for MsgStore {
 
 impl MsgStore {
     pub fn new() -> Self {
+        Self::new_with_history_bytes(HISTORY_BYTES)
+    }
+
+    pub fn new_with_history_bytes(max_history_bytes: usize) -> Self {
         let (sender, _) = broadcast::channel(100000);
         Self {
             inner: RwLock::new(Inner {
                 history: VecDeque::with_capacity(32),
                 total_bytes: 0,
+                max_history_bytes,
             }),
             sender,
         }
@@ -51,7 +57,10 @@ impl MsgStore {
         let bytes = msg.approx_bytes();
 
         let mut inner = self.inner.write().unwrap();
-        while inner.total_bytes.saturating_add(bytes) > HISTORY_BYTES {
+        if bytes > inner.max_history_bytes {
+            return;
+        }
+        while inner.total_bytes.saturating_add(bytes) > inner.max_history_bytes {
             if let Some(front) = inner.history.pop_front() {
                 inner.total_bytes = inner.total_bytes.saturating_sub(front.bytes);
             } else {
@@ -170,5 +179,38 @@ impl MsgStore {
                 }
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bounded_history_keeps_recent_messages_under_limit() {
+        let store = MsgStore::new_with_history_bytes(64);
+
+        store.push_stdout("first");
+        store.push_stdout("second");
+        store.push_stdout("third");
+
+        let history = store.get_history();
+        assert!(!history.is_empty());
+        assert!(history.iter().map(LogMsg::approx_bytes).sum::<usize>() <= 64);
+        assert!(matches!(history.last(), Some(LogMsg::Stdout(s)) if s == "third"));
+    }
+
+    #[test]
+    fn oversized_message_is_broadcast_but_not_retained() {
+        let store = MsgStore::new_with_history_bytes(16);
+        let mut receiver = store.get_receiver();
+
+        store.push_stdout("this message is too large for history");
+
+        assert!(store.get_history().is_empty());
+        assert!(matches!(
+            receiver.try_recv(),
+            Ok(LogMsg::Stdout(s)) if s == "this message is too large for history"
+        ));
     }
 }

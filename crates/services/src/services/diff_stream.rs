@@ -75,16 +75,14 @@ pub async fn compute_diff_stats(
         let diffs_result = tokio::task::spawn_blocking({
             let git = git.clone();
             let worktree = worktree_path.clone();
-            move || git.get_diffs(&worktree, &base_commit, None)
+            move || git.get_diff_stats(&worktree, &base_commit)
         })
         .await;
 
-        if let Ok(Ok(diffs)) = diffs_result {
-            for diff in diffs {
-                stats.files_changed += 1;
-                stats.lines_added += diff.additions.unwrap_or(0);
-                stats.lines_removed += diff.deletions.unwrap_or(0);
-            }
+        if let Ok(Ok(repo_stats)) = diffs_result {
+            stats.files_changed += repo_stats.files_changed;
+            stats.lines_added += repo_stats.lines_added;
+            stats.lines_removed += repo_stats.lines_removed;
         }
     }
 

@@ -9,6 +9,7 @@ use db::models::{
     workspace::Workspace,
 };
 use deployment::Deployment;
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -66,6 +67,8 @@ pub struct DiffStats {
     pub lines_removed: usize,
 }
 
+const DIFF_STATS_CONCURRENCY: usize = 4;
+
 /// Fetch summary information for workspaces filtered by archived status.
 /// This endpoint returns data that cannot be efficiently included in the streaming endpoint.
 #[axum::debug_handler]
@@ -112,26 +115,25 @@ pub async fn get_workspace_summaries(
     // 6. Get PR status for each workspace
     let pr_statuses = PullRequest::get_latest_for_workspaces(pool, archived).await?;
 
-    // 7. Compute diff stats for each workspace (in parallel)
-    let diff_futures: Vec<_> = workspaces
-        .iter()
-        .map(|ws| {
-            let workspace = ws.clone();
-            let deployment = deployment.clone();
-            async move {
-                if workspace.container_ref.is_some() {
-                    compute_workspace_diff_stats(&deployment, &workspace)
-                        .await
-                        .map(|stats| (workspace.id, stats))
-                } else {
-                    None
-                }
-            }
-        })
-        .collect();
-
+    // 7. Compute diff stats with bounded concurrency. This endpoint is polled,
+    // so avoid launching Git work for every workspace at once.
     let diff_results: Vec<Option<(Uuid, DiffStats)>> =
-        futures_util::future::join_all(diff_futures).await;
+        futures_util::stream::iter(workspaces.iter().cloned())
+            .map(|workspace| {
+                let deployment = deployment.clone();
+                async move {
+                    if workspace.container_ref.is_some() {
+                        compute_workspace_diff_stats(&deployment, &workspace)
+                            .await
+                            .map(|stats| (workspace.id, stats))
+                    } else {
+                        None
+                    }
+                }
+            })
+            .buffer_unordered(DIFF_STATS_CONCURRENCY)
+            .collect()
+            .await;
     let diff_stats: HashMap<Uuid, DiffStats> = diff_results.into_iter().flatten().collect();
 
     // 8. Assemble response

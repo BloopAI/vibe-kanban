@@ -60,6 +60,9 @@ use worktree_manager::WorktreeError;
 use crate::services::{execution_process, notification::NotificationService};
 pub type ContainerRef = String;
 
+const HISTORICAL_NORMALIZATION_HISTORY_BYTES: usize = 8 * 1024 * 1024;
+const MAX_HISTORICAL_NORMALIZED_PATCH_BYTES: usize = 1024 * 1024;
+
 #[derive(Debug, Error)]
 pub enum ContainerError {
     #[error(transparent)]
@@ -812,16 +815,15 @@ pub trait ContainerService {
                     .boxed(),
             );
         } else {
-            let messages = execution_process::load_raw_log_messages(&self.db().pool, *id).await?;
-
-            let stream = futures::stream::iter(
-                messages
-                    .into_iter()
-                    .filter(|m| matches!(m, LogMsg::Stdout(_) | LogMsg::Stderr(_)))
-                    .chain(std::iter::once(LogMsg::Finished))
-                    .map(Ok::<_, std::io::Error>),
-            )
-            .boxed();
+            let stream = execution_process::stream_raw_log_messages(&self.db().pool, *id)
+                .await?
+                .filter(|msg| {
+                    future::ready(matches!(msg, Ok(LogMsg::Stdout(_) | LogMsg::Stderr(_))))
+                })
+                .chain(futures::stream::once(async {
+                    Ok::<_, std::io::Error>(LogMsg::Finished)
+                }))
+                .boxed();
 
             Some(stream)
         }
@@ -843,21 +845,9 @@ pub trait ContainerService {
                     .boxed(),
             )
         } else {
-            let raw_messages =
-                execution_process::load_raw_log_messages(&self.db().pool, *id).await?;
-
-            // Create temporary store and populate
-            // Include JsonPatch messages (already normalized) and Stdout/Stderr (need normalization)
-            let temp_store = Arc::new(MsgStore::new());
-            for msg in raw_messages {
-                if matches!(
-                    msg,
-                    LogMsg::Stdout(_) | LogMsg::Stderr(_) | LogMsg::JsonPatch(_)
-                ) {
-                    temp_store.push(msg);
-                }
-            }
-            temp_store.push_finished();
+            let raw_stream = execution_process::stream_raw_log_messages(&self.db().pool, *id)
+                .await?
+                .boxed();
 
             let process = match ExecutionProcess::find_by_id(&self.db().pool, *id).await {
                 Ok(Some(process)) => process,
@@ -912,7 +902,13 @@ pub trait ContainerService {
                 return None;
             };
 
-            // Spawn normalizer on populated store and collect JoinHandles
+            // Historical replay streams raw logs into a reduced-history store
+            // instead of materializing the whole log file and parsed message vec.
+            let temp_store = Arc::new(MsgStore::new_with_history_bytes(
+                HISTORICAL_NORMALIZATION_HISTORY_BYTES,
+            ));
+
+            // Spawn normalizer on the live-fed store and collect JoinHandles.
             let handles = match executor_action.typ() {
                 ExecutorActionType::CodingAgentInitialRequest(request) => {
                     #[cfg(feature = "qa-mode")]
@@ -972,18 +968,6 @@ pub trait ContainerService {
                 }
             };
 
-            // Await all normalizer tasks, then push Ready so the dedup
-            // stream knows when to flush its buffer and terminate.
-            {
-                let store = temp_store.clone();
-                tokio::spawn(async move {
-                    for handle in handles {
-                        let _ = handle.await;
-                    }
-                    store.push(LogMsg::Ready);
-                });
-            }
-
             // Stream normalized patches, deduplicating consecutive patches
             // that target the same path (only the final state matters for
             // historical replay). The Ready sentinel flushes the buffer.
@@ -1001,6 +985,41 @@ pub trait ContainerService {
                         _ => None,
                     }
                 });
+
+            {
+                let store = temp_store.clone();
+                tokio::spawn(async move {
+                    tokio::task::yield_now().await;
+
+                    let mut raw_stream = raw_stream;
+                    let mut forwarded_messages = 0usize;
+                    while let Some(msg) = raw_stream.next().await {
+                        match msg {
+                            Ok(
+                                msg
+                                @ (LogMsg::Stdout(_) | LogMsg::Stderr(_) | LogMsg::JsonPatch(_)),
+                            ) => store.push(msg),
+                            Ok(_) => {}
+                            Err(err) => {
+                                tracing::warn!("Failed to stream historical log message: {err}");
+                                break;
+                            }
+                        }
+
+                        forwarded_messages += 1;
+                        if forwarded_messages.is_multiple_of(256) {
+                            tokio::task::yield_now().await;
+                        }
+                    }
+
+                    store.push_finished();
+
+                    for handle in handles {
+                        let _ = handle.await;
+                    }
+                    store.push(LogMsg::Ready);
+                });
+            }
 
             let deduped = futures::stream::unfold(
                 (stream.boxed(), None::<Patch>, HashSet::<String>::new()),
@@ -1035,6 +1054,19 @@ pub trait ContainerService {
                 },
             )
             .filter_map(|opt| async move { opt })
+            .filter_map(|patch| async move {
+                let bytes = LogMsg::json_patch_approx_bytes(&patch);
+                if bytes <= MAX_HISTORICAL_NORMALIZED_PATCH_BYTES {
+                    Some(patch)
+                } else {
+                    tracing::warn!(
+                        bytes,
+                        path = ?patch_entry_path(&patch),
+                        "Skipping oversized historical normalized log patch"
+                    );
+                    None
+                }
+            })
             .map(|p| Ok::<_, std::io::Error>(LogMsg::JsonPatch(p)))
             .chain(futures::stream::once(async {
                 Ok::<_, std::io::Error>(LogMsg::Finished)
