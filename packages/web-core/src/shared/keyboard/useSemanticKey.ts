@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { EnableOnFormTags } from '@/shared/keyboard/types';
 import { Action, Scope, getKeysFor } from '@/shared/keyboard/registry';
 import { useHotkeys } from 'react-hotkeys-hook';
+import { isImeConfirmation } from '@/shared/keyboard/imeComposition';
 
 export interface SemanticKeyOptions {
   scope?: Scope;
@@ -40,9 +41,10 @@ export function createSemanticHook<A extends Action>(action: A) {
     useHotkeys(
       keys,
       (event) => {
-        // Skip if IME composition is in progress (e.g., Japanese, Chinese, Korean input)
-        // This prevents shortcuts from firing when user is converting text with Enter
-        if (event.isComposing) {
+        // Skip if this Enter is confirming an IME candidate (Japanese, Chinese, Korean input).
+        // `isComposing` alone misses Safari, which fires `compositionend` before the confirming
+        // keydown — see imeComposition.ts.
+        if (isImeConfirmation(event)) {
           return;
         }
 
