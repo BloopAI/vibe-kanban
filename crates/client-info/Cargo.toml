@@ -1,4 +1,4 @@
 [package]
 name = "client-info"
-version = "0.1.44"
+version = "0.1.45-permtest.0"
 edition = "2024"
