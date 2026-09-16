@@ -2,7 +2,7 @@ use mcp::task_server::McpServer;
 use rmcp::{ServiceExt, transport::stdio};
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
-    port_file::read_port_file,
+    port_file::{PortInfo, read_port_info},
     sentry::{self as sentry_utils, SentrySource, sentry_layer},
 };
 
@@ -98,7 +98,38 @@ where
 }
 
 async fn resolve_base_url(log_prefix: &str) -> anyhow::Result<String> {
-    if let Ok(url) = std::env::var("VIBE_BACKEND_URL") {
+    let backend_url = std::env::var("VIBE_BACKEND_URL").ok();
+    let host = std::env::var(HOST_ENV)
+        .or_else(|_| std::env::var("HOST"))
+        .unwrap_or_else(|_| "127.0.0.1".to_string());
+
+    let explicit_port =
+        match std::env::var(PORT_ENV)
+            .or_else(|_| std::env::var("BACKEND_PORT"))
+            .or_else(|_| std::env::var("PORT"))
+        {
+            Ok(port_str) => Some(port_str.parse::<u16>().map_err(|error| {
+                anyhow::anyhow!("Invalid port value '{}': {}", port_str, error)
+            })?),
+            Err(_) => None,
+        };
+
+    let port_info = match explicit_port {
+        Some(_) => None,
+        None => Some(read_port_info("vibe-kanban").await?),
+    };
+
+    resolve_base_url_from_sources(log_prefix, backend_url, host, explicit_port, port_info)
+}
+
+fn resolve_base_url_from_sources(
+    log_prefix: &str,
+    backend_url: Option<String>,
+    host: String,
+    explicit_port: Option<u16>,
+    port_info: Option<PortInfo>,
+) -> anyhow::Result<String> {
+    if let Some(url) = backend_url {
         tracing::info!(
             "[{}] Using backend URL from VIBE_BACKEND_URL: {}",
             log_prefix,
@@ -107,28 +138,29 @@ async fn resolve_base_url(log_prefix: &str) -> anyhow::Result<String> {
         return Ok(url);
     }
 
-    let host = std::env::var(HOST_ENV)
-        .or_else(|_| std::env::var("HOST"))
-        .unwrap_or_else(|_| "127.0.0.1".to_string());
+    if let Some(port) = explicit_port {
+        tracing::info!("[{}] Using port from environment: {}", log_prefix, port);
+        let url = format!("http://{}:{}", host, port);
+        tracing::info!("[{}] Using backend URL: {}", log_prefix, url);
+        return Ok(url);
+    }
 
-    let port = match std::env::var(PORT_ENV)
-        .or_else(|_| std::env::var("BACKEND_PORT"))
-        .or_else(|_| std::env::var("PORT"))
-    {
-        Ok(port_str) => {
-            tracing::info!("[{}] Using port from environment: {}", log_prefix, port_str);
-            port_str
-                .parse::<u16>()
-                .map_err(|error| anyhow::anyhow!("Invalid port value '{}': {}", port_str, error))?
-        }
-        Err(_) => {
-            let port = read_port_file("vibe-kanban").await?;
-            tracing::info!("[{}] Using port from port file: {}", log_prefix, port);
-            port
-        }
-    };
+    let port_info = port_info.ok_or_else(|| anyhow::anyhow!("Missing port file information"))?;
+    if let Some(url) = port_info.backend_url {
+        tracing::info!(
+            "[{}] Using canonical backend URL from port file: {}",
+            log_prefix,
+            url
+        );
+        return Ok(url);
+    }
 
-    let url = format!("http://{}:{}", host, port);
+    tracing::info!(
+        "[{}] Using port from port file: {}",
+        log_prefix,
+        port_info.main_port
+    );
+    let url = format!("http://{}:{}", host, port_info.main_port);
     tracing::info!("[{}] Using backend URL: {}", log_prefix, url);
     Ok(url)
 }
@@ -158,7 +190,10 @@ fn init_process_logging(log_prefix: &str, version: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::{LaunchConfig, McpLaunchMode, resolve_launch_config_from_iter};
+    use super::{
+        LaunchConfig, McpLaunchMode, resolve_base_url_from_sources, resolve_launch_config_from_iter,
+    };
+    use utils::port_file::PortInfo;
 
     #[test]
     fn orchestrator_mode_does_not_require_session_id() {
@@ -193,5 +228,64 @@ mod tests {
                 .to_string()
                 .contains("Unknown argument '--session-id'")
         );
+    }
+
+    #[test]
+    fn vibe_backend_url_has_highest_precedence() {
+        let url = resolve_base_url_from_sources(
+            "test",
+            Some("http://override:9999".to_string()),
+            "legacy-host".to_string(),
+            Some(7777),
+            None,
+        )
+        .expect("base url should resolve");
+
+        assert_eq!(url, "http://override:9999");
+    }
+
+    #[test]
+    fn explicit_env_host_and_port_beat_port_file_url() {
+        let url =
+            resolve_base_url_from_sources("test", None, "env-host".to_string(), Some(7777), None)
+                .expect("base url should resolve");
+
+        assert_eq!(url, "http://env-host:7777");
+    }
+
+    #[test]
+    fn canonical_backend_url_from_port_file_beats_legacy_reconstruction() {
+        let url = resolve_base_url_from_sources(
+            "test",
+            None,
+            "legacy-host".to_string(),
+            None,
+            Some(PortInfo {
+                main_port: 4567,
+                preview_proxy_port: Some(8901),
+                backend_url: Some("http://localhost:4567".to_string()),
+            }),
+        )
+        .expect("base url should resolve");
+
+        assert_eq!(url, "http://localhost:4567");
+    }
+
+    #[test]
+    fn legacy_port_file_still_reconstructs_from_host_and_port() {
+        let url = resolve_base_url_from_sources(
+            "test",
+            None,
+            "legacy-host".to_string(),
+            None,
+            Some(PortInfo {
+                main_port: 4567,
+                preview_proxy_port: Some(8901),
+                backend_url: None,
+            }),
+        )
+        .expect("base url should resolve");
+
+        assert_eq!(url, "http://legacy-host:4567");
     }
 }
