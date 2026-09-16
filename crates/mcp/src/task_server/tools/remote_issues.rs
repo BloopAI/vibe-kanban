@@ -216,6 +216,14 @@ struct McpUpdateIssueRequest {
         description = "Parent issue ID to set this as a subissue. Pass null to un-nest from parent."
     )]
     parent_issue_id: Option<Option<Uuid>>,
+    #[schemars(
+        description = "Start date for the issue as an ISO 8601 date string (e.g. '2025-06-01T00:00:00Z'). Pass null to clear."
+    )]
+    start_date: Option<Option<String>>,
+    #[schemars(
+        description = "Target/due date for the issue as an ISO 8601 date string (e.g. '2025-06-15T00:00:00Z'). Pass null to clear."
+    )]
+    target_date: Option<Option<String>>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -492,6 +500,8 @@ impl McpServer {
             status,
             priority,
             parent_issue_id,
+            start_date,
+            target_date,
         }): Parameters<McpUpdateIssueRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         // First get the issue to know its project_id for status resolution
@@ -529,13 +539,39 @@ impl McpServer {
             None
         };
 
+        // Parse optional date strings into DateTime<Utc>
+        let start_date = match start_date {
+            Some(Some(s)) => match s.parse::<chrono::DateTime<chrono::Utc>>() {
+                Ok(dt) => Some(Some(dt)),
+                Err(_) => {
+                    return Ok(McpServer::tool_error(ToolError::message(format!(
+                        "Invalid start_date format. Expected ISO 8601 (e.g. '2025-06-01T00:00:00Z'), got: {s}"
+                    ))));
+                }
+            },
+            Some(None) => Some(None), // explicitly clear the date
+            None => None,             // not provided, don't change
+        };
+        let target_date = match target_date {
+            Some(Some(s)) => match s.parse::<chrono::DateTime<chrono::Utc>>() {
+                Ok(dt) => Some(Some(dt)),
+                Err(_) => {
+                    return Ok(McpServer::tool_error(ToolError::message(format!(
+                        "Invalid target_date format. Expected ISO 8601 (e.g. '2025-06-15T00:00:00Z'), got: {s}"
+                    ))));
+                }
+            },
+            Some(None) => Some(None),
+            None => None,
+        };
+
         let payload = UpdateIssueRequest {
             status_id,
             title,
             description: expanded_description,
             priority,
-            start_date: None,
-            target_date: None,
+            start_date,
+            target_date,
             completed_at: None,
             sort_order: None,
             parent_issue_id,
