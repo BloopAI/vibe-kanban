@@ -9,7 +9,9 @@
     "format": "prettier --config ../../packages/local-web/.prettierrc.json --write \"src/**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --config ../../packages/local-web/.prettierrc.json --check \"src/**/*.{ts,tsx,js,jsx,json,md}\""
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "./src/lib/imeComposition.ts"
+  ],
   "exports": {
     "./components/*": "./src/components/*.tsx",
     "./lib/*": "./src/lib/*.ts"
