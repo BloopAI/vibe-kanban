@@ -1,0 +1,10 @@
+# Bind-mount postgres + electric data dirs onto the host so the data
+# survives Docker VM wipes / `docker volume prune`.
+services:
+  remote-db:
+    volumes:
+      - ${SELFHOST_DATA_DIR}/postgres:/var/lib/postgresql/data
+
+  electric:
+    volumes:
+      - ${SELFHOST_DATA_DIR}/electric:/app/persistent
