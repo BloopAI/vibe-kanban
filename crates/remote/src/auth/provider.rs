@@ -109,15 +109,24 @@ pub(crate) struct GitHubOAuthProvider {
     client: Client,
     client_id: String,
     client_secret: SecretString,
+    base_url: String,
+    api_url: String,
 }
 
 impl GitHubOAuthProvider {
-    pub(crate) fn new(client_id: String, client_secret: SecretString) -> Result<Self> {
+    pub(crate) fn new(
+        client_id: String,
+        client_secret: SecretString,
+        base_url: String,
+        api_url: String,
+    ) -> Result<Self> {
         let client = Client::builder().user_agent(USER_AGENT).build()?;
         Ok(Self {
             client,
             client_id,
             client_secret,
+            base_url,
+            api_url,
         })
     }
 
@@ -174,7 +183,7 @@ impl AuthorizationProvider for GitHubOAuthProvider {
     }
 
     fn authorize_url(&self, state: &str, redirect_uri: &str) -> Result<Url> {
-        let mut url = Url::parse("https://github.com/login/oauth/authorize")?;
+        let mut url = Url::parse(&format!("{}/login/oauth/authorize", self.base_url))?;
         {
             let mut qp = url.query_pairs_mut();
             qp.append_pair("client_id", &self.client_id);
@@ -189,7 +198,7 @@ impl AuthorizationProvider for GitHubOAuthProvider {
     async fn exchange_code(&self, code: &str, redirect_uri: &str) -> Result<AuthorizationGrant> {
         let response = self
             .client
-            .post("https://github.com/login/oauth/access_token")
+            .post(format!("{}/login/oauth/access_token", self.base_url))
             .header("Accept", "application/json")
             .form(&[
                 ("client_id", self.client_id.as_str()),
@@ -229,7 +238,7 @@ impl AuthorizationProvider for GitHubOAuthProvider {
 
         let user: GitHubUser = self
             .client
-            .get("https://api.github.com/user")
+            .get(format!("{}/user", self.api_url))
             .header("Accept", "application/vnd.github+json")
             .header("Authorization", &bearer)
             .send()
@@ -243,7 +252,7 @@ impl AuthorizationProvider for GitHubOAuthProvider {
         } else {
             let response = self
                 .client
-                .get("https://api.github.com/user/emails")
+                .get(format!("{}/user/emails", self.api_url))
                 .header("Accept", "application/vnd.github+json")
                 .header("Authorization", bearer)
                 .send()
@@ -285,7 +294,7 @@ impl AuthorizationProvider for GitHubOAuthProvider {
 
             let response = match self
                 .client
-                .get("https://api.github.com/rate_limit")
+                .get(format!("{}/rate_limit", self.api_url))
                 .header(
                     "Authorization",
                     format!("Bearer {}", access_token.expose_secret()),

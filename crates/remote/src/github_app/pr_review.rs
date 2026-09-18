@@ -128,8 +128,8 @@ impl PrReviewService {
 
         // 5. Create review record in database
         let gh_pr_url = format!(
-            "https://github.com/{}/{}/pull/{}",
-            params.owner, params.repo, params.pr_number
+            "{}/{}/{}/pull/{}",
+            self.github_app.base_url(), params.owner, params.repo, params.pr_number
         );
 
         let repo = ReviewRepository::new(pool);
