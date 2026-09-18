@@ -16,6 +16,7 @@ import {
   LogsPanelActionsContext,
   LogsPanelContext,
 } from '@/shared/hooks/useLogsPanel';
+import { prepareToolOutputForDisplay } from '@/shared/lib/toolOutputDisplay';
 
 interface LogsPanelProviderProps {
   children: ReactNode;
@@ -91,7 +92,12 @@ export function LogsPanelProvider({ children }: LogsPanelProviderProps) {
       if (rightMainPanelModeRef.current !== RIGHT_MAIN_PANEL_MODES.LOGS) {
         setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
       }
-      setLogsPanelContent({ type: 'tool', toolName, content, command });
+      setLogsPanelContent({
+        type: 'tool',
+        toolName,
+        content: prepareToolOutputForDisplay(content),
+        command,
+      });
     },
     [setRightMainPanelMode]
   );

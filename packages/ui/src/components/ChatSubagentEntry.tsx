@@ -11,10 +11,6 @@ import {
 import { cn } from '../lib/cn';
 import type { ToolStatusLike } from './ToolStatusDot';
 
-export interface ChatSubagentResultLike {
-  value?: unknown | null;
-}
-
 export interface ChatSubagentEntryRenderProps {
   content: string;
   workspaceId?: string;
@@ -23,7 +19,7 @@ export interface ChatSubagentEntryRenderProps {
 interface ChatSubagentEntryProps {
   description: string;
   subagentType?: string | null;
-  result?: ChatSubagentResultLike | null;
+  resultContent?: string | null;
   expanded?: boolean;
   onToggle?: () => void;
   className?: string;
@@ -40,7 +36,7 @@ interface ChatSubagentEntryProps {
 export function ChatSubagentEntry({
   description,
   subagentType,
-  result,
+  resultContent,
   expanded = false,
   onToggle,
   className,
@@ -94,19 +90,6 @@ export function ChatSubagentEntry({
     // Capitalize first letter and format
     return subagentType.charAt(0).toUpperCase() + subagentType.slice(1);
   }, [subagentType, t]);
-
-  // Extract the result content for display
-  const resultContent = useMemo(() => {
-    if (!result?.value) return null;
-
-    // Handle both string and object values
-    if (typeof result.value === 'string') {
-      return result.value;
-    }
-
-    // For JSON results, stringify with formatting
-    return JSON.stringify(result.value, null, 2);
-  }, [result]);
 
   // Determine if we have content to show
   const hasContent = Boolean(resultContent);

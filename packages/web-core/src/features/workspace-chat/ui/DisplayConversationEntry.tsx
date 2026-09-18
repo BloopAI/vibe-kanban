@@ -25,6 +25,11 @@ import { useMessageEditContext } from '../model/contexts/MessageEditContext';
 import type { UseResetProcessResult } from '../model/hooks/useResetProcess';
 import { useChangesViewActions } from '@/shared/hooks/useChangesView';
 import { useLogsPanelActions } from '@/shared/hooks/useLogsPanel';
+import {
+  prepareSubagentResultForDisplay,
+  prepareToolOutputForDisplay,
+  prepareToolResultForDisplay,
+} from '@/shared/lib/toolOutputDisplay';
 import { cn } from '@/shared/lib/utils';
 import {
   ScriptFixerDialog,
@@ -131,16 +136,16 @@ function getToolOutput(
 
   switch (action_type.action) {
     case 'command_run':
-      return action_type.result?.output ?? entryContent;
+      return prepareToolOutputForDisplay(
+        action_type.result?.output ?? entryContent
+      );
     case 'tool':
       if (action_type.result?.value != null) {
-        return typeof action_type.result.value === 'string'
-          ? action_type.result.value
-          : JSON.stringify(action_type.result.value, null, 2);
+        return prepareToolResultForDisplay(action_type.result.value);
       }
-      return entryContent;
+      return prepareToolOutputForDisplay(entryContent);
     default:
-      return entryContent;
+      return prepareToolOutputForDisplay(entryContent);
   }
 }
 
@@ -993,8 +998,11 @@ function SubagentEntry({
   workspaceId: string | undefined;
   sessionId: string | undefined;
 }) {
-  // Only auto-expand if there's a result to show
-  const hasResult = Boolean(result?.value);
+  const resultContent = useMemo(
+    () => prepareSubagentResultForDisplay(result?.value),
+    [result?.value]
+  );
+  const hasResult = resultContent !== null;
   const [expanded, toggle] = usePersistedExpanded(
     `subagent:${expansionKey}`,
     false
@@ -1004,7 +1012,7 @@ function SubagentEntry({
     <ChatSubagentEntry
       description={description}
       subagentType={subagentType}
-      result={result}
+      resultContent={resultContent}
       expanded={expanded}
       onToggle={hasResult ? toggle : undefined}
       status={status}
