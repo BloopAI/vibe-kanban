@@ -98,6 +98,13 @@ pub struct RedeemResponse {
     pub email: String,
 }
 
+#[derive(Debug, Clone)]
+pub enum PollResult {
+    Pending,
+    Complete(RedeemResponse),
+    Error(String),
+}
+
 pub struct OAuthHandoffService {
     pool: PgPool,
     providers: Arc<ProviderRegistry>,
@@ -332,18 +339,75 @@ impl OAuthHandoffService {
 
         let expected_code_hash = record
             .app_code_hash
+            .clone()
             .ok_or_else(|| HandoffError::Failed("missing_app_code".into()))?;
         let provided_hash = hash_sha256_hex(app_code);
         if provided_hash != expected_code_hash {
             return Err(HandoffError::Failed("invalid_app_code".into()));
         }
 
-        let expected_challenge = record.app_challenge;
+        let expected_challenge = record.app_challenge.clone();
         let provided_challenge = hash_sha256_hex(app_verifier);
         if provided_challenge != expected_challenge {
             return Err(HandoffError::Failed("invalid_app_verifier".into()));
         }
 
+        self.complete_authorized_handoff(&record, &repo).await
+    }
+
+    /// Poll a handoff for completion (desktop flow).
+    ///
+    /// Returns `Ok(PollResult::Pending)` while the user hasn't finished OAuth,
+    /// `Ok(PollResult::Complete(..))` once tokens are ready, or an error.
+    pub async fn poll(
+        &self,
+        handoff_id: Uuid,
+        app_verifier: &str,
+    ) -> Result<PollResult, HandoffError> {
+        let repo = OAuthHandoffRepository::new(&self.pool);
+        let record = repo.get(handoff_id).await?;
+
+        if is_expired(&record) {
+            repo.set_status(record.id, AuthorizationStatus::Expired, Some("expired"))
+                .await?;
+            return Err(HandoffError::Expired);
+        }
+
+        match record.status() {
+            Some(AuthorizationStatus::Pending) => Ok(PollResult::Pending),
+            Some(AuthorizationStatus::Authorized) => {
+                let provided_challenge = hash_sha256_hex(app_verifier);
+                if provided_challenge != record.app_challenge {
+                    return Err(HandoffError::Failed("invalid_app_verifier".into()));
+                }
+
+                let result = self.complete_authorized_handoff(&record, &repo).await?;
+                Ok(PollResult::Complete(result))
+            }
+            Some(AuthorizationStatus::Error) => Ok(PollResult::Error(
+                record.error_code.unwrap_or_else(|| "unknown".to_string()),
+            )),
+            Some(AuthorizationStatus::Redeemed) => {
+                // The handoff was already redeemed (likely by this same poll flow
+                // whose HTTP response was lost). Re-verify and re-generate tokens
+                // so the caller can still complete login.
+                let provided_challenge = hash_sha256_hex(app_verifier);
+                if provided_challenge != record.app_challenge {
+                    return Err(HandoffError::Failed("invalid_app_verifier".into()));
+                }
+                let result = self.complete_authorized_handoff(&record, &repo).await?;
+                Ok(PollResult::Complete(result))
+            }
+            _ => Err(HandoffError::Failed("invalid_state".into())),
+        }
+    }
+
+    /// Shared logic for generating tokens and marking a handoff as redeemed.
+    async fn complete_authorized_handoff(
+        &self,
+        record: &OAuthHandoff,
+        repo: &OAuthHandoffRepository<'_>,
+    ) -> Result<RedeemResponse, HandoffError> {
         let session_id = record
             .session_id
             .ok_or_else(|| HandoffError::Failed("missing_session".into()))?;

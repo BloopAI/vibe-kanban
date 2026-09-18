@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 
 use api_types::{
-    AuthMethodsResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
-    HandoffRedeemResponse, LocalLoginRequest, LocalLoginResponse, ProfileResponse, ProviderProfile,
+    AuthMethodsResponse, HandoffInitRequest, HandoffInitResponse, HandoffPollRequest,
+    HandoffPollResponse, HandoffRedeemRequest, HandoffRedeemResponse, LocalLoginRequest,
+    LocalLoginResponse, ProfileResponse, ProviderProfile,
 };
 use axum::{
     Json, Router,
@@ -20,8 +21,8 @@ use crate::{
     AppState,
     audit::{self, AuditAction, AuditEvent},
     auth::{
-        CallbackResult, HandoffError, LocalAuthError, RequestContext, auth_methods_response,
-        login as local_login_flow,
+        CallbackResult, HandoffError, LocalAuthError, PollResult, RequestContext,
+        auth_methods_response, login as local_login_flow,
     },
     db::{oauth::OAuthHandoffError, oauth_accounts::OAuthAccountRepository},
 };
@@ -32,6 +33,8 @@ pub(super) fn public_router() -> Router<AppState> {
         .route("/auth/local/login", post(local_login))
         .route("/oauth/web/init", post(web_init))
         .route("/oauth/web/redeem", post(web_redeem))
+        .route("/oauth/web/poll", post(web_poll))
+        .route("/oauth/web/callback-success", get(callback_success))
         .route("/oauth/{provider}/start", get(authorize_start))
         .route("/oauth/{provider}/callback", get(authorize_callback))
 }
@@ -109,6 +112,115 @@ async fn web_redeem(
         }
         Err(error) => redeem_error_response(error),
     }
+}
+
+async fn web_poll(
+    State(state): State<AppState>,
+    Json(payload): Json<HandoffPollRequest>,
+) -> Response {
+    let handoff = state.handoff();
+    match handoff
+        .poll(payload.handoff_id, &payload.app_verifier)
+        .await
+    {
+        Ok(PollResult::Pending) => {
+            (StatusCode::OK, Json(HandoffPollResponse::Pending)).into_response()
+        }
+        Ok(PollResult::Complete(result)) => {
+            if let Some(analytics) = state.analytics() {
+                analytics.track(
+                    result.user_id,
+                    "$identify",
+                    serde_json::json!({ "email": result.email }),
+                );
+            }
+
+            audit::emit(
+                AuditEvent::system(AuditAction::AuthLogin)
+                    .user(result.user_id, None)
+                    .resource("auth_session", None)
+                    .http("POST", "/v1/oauth/web/poll", 200)
+                    .description("User logged in via OAuth (desktop poll)"),
+            );
+
+            (
+                StatusCode::OK,
+                Json(HandoffPollResponse::Complete {
+                    access_token: result.access_token,
+                    refresh_token: result.refresh_token,
+                }),
+            )
+                .into_response()
+        }
+        Ok(PollResult::Error(error)) => {
+            (StatusCode::OK, Json(HandoffPollResponse::Error { error })).into_response()
+        }
+        Err(error) => redeem_error_response(error),
+    }
+}
+
+async fn callback_success() -> Response {
+    let body = r#"<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Authentication Complete</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #f2f2f2;
+        color: #333;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 24px;
+        padding: 24px;
+      }
+      .checkmark {
+        width: 48px;
+        height: 48px;
+        color: #22c55e;
+      }
+      .content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+      }
+      .title {
+        font-size: 13px;
+        font-weight: 500;
+        color: #0d0d0d;
+      }
+      .subtitle {
+        font-size: 12px;
+        color: #636363;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <svg class="checkmark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+      </svg>
+      <div class="content">
+        <p class="title">Authentication complete</p>
+        <p class="subtitle">You can close this tab and return to the app.</p>
+      </div>
+    </div>
+  </body>
+</html>"#;
+
+    axum::response::Html(body).into_response()
 }
 
 async fn local_login(

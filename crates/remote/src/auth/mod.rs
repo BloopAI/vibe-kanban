@@ -5,7 +5,7 @@ mod middleware;
 mod oauth_token_validator;
 mod provider;
 
-pub(crate) use handoff::{CallbackResult, HandoffError, OAuthHandoffService};
+pub(crate) use handoff::{CallbackResult, HandoffError, OAuthHandoffService, PollResult};
 pub(crate) use jwt::{JwtError, JwtService};
 pub(crate) use local::{LocalAuthError, auth_methods_response, is_local_provider, login};
 pub(crate) use middleware::{RequestContext, require_session};
