@@ -129,6 +129,11 @@ struct GetExecutionRequest {
     execution_id: Uuid,
 }
 
+#[derive(Debug, Deserialize)]
+struct ExecutionSummaryResponse {
+    summary: Option<String>,
+}
+
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 struct GetExecutionResponse {
     execution_id: String,
@@ -345,13 +350,25 @@ impl McpServer {
             Err(error_result) => return Ok(Self::tool_error(error_result)),
         };
 
+        let final_message = if is_finished {
+            let summary_url = self.url(&format!("/api/execution-processes/{execution_id}/summary"));
+            let resp: ExecutionSummaryResponse =
+                match self.send_json(self.client.get(&summary_url)).await {
+                    Ok(value) => value,
+                    Err(error_result) => return Ok(Self::tool_error(error_result)),
+                };
+            resp.summary
+        } else {
+            None
+        };
+
         Self::success(&GetExecutionResponse {
             execution_id: execution_process.id.to_string(),
             session_id: execution_process.session_id.to_string(),
             status: Self::execution_process_status_label(&execution_process.status).to_string(),
             is_finished,
             execution: execution_process_value,
-            final_message: None,
+            final_message,
         })
     }
 }
