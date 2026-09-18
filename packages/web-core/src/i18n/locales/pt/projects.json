@@ -1,0 +1,16 @@
+{
+  "createProjectDialog": {
+    "title": "Criar Projeto",
+    "description": "Crie um novo projeto nesta organização.",
+    "nameLabel": "Nome do projeto",
+    "namePlaceholder": "Digite o nome do projeto",
+    "selectColor": "Selecionar cor do projeto",
+    "creating": "Criando...",
+    "createButton": "Criar Projeto"
+  },
+  "deleteProjectDialog": {
+    "title": "Excluir Projeto?",
+    "description": "Isso excluirá permanentemente \"{{name}}\" e todas as suas issues. Esta ação não pode ser desfeita.",
+    "error": "Falha ao excluir projeto. Por favor, tente novamente."
+  }
+}

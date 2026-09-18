@@ -1,0 +1,80 @@
+{
+  "createDialog": {
+    "title": "Criar Nova Organização",
+    "description": "Crie uma nova organização para colaborar com sua equipe.",
+    "nameLabel": "Nome da Organização",
+    "namePlaceholder": "ex: Acme Corporation",
+    "slugLabel": "Slug",
+    "slugPlaceholder": "ex: acme-corporation",
+    "slugHelper": "Usado em URLs. Apenas letras minúsculas, números e hífens.",
+    "creating": "Criando...",
+    "createButton": "Criar Organização"
+  },
+  "inviteDialog": {
+    "title": "Convidar Membro",
+    "description": "Envie um convite para participar da sua organização.",
+    "emailLabel": "Endereço de Email",
+    "emailPlaceholder": "colega@exemplo.com",
+    "roleLabel": "Função",
+    "rolePlaceholder": "Selecione uma função",
+    "roleHelper": "Administradores podem gerenciar membros e configurações da organização.",
+    "sending": "Enviando...",
+    "sendButton": "Enviar Convite",
+    "subscriptionRequired": "Assinatura necessária para adicionar mais membros",
+    "upgradePrompt": "Atualize o plano da sua organização para convidar membros adicionais.",
+    "upgradeButton": "Atualizar Plano"
+  },
+  "roles": {
+    "member": "Membro",
+    "admin": "Administrador"
+  },
+  "memberList": {
+    "title": "Membros",
+    "description": "Gerencie membros e suas funções em {{orgName}}",
+    "inviteButton": "Convidar Membro",
+    "loading": "Carregando membros...",
+    "none": "Nenhum membro encontrado",
+    "you": "Você"
+  },
+  "invitationList": {
+    "title": "Convites Pendentes",
+    "description": "Veja convites pendentes para {{orgName}}",
+    "loading": "Carregando convites...",
+    "invited": "Convidado em {{date}}",
+    "pending": "Pendente"
+  },
+  "settings": {
+    "title": "Configurações da Organização",
+    "description": "Gerencie membros e permissões da organização",
+    "selectLabel": "Selecionar Organização",
+    "selectPlaceholder": "Selecione uma organização",
+    "selectHelper": "Escolha uma organização para visualizar e gerenciar seus membros",
+    "noOrganizations": "Nenhuma organização disponível",
+    "loadingOrganizations": "Carregando organizações...",
+    "loadError": "Falha ao carregar organizações",
+    "dangerZone": "Zona de Perigo",
+    "dangerZoneDescription": "Ações irreversíveis e destrutivas",
+    "deleteOrganization": "Excluir Organização",
+    "deleteOrganizationDescription": "Excluir permanentemente esta organização e todos os seus dados",
+    "confirmDelete": "Tem certeza de que deseja excluir {{orgName}}? Esta ação não pode ser desfeita.",
+    "deleteSuccess": "Organização excluída com sucesso",
+    "deleteError": "Falha ao excluir organização"
+  },
+  "loginRequired": {
+    "title": "Login necessário",
+    "description": "Você precisa fazer login para gerenciar as configurações da organização.",
+    "action": "Entrar"
+  },
+  "confirmRemoveMember": "Tem certeza de que deseja remover este membro da organização?",
+  "billing": {
+    "title": "Cobrança & Assinatura",
+    "description": "Gerencie a assinatura e configurações de cobrança da sua organização",
+    "manageButton": "Gerenciar Cobrança",
+    "openInBrowser": "Abre em uma nova aba do navegador"
+  },
+  "personalOrg": {
+    "cannotInvite": "Organizações pessoais não podem ter membros adicionais.",
+    "createOrgPrompt": "Crie uma organização para colaborar com outros.",
+    "createOrgButton": "Criar Organização"
+  }
+}
