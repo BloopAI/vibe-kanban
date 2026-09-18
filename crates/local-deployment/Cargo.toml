@@ -13,7 +13,7 @@ relay-control = { path = "../relay-control" }
 relay-hosts = { path = "../relay-hosts" }
 relay-webrtc = { path = "../relay-webrtc" }
 relay-types = { path = "../relay-types" }
-russh = "0.48"
+russh = "0.61"
 client-info = { path = "../client-info" }
 remote-info = { path = "../remote-info" }
 preview-proxy = { path = "../preview-proxy" }

@@ -5,12 +5,14 @@ edition = "2024"
 
 [dependencies]
 relay-control = { path = "../relay-control" }
-russh = "0.48"
-russh-keys = "0.48"
-russh-sftp = "2.0"
-ssh-key = { version = "0.6", features = ["ed25519"] }
+russh = "0.61"
+russh-sftp = "2.3"
+# Pinned to match russh 0.61's `=0.7.0-rc.10` so KeypairData types are identical.
+ssh-key = { version = "=0.7.0-rc.10", features = ["ed25519"] }
 ed25519-dalek = "2.2.0"
 tokio = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
-async-trait = { workspace = true }
+
+[dev-dependencies]
+russh-sftp = "2.3"
