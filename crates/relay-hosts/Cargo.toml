@@ -1,6 +1,6 @@
 [package]
 name = "relay-hosts"
-version = "0.1.44"
+version = "0.1.45"
 edition = "2024"
 
 [dependencies]
@@ -10,24 +10,24 @@ axum = { workspace = true, features = ["ws"] }
 ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
 futures-util = "0.3"
 http = "1"
-relay-client = { path = "../relay-client" }
-relay-ws = { path = "../relay-ws" }
-relay-control = { path = "../relay-control" }
-remote-info = { path = "../remote-info" }
-relay-types = { path = "../relay-types" }
+relay-client = { path = "../relay-client" , version = "0.1.45" }
+relay-ws = { path = "../relay-ws" , version = "0.1.45" }
+relay-control = { path = "../relay-control" , version = "0.1.45" }
+remote-info = { path = "../remote-info" , version = "0.1.45" }
+relay-types = { path = "../relay-types" , version = "0.1.45" }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-services = { path = "../services" }
+services = { path = "../services" , version = "0.1.45" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-tungstenite = "0.26"
 tracing = { workspace = true }
-trusted-key-auth = { path = "../trusted-key-auth" }
+trusted-key-auth = { path = "../trusted-key-auth" , version = "0.1.45" }
 url = "2.5"
-utils = { path = "../utils" }
+utils = { path = "../utils" , version = "0.1.45" }
 uuid = { version = "1.0", features = ["v4", "serde"] }
-relay-webrtc = { path = "../relay-webrtc" }
-ws-bridge = { path = "../ws-bridge" }
+relay-webrtc = { path = "../relay-webrtc" , version = "0.1.45" }
+ws-bridge = { path = "../ws-bridge" , version = "0.1.45" }
 tokio-util = { version = "0.7", features = ["rt"] }
 base64 = "0.22"

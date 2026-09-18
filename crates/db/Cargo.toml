@@ -1,11 +1,11 @@
 [package]
 name = "db"
-version = "0.1.44"
+version = "0.1.45"
 edition = "2024"
 
 [dependencies]
-utils = { path = "../utils" }
-executors = { path = "../executors" }
+utils = { path = "../utils" , version = "0.1.45" }
+executors = { path = "../executors" , version = "0.1.45" }
 thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

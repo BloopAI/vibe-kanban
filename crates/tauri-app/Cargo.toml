@@ -1,6 +1,6 @@
 [package]
 name = "vibe-kanban-tauri"
-version = "0.1.44"
+version = "0.1.45"
 edition = "2024"
 
 [[bin]]
@@ -17,9 +17,9 @@ tauri-plugin-opener = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-notification = "2"
 
-server = { path = "../server" }
-services = { path = "../services" }
-utils = { path = "../utils" }
+server = { path = "../server" , version = "0.1.45" }
+services = { path = "../services" , version = "0.1.45" }
+utils = { path = "../utils" , version = "0.1.45" }
 async-trait = { workspace = true }
 tokio = { workspace = true }
 
