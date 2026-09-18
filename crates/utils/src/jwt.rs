@@ -1,4 +1,6 @@
 use chrono::{DateTime, Utc};
+// insecure_decode skips signature verification intentionally — these helpers
+// extract metadata only and must never be used for authentication decisions.
 use jsonwebtoken::dangerous::insecure_decode;
 use serde::Deserialize;
 use thiserror::Error;

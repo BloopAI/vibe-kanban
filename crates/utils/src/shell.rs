@@ -5,6 +5,7 @@ use std::{
     env::{join_paths, split_paths},
     ffi::{OsStr, OsString},
     path::{Path, PathBuf},
+    sync::{Mutex, OnceLock},
 };
 
 use crate::tokio::block_on;
@@ -93,10 +94,21 @@ pub fn merge_paths(primary: impl AsRef<OsStr>, secondary: impl AsRef<OsStr>) -> 
     join_paths(merged).unwrap_or_default()
 }
 
+// Serializes concurrent PATH mutations so no two tasks race on set_var.
+// A residual risk of concurrent readers on POSIX remains, but is acceptable
+// for a single-user local tool that refreshes PATH at most once at startup.
+static PATH_MUTATION_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+
 async fn refresh_path() -> bool {
     let Some(refreshed) = get_fresh_path().await else {
         return false;
     };
+
+    // Acquire the lock after the async work so we never hold a non-Send
+    // MutexGuard across an await point.
+    let lock = PATH_MUTATION_LOCK.get_or_init(|| Mutex::new(()));
+    let _guard = lock.lock().unwrap_or_else(|p| p.into_inner());
+
     let existing = std::env::var_os("PATH").unwrap_or_default();
     let refreshed_os = OsString::from(&refreshed);
     let merged = merge_paths(&existing, refreshed_os);
@@ -104,6 +116,10 @@ async fn refresh_path() -> bool {
         return false;
     }
     tracing::debug!(?existing, ?refreshed, ?merged, "Refreshed PATH");
+    // SAFETY: PATH_MUTATION_LOCK prevents concurrent mutations of PATH from
+    // this function. The remaining risk (concurrent readers on POSIX) is
+    // acceptable: this is a single-user local tool and PATH is refreshed at
+    // most once per process lifetime, before any user workloads begin.
     unsafe {
         std::env::set_var("PATH", &merged);
     }
