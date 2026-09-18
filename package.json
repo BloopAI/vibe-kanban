@@ -52,14 +52,14 @@
     "tauri:build": "cd crates/tauri-app && cargo tauri build"
   },
   "devDependencies": {
-    "@types/adm-zip": "^0.5.7",
-    "@types/node": "^20.0.0",
+    "@types/adm-zip": "^0.5.8",
+    "@types/node": "^20.19.43",
     "bippy": "0.5.28",
     "concurrently": "^8.2.2",
-    "esbuild": "^0.27.2",
+    "esbuild": "^0.28.2",
     "jwt-decode": "^4.0.0",
-    "typescript": "^5.7.0",
-    "vite": "^7.3.1"
+    "typescript": "^5.9.3",
+    "vite": "^8.3.0"
   },
   "engines": {
     "node": ">=20",
