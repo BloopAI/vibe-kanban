@@ -1,0 +1,80 @@
+{
+  "createDialog": {
+    "title": "צור ארגון חדש",
+    "description": "צור ארגון חדש לשיתוף פעולה עם הצוות שלך.",
+    "nameLabel": "שם הארגון",
+    "namePlaceholder": "לדוגמה, Acme Corporation",
+    "slugLabel": "כתובת (Slug)",
+    "slugPlaceholder": "לדוגמה, acme-corporation",
+    "slugHelper": "משמש בכתובות URL. אותיות קטנות, מספרים ומקפים בלבד.",
+    "creating": "יוצר...",
+    "createButton": "צור ארגון"
+  },
+  "inviteDialog": {
+    "title": "הזמן חבר",
+    "description": "שלח הזמנה להצטרף לארגון שלך.",
+    "emailLabel": "כתובת דוא\"ל",
+    "emailPlaceholder": "colleague@example.com",
+    "roleLabel": "תפקיד",
+    "rolePlaceholder": "בחר תפקיד",
+    "roleHelper": "מנהלים יכולים לנהל חברים והגדרות ארגון.",
+    "sending": "שולח...",
+    "sendButton": "שלח הזמנה",
+    "subscriptionRequired": "נדרש מנוי להוסיף חברים נוספים",
+    "upgradePrompt": "שדרג את תכנית הארגון שלך כדי להזמין חברים נוספים.",
+    "upgradeButton": "שדרג תכנית"
+  },
+  "roles": {
+    "member": "חבר",
+    "admin": "מנהל"
+  },
+  "memberList": {
+    "title": "חברים",
+    "description": "נהל חברים ותפקידיהם ב-{{orgName}}",
+    "inviteButton": "הזמן חבר",
+    "loading": "טוען חברים...",
+    "none": "לא נמצאו חברים",
+    "you": "אתה"
+  },
+  "invitationList": {
+    "title": "הזמנות ממתינות",
+    "description": "הצג הזמנות ממתינות עבור {{orgName}}",
+    "loading": "טוען הזמנות...",
+    "invited": "הוזמן {{date}}",
+    "pending": "ממתין"
+  },
+  "settings": {
+    "title": "הגדרות ארגון",
+    "description": "נהל חברי ארגון והרשאות",
+    "selectLabel": "בחר ארגון",
+    "selectPlaceholder": "בחר ארגון",
+    "selectHelper": "בחר ארגון לצפייה ולניהול חבריו",
+    "noOrganizations": "אין ארגונים זמינים",
+    "loadingOrganizations": "טוען ארגונים...",
+    "loadError": "טעינת ארגונים נכשלה",
+    "dangerZone": "אזור מסוכן",
+    "dangerZoneDescription": "פעולות בלתי הפיכות והרסניות",
+    "deleteOrganization": "מחק ארגון",
+    "deleteOrganizationDescription": "מחק לצמיתות ארגון זה וכל הנתונים שלו",
+    "confirmDelete": "האם אתה בטוח שברצונך למחוק את {{orgName}}? לא ניתן לבטל פעולה זו.",
+    "deleteSuccess": "הארגון נמחק בהצלחה",
+    "deleteError": "מחיקת הארגון נכשלה"
+  },
+  "loginRequired": {
+    "title": "נדרשת כניסה",
+    "description": "עליך להיכנס כדי לנהל הגדרות ארגון.",
+    "action": "כניסה"
+  },
+  "confirmRemoveMember": "האם אתה בטוח שברצונך להסיר חבר זה מהארגון?",
+  "billing": {
+    "title": "חיוב ומנוי",
+    "description": "נהל את המנוי והגדרות החיוב של הארגון שלך",
+    "manageButton": "נהל חיוב",
+    "openInBrowser": "נפתח בכרטיסייה חדשה"
+  },
+  "personalOrg": {
+    "cannotInvite": "ארגונים אישיים לא יכולים לכלול חברים נוספים.",
+    "createOrgPrompt": "צור ארגון כדי לשתף פעולה עם אחרים.",
+    "createOrgButton": "צור ארגון"
+  }
+}

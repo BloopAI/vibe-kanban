@@ -1,0 +1,16 @@
+{
+  "createProjectDialog": {
+    "title": "צור פרויקט",
+    "description": "צור פרויקט חדש בארגון זה.",
+    "nameLabel": "שם הפרויקט",
+    "namePlaceholder": "הזן שם פרויקט",
+    "selectColor": "בחר צבע לפרויקט",
+    "creating": "יוצר...",
+    "createButton": "צור פרויקט"
+  },
+  "deleteProjectDialog": {
+    "title": "מחיקת פרויקט?",
+    "description": "פעולה זו תמחק לצמיתות את \"{{name}}\" ואת כל הבעיות שלו. לא ניתן לבטל פעולה זו.",
+    "error": "מחיקת הפרויקט נכשלה. אנא נסה שוב."
+  }
+}
