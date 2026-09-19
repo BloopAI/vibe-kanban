@@ -1,9 +1,11 @@
 'use client';
 
 import type { MouseEvent, ReactNode } from 'react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  CaretDownIcon,
+  CaretRightIcon,
   CircleDashedIcon,
   DotsThreeIcon,
   PlusIcon,
@@ -159,6 +161,7 @@ export function KanbanCardContent<TTag extends KanbanTag = KanbanTag>({
   isMobile,
 }: KanbanCardContentProps<TTag>) {
   const { t } = useTranslation('common');
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const previewDescription = useMemo(() => {
     if (!description) {
       return null;
@@ -237,11 +240,40 @@ export function KanbanCardContent<TTag extends KanbanTag = KanbanTag>({
         )}
       </div>
 
-      {/* Row 2: Title */}
-      <span className="text-base text-normal truncate">{title}</span>
+      {/* Row 2: Title + description toggle */}
+      <div className="flex items-start justify-between gap-half">
+        <span className="min-w-0 flex-1 whitespace-normal break-words text-base leading-tight text-normal">
+          {title}
+        </span>
+        {previewDescription && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsDescriptionExpanded((expanded) => !expanded);
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="mt-px shrink-0 rounded-sm p-half text-low transition-colors hover:bg-secondary hover:text-normal"
+            aria-label={t('kanban.toggleCardDescription', {
+              defaultValue: '{{action}} description',
+              action: isDescriptionExpanded ? 'Hide' : 'Show',
+            })}
+            title={t('kanban.toggleCardDescription', {
+              defaultValue: '{{action}} description',
+              action: isDescriptionExpanded ? 'Hide' : 'Show',
+            })}
+          >
+            {isDescriptionExpanded ? (
+              <CaretDownIcon className="size-icon-xs" weight="bold" />
+            ) : (
+              <CaretRightIcon className="size-icon-xs" weight="bold" />
+            )}
+          </button>
+        )}
+      </div>
 
-      {/* Row 3: Description (optional, truncated) */}
-      {previewDescription && (
+      {/* Row 3: Description (optional, collapsed by default) */}
+      {previewDescription && isDescriptionExpanded && (
         <p
           className={cn(
             'text-sm text-low m-0',
