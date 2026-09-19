@@ -69,7 +69,7 @@ pub struct Droid {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(
         title = "Model",
-        description = "Model to use (e.g., gpt-5-codex, claude-sonnet-4-5-20250929, gpt-5-2025-08-07, claude-opus-4-1-20250805, claude-haiku-4-5-20251001, glm-4.6)"
+        description = "Model to use (e.g., gpt-5.5, gpt-5.3-codex, claude-sonnet-4-5-20250929, claude-opus-4-6, claude-haiku-4-5-20251001, glm-5)"
     )]
     pub model: Option<String>,
 
@@ -242,6 +242,7 @@ impl StandardCodingAgentExecutor for Droid {
                     ("claude-opus-4-6-fast", "Claude Opus 4.6 Fast Mode"),
                     ("gemini-3.1-pro-preview", "Gemini 3.1 Pro"),
                     ("glm-5", "GLM-5"),
+                    ("gpt-5.5", "GPT 5.5"),
                     ("gpt-5.3-codex", "GPT 5.3 Codex"),
                     ("claude-sonnet-4-6", "Claude Sonnet 4.6"),
                     ("kimi-k2.5", "Kimi K2.5"),
