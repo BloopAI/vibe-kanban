@@ -12,7 +12,7 @@ pub fn build_config(signing_key: &SigningKey) -> Arc<Config> {
     let ed25519_private = Ed25519PrivateKey::from_bytes(&signing_key.to_bytes());
     let keypair = Ed25519Keypair::from(ed25519_private);
     let keypair_data = KeypairData::Ed25519(keypair);
-    let host_key = russh_keys::PrivateKey::new(keypair_data, "").expect("valid Ed25519 key");
+    let host_key = russh::keys::PrivateKey::new(keypair_data, "").expect("valid Ed25519 key");
 
     Arc::new(Config {
         keys: vec![host_key],
@@ -20,7 +20,7 @@ pub fn build_config(signing_key: &SigningKey) -> Arc<Config> {
         auth_rejection_time_initial: Some(Duration::from_secs(0)),
         inactivity_timeout: Some(Duration::from_secs(600)),
         keepalive_interval: Some(Duration::from_secs(30)),
-        methods: russh::MethodSet::PUBLICKEY,
+        methods: russh::MethodSet::from(&[russh::MethodKind::PublicKey][..]),
         ..Default::default()
     })
 }
