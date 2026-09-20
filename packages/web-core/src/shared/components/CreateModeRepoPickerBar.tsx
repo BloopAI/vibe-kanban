@@ -353,7 +353,7 @@ export function CreateModeRepoPickerBar({
               variant="default"
               value="Continue"
               onClick={onContinueToPrompt}
-              disabled={isBusy || repos.length === 0}
+              disabled={isBusy}
             />
           </div>
         </div>
