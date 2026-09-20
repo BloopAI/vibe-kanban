@@ -500,6 +500,9 @@ async fn handle_callback(
     let Some(installation_id) = query.installation_id else {
         return redirect_error(None, "Missing installation_id");
     };
+    if installation_id <= 0 {
+        return redirect_error(None, "Invalid installation_id");
+    }
 
     let Some(state_token) = query.state else {
         return redirect_error(None, "Missing state parameter");
