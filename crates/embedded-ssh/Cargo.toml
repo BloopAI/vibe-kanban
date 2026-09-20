@@ -1,10 +1,10 @@
 [package]
 name = "embedded-ssh"
-version = "0.1.44"
+version = "0.1.45"
 edition = "2024"
 
 [dependencies]
-relay-control = { path = "../relay-control" }
+relay-control = { path = "../relay-control" , version = "0.1.45" }
 russh = "0.61"
 russh-sftp = "2.3"
 # Pinned to match russh 0.61's `=0.7.0-rc.10` so KeypairData types are identical.

@@ -1,6 +1,6 @@
 [package]
 name = "relay-tunnel-core"
-version = "0.1.44"
+version = "0.1.45"
 edition = "2024"
 
 [dependencies]
@@ -16,4 +16,4 @@ tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"] }
 tokio-util = { version = "0.7", features = ["rt"] }
 tokio-yamux = "0.3.17"
 tracing = { workspace = true }
-ws-bridge = { path = "../ws-bridge" }
+ws-bridge = { path = "../ws-bridge" , version = "0.1.45" }
