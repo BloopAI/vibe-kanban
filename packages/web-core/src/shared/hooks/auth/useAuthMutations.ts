@@ -12,10 +12,12 @@ export function useAuthMutations(options?: UseAuthMutationsOptions) {
     mutationFn: ({
       provider,
       returnTo,
+      desktop,
     }: {
       provider: string;
       returnTo: string;
-    }) => oauthApi.handoffInit(provider, returnTo),
+      desktop?: boolean;
+    }) => oauthApi.handoffInit(provider, returnTo, desktop),
     onSuccess: (data) => {
       options?.onInitSuccess?.(data);
     },
