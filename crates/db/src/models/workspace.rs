@@ -590,7 +590,45 @@ impl Workspace {
         Ok(result.rows_affected())
     }
 
-    /// Count total workspaces across all projects
+    /// Lightweight read-only status check — returns (is_running, is_errored)
+    /// without the name auto-generation side-effect of `find_by_id_with_status`.
+    pub async fn check_status(
+        pool: &SqlitePool,
+        id: Uuid,
+    ) -> Result<Option<(bool, bool)>, sqlx::Error> {
+        let rec = sqlx::query!(
+            r#"SELECT
+                CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM sessions s
+                    JOIN execution_processes ep ON ep.session_id = s.id
+                    WHERE s.workspace_id = w.id
+                      AND ep.status = 'running'
+                      AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
+                    LIMIT 1
+                ) THEN 1 ELSE 0 END AS "is_running!: i64",
+
+                CASE WHEN (
+                    SELECT ep.status
+                    FROM sessions s
+                    JOIN execution_processes ep ON ep.session_id = s.id
+                    WHERE s.workspace_id = w.id
+                      AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
+                    ORDER BY ep.created_at DESC
+                    LIMIT 1
+                ) IN ('failed','killed') THEN 1 ELSE 0 END AS "is_errored!: i64"
+
+            FROM workspaces w
+            WHERE w.id = $1"#,
+            id
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(rec.map(|r| (r.is_running != 0, r.is_errored != 0)))
+    }
+
+    /// Fetch a workspace with its running/errored status, auto-generating a name if missing.
     pub async fn find_by_id_with_status(
         pool: &SqlitePool,
         id: Uuid,
