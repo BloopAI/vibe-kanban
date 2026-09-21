@@ -152,6 +152,9 @@ async function extractAndRun(
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`\nDownload failed: ${msg}`);
+      console.error(
+        'Hint: set VIBE_KANBAN_BINARY_BASE_URL to a reachable binary mirror, or build from source with ./local-build.sh and VIBE_KANBAN_LOCAL=1.',
+      );
       process.exit(1);
     }
   }
