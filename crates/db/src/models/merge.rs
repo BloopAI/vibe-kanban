@@ -149,6 +149,42 @@ impl Merge {
         Ok(merges)
     }
 
+    /// Update the status of a PR merge record by id.
+    pub async fn update_status(
+        pool: &SqlitePool,
+        id: Uuid,
+        status: MergeStatus,
+        merge_commit_sha: Option<String>,
+    ) -> Result<(), sqlx::Error> {
+        let now = Utc::now();
+        let (status_str, merged_at): (&str, Option<DateTime<Utc>>) = match status {
+            MergeStatus::Open => ("open", None),
+            MergeStatus::Merged => ("merged", Some(now)),
+            MergeStatus::Closed => ("closed", None),
+            MergeStatus::Unknown => ("unknown", None),
+        };
+        let id_str = id.to_string();
+        sqlx::query(
+            "UPDATE pull_requests SET pr_status = ?, merged_at = ?, merge_commit_sha = ?, updated_at = ?, synced_at = NULL WHERE id = ?",
+        )
+        .bind(status_str)
+        .bind(merged_at)
+        .bind(merge_commit_sha)
+        .bind(now)
+        .bind(id_str)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Count open PRs for a workspace.
+    pub async fn count_open_prs_for_workspace(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+    ) -> Result<i64, sqlx::Error> {
+        PullRequest::count_open_for_workspace(pool, workspace_id).await
+    }
+
     /// Find all merges for a workspace and specific repo
     pub async fn find_by_workspace_and_repo_id(
         pool: &SqlitePool,

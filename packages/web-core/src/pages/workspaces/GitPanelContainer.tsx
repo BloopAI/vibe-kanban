@@ -218,6 +218,7 @@ export function GitPanelContainer({
       // Map RepoAction to Action definitions
       const actionMap = {
         'pull-request': Actions.GitCreatePR,
+        'pr-and-squash-merge': Actions.GitPRAndSquashMerge,
         'link-pr': Actions.GitLinkPR,
         merge: Actions.GitMerge,
         rebase: Actions.GitRebase,

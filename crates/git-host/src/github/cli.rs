@@ -11,7 +11,7 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
-use db::models::merge::MergeStatus;
+use db::models::merge::{MergeStatus, PullRequestInfo};
 use serde::Deserialize;
 use tempfile::NamedTempFile;
 use thiserror::Error;
@@ -398,6 +398,60 @@ impl GhCli {
         }
         let raw = self.run(args, None)?;
         Self::parse_pr_review_comments(&raw)
+    }
+
+    /// Squash-merge a pull request via `gh pr merge --squash`.
+    ///
+    /// This only performs the merge itself. Use [`get_pr_merge_info`] afterwards
+    /// to retrieve the resulting [`PullRequestInfo`].
+    pub fn squash_merge_pr(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        pr_number: i64,
+    ) -> Result<(), GhCliError> {
+        let repo_spec = repo_info.repo_spec();
+        self.run(
+            [
+                "pr",
+                "merge",
+                &pr_number.to_string(),
+                "--repo",
+                &repo_spec,
+                "--squash",
+                "--delete-branch",
+            ],
+            None,
+        )?;
+        Ok(())
+    }
+
+    /// Fetch merge info (number, url, state, mergedAt, mergeCommit) for a PR.
+    pub fn get_pr_merge_info(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        pr_number: i64,
+    ) -> Result<PullRequestInfo, GhCliError> {
+        let repo_spec = repo_info.repo_spec();
+        let raw = self.run(
+            [
+                "pr",
+                "view",
+                &pr_number.to_string(),
+                "--repo",
+                &repo_spec,
+                "--json",
+                "number,url,state,mergedAt,mergeCommit",
+            ],
+            None,
+        )?;
+        let detail = Self::parse_pr_view(&raw)?;
+        Ok(PullRequestInfo {
+            number: detail.number,
+            url: detail.url,
+            status: detail.status,
+            merged_at: detail.merged_at,
+            merge_commit_sha: detail.merge_commit_sha,
+        })
     }
 
     pub fn pr_checkout(
