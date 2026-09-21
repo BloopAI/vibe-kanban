@@ -211,6 +211,24 @@ impl PullRequest {
         .await
     }
 
+    /// Get the set of PR numbers already linked to a workspace-repo pair.
+    pub async fn get_known_pr_numbers(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+        repo_id: Uuid,
+    ) -> Result<Vec<i64>, sqlx::Error> {
+        sqlx::query_scalar!(
+            r#"SELECT pr_number AS "pr_number!: i64"
+               FROM pull_requests
+               WHERE workspace_id = $1
+                 AND repo_id = $2"#,
+            workspace_id,
+            repo_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
     pub async fn count_open_for_workspace(
         pool: &SqlitePool,
         workspace_id: Uuid,

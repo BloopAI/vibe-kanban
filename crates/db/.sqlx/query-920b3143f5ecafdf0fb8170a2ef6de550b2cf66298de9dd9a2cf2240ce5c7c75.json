@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                wr.workspace_id AS \"workspace_id!: Uuid\",\n                wr.repo_id AS \"repo_id!: Uuid\",\n                w.branch AS \"workspace_branch!\",\n                wr.target_branch AS \"target_branch!\"\n            FROM workspace_repos wr\n            JOIN workspaces w ON w.id = wr.workspace_id\n            WHERE w.archived = FALSE\n              AND (? IS NULL OR w.updated_at >= ?)\n            ORDER BY w.updated_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "workspace_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "repo_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "workspace_branch!",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "target_branch!",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "920b3143f5ecafdf0fb8170a2ef6de550b2cf66298de9dd9a2cf2240ce5c7c75"
+}
