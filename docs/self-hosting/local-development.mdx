@@ -83,11 +83,17 @@ GOOGLE_OAUTH_CLIENT_SECRET=
 # For plain HTTP local dev:
 VITE_RELAY_API_BASE_URL=http://localhost:8082
 
-# Email invitations (optional — leave empty to disable)
-LOOPS_EMAIL_API_KEY=
+# Email (optional — configure one of SMTP or Loops to enable invitation/notification emails)
 
-# Loops transactional email template IDs (optional — defaults are the upstream templates).
-# Override these with your own Loops account template IDs if using a custom Loops account.
+# Option A: SMTP (works with any provider — Migadu, Postfix, SendGrid SMTP, etc.)
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM=
+
+# Option B: Loops (https://loops.so)
+LOOPS_EMAIL_API_KEY=
 LOOPS_INVITE_TEMPLATE_ID=cmhvy2wgs3s13z70i1pxakij9
 LOOPS_REVIEW_READY_TEMPLATE_ID=cmj47k5ge16990iylued9by17
 LOOPS_REVIEW_FAILED_TEMPLATE_ID=cmj49ougk1c8s0iznavijdqpo
