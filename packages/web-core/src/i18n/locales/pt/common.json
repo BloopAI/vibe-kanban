@@ -1,0 +1,552 @@
+{
+  "editorNames": {
+    "custom": "Personalizado"
+  },
+  "buttons": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "send": "Enviar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "create": "Criar",
+    "continue": "Continuar",
+    "reset": "Redefinir",
+    "manage": "Gerenciar",
+    "connect": "Conectar",
+    "disconnect": "Desconectar",
+    "close": "Fechar",
+    "replay": "Repetir",
+    "discard": "Descartar",
+    "addItem": "Adicionar Item",
+    "reply": "Responder",
+    "retry": "Tentar novamente",
+    "add": "Adicionar"
+  },
+  "form": {
+    "notSpecified": "Não especificado",
+    "selectOption": "Selecione uma opção..."
+  },
+  "states": {
+    "loading": "Carregando..."
+  },
+  "ok": "OK",
+  "error": "Erro",
+  "errors": {
+    "generic": "Ocorreu um erro inesperado"
+  },
+  "language": {
+    "browserDefault": "Padrão do Navegador"
+  },
+  "conversation": {
+    "plan": "Plano",
+    "output": "Saída",
+    "deniedByUser": "{{toolName}} negado pelo usuário",
+    "tool": "Ferramenta",
+    "thinking": "Pensando",
+    "toolSummary": {
+      "read": "Ler {{path}}",
+      "searched": "Pesquisou por \"{{query}}\"",
+      "fetched": "Buscou {{url}}",
+      "ranCommand": "Executou comando",
+      "createdTask": "Criou tarefa: {{description}}",
+      "todoOperation": "{{operation}} todos"
+    },
+    "subagent": {
+      "defaultType": "Subagente"
+    }
+  },
+  "folderPicker": {
+    "legend": "Clique nos nomes das pastas para navegar • Use os botões de ação para selecionar",
+    "manualPathLabel": "Digite o caminho manualmente:",
+    "go": "Ir",
+    "searchLabel": "Pesquisar diretório atual:",
+    "selectCurrent": "Selecionar Atual",
+    "gitRepo": "repositório git",
+    "selectPath": "Selecionar Caminho"
+  },
+  "branchSelector": {
+    "placeholder": "Selecione um branch",
+    "searchPlaceholder": "Pesquisar branches...",
+    "empty": "Nenhum branch encontrado",
+    "badges": {
+      "current": "atual",
+      "remote": "remoto"
+    },
+    "currentDisabled": "Não é possível selecionar o branch atual"
+  },
+  "orgSwitcher": {
+    "organizations": "Organizações",
+    "createOrganization": "Criar organização",
+    "orgSettings": "Configurações da organização"
+  },
+  "personal": "Pessoal",
+  "signIn": "Entrar",
+  "signOut": "Sair",
+  "oauth": {
+    "title": "Entre no Vibe Kanban",
+    "description": "Entre para participar de organizações e compartilhar tarefas com sua equipe",
+    "continueWithGitHub": "Continuar com GitHub",
+    "continueWithGoogle": "Continuar com Google",
+    "waitingTitle": "Completar Autenticação",
+    "waitingDescription": "Uma janela pop-up foi aberta para autenticação",
+    "waitingForAuth": "Aguardando autenticação...",
+    "popupInstructions": "Se a janela pop-up não abriu, verifique suas configurações de bloqueador de pop-ups.",
+    "back": "Voltar",
+    "successTitle": "Autenticação Bem Sucedida!",
+    "welcomeBack": "Bem-vindo de volta, {{name}}",
+    "errorTitle": "Falha na Autenticação",
+    "errorDescription": "Ocorreu um problema ao autenticar sua conta",
+    "tryAgain": "Tentar Novamente"
+  },
+  "onboardingSignIn": {
+    "subtitle": "Entre para continuar",
+    "signedInAs": "Entrou como {{name}}.",
+    "moreOptions": "Mais opções",
+    "featureHeader": "Recurso",
+    "signedInHeader": "Entrou",
+    "skipSignInHeader": "Não entrar",
+    "yes": "Sim",
+    "no": "Não"
+  },
+  "toolbar": {
+    "sortBy": "Ordenar por",
+    "groupBy": "Agrupar por"
+  },
+  "sorting": {
+    "ascending": "Ascendente",
+    "descending": "Descendente"
+  },
+  "grouping": {
+    "date": "Data",
+    "assignee": "Responsável",
+    "label": "Etiqueta"
+  },
+  "workspaces": {
+    "title": "Workspaces",
+    "searchPlaceholder": "Pesquisar...",
+    "active": "Ativo",
+    "archived": "Arquivado",
+    "loading": "Carregando...",
+    "notFound": "Workspace não encontrado",
+    "selectToStart": "Selecione um workspace para começar",
+    "draft": "Rascunho",
+    "viewArchive": "Ver Arquivo",
+    "backToActive": "Voltar para Ativos",
+    "noArchived": "Nenhum workspace arquivado",
+    "noWorkspaces": "Nenhum workspace",
+    "newWorkspace": "Novo workspace",
+    "needsAttention": "Precisa de Atenção",
+    "idle": "Inativo",
+    "running": "Executando",
+    "pin": "Fixar",
+    "unpin": "Desafixar",
+    "archive": "Arquivar",
+    "more": "Mais ações",
+    "rename": {
+      "title": "Renomear Workspace",
+      "description": "Digite um novo nome para este workspace.",
+      "nameLabel": "Nome",
+      "placeholder": "Digite o nome do workspace",
+      "action": "Renomear",
+      "renaming": "Renomeando..."
+    },
+    "unlinkFromIssue": "Desvincular da issue",
+    "deleteWorkspace": "Excluir workspace",
+    "unlink": "Desvincular",
+    "delete": "Excluir",
+    "unlinkConfirmMessage": "Tem certeza de que deseja desvincular este workspace da issue? O workspace ainda existirá, mas não estará mais associado a esta issue.",
+    "deleteConfirmMessage": "Tem certeza de que deseja excluir este workspace? Isso irá desvinculá-lo da issue e excluir o workspace local. Esta ação não pode ser desfeita.",
+    "unlinkError": "Falha ao desvincular workspace",
+    "deleteError": "Falha ao excluir workspace",
+    "linkError": "Falha ao vincular workspace",
+    "filesChanged": "{{count}} arquivos",
+    "deleteDialog": {
+      "title": "Excluir Workspace",
+      "description": "Tem certeza de que deseja excluir este workspace? Esta ação não pode ser desfeita.",
+      "deleteBranchLabel": "Excluir branch",
+      "cannotDeleteOpenPr": "Não é possível excluir o branch enquanto há um PR aberto",
+      "unlinkFromIssueLabel": "Também desvincular da issue"
+    }
+  },
+  "fileTree": {
+    "searchPlaceholder": "Pesquisar arquivos...",
+    "noResults": "Nenhum arquivo correspondente",
+    "title": "Arquivos",
+    "showGitHubComments": "Mostrar comentários do GitHub",
+    "hideGitHubComments": "Ocultar comentários do GitHub",
+    "prevGitHubComment": "Arquivo anterior com comentários",
+    "nextGitHubComment": "Próximo arquivo com comentários"
+  },
+  "sections": {
+    "changes": "Alterações",
+    "repositories": "Repositórios",
+    "addRepositories": "Adicionar Repositórios",
+    "project": "Projeto",
+    "processes": "Processos",
+    "devServer": "Servidor de Desenvolvimento",
+    "advanced": "Avançado",
+    "workingBranch": "Branch de Trabalho",
+    "recent": "Recente",
+    "other": "Outro",
+    "devServerPreview": "Visualização do Servidor de Desenvolvimento",
+    "terminal": "Terminal",
+    "notes": "Notas"
+  },
+  "notes": {
+    "placeholder": "Adicione notas sobre este workspace...",
+    "selectWorkspace": "Selecione um workspace para ver as notas"
+  },
+  "actions": {
+    "copyPath": "Copiar caminho",
+    "cancel": "Cancelar",
+    "saveChanges": "Salvar Alterações",
+    "copied": "Copiado",
+    "collapse": "Recolher"
+  },
+  "comments": {
+    "addReviewComment": "Adicionar Comentário de Revisão",
+    "addPlaceholder": "Adicione um comentário...",
+    "editPlaceholder": "Editar comentário...",
+    "copyToReview": "Copiar para revisão"
+  },
+  "confirm": {
+    "defaultConfirm": "Confirmar",
+    "defaultCancel": "Cancelar"
+  },
+  "dialogs": {
+    "selectGitRepository": "Selecionar Repositório Git",
+    "chooseExistingRepo": "Escolha um repositório existente do seu sistema de arquivos"
+  },
+  "empty": {
+    "noChanges": "Nenhuma alteração para exibir"
+  },
+  "commandBar": {
+    "noResults": "Nenhum resultado encontrado.",
+    "back": "Voltar",
+    "defaultPlaceholder": "Digite um comando ou pesquise...",
+    "selectBranch": "Selecionar Branch",
+    "selectBranchFor": "Selecionar Branch para {{repoName}}"
+  },
+  "workspacesGuide": {
+    "welcome": {
+      "title": "Bem-vindo",
+      "content": "Bem-vindo à página de Workspaces. Uma visão de todos os workspaces dos seus projetos e a maneira mais rápida de revisar o trabalho dos seus agentes. Compartilhe feedback a qualquer momento através do ícone da barra de navegação."
+    },
+    "commandBar": {
+      "title": "Barra de Comandos",
+      "content": "A barra de comandos é seu hub central para navegação. Abra-a com CMD+K para pesquisar e acessar todas as ações disponíveis em um workspace."
+    },
+    "contextBar": {
+      "title": "Barra de Contexto",
+      "content": "A barra de contexto permite alternar rapidamente entre painéis. Arraste-a para onde funcionar melhor para você."
+    },
+    "sidebar": {
+      "title": "Barra Lateral do Workspace",
+      "content": "Veja o status de todos os seus workspaces de um só lado. Notificações destacam quais precisam de atenção. Arquive workspaces mesclados para manter sua barra lateral limpa."
+    },
+    "multiRepo": {
+      "title": "Suporte a Múltiplos Repos",
+      "content": "Adicione múltiplos repositórios a um único workspace. Referencie código de um repositório enquanto trabalha em outro, ou implemente alterações em vários repositórios de uma vez."
+    },
+    "sessions": {
+      "title": "Múltiplas Sessões",
+      "content": "Crie múltiplas sessões de conversação de agente em um único workspace, incluindo sessões com agentes diferentes. Isso ajuda a contornar limites de conversação ou iniciar agentes de revisão em threads separadas."
+    },
+    "preview": {
+      "title": "Visualizar Alterações",
+      "content": "Visualize seu trabalho em um navegador integrado sem mudar de contexto. Teste em desktop, mobile e tamanhos de viewport personalizados."
+    },
+    "diffs": {
+      "title": "Diffs e Comentários",
+      "content": "O painel de diffs redesenhado inclui uma árvore de arquivos de suas alterações. Comente diretamente nos diffs para dar feedback ao agente e veja comentários do GitHub quando seu workspace está vinculado a um PR."
+    },
+    "classicUi": {
+      "title": "Retornar à Interface Clássica",
+      "content": "Clique no ícone de saída no lado esquerdo da barra de navegação para retornar ao quadro kanban clássico. Para desativar completamente a nova interface, atualize a opção \"Habilitar Workspaces Beta\" em \"Recursos Beta\" nas configurações."
+    }
+  },
+  "logs": {
+    "searchLogs": "Pesquisar logs",
+    "selectProcessToView": "Selecione um processo para ver os logs"
+  },
+  "processes": {
+    "noProcesses": "Nenhum processo",
+    "terminal": "Terminal"
+  },
+  "search": {
+    "matchCount": "{{current}} de {{total}}",
+    "noMatches": "Nenhuma correspondência"
+  },
+  "contextUsage": {
+    "label": "Uso de contexto",
+    "emptyTooltip": "O uso de contexto aparece após a próxima resposta",
+    "tooltip": "Contexto: {{percentage}}% · {{used}} / {{total}} tokens",
+    "ariaLabel": "Uso de contexto: {{percentage}}%"
+  },
+  "shortcuts": {
+    "title": "Atalhos de Teclado",
+    "inWorkspace": "(no workspace)",
+    "sequentialHint": "Atalhos sequenciais: Pressione a primeira tecla, depois a segunda dentro de 500ms.",
+    "configurableHint": "Configurável em Configurações → Geral → Entrada de Mensagem",
+    "groups": {
+      "quickActions": "Ações Rápidas",
+      "navigation": "Navegação",
+      "modifiers": "Modificadores",
+      "goTo": "Ir Para (G ...)",
+      "workspace": "Workspace (W ...)",
+      "view": "Visualizar (V ...)",
+      "issues": "Issues (I ...)",
+      "git": "Git (X ...)",
+      "yank": "Copiar (Y ...)",
+      "toggle": "Alternar (T ...)",
+      "run": "Executar (R ...)"
+    },
+    "actions": {
+      "showHelp": "Mostrar esta ajuda",
+      "closeCancel": "Fechar/cancelar",
+      "createNewTask": "Criar nova tarefa",
+      "deleteSelected": "Excluir selecionado",
+      "focusSearch": "Focar pesquisa",
+      "moveDown": "Mover para baixo",
+      "moveUp": "Mover para cima",
+      "moveLeft": "Mover para esquerda",
+      "moveRight": "Mover para direita",
+      "openCommandBar": "Abrir barra de comandos",
+      "formatInlineCode": "Formatar código inline",
+      "sendMessage": "Enviar mensagem",
+      "settings": "Ir para Configurações",
+      "new-workspace": "Ir para Novo Workspace",
+      "duplicate-workspace": "Duplicar workspace",
+      "rename-workspace": "Renomear workspace",
+      "pin-workspace": "Fixar/Desafixar workspace",
+      "archive-workspace": "Arquivar workspace",
+      "delete-workspace": "Excluir workspace",
+      "toggle-changes-mode": "Alternar painel de Alterações",
+      "toggle-logs-mode": "Alternar painel de Logs",
+      "toggle-preview-mode": "Alternar painel de Visualização",
+      "toggle-left-sidebar": "Alternar Barra Lateral Esquerda",
+      "toggle-left-main-panel": "Alternar painel de Chat",
+      "create-issue": "Criar Issue",
+      "change-issue-status": "Alterar Status",
+      "change-issue-priority": "Alterar Prioridade",
+      "change-assignees": "Alterar Responsáveis",
+      "make-sub-issue-of": "Tornar Sub-issue de",
+      "add-sub-issue": "Adicionar Sub-issue",
+      "remove-parent-issue": "Remover Issue Pai",
+      "link-workspace": "Vincular Workspace",
+      "duplicate-issue": "Duplicar Issue",
+      "delete-issue": "Excluir Issue",
+      "git-create-pr": "Criar Pull Request",
+      "git-merge": "Mesclar branch",
+      "git-rebase": "Rebasear branch",
+      "git-push": "Enviar alterações",
+      "copy-path": "Copiar caminho",
+      "copy-raw-logs": "Copiar logs brutos",
+      "toggle-dev-server": "Alternar servidor de dev",
+      "toggle-wrap-lines": "Alternar quebra de linha",
+      "run-setup-script": "Executar script de setup",
+      "run-cleanup-script": "Executar script de cleanup",
+      "run-archive-script": "Executar script de arquivamento"
+    }
+  },
+  "typeahead": {
+    "tags": "Tags",
+    "files": "Arquivos",
+    "commands": "Comandos",
+    "chooseRepo": "Escolher repo",
+    "selectedRepo": "Repo selecionado: {{repoName}}",
+    "missingRepo": "O repo selecionado não está mais disponível.",
+    "noTagsOrFiles": "Nenhuma tag ou arquivo encontrada",
+    "createTag": "Criar nova tag",
+    "noCommands": "Nenhum comando disponível para este agente."
+  },
+  "kanban": {
+    "noVisibleStatuses": "Todos os status estão ocultos. Use as configurações de exibição ou mude para outra aba para ver as issues.",
+    "noProjectFound": "Nenhum projeto encontrado",
+    "unassigned": "Não atribuído",
+    "noTagsAvailable": "Nenhuma tag disponível",
+    "createNewIssue": "Criar nova issue",
+    "searchTags": "Pesquisar tags...",
+    "selectColorFor": "Selecionar cor para",
+    "createTag": "Criar",
+    "noPrCreated": "Nenhum PR criado",
+    "noCommentsYet": "Ainda não há comentários",
+    "createdBy": "Criado por",
+    "comments": "Comentários",
+    "enterCommentPlaceholder": "Digite seu comentário aqui...",
+    "attachFile": "Anexar arquivo",
+    "attachFileHint": "Anexar arquivos (máx 20MB cada)",
+    "dropFilesHere": "Solte arquivos aqui",
+    "fileDropHint": "Qualquer tipo de arquivo até 20MB",
+    "unknownUser": "Usuário Desconhecido",
+    "deletedUser": "Usuário Excluído",
+    "replyQuotePrefix": "escreveu:",
+    "moreActions": "Mais ações",
+    "closePanel": "Fechar painel",
+    "copyLink": "Copiar link",
+    "issueTitlePlaceholder": "Título da Issue...",
+    "issueDescriptionPlaceholder": "Digite a descrição da tarefa aqui...",
+    "createDraftWorkspaceImmediately": "Criar workspace de rascunho imediatamente",
+    "createDraftWorkspaceDescription": "Após criar a issue, abra o formulário de criação de workspace pré-preenchido com os detalhes da issue",
+    "createIssue": "Criar Issue",
+    "newIssue": "Nova Issue",
+    "previewCodeBlock": "[Bloco de código]",
+    "previewImage": "[Imagem]",
+    "previewImageWithName": "[Imagem: {{name}}]",
+    "previewFile": "[Arquivo]",
+    "previewFileWithName": "[Arquivo: {{name}}]",
+    "imageAttachmentNameFallback": "Anexo",
+    "removeImage": "Remover imagem",
+    "maxFilesAtOnce": "Máximo {{count}} arquivos de uma vez",
+    "fileExceedsLimit": "O arquivo {{filename}} excede o limite de 20MB",
+    "unknownError": "Erro desconhecido",
+    "failedToUploadFile": "Falha ao enviar {{filename}}: {{message}}",
+    "downloadAttachment": "Baixar anexo",
+    "subIssues": "Sub-issues",
+    "noSubIssues": "Nenhuma sub-issue",
+    "markIndependentIssue": "Marcar como issue independente",
+    "parentIssue": "Pai",
+    "subIssueIndicator": "↳",
+    "viewTabs": {
+      "active": "Ativo",
+      "all": "Todos"
+    },
+    "loginRequired": {
+      "title": "Entrada necessária",
+      "description": "Por favor, entre para ver este projeto.",
+      "action": "Entrar"
+    },
+    "team": "Equipe",
+    "personal": "Pessoal",
+    "searchPlaceholder": "Pesquisar issues...",
+    "filters": "Filtros",
+    "clearFilters": "Limpar filtros",
+    "filtersDescription": "Ajuste filtros e ordenação para esta visualização do quadro.",
+    "filterByTag": "Filtrar por tag",
+    "filterByPriority": "Filtrar por prioridade",
+    "tags": "Tags",
+    "sortBy": "Ordenar",
+    "workspaceSidebar": {
+      "sortDialogTitle": "Ordenar workspaces",
+      "sortDialogDescription": "Escolha como os workspaces são ordenados na barra lateral.",
+      "sortByLabel": "Ordenar por",
+      "sortOrderLabel": "Ordem de ordenação",
+      "sortUpdatedAt": "Atualizado em",
+      "sortCreatedAt": "Criado em",
+      "filterDialogTitle": "Filtrar workspaces",
+      "filterDialogDescription": "Filtrar workspaces por projeto e estado do PR.",
+      "projectFilterLabel": "Projeto",
+      "prFilterLabel": "PR",
+      "prFilterAll": "Todos",
+      "prFilterHasPr": "Tem PR",
+      "prFilterNoPr": "Sem PR",
+      "noProject": "Nenhum projeto",
+      "sortButtonTitle": "Ordenar workspaces",
+      "filterButtonTitle": "Filtrar workspaces"
+    },
+    "sortAscending": "Ascendente",
+    "sortDescending": "Descendente",
+    "assignee": "Responsável",
+    "self": "Eu",
+    "priority": "Prioridade",
+    "subIssuesFilterLabel": "Sub-issues",
+    "workspacesFilterLabel": "Workspaces",
+    "selectAssignees": "Selecionar responsáveis...",
+    "relationships": "Relacionamentos",
+    "noRelationships": "Nenhum relacionamento",
+    "openProjectsGuide": "Guia de projetos",
+    "editProjectSettings": "Editar configurações do projeto",
+    "linkWorkspace": "Vincular workspace...",
+    "createNewWorkspace": "Criar novo workspace",
+    "workspaces": "Workspaces",
+    "showingWorkspaces": "Exibindo {{count}} de {{total}}",
+    "changeColor": "Alterar cor",
+    "editName": "Editar nome",
+    "deleteStatus": "Excluir status",
+    "cannotDeleteWithIssues": "Mova as issues primeiro",
+    "lastVisibleStatus": "Pelo menos um status deve estar visível",
+    "showStatus": "Mostrar status",
+    "hideStatus": "Ocultar status",
+    "newStatus": "Novo Status",
+    "visibleColumns": "Colunas Visíveis",
+    "dragToRearrange": "Arraste para reorganizar",
+    "addColumn": "Adicionar coluna",
+    "projectsGuide": {
+      "intro": {
+        "title": "Bem-vindo",
+        "content": "Bem-vindo ao Vibe Kanban. Use as seções de ajuda neste painel para aprender como as coisas funcionam, depois crie sua primeira issue. Você pode reabrir este diálogo de ajuda ou dar feedback a qualquer momento a partir da barra de navegação."
+      },
+      "welcome": {
+        "title": "Projetos",
+        "content": "A página de projetos é onde você gerencia issues. Você pode ver suas issues como um quadro kanban ou como uma lista, e filtrar por status, tag, responsável e mais."
+      },
+      "issues": {
+        "title": "Issues",
+        "content": "Cada issue representa um recurso ou problema para resolver. Issues têm status, prioridades, responsáveis, tags, relacionamentos, comentários, sub-issues e mais."
+      },
+      "workspaces": {
+        "title": "Workspaces",
+        "content": "Para começar a trabalhar em uma issue, crie um workspace. Uma única issue pode ter múltiplos workspaces. Issues descrevem o trabalho a ser feito, workspaces são onde o trabalho acontece."
+      },
+      "organizations": {
+        "title": "Convide sua equipe",
+        "content": "Criamos automaticamente uma organização pessoal e projeto inicial para que você possa começar facilmente com o Vibe Kanban. Você também pode criar novas organizações e convidar sua equipe para colaborar."
+      }
+    }
+  },
+  "createMode": {
+    "headings": {
+      "repoStep": "Quais repositórios você gostaria de trabalhar?",
+      "chatStep": "O que você gostaria de trabalhar?"
+    },
+    "repoPicker": {
+      "actions": {
+        "recent": "Recente",
+        "browse": "Navegar",
+        "create": "Criar"
+      },
+      "setupHintTitle": "Scripts de Setup",
+      "setupHint": "Dica: Configure scripts de setup para este repositório em Configurações → Repositórios",
+      "setupHintDismiss": "Dispensar",
+      "setupHintLink": "Configurar nas Configurações"
+    }
+  },
+  "modelSelector": {
+    "preset": "Predefinição",
+    "custom": "Personalizado",
+    "permissions": "Permissões",
+    "permissionAuto": "Automático",
+    "permissionAsk": "Perguntar",
+    "permissionPlan": "Planejar",
+    "agent": "Agente",
+    "default": "Padrão",
+    "model": "Modelo"
+  },
+  "syncError": {
+    "networkErrors": "Erros de Rede",
+    "streamsAffected": "{{count}} stream afetado",
+    "streamsAffected_other": "{{count}} streams afetados",
+    "status": "(status {{status}})",
+    "refreshPage": "Atualizar Página"
+  },
+  "migration": {
+    "allProjectsMigrated": "Todos os seus projetos já foram migrados para a nuvem.",
+    "continueToProjects": "Continuar para Projetos"
+  },
+  "appBar": {
+    "kanban": {
+      "tooltip": "Faça login para visualizar os projetos",
+      "title": "Quadros Kanban",
+      "description": "Entre para organizar seus agentes de codificação com quadros kanban.",
+      "migrateOldProjects": "Migrar projetos antigos"
+    }
+  },
+  "askQuestion": {
+    "title": "O agente está fazendo uma pergunta",
+    "selectMultiple": "selecionar múltiplo",
+    "confirmSelection": "Confirmar seleção",
+    "submitting": "Enviando respostas...",
+    "answeredCount": "Respondeu {{count}} pergunta",
+    "answeredCount_other": "Respondeu {{count}} perguntas"
+  }
+}
