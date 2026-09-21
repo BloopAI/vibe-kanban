@@ -19,6 +19,7 @@ pub enum UiLanguage {
     Ja,     // Force Japanese
     Es,     // Force Spanish
     Ko,     // Force Korean
+    Ru,     // Force Russian
     ZhHans, // Force Simplified Chinese
     ZhHant, // Force Traditional Chinese
 }
