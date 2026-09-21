@@ -373,6 +373,7 @@ pub struct AuthConfig {
     local: Option<LocalAuthConfig>,
     jwt_secret: SecretString,
     public_base_url: String,
+    access_token_ttl_seconds: u64,
 }
 
 impl AuthConfig {
@@ -381,6 +382,38 @@ impl AuthConfig {
             .map_err(|_| ConfigError::MissingVar("VIBEKANBAN_REMOTE_JWT_SECRET"))?;
         validate_jwt_secret(&jwt_secret)?;
         let jwt_secret = SecretString::new(jwt_secret.into());
+
+        let access_token_ttl_seconds = match env::var("ACCESS_TOKEN_TTL_SECONDS") {
+            Ok(v) => match v.parse::<u64>() {
+                Ok(0) => {
+                    tracing::warn!(
+                        "ACCESS_TOKEN_TTL_SECONDS=0 is invalid, using default ({}s)",
+                        crate::auth::DEFAULT_ACCESS_TOKEN_TTL_SECONDS
+                    );
+                    crate::auth::DEFAULT_ACCESS_TOKEN_TTL_SECONDS
+                }
+                Ok(val) => {
+                    if val <= crate::auth::jwt::DEFAULT_JWT_LEEWAY_SECONDS {
+                        tracing::warn!(
+                            "ACCESS_TOKEN_TTL_SECONDS ({val}s) is at or below the JWT validation leeway ({}s). \
+                             Tokens will remain valid for approximately {}s total.",
+                            crate::auth::jwt::DEFAULT_JWT_LEEWAY_SECONDS,
+                            val + crate::auth::jwt::DEFAULT_JWT_LEEWAY_SECONDS,
+                        );
+                    }
+                    val
+                }
+                Err(_) => {
+                    tracing::warn!(
+                        "ACCESS_TOKEN_TTL_SECONDS={:?} is not a valid u64, using default ({}s)",
+                        v,
+                        crate::auth::DEFAULT_ACCESS_TOKEN_TTL_SECONDS
+                    );
+                    crate::auth::DEFAULT_ACCESS_TOKEN_TTL_SECONDS
+                }
+            },
+            Err(_) => crate::auth::DEFAULT_ACCESS_TOKEN_TTL_SECONDS,
+        };
 
         let github = match env::var("GITHUB_OAUTH_CLIENT_ID") {
             Ok(client_id) if !client_id.is_empty() => {
@@ -421,6 +454,7 @@ impl AuthConfig {
             local,
             jwt_secret,
             public_base_url,
+            access_token_ttl_seconds,
         })
     }
 
@@ -442,6 +476,10 @@ impl AuthConfig {
 
     pub fn public_base_url(&self) -> &str {
         &self.public_base_url
+    }
+
+    pub fn access_token_ttl_seconds(&self) -> u64 {
+        self.access_token_ttl_seconds
     }
 }
 

@@ -55,7 +55,10 @@ impl Server {
         }
 
         let auth_config = config.auth.clone();
-        let jwt = Arc::new(JwtService::new(auth_config.jwt_secret().clone()));
+        let jwt = Arc::new(JwtService::new(
+            auth_config.jwt_secret().clone(),
+            auth_config.access_token_ttl_seconds(),
+        ));
 
         let mut registry = ProviderRegistry::new();
 
