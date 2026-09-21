@@ -1,0 +1,69 @@
+---
+title: "Devin CLI"
+description: "Set up Devin CLI integration"
+icon: https://www.vibekanban.com/images/logos/cognition-logo.svg
+---
+
+<Steps>
+<Step title="Install Devin CLI">
+  ```bash
+  curl -fsSL https://cli.devin.ai/install.sh | bash
+  ```
+</Step>
+
+<Step title="Authenticate with Devin">
+  Run the login command to authenticate:
+
+  ```bash
+  devin auth login
+  ```
+
+  Alternatively, Vibe Kanban includes a built-in setup helper that will guide you through authentication when you select Devin CLI as your agent.
+
+  <Note>Devin CLI requires a Windsurf Enterprise or Devin Enterprise account.</Note>
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+
+  ```bash
+  npx vibe-kanban
+  ```
+
+  You can now select Devin CLI when creating task attempts.
+</Step>
+</Steps>
+
+## Configuration Options
+
+Devin CLI can be configured with the following options:
+
+| Option | Values | Default | Description |
+|--------|--------|---------|-------------|
+| `model` | `opus`, `sonnet`, `swe`, `codex`, `gemini` | `opus` | The AI model to use for code generation |
+| `permission_mode` | `auto`, `dangerous` | `dangerous` | `auto` prompts before writes; `dangerous` auto-approves all operations |
+
+## MCP Configuration
+
+Devin CLI stores its MCP configuration at:
+
+```
+~/.config/cognition/config.json
+```
+
+## Session Resumption
+
+Devin CLI supports resuming previous sessions using the `-c` and `-r` flags:
+
+```bash
+# Continue the most recent session
+devin -c
+
+# Resume a specific session by ID
+devin -r <session-id>
+```
+
+This is useful for:
+- Picking up where you left off on a task
+- Reviewing and extending previous agent work
+- Maintaining context across multiple coding sessions

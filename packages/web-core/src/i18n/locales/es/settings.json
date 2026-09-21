@@ -376,7 +376,7 @@
         "addServerFailed": "Error al agregar servidor preconfigurado",
         "mcpError": "Error de Configuración MCP: {{error}}",
         "notSupported": "MCP No Soportado",
-        "supportMessage": "Para usar servidores MCP, por favor selecciona un agente diferente que soporte MCP (Claude, Amp, Gemini, Codex, o Opencode) arriba."
+        "supportMessage": "Para usar servidores MCP, por favor selecciona un agente diferente que soporte MCP (Claude, Amp, Gemini, Codex, Devin, o Opencode) arriba."
       },
       "save": {
         "button": "Guardar Configuración MCP",

@@ -88,6 +88,7 @@ const SOUND_OPTIONS: SoundOption[] = [
 const AGENT_PRIORITY: BaseCodingAgent[] = [
   BaseCodingAgent.CLAUDE_CODE,
   BaseCodingAgent.CODEX,
+  BaseCodingAgent.DEVIN_CLI,
   BaseCodingAgent.OPENCODE,
   BaseCodingAgent.GEMINI,
 ];
