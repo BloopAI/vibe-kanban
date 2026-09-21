@@ -350,6 +350,15 @@ export function OnboardingSignInPage() {
                         loadingText="Opening Google..."
                       />
                     )}
+                    {hasOAuthProviders && oauthProviders.includes('entra_id') && (
+                      <OAuthSignInButton
+                        provider="entra_id"
+                        onClick={() => void handleProviderSignIn('entra_id')}
+                        disabled={saving || pendingProvider !== null}
+                        loading={pendingProvider === 'entra_id'}
+                        loadingText="Opening Microsoft..."
+                      />
+                    )}
                   </>
                 ) : null}
               </section>
