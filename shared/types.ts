@@ -174,7 +174,7 @@ export type ExecutionProcessRepoState = { id: string, execution_process_id: stri
 
 export type Merge = { "type": "direct" } & DirectMerge | { "type": "pr" } & PrMerge;
 
-export type DirectMerge = { id: string, workspace_id: string, repo_id: string, merge_commit: string, target_branch_name: string, created_at: string, };
+export type DirectMerge = { id: string, workspace_id: string, repo_id: string, merge_commit: string, target_branch_name: string, merge_strategy: string, created_at: string, };
 
 export type PrMerge = { id: string, workspace_id: string, repo_id: string, created_at: string, target_branch_name: string, pr_info: PullRequestInfo, };
 
@@ -320,7 +320,11 @@ export type AddWorkspaceRepoRequest = { repo_id: string, target_branch: string, 
 
 export type AddWorkspaceRepoResponse = { workspace: Workspace, repo: RepoWithTargetBranch, };
 
-export type MergeWorkspaceRequest = { repo_id: string, };
+export type MergeWorkspaceRequest = { repo_id: string, 
+/**
+ * Merge strategy. Defaults to `squash` for backwards compatibility.
+ */
+strategy: MergeStrategy | null, };
 
 export type PushWorkspaceRequest = { repo_id: string, };
 
@@ -409,6 +413,8 @@ export type ProviderKind = "git_hub" | "azure_dev_ops" | "unknown";
 export type PullRequestDetail = { number: bigint, url: string, status: MergeStatus, merged_at: string | null, merge_commit_sha: string | null, title: string, base_branch: string, head_branch: string, };
 
 export type GitRemote = { name: string, url: string, };
+
+export type MergeStrategy = "squash" | "rebase" | "merge";
 
 export type ListPrsError = { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "auth_failed", message: string, } | { "type": "unsupported_provider" };
 

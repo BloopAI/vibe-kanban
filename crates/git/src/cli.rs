@@ -661,6 +661,107 @@ impl GitCli {
         Ok(sha)
     }
 
+    /// Checkout base branch and create a true merge commit (--no-ff) from
+    /// `from_branch`. Returns the new HEAD sha on the base branch.
+    ///
+    /// On failure (e.g. a merge conflict), runs a best-effort
+    /// `git merge --abort` so the base worktree is not left in a
+    /// merge-in-progress state with `MERGE_HEAD` and a dirty index, which
+    /// would block subsequent git operations.
+    pub fn merge_no_ff_commit(
+        &self,
+        repo_path: &Path,
+        base_branch: &str,
+        from_branch: &str,
+        message: &str,
+    ) -> Result<String, GitCliError> {
+        self.git(repo_path, ["checkout", base_branch]).map(|_| ())?;
+        if let Err(e) = self
+            .git(
+                repo_path,
+                ["merge", "--no-ff", "--no-edit", "-m", message, from_branch],
+            )
+            .map(|_| ())
+        {
+            // Best-effort cleanup so we don't leave the worktree mid-merge.
+            let _ = self.git(repo_path, ["merge", "--abort"]);
+            return Err(e);
+        }
+        let sha = self
+            .git(repo_path, ["rev-parse", "HEAD"])?
+            .trim()
+            .to_string();
+        Ok(sha)
+    }
+
+    /// Rebase `from_branch` onto `base_branch`, then fast-forward `base_branch`
+    /// to the rebased tip.
+    ///
+    /// In vibe-kanban's worktree-based model, `from_branch` is already checked
+    /// out in the task worktree (`task_repo_path`) and `base_branch` is checked
+    /// out in the base worktree (`base_repo_path`). Because git refuses to
+    /// check out a branch that is already used by another worktree, we run the
+    /// rebase in the task worktree (where `from_branch` lives) and then perform
+    /// the fast-forward in the base worktree.
+    ///
+    /// The function is best-effort atomic: if either step fails, the task
+    /// branch is rolled back to the tip it had before the call so the
+    /// repository is not left in a partially-modified state.
+    /// - If `git rebase` fails, `git rebase --abort` cleans up.
+    /// - If the subsequent `git merge --ff-only` fails (e.g. because the
+    ///   base branch was concurrently moved), the task branch is reset back
+    ///   to its pre-rebase tip via `git reset --hard`. This is safe because
+    ///   `git rebase` refuses to start with a dirty index, so a successful
+    ///   rebase implies the worktree was clean at the call boundary.
+    ///
+    /// Returns the new HEAD sha on the base branch.
+    pub fn merge_rebase(
+        &self,
+        task_repo_path: &Path,
+        base_repo_path: &Path,
+        base_branch: &str,
+        from_branch: &str,
+    ) -> Result<String, GitCliError> {
+        // Capture the original task branch tip so we can roll the rebase back
+        // if the subsequent fast-forward step fails.
+        let original_task_tip = self
+            .git(task_repo_path, ["rev-parse", from_branch])?
+            .trim()
+            .to_string();
+
+        // Rebase the task branch onto base, in the task worktree where
+        // from_branch is already checked out.
+        if let Err(e) = self
+            .git(task_repo_path, ["rebase", base_branch])
+            .map(|_| ())
+        {
+            // Best-effort cleanup so we don't leave the worktree mid-rebase.
+            let _ = self.git(task_repo_path, ["rebase", "--abort"]);
+            return Err(e);
+        }
+
+        // Fast-forward base to the rebased task tip in the base worktree.
+        if let Err(e) = self
+            .git(base_repo_path, ["merge", "--ff-only", from_branch])
+            .map(|_| ())
+        {
+            // The rebase succeeded but the fast-forward failed. Roll the task
+            // branch back to its pre-rebase tip so the repository returns to
+            // its pre-call state.
+            let _ = self.git(
+                task_repo_path,
+                ["reset", "--hard", &original_task_tip],
+            );
+            return Err(e);
+        }
+
+        let sha = self
+            .git(base_repo_path, ["rev-parse", "HEAD"])?
+            .trim()
+            .to_string();
+        Ok(sha)
+    }
+
     /// Update a ref to a specific sha in the repo.
     pub fn update_ref(
         &self,

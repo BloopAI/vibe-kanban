@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT\n                id AS \"id!: Uuid\",\n                workspace_id AS \"workspace_id!: Uuid\",\n                repo_id AS \"repo_id!: Uuid\",\n                merge_commit,\n                target_branch_name,\n                created_at AS \"created_at!: DateTime<Utc>\"\n            FROM merges\n            WHERE workspace_id = ? AND repo_id = ? AND merge_type = 'direct'\n            ORDER BY created_at DESC",
+  "query": "SELECT\n                id AS \"id!: Uuid\",\n                workspace_id AS \"workspace_id!: Uuid\",\n                repo_id AS \"repo_id!: Uuid\",\n                merge_commit,\n                target_branch_name,\n                merge_strategy,\n                created_at AS \"created_at!: DateTime<Utc>\"\n            FROM merges\n            WHERE workspace_id = ? AND merge_type = 'direct'\n            ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -29,13 +29,18 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "merge_strategy",
         "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 6,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 1
     },
     "nullable": [
       true,
@@ -43,8 +48,9 @@
       false,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "687a386ec0c65676bcd9d1ced30549e4c2a3d2bdb63a0a5623027e50aa6e4389"
+  "hash": "00c49407a06a509a800995d6a219db8bfb8faf6a4c83533f800eccc4f9c9a77d"
 }

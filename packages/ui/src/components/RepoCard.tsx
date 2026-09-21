@@ -27,6 +27,9 @@ export type RepoAction =
   | 'pull-request'
   | 'link-pr'
   | 'merge'
+  | 'merge-squash'
+  | 'merge-rebase'
+  | 'merge-commit'
   | 'change-target'
   | 'rebase'
   | 'push';
@@ -38,7 +41,9 @@ const repoActionOptions: SplitButtonOption<RepoAction>[] = [
     icon: GitPullRequestIcon,
   },
   { value: 'link-pr', label: 'Link pull request', icon: LinkIcon },
-  { value: 'merge', label: 'Merge', icon: GitMergeIcon },
+  { value: 'merge-squash', label: 'Squash and merge', icon: GitMergeIcon },
+  { value: 'merge-rebase', label: 'Rebase and merge', icon: GitMergeIcon },
+  { value: 'merge-commit', label: 'Create a merge commit', icon: GitMergeIcon },
 ];
 
 interface RepoCardProps {
@@ -100,24 +105,31 @@ export function RepoCard({
       repoActionOptions.filter((opt) => {
         if (opt.value === 'pull-request' && hasPrOpen) return false;
         if (opt.value === 'link-pr' && hasPrLinked) return false;
-        if (opt.value === 'merge' && (hasPrOpen || isTargetRemote))
-          return false;
+        const isMerge =
+          opt.value === 'merge-squash' ||
+          opt.value === 'merge-rebase' ||
+          opt.value === 'merge-commit';
+        if (isMerge && (hasPrOpen || isTargetRemote)) return false;
         return true;
       }),
     [hasPrOpen, hasPrLinked, isTargetRemote]
   );
 
+  // Backwards compat: legacy 'merge' setting maps to squash.
+  const normalizedSelectedAction: RepoAction =
+    selectedAction === 'merge' ? 'merge-squash' : selectedAction;
+
   // If current selection is unavailable, fall back to the first available option.
   const effectiveSelectedAction = useMemo(() => {
     const selectedOption = availableActionOptions.find(
-      (option) => option.value === selectedAction
+      (option) => option.value === normalizedSelectedAction
     );
     return (
       selectedOption?.value ??
       availableActionOptions[0]?.value ??
-      selectedAction
+      normalizedSelectedAction
     );
-  }, [availableActionOptions, selectedAction]);
+  }, [availableActionOptions, normalizedSelectedAction]);
 
   return (
     <div className="bg-primary rounded-sm my-base p-base space-y-base">

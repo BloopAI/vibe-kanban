@@ -16,7 +16,7 @@ use db::models::{
     workspace_repo::WorkspaceRepo,
 };
 use deployment::Deployment;
-use git::{ConflictOp, GitCliError, GitServiceError};
+use git::{ConflictOp, GitCliError, GitServiceError, MergeStrategy};
 use serde::{Deserialize, Serialize};
 use services::services::{container::ContainerService, diff_stream, remote_sync};
 use ts_rs::TS;
@@ -59,6 +59,9 @@ pub enum GitOperationError {
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct MergeWorkspaceRequest {
     pub repo_id: Uuid,
+    /// Merge strategy. Defaults to `squash` for backwards compatibility.
+    #[serde(default)]
+    pub strategy: Option<MergeStrategy>,
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -223,12 +226,14 @@ pub async fn merge_workspace(
     let vk_id = resolve_vibe_kanban_identifier(&deployment, workspace.id).await;
     let commit_message = format!("{} (vibe-kanban {})", workspace_label, vk_id);
 
+    let strategy = request.strategy.unwrap_or_default();
     let merge_commit_id = deployment.git().merge_changes(
         &repo.path,
         &worktree_path,
         &workspace.branch,
         &workspace_repo.target_branch,
         &commit_message,
+        strategy,
     )?;
 
     Merge::create_direct(
@@ -237,6 +242,7 @@ pub async fn merge_workspace(
         workspace_repo.repo_id,
         &workspace_repo.target_branch,
         &merge_commit_id,
+        strategy.as_str(),
     )
     .await?;
 

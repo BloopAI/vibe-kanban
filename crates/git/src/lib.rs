@@ -18,6 +18,29 @@ pub use cli::{GitCli, GitCliError, StatusEntry, WorktreeStatus};
 pub use utils::path::ALWAYS_SKIP_DIRS;
 pub use validation::is_valid_branch_prefix;
 
+/// How a direct merge should be performed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+pub enum MergeStrategy {
+    /// Squash all task branch commits into a single commit on base.
+    #[default]
+    Squash,
+    /// Rebase the task branch onto base, then fast-forward base.
+    Rebase,
+    /// Create a true merge commit on base (`git merge --no-ff`).
+    Merge,
+}
+
+impl MergeStrategy {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            MergeStrategy::Squash => "squash",
+            MergeStrategy::Rebase => "rebase",
+            MergeStrategy::Merge => "merge",
+        }
+    }
+}
+
 /// Statistics for a single file based on git history
 #[derive(Clone, Debug)]
 pub struct FileStat {
@@ -571,7 +594,9 @@ impl GitService {
         Ok(None)
     }
 
-    /// Merge changes from a task branch into the base branch.
+    /// Merge changes from a task branch into the base branch using the
+    /// specified strategy. The legacy behavior corresponds to
+    /// `MergeStrategy::Squash`.
     pub fn merge_changes(
         &self,
         base_worktree_path: &Path,
@@ -579,19 +604,27 @@ impl GitService {
         task_branch_name: &str,
         base_branch_name: &str,
         commit_message: &str,
+        strategy: MergeStrategy,
     ) -> Result<String, GitServiceError> {
         // Open the repositories
         let task_repo = self.open_repo(task_worktree_path)?;
         let base_repo = self.open_repo(base_worktree_path)?;
 
-        // Check if base branch is ahead of task branch - this indicates the base has moved
-        // ahead since the task was created, which should block the merge
+        // Check if base branch is ahead of task branch. This blocks the
+        // Squash strategy because applying a squashed diff on top of a moved
+        // base would either silently shadow upstream changes or surface them
+        // as a confusing conflict at an unexpected moment. The Rebase and
+        // Merge strategies, however, are explicitly designed to handle a
+        // diverged base — Rebase by replaying the task commits onto the new
+        // base tip, and Merge (--no-ff) by recording a merge commit that has
+        // both histories as parents — so the guard would defeat their entire
+        // purpose if applied unconditionally.
         let (_, task_behind) =
             self.get_branch_status(base_worktree_path, task_branch_name, base_branch_name)?;
 
-        if task_behind > 0 {
+        if task_behind > 0 && matches!(strategy, MergeStrategy::Squash) {
             return Err(GitServiceError::BranchesDiverged(format!(
-                "Cannot merge: base branch '{base_branch_name}' is {task_behind} commits ahead of task branch '{task_branch_name}'. The base branch has moved forward since the task was created.",
+                "Cannot squash-merge: base branch '{base_branch_name}' is {task_behind} commits ahead of task branch '{task_branch_name}'. Rebase the task branch first, or pick the Rebase / Merge commit strategy instead.",
             )));
         }
 
@@ -616,16 +649,29 @@ impl GitService {
 
                 // Use CLI merge in base context
                 self.ensure_cli_commit_identity(&base_checkout_path)?;
-                let sha = git_cli
-                    .merge_squash_commit(
+                let sha = match strategy {
+                    MergeStrategy::Squash => git_cli.merge_squash_commit(
                         &base_checkout_path,
                         base_branch_name,
                         task_branch_name,
                         commit_message,
-                    )
-                    .map_err(|e| {
-                        GitServiceError::InvalidRepository(format!("CLI merge failed: {e}"))
-                    })?;
+                    ),
+                    MergeStrategy::Merge => git_cli.merge_no_ff_commit(
+                        &base_checkout_path,
+                        base_branch_name,
+                        task_branch_name,
+                        commit_message,
+                    ),
+                    MergeStrategy::Rebase => git_cli.merge_rebase(
+                        task_worktree_path,
+                        &base_checkout_path,
+                        base_branch_name,
+                        task_branch_name,
+                    ),
+                }
+                .map_err(|e| {
+                    GitServiceError::InvalidRepository(format!("CLI merge failed: {e}"))
+                })?;
 
                 // Update task branch ref for continuity
                 let task_refname = format!("refs/heads/{task_branch_name}");
@@ -638,7 +684,16 @@ impl GitService {
                 Ok(sha)
             }
             None => {
-                // base branch not checked out anywhere - use libgit2 pure ref operations
+                // base branch not checked out anywhere - use libgit2 pure ref operations.
+                // Rebase / true-merge strategies require a working tree, so refuse here
+                // and ask the caller to provide a checkout. Squash can be done in-memory.
+                if !matches!(strategy, MergeStrategy::Squash) {
+                    return Err(GitServiceError::InvalidRepository(format!(
+                        "Strategy '{}' requires base branch '{}' to be checked out in a worktree.",
+                        strategy.as_str(),
+                        base_branch_name
+                    )));
+                }
                 let task_branch = Self::find_branch(&task_repo, task_branch_name)?;
                 let base_branch = Self::find_branch(&task_repo, base_branch_name)?;
 
