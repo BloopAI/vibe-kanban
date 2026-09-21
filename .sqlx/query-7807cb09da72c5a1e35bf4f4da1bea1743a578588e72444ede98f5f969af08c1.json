@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                entity_type as \"entity_type!: EntityType\",\n                local_id as \"local_id!: Uuid\",\n                remote_id as \"remote_id: Uuid\",\n                status as \"status!: MigrationStatus\",\n                error_message,\n                attempt_count as \"attempt_count!\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM migration_state\n            ORDER BY created_at ASC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "entity_type!: EntityType",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "local_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "remote_id: Uuid",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: MigrationStatus",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "error_message",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "attempt_count!",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7807cb09da72c5a1e35bf4f4da1bea1743a578588e72444ede98f5f969af08c1"
+}

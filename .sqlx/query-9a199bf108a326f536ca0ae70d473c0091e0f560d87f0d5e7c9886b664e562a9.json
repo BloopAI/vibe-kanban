@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE external_sessions\n               SET status = $1, updated_at = datetime('now', 'subsec')\n               WHERE id = $2\n               RETURNING id AS \"id!: Uuid\",\n                         name,\n                         runtime,\n                         project_path,\n                         branch,\n                         pid,\n                         status,\n                         created_at AS \"created_at!: DateTime<Utc>\",\n                         updated_at AS \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "runtime",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "project_path",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "branch",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "pid",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "status",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "9a199bf108a326f536ca0ae70d473c0091e0f560d87f0d5e7c9886b664e562a9"
+}
