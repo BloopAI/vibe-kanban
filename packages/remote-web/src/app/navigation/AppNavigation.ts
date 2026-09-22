@@ -20,7 +20,7 @@ export function resolveRemoteDestinationFromPath(
   path: string,
 ): AppDestination | null {
   const { pathname } = new URL(path, "http://localhost");
-  const { foundRoute, routeParams } = router.getMatchedRoutes(pathname);
+  const [, routeParams, foundRoute] = router.getMatchedRoutes(pathname);
 
   if (!foundRoute) {
     return null;
