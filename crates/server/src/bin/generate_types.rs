@@ -223,6 +223,7 @@ fn generate_types_content() -> String {
         executors::executors::codex::ReasoningSummaryFormat::decl(),
         executors::executors::cursor::CursorAgent::decl(),
         executors::executors::copilot::Copilot::decl(),
+        executors::executors::acp::Acp::decl(),
         executors::executors::opencode::Opencode::decl(),
         executors::executors::qwen::QwenCode::decl(),
         executors::executors::droid::Droid::decl(),
@@ -356,6 +357,10 @@ fn generate_schemas() -> Result<HashMap<&'static str, String>, serde_json::Error
         (
             "acp_server",
             generate_json_schema::<executors::executors::acp_server::AcpServer>()?,
+        ),
+        (
+            "acp",
+            generate_json_schema::<executors::executors::acp::Acp>()?,
         ),
     ]);
     println!(

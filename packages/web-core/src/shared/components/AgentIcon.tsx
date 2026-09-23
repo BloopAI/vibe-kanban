@@ -29,6 +29,8 @@ export function getAgentName(
       return 'Copilot';
     case 'DROID':
       return 'Droid';
+    case 'ACP':
+      return 'Oh My Pi';
     default:
       return agent;
   }
@@ -74,6 +76,10 @@ export function AgentIcon({ agent, className = 'h-4 w-4' }: AgentIconProps) {
       break;
     case 'DROID':
       iconPath = `/agents/droid${suffix}.svg`;
+      break;
+    case 'ACP':
+      // ponytail: no Oh My Pi brand asset yet — reuse generic opencode mark
+      iconPath = `/agents/opencode${suffix}.svg`;
       break;
     default:
       return null;
