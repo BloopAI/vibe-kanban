@@ -63,6 +63,14 @@
           "autonomy": "skip-permissions-unsafe"
         }
       }
+    },
+    "ACP": {
+      "DEFAULT": {
+        "ACP": {
+          "command": "omp",
+          "args": ["acp"]
+        }
+      }
     }
   }
 }
