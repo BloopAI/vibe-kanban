@@ -14,6 +14,8 @@ ELECTRIC_ROLE_PASSWORD=replace_with_secure_password
 # Configure at least one auth option
 GITHUB_OAUTH_CLIENT_ID=
 GITHUB_OAUTH_CLIENT_SECRET=
+# Optional — set for GitHub Enterprise Server (default: https://github.com)
+GITHUB_BASE_URL=
 GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 
