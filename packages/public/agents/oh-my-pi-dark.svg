@@ -1,0 +1,10 @@
+<svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="pi-mark-grad" x1="0" x2="1" y1="0" y2="1">
+<stop offset="0" stop-color="oklch(0.7 0.24 340)"/>
+<stop offset=".5" stop-color="oklch(0.62 0.21 295)"/>
+<stop offset="1" stop-color="oklch(0.81 0.14 200)"/>
+</linearGradient>
+</defs>
+<path d="M10 14h44v9H43v33h-9V23h-9v22h-9V23H10z" fill="url(#pi-mark-grad)"/>
+</svg>

@@ -76,8 +76,7 @@ export function AgentIcon({ agent, className = 'h-4 w-4' }: AgentIconProps) {
       iconPath = `/agents/droid${suffix}.svg`;
       break;
     case BaseCodingAgent.ACP:
-      // ponytail: no Oh My Pi brand asset yet — reuse generic opencode mark
-      iconPath = `/agents/opencode${suffix}.svg`;
+      iconPath = `/agents/oh-my-pi${suffix}.svg`;
       break;
     default:
       return null;
