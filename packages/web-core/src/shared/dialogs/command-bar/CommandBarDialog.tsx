@@ -81,6 +81,18 @@ function CommandBarContent({
       )
     : undefined;
 
+  // When a target workspace is provided (e.g. via the ... menu), override
+  // visibility context so actions like Archive are shown even if no workspace
+  // is selected in the main panel.
+  const effectiveVisibilityContext = useMemo(() => {
+    if (!workspace) return visibilityContext;
+    return {
+      ...visibilityContext,
+      hasWorkspace: true,
+      workspaceArchived: workspace.archived,
+    };
+  }, [visibilityContext, workspace]);
+
   // State machine
   const { state, currentPage, canGoBack, dispatch } = useCommandBarState(page);
 
@@ -96,7 +108,7 @@ function CommandBarContent({
   const resolvedPage = useResolvedPage(
     currentPage,
     state.search,
-    visibilityContext,
+    effectiveVisibilityContext,
     workspace
   );
 
@@ -180,13 +192,15 @@ function CommandBarContent({
         canGoBack={canGoBack}
         onGoBack={() => dispatch({ type: 'GO_BACK' })}
         onSelect={handleSelect}
-        getLabel={(action) => getLabel(action, workspace, visibilityContext)}
+        getLabel={(action) =>
+          getLabel(action, workspace, effectiveVisibilityContext)
+        }
         search={state.search}
         onSearchChange={(query) => dispatch({ type: 'SEARCH_CHANGE', query })}
         renderSpecialActionIcon={(iconName) =>
           iconName === 'ide-icon' ? (
             <IdeIcon
-              editorType={visibilityContext.editorType}
+              editorType={effectiveVisibilityContext.editorType}
               className="h-4 w-4"
             />
           ) : null

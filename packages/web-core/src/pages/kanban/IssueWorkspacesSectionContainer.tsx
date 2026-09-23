@@ -1,7 +1,10 @@
 import { useMemo, useCallback } from 'react';
 import { useParams } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { LinkIcon, PlusIcon } from '@phosphor-icons/react';
+import { workspaceKeys } from '@/shared/hooks/useWorkspaces';
+import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
@@ -35,6 +38,7 @@ export function IssueWorkspacesSectionContainer({
   issueId,
 }: IssueWorkspacesSectionContainerProps) {
   const { t } = useTranslation('common');
+  const queryClient = useQueryClient();
   const { projectId } = useParams({ strict: false });
   const appNavigation = useAppNavigation();
   const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
@@ -286,6 +290,39 @@ export function IssueWorkspacesSectionContainer({
     [localWorkspacesById, workspacesWithStats, t, issueId, getIssue]
   );
 
+  // Handle archiving/unarchiving a workspace
+  const handleArchiveWorkspace = useCallback(
+    async (localWorkspaceId: string) => {
+      const isCurrentlyArchived =
+        workspacesWithStats.find(
+          (ws) => ws.localWorkspaceId === localWorkspaceId
+        )?.archived ?? false;
+
+      try {
+        await workspacesApi.update(localWorkspaceId, {
+          archived: !isCurrentlyArchived,
+        });
+        queryClient.invalidateQueries({
+          queryKey: workspaceKeys.all,
+        });
+        queryClient.invalidateQueries({
+          queryKey: workspaceSummaryKeys.all,
+        });
+      } catch (error) {
+        ConfirmDialog.show({
+          title: t('common:error'),
+          message:
+            error instanceof Error
+              ? error.message
+              : t('workspaces.archiveError', 'Failed to update workspace'),
+          confirmText: t('common:ok'),
+          showCancelButton: false,
+        });
+      }
+    },
+    [workspacesWithStats, queryClient, t]
+  );
+
   // Actions for the section header
   const actions: SectionAction[] = useMemo(
     () => [
@@ -309,6 +346,7 @@ export function IssueWorkspacesSectionContainer({
       onWorkspaceClick={handleWorkspaceClick}
       onCreateWorkspace={handleAddWorkspace}
       onUnlinkWorkspace={handleUnlinkWorkspace}
+      onArchiveWorkspace={handleArchiveWorkspace}
       onDeleteWorkspace={handleDeleteWorkspace}
       shouldAnimateCreateButton={shouldAnimateCreateButton}
     />

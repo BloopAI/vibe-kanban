@@ -18,7 +18,7 @@ import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
 import { RemoteIssueLink } from './RemoteIssueLink';
 import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { NavbarActionGroups } from '@/shared/actions';
+import { NavbarActionGroups, Actions } from '@/shared/actions';
 import {
   NavbarDivider,
   type ActionDefinition,
@@ -295,6 +295,11 @@ export function NavbarContainer({
     };
   }, [isOnProjectPage, projectId, appNavigation]);
 
+  // Mobile archive handler - uses the existing ArchiveWorkspace action
+  const handleArchive = useCallback(() => {
+    handleExecuteAction(Actions.ArchiveWorkspace);
+  }, [handleExecuteAction]);
+
   // Build user popover slot for mobile mode
   const userPopoverSlot = useMemo(() => {
     if (!mobileMode) return undefined;
@@ -340,6 +345,11 @@ export function NavbarContainer({
       onNavigateBack={handleNavigateBack}
       onNavigateToBoard={handleNavigateToBoard}
       onOpenDrawer={onOpenDrawer}
+      onArchive={
+        mobileMode && selectedWorkspace && !isCreateMode && !isMigratePage
+          ? handleArchive
+          : undefined
+      }
       mobileActiveTab={mobileActiveTab as MobileTabId}
       onMobileTabChange={(tab) => setMobileActiveTab(tab)}
       leftSlot={

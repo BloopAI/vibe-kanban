@@ -1,5 +1,5 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import type { Icon } from '@phosphor-icons/react';
+import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { Icon } from "@phosphor-icons/react";
 import {
   Layout as LayoutIcon,
   ChatsTeardrop as ChatsTeardropIcon,
@@ -13,19 +13,20 @@ import {
   CaretLeft as CaretLeftIcon,
   ArrowClockwise as ArrowClockwiseIcon,
   SidebarSimple as SidebarSimpleIcon,
-} from '@phosphor-icons/react';
-import { cn } from '../lib/cn';
-import { Tooltip } from './Tooltip';
+  Archive as ArchiveIcon,
+} from "@phosphor-icons/react";
+import { cn } from "../lib/cn";
+import { Tooltip } from "./Tooltip";
 import {
   SyncErrorIndicator,
   type SyncErrorIndicatorError,
-} from './SyncErrorIndicator';
+} from "./SyncErrorIndicator";
 
 /**
  * Action item rendered in the navbar.
  */
 export interface NavbarActionItem {
-  type?: 'action';
+  type?: "action";
   id: string;
   icon: Icon;
   isActive?: boolean;
@@ -39,13 +40,13 @@ export interface NavbarActionItem {
  * Divider item rendered in the navbar.
  */
 export interface NavbarDividerItem {
-  type: 'divider';
+  type: "divider";
 }
 
 export type NavbarSectionItem = NavbarActionItem | NavbarDividerItem;
 
 function isDivider(item: NavbarSectionItem): item is NavbarDividerItem {
-  return item.type === 'divider';
+  return item.type === "divider";
 }
 
 // NavbarIconButton - inlined from primitives
@@ -69,16 +70,16 @@ function NavbarIconButton({
     <button
       type="button"
       className={cn(
-        'flex items-center justify-center rounded-sm',
-        'text-low hover:text-normal',
-        isActive && 'text-normal',
-        className
+        "flex items-center justify-center rounded-sm",
+        "text-low hover:text-normal",
+        isActive && "text-normal",
+        className,
       )}
       {...props}
     >
       <IconComponent
         className="size-icon-base"
-        weight={isActive ? 'fill' : 'regular'}
+        weight={isActive ? "fill" : "regular"}
       />
     </button>
   );
@@ -93,20 +94,20 @@ function NavbarIconButton({
 }
 
 export type MobileTabId =
-  | 'workspaces'
-  | 'chat'
-  | 'changes'
-  | 'logs'
-  | 'preview'
-  | 'git';
+  | "workspaces"
+  | "chat"
+  | "changes"
+  | "logs"
+  | "preview"
+  | "git";
 
 export const MOBILE_TABS: { id: MobileTabId; icon: Icon; label: string }[] = [
-  { id: 'workspaces', icon: LayoutIcon, label: 'Wksps' },
-  { id: 'chat', icon: ChatsTeardropIcon, label: 'Chat' },
-  { id: 'changes', icon: GitDiffIcon, label: 'Diff' },
-  { id: 'logs', icon: TerminalIcon, label: 'Logs' },
-  { id: 'preview', icon: DesktopIcon, label: 'Preview' },
-  { id: 'git', icon: GitForkIcon, label: 'Git' },
+  { id: "workspaces", icon: LayoutIcon, label: "Wksps" },
+  { id: "chat", icon: ChatsTeardropIcon, label: "Chat" },
+  { id: "changes", icon: GitDiffIcon, label: "Diff" },
+  { id: "logs", icon: TerminalIcon, label: "Logs" },
+  { id: "preview", icon: DesktopIcon, label: "Preview" },
+  { id: "git", icon: GitForkIcon, label: "Git" },
 ];
 
 export interface NavbarBreadcrumbItem {
@@ -124,7 +125,7 @@ function NavbarBreadcrumbs({
   textClassName,
 }: NavbarBreadcrumbsProps) {
   return (
-    <div className={cn('flex items-center gap-1 min-w-0', textClassName)}>
+    <div className={cn("flex items-center gap-1 min-w-0", textClassName)}>
       {breadcrumbs.map((crumb, index) => {
         const isLast = index === breadcrumbs.length - 1;
         return (
@@ -140,7 +141,7 @@ function NavbarBreadcrumbs({
               </button>
             ) : (
               <span
-                className={cn('truncate', isLast ? 'text-normal' : 'text-low')}
+                className={cn("truncate", isLast ? "text-normal" : "text-low")}
               >
                 {crumb.label}
               </span>
@@ -180,6 +181,7 @@ export interface NavbarProps {
   mobileTabs?: { id: MobileTabId; icon: Icon; label: string }[];
   showMobileTabs?: boolean;
   mobileShowBack?: boolean;
+  onArchive?: () => void;
 }
 
 export function Navbar({
@@ -200,11 +202,12 @@ export function Navbar({
   onReload,
   onOpenDrawer,
   isOnProjectSubRoute = false,
-  mobileActiveTab = 'chat',
+  mobileActiveTab = "chat",
   onMobileTabChange,
   mobileTabs,
   showMobileTabs,
   mobileShowBack,
+  onArchive,
 }: NavbarProps) {
   const renderItem = (item: NavbarSectionItem, key: string) => {
     // Render divider
@@ -224,7 +227,7 @@ export function Navbar({
         tooltip={item.tooltip}
         shortcut={item.shortcut}
         disabled={isDisabled}
-        className={isDisabled ? 'opacity-40 cursor-not-allowed' : ''}
+        className={isDisabled ? "opacity-40 cursor-not-allowed" : ""}
       />
     );
   };
@@ -234,8 +237,8 @@ export function Navbar({
     return (
       <nav
         className={cn(
-          'flex flex-col bg-secondary border-b shrink-0',
-          className
+          "flex flex-col bg-secondary border-b shrink-0",
+          className,
         )}
       >
         {/* Row 1: Tab bar (workspace pages) or minimal header (project pages) */}
@@ -305,16 +308,16 @@ export function Navbar({
                       key={tab.id}
                       type="button"
                       className={cn(
-                        'flex items-center gap-1 px-1.5 py-1 text-xs whitespace-nowrap transition-colors',
+                        "flex items-center gap-1 px-1.5 py-1 text-xs whitespace-nowrap transition-colors",
                         isActive
-                          ? 'text-normal border-b-2 border-brand'
-                          : 'text-low hover:text-normal'
+                          ? "text-normal border-b-2 border-brand"
+                          : "text-low hover:text-normal",
                       )}
                       onClick={() => onMobileTabChange?.(tab.id)}
                     >
                       <TabIcon
                         className="size-icon-sm"
-                        weight={isActive ? 'fill' : 'regular'}
+                        weight={isActive ? "fill" : "regular"}
                       />
                       <span className="hidden min-[480px]:inline">
                         {tab.label}
@@ -351,7 +354,7 @@ export function Navbar({
                     tooltip={item.tooltip}
                     disabled={!!item.disabled}
                     className={
-                      item.disabled ? 'opacity-40 cursor-not-allowed' : ''
+                      item.disabled ? "opacity-40 cursor-not-allowed" : ""
                     }
                   />
                 ))}
@@ -392,10 +395,20 @@ export function Navbar({
           </div>
         </div>
 
-        {/* Row 2: Info bar with leftSlot + breadcrumbs/title (workspace pages only) */}
+        {/* Row 2: Info bar with archive + leftSlot + breadcrumbs/title (workspace pages only) */}
         {!isOnProjectPage && (workspaceTitle || breadcrumbs) && (
           <div className="flex items-center justify-between px-base py-half border-t border-border">
             <div className="flex items-center gap-base flex-1 min-w-0">
+              {onArchive && (
+                <button
+                  type="button"
+                  className="flex items-center justify-center text-low hover:text-normal shrink-0"
+                  onClick={onArchive}
+                  aria-label="Archive workspace"
+                >
+                  <ArchiveIcon className="size-icon-sm" />
+                </button>
+              )}
               {leftSlot}
               {breadcrumbs && breadcrumbs.length > 0 ? (
                 <NavbarBreadcrumbs
@@ -421,8 +434,8 @@ export function Navbar({
     <nav
       data-tauri-drag-region
       className={cn(
-        'flex items-center justify-between px-base py-half bg-secondary border-b shrink-0',
-        className
+        "flex items-center justify-between px-base py-half bg-secondary border-b shrink-0",
+        className,
       )}
     >
       {/* Left - Archive & Old UI Link + optional slot */}
@@ -430,8 +443,8 @@ export function Navbar({
         {leftItems.map((item, index) =>
           renderItem(
             item,
-            `left-${isDivider(item) ? 'divider' : item.id}-${index}`
-          )
+            `left-${isDivider(item) ? "divider" : item.id}-${index}`,
+          ),
         )}
         {leftSlot}
       </div>
@@ -451,7 +464,7 @@ export function Navbar({
             data-tauri-drag-region
             className="text-base text-low truncate cursor-default select-none"
           >
-            {workspaceTitle ?? ''}
+            {workspaceTitle ?? ""}
           </p>
         )}
       </div>
@@ -465,8 +478,8 @@ export function Navbar({
         {rightItems.map((item, index) =>
           renderItem(
             item,
-            `right-${isDivider(item) ? 'divider' : item.id}-${index}`
-          )
+            `right-${isDivider(item) ? "divider" : item.id}-${index}`,
+          ),
         )}
       </div>
     </nav>
