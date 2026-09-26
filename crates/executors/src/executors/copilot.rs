@@ -10,7 +10,7 @@ use workspace_utils::msg_store::MsgStore;
 pub use super::acp::AcpAgentHarness;
 use crate::{
     approvals::ExecutorApprovalService,
-    command::{apply_overrides, CmdOverrides, CommandBuildError, CommandBuilder},
+    command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executor_discovery::ExecutorDiscoveredOptions,
     executors::{
