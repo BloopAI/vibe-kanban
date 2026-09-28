@@ -11,7 +11,7 @@ ENV PNPM_HOME=/pnpm
 ENV PATH=${PNPM_HOME}:${PATH}
 ENV VITE_PUBLIC_POSTHOG_KEY=${POSTHOG_API_KEY}
 ENV VITE_PUBLIC_POSTHOG_HOST=${POSTHOG_API_ENDPOINT}
-ENV NODE_OPTIONS=--max-old-space-size=2048
+ENV NODE_OPTIONS=--max-old-space-size=3072
 
 RUN corepack enable
 RUN pnpm config set store-dir /pnpm/store
