@@ -418,6 +418,7 @@ mod tests {
             "create_session".to_string(),
             "get_context".to_string(),
             "get_execution".to_string(),
+            "get_session_history".to_string(),
             "list_sessions".to_string(),
             "run_session_prompt".to_string(),
             "update_session".to_string(),
