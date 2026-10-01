@@ -1826,8 +1826,7 @@ impl ClaudeLogProcessor {
                     patches.push(ConversationPatch::add_normalized_entry(idx, entry));
                 } else if matches!(subtype.as_deref(), Some("success"))
                     && let Some(text) = result.as_ref().and_then(|v| v.as_str())
-                    && (self.last_assistant_message.is_none()
-                        || matches!(&self.last_assistant_message, Some(message) if !message.contains(text)))
+                    && self.last_assistant_message.is_none()
                 {
                     let entry = NormalizedEntry {
                         timestamp: None,
@@ -1840,6 +1839,14 @@ impl ClaudeLogProcessor {
                     let idx = entry_index_provider.next();
                     patches.push(ConversationPatch::add_normalized_entry(idx, entry));
                 }
+
+                // Reset so the skip check's "this turn" semantic is accurate:
+                // only assistant content streamed within the turn that ended
+                // at this Result event should suppress emission. If a
+                // subsequent turn arrives with no streamed assistant content
+                // (e.g. processor reused across turns), its Result.success
+                // fallback must still emit.
+                self.last_assistant_message = None;
             }
             ClaudeJson::ApprovalRequested {
                 tool_call_id,
@@ -2832,6 +2839,81 @@ mod tests {
             NormalizedEntryType::AssistantMessage
         ));
         assert_eq!(entries[0].content, "Final result");
+    }
+
+    #[test]
+    fn test_result_message_emits_fallback_in_later_turn_after_reset() {
+        // Defensive: after a Result event the processor clears
+        // `last_assistant_message`, so a subsequent turn whose Result.success
+        // is NOT preceded by streamed assistant content (e.g. a processor
+        // reused across turns, or a turn where Claude CLI produced only
+        // metadata / tool-use before the Result) still emits its fallback
+        // text. Without the reset the `.is_none()` gate would stay false
+        // for the lifetime of the processor once any assistant text has
+        // been seen, silently dropping valid fallback emissions.
+        let mut processor = ClaudeLogProcessor::new();
+
+        // Turn 1: streamed assistant text + Result.success with matching body
+        let t1_assistant = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Turn 1 reply"}]},"session_id":"s"}"#;
+        let parsed: ClaudeJson = serde_json::from_str(t1_assistant).unwrap();
+        let e1 = normalize_helper(&mut processor, &parsed, "");
+        assert_eq!(e1.len(), 1);
+        assert_eq!(e1[0].content, "Turn 1 reply");
+
+        let t1_result = r#"{"type":"result","subtype":"success","is_error":false,"duration_ms":1,"result":"Turn 1 reply"}"#;
+        let parsed: ClaudeJson = serde_json::from_str(t1_result).unwrap();
+        let e1r = normalize_helper(&mut processor, &parsed, "");
+        assert!(
+            e1r.is_empty(),
+            "redundant Result.success for this turn must be skipped"
+        );
+
+        // Turn 2: Result.success WITHOUT preceding streamed assistant content.
+        // Must still emit (the reset after Turn 1's Result cleared the gate).
+        let t2_result = r#"{"type":"result","subtype":"success","is_error":false,"duration_ms":1,"result":"Turn 2 fallback"}"#;
+        let parsed: ClaudeJson = serde_json::from_str(t2_result).unwrap();
+        let e2 = normalize_helper(&mut processor, &parsed, "");
+        assert_eq!(
+            e2.len(),
+            1,
+            "fallback Result.success in a turn without streamed content must emit, got: {e2:?}"
+        );
+        assert_eq!(e2[0].content, "Turn 2 fallback");
+    }
+
+    #[test]
+    fn test_result_message_skips_when_assistant_content_already_streamed() {
+        // Regression: when the stream already delivered assistant content via
+        // a prior `type=assistant` event (or `stream_event` deltas, which set
+        // the same `last_assistant_message` state), the terminal
+        // `type=result, subtype=success` event's `result` field is a
+        // redundant summary of that content and must NOT be emitted again.
+        //
+        // In real Claude CLI output the streamed text and the Result summary
+        // often differ by a byte or two somewhere in the middle (not just a
+        // trailing whitespace difference), so substring / trimmed-equality
+        // predicates are both insufficient. The correct predicate is:
+        // emit Result.success's text only when no assistant content was
+        // seen this turn at all.
+        let mut processor = ClaudeLogProcessor::new();
+
+        let assistant_json = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Hello world"}]},"session_id":"abc"}"#;
+        let parsed: ClaudeJson = serde_json::from_str(assistant_json).unwrap();
+        let streamed = normalize_helper(&mut processor, &parsed, "");
+        assert_eq!(streamed.len(), 1);
+        assert_eq!(streamed[0].content, "Hello world");
+
+        // Result.success with content that is NOT a substring of the streamed
+        // message (one character differs), exactly the shape observed in real
+        // output that caused the reported UI duplication.
+        let result_json = r#"{"type":"result","subtype":"success","is_error":false,"duration_ms":100,"result":"Hello World"}"#;
+        let parsed: ClaudeJson = serde_json::from_str(result_json).unwrap();
+        let after_result = normalize_helper(&mut processor, &parsed, "");
+        assert!(
+            after_result.is_empty(),
+            "Result.success must not be re-emitted when an assistant message \
+             was already streamed this turn, got duplicate: {after_result:?}"
+        );
     }
 
     #[test]
