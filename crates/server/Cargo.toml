@@ -52,6 +52,7 @@ reqwest = { workspace = true }
 rustls = { workspace = true }
 aws-lc-sys = { workspace = true }
 aws-lc-rs = { workspace = true }
+clap = { version = "4", features = ["derive"] }
 strip-ansi-escapes = "0.2.1"
 thiserror = { workspace = true }
 os_info = "3.12.0"
