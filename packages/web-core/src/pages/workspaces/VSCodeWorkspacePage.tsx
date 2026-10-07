@@ -1,7 +1,7 @@
 // VS Code webview integration - install keyboard/clipboard bridge
 import '@/integrations/vscode/bridge';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { Session } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 import { AppWithStyleOverride } from '@/shared/lib/StyleOverride';
@@ -21,6 +21,7 @@ import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/Me
 import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/features/workspace-chat/model/contexts/ApprovalFeedbackContext';
 import { forwardWheelToScroller } from '@/features/workspace-chat/ui/forwardWheelToScroller';
+import { usePinConversationToBottomOnChatBoxResize } from '@/features/workspace-chat/ui/usePinConversationToBottomOnChatBoxResize';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
 
 function VSCodeChatBox({
@@ -86,7 +87,6 @@ export function VSCodeWorkspacePage() {
   const mainContainerRef = useRef<HTMLElement>(null);
   const conversationListRef = useRef<ConversationListHandle>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
-  const isAtBottomRef = useRef(isAtBottom);
 
   const {
     workspace,
@@ -126,48 +126,14 @@ export function VSCodeWorkspacePage() {
   );
 
   const handleAtBottomChange = useCallback((atBottom: boolean) => {
-    isAtBottomRef.current = atBottom;
     setIsAtBottom(atBottom);
   }, []);
-
-  useEffect(() => {
-    isAtBottomRef.current = isAtBottom;
-  }, [isAtBottom]);
-
-  useEffect(() => {
-    const container = mainContainerRef.current;
-    if (!container || typeof ResizeObserver === 'undefined') return;
-
-    const chatBoxContainer = container.querySelector<HTMLElement>(
-      '[data-chatbox-container="true"]'
-    );
-    if (!chatBoxContainer) return;
-
-    let previousHeight = chatBoxContainer.getBoundingClientRect().height;
-
-    const observer = new ResizeObserver((entries) => {
-      const nextHeight =
-        entries[0]?.contentRect.height ??
-        chatBoxContainer.getBoundingClientRect().height;
-
-      if (Math.abs(nextHeight - previousHeight) < 0.5) return;
-      const heightDelta = nextHeight - previousHeight;
-      previousHeight = nextHeight;
-
-      if (!isAtBottomRef.current) return;
-
-      requestAnimationFrame(() => {
-        if (!isAtBottomRef.current) return;
-        conversationListRef.current?.adjustScrollBy(heightDelta);
-      });
-    });
-
-    observer.observe(chatBoxContainer);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [workspaceWithSession?.id, selectedSession?.id]);
+  usePinConversationToBottomOnChatBoxResize({
+    containerRef: mainContainerRef,
+    conversationListRef,
+    isAtBottom,
+    scopeKey: `${workspaceWithSession?.id ?? 'none'}:${selectedSession?.id ?? 'new'}`,
+  });
 
   return (
     <AppWithStyleOverride setTheme={setTheme}>
