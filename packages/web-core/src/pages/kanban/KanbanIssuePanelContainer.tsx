@@ -8,9 +8,14 @@ import {
 } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
-import type { OrganizationMemberWithProfile } from 'shared/types';
+import type {
+  OrganizationMemberWithProfile,
+  DraftIssueData,
+} from 'shared/types';
+import { ScratchType } from 'shared/types';
 import type { IssuePriority } from 'shared/remote-types';
 import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
+import { useScratch } from '@/shared/hooks/useScratch';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
 import { useProjectWorkspaceCreateDraft } from '@/shared/hooks/useProjectWorkspaceCreateDraft';
@@ -61,7 +66,6 @@ import {
   patchKanbanIssueComposer,
   resetKanbanIssueComposer,
   useKanbanIssueComposer,
-  useKanbanIssueComposerStore,
 } from '@/shared/stores/useKanbanIssueComposerStore';
 
 interface KanbanIssuePanelContainerProps {
@@ -121,6 +125,17 @@ export function KanbanIssuePanelContainer({
   );
   const issueComposer = useKanbanIssueComposer(issueComposerKey);
   const kanbanCreateMode = issueComposer !== null;
+
+  // Persistent draft storage via the scratch system.
+  // On local-web this uses SQLite (WebSocket stream); on remote-web it uses
+  // localStorage — both survive navigation and port changes.
+  const {
+    scratch: issueDraftScratch,
+    updateScratch: updateIssueDraftScratch,
+    deleteScratch: deleteIssueDraftScratch,
+    isLoading: isIssueDraftScratchLoading,
+  } = useScratch(ScratchType.DRAFT_ISSUE, projectId);
+
   const createComposerInitial = issueComposer?.initial ?? null;
   const kanbanCreateDefaultStatusId = createComposerInitial?.statusId ?? null;
   const kanbanCreateDefaultPriority = createComposerInitial?.priority ?? null;
@@ -175,6 +190,44 @@ export function KanbanIssuePanelContainer({
 
     resetKanbanIssueComposer(issueComposerKey);
   }, [issueComposerKey]);
+
+  const saveIssueDraftToScratch = useCallback(
+    async (formData: IssueFormData) => {
+      try {
+        await updateIssueDraftScratch({
+          payload: {
+            type: 'DRAFT_ISSUE',
+            data: {
+              title: formData.title,
+              description: formData.description ?? null,
+              status_id: formData.statusId,
+              priority: formData.priority,
+              assignee_ids: formData.assigneeIds,
+              tag_ids: formData.tagIds,
+              create_draft_workspace: formData.createDraftWorkspace,
+              project_id: projectId,
+              parent_issue_id: createComposerInitial?.parentIssueId ?? null,
+            } satisfies DraftIssueData,
+          },
+        });
+      } catch (e) {
+        console.error(
+          '[KanbanIssuePanelContainer] Failed to save issue draft:',
+          e
+        );
+      }
+    },
+    [updateIssueDraftScratch, projectId, createComposerInitial?.parentIssueId]
+  );
+
+  const {
+    debounced: debouncedSaveIssueDraft,
+    cancel: cancelDebouncedIssueDraft,
+  } = useDebouncedCallback(saveIssueDraftToScratch, 500);
+
+  const createFormDataRef = useRef<IssueFormData | null>(null);
+  const saveIssueDraftToScratchRef = useRef(saveIssueDraftToScratch);
+  const skipUnmountSaveRef = useRef(false);
 
   const { isLoading: orgLoading, membersWithProfilesById } = useOrgContext();
 
@@ -287,6 +340,8 @@ export function KanbanIssuePanelContainer({
     createInitialKanbanIssuePanelFormState
   );
   const createFormData = formState.createFormData;
+  createFormDataRef.current = createFormData;
+  saveIssueDraftToScratchRef.current = saveIssueDraftToScratch;
 
   useEffect(() => {
     if (mode !== 'create') return;
@@ -559,47 +614,57 @@ export function KanbanIssuePanelContainer({
     const shouldSeedCreateForm = mode === 'create' && createFormData === null;
 
     if (!isNewIssue && !shouldSeedCreateForm) {
-      // Same issue - no reset needed
-      // (dropdown fields derive from server state, text fields preserve local edits)
       return;
     }
 
-    // Track the new issue ID
+    // Wait for scratch to finish loading before seeding create mode.
+    if (mode === 'create' && isIssueDraftScratchLoading) {
+      return;
+    }
+
     prevIssueIdRef.current = currentIssueId;
 
-    // Cancel any pending debounced saves when switching issues
     cancelDebouncedTitle();
     cancelDebouncedDescription();
+    cancelDebouncedIssueDraft();
+    skipUnmountSaveRef.current = false;
 
     let nextCreateFormData: IssueFormData | null = null;
     let restoredFromScratch = false;
 
     if (mode === 'create') {
-      // Check if the composer store has a saved draft (e.g., restored from
-      // localStorage on remote-web). Use it to seed the form instead of defaults.
-      const composerDraft =
-        useKanbanIssueComposerStore.getState().byKey[issueComposerKey]?.draft;
-      const hasSavedDraft =
-        composerDraft != null &&
-        (composerDraft.title !== '' || composerDraft.description != null);
+      const scratchDraft: DraftIssueData | undefined =
+        issueDraftScratch?.payload?.type === 'DRAFT_ISSUE'
+          ? issueDraftScratch.payload.data
+          : undefined;
+      const hasScratchDraft =
+        scratchDraft != null &&
+        scratchDraft.project_id === projectId &&
+        (scratchDraft.title !== '' || scratchDraft.description != null);
 
-      if (hasSavedDraft) {
+      if (hasScratchDraft) {
         nextCreateFormData = {
-          title: composerDraft.title,
-          description: composerDraft.description ?? null,
-          statusId: composerDraft.statusId ?? createModeDefaults.statusId,
-          priority:
-            composerDraft.priority === undefined
-              ? createModeDefaults.priority
-              : composerDraft.priority,
-          assigneeIds:
-            composerDraft.assigneeIds ?? createModeDefaults.assigneeIds,
-          tagIds: composerDraft.tagIds ?? createModeDefaults.tagIds,
+          title: scratchDraft.title,
+          description: scratchDraft.description ?? null,
+          statusId: scratchDraft.status_id || createModeDefaults.statusId,
+          priority: (scratchDraft.priority as IssuePriority | null) ?? null,
+          assigneeIds: scratchDraft.assignee_ids,
+          tagIds: scratchDraft.tag_ids ?? createModeDefaults.tagIds,
           createDraftWorkspace:
-            composerDraft.createDraftWorkspace ??
+            scratchDraft.create_draft_workspace ??
             createModeDefaults.createDraftWorkspace,
         };
         restoredFromScratch = true;
+
+        patchKanbanIssueComposer(issueComposerKey, {
+          title: nextCreateFormData.title,
+          description: nextCreateFormData.description,
+          statusId: nextCreateFormData.statusId,
+          priority: nextCreateFormData.priority,
+          assigneeIds: nextCreateFormData.assigneeIds,
+          tagIds: nextCreateFormData.tagIds,
+          createDraftWorkspace: nextCreateFormData.createDraftWorkspace,
+        });
       } else {
         nextCreateFormData = createModeDefaults;
       }
@@ -617,9 +682,40 @@ export function KanbanIssuePanelContainer({
     selectedKanbanIssueId,
     cancelDebouncedTitle,
     cancelDebouncedDescription,
+    cancelDebouncedIssueDraft,
     createModeDefaults,
     issueComposerKey,
+    isIssueDraftScratchLoading,
+    issueDraftScratch,
+    projectId,
   ]);
+
+  // Autosave: persist dirty create-mode drafts to scratch storage.
+  useEffect(() => {
+    if (!kanbanCreateMode || !createFormData || !isCreateDraftDirty) return;
+    debouncedSaveIssueDraft(createFormData);
+    return () => {
+      cancelDebouncedIssueDraft();
+    };
+  }, [
+    kanbanCreateMode,
+    createFormData,
+    isCreateDraftDirty,
+    debouncedSaveIssueDraft,
+    cancelDebouncedIssueDraft,
+  ]);
+
+  // Flush pending draft save on unmount (e.g., navigation away).
+  useEffect(() => {
+    return () => {
+      cancelDebouncedIssueDraft();
+      if (skipUnmountSaveRef.current) return;
+      const form = createFormDataRef.current;
+      if (form && (form.title || form.description)) {
+        void saveIssueDraftToScratchRef.current(form);
+      }
+    };
+  }, [cancelDebouncedIssueDraft]);
 
   useEffect(() => {
     const wasPending = prevHasPendingAttachmentsRef.current;
@@ -890,6 +986,10 @@ export function KanbanIssuePanelContainer({
           });
         }
 
+        skipUnmountSaveRef.current = true;
+        cancelDebouncedIssueDraft();
+        void deleteIssueDraftScratch();
+
         if (issueComposerKey) {
           closeKanbanIssueComposer(issueComposerKey);
         }
@@ -972,12 +1072,19 @@ export function KanbanIssuePanelContainer({
   }, [mode, handleSubmit]);
 
   const handleDeleteDraft = useCallback(() => {
+    cancelDebouncedIssueDraft();
+    void deleteIssueDraftScratch();
     dispatchFormState({
       type: 'setCreateFormData',
       createFormData: createModeDefaults,
     });
     resetIssueComposerDraft();
-  }, [createModeDefaults, resetIssueComposerDraft]);
+  }, [
+    createModeDefaults,
+    resetIssueComposerDraft,
+    cancelDebouncedIssueDraft,
+    deleteIssueDraftScratch,
+  ]);
 
   // Tag create callback - returns the new tag ID so it can be auto-selected
   const handleCreateTag = useCallback(

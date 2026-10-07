@@ -17,7 +17,6 @@ import { TerminalProvider } from "@/shared/providers/TerminalProvider";
 import { LogsPanelProvider } from "@/shared/providers/LogsPanelProvider";
 import { ActionsProvider } from "@/shared/providers/ActionsProvider";
 import { useAuth } from "@/shared/hooks/auth/useAuth";
-import { useKanbanIssueComposerScratch } from "@/shared/hooks/useKanbanIssueComposerScratch";
 import { useUiPreferencesScratch } from "@/shared/hooks/useUiPreferencesScratch";
 import { useWorkspaceContext } from "@/shared/hooks/useWorkspaceContext";
 import { AppNavigationProvider } from "@/shared/hooks/useAppNavigation";
@@ -109,7 +108,6 @@ function WorkspaceRouteProviders({ children }: { children: ReactNode }) {
 function RootLayout() {
   useSystemTheme();
   useUiPreferencesScratch();
-  useKanbanIssueComposerScratch();
   const { isSignedIn } = useAuth();
   const location = useLocation();
   const { hostId } = useParams({ strict: false });
