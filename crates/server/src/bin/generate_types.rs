@@ -224,6 +224,7 @@ fn generate_types_content() -> String {
         executors::executors::copilot::Copilot::decl(),
         executors::executors::opencode::Opencode::decl(),
         executors::executors::qwen::QwenCode::decl(),
+        executors::executors::omp::Omp::decl(),
         executors::executors::droid::Droid::decl(),
         executors::executors::droid::Autonomy::decl(),
         executors::executors::droid::ReasoningEffortLevel::decl(),
@@ -342,6 +343,10 @@ fn generate_schemas() -> Result<HashMap<&'static str, String>, serde_json::Error
         (
             "qwen_code",
             generate_json_schema::<executors::executors::qwen::QwenCode>()?,
+        ),
+        (
+            "omp",
+            generate_json_schema::<executors::executors::omp::Omp>()?,
         ),
         (
             "copilot",
