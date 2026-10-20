@@ -311,7 +311,7 @@ mod tests {
         use tokio::io::AsyncReadExt;
 
         let current_dir = std::env::current_dir().unwrap();
-        let env = ExecutionEnv::new(current_dir.clone(), current_dir.clone(), Vec::new());
+        let env = ExecutionEnv::new(Default::default(), false, String::new());
         for model in [
             None,
             Some("minimax-m3"),
