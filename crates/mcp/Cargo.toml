@@ -1,6 +1,6 @@
 [package]
 name = "mcp"
-version = "0.1.44"
+version = "0.1.45"
 edition = "2024"
 autobins = false
 
@@ -12,10 +12,10 @@ path = "src/bin/vibe_kanban_mcp.rs"
 uninlined-format-args = "allow"
 
 [dependencies]
-api-types = { path = "../api-types" }
-db = { path = "../db" }
-executors = { path = "../executors" }
-utils = { path = "../utils" }
+api-types = { path = "../api-types" , version = "0.1.45" }
+db = { path = "../db" , version = "0.1.45" }
+executors = { path = "../executors" , version = "0.1.45" }
+utils = { path = "../utils" , version = "0.1.45" }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

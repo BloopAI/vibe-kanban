@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { isImeConfirmation } from '../lib/imeComposition';
 import { cn } from '../lib/cn';
 import { twMerge } from 'tailwind-merge';
 
@@ -24,7 +25,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       if (e.key === 'Escape') {
         e.currentTarget.blur();
       }
-      if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+      if (e.key === 'Enter' && !isImeConfirmation(e.nativeEvent)) {
         if (e.metaKey && e.shiftKey) {
           onCommandShiftEnter?.(e);
         } else {

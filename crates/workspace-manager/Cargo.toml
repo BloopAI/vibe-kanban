@@ -1,13 +1,13 @@
 [package]
 name = "workspace-manager"
-version = "0.1.44"
+version = "0.1.45"
 edition = "2024"
 
 [dependencies]
-db = { path = "../db" }
-git = { path = "../git" }
-utils = { path = "../utils" }
-worktree-manager = { path = "../worktree-manager" }
+db = { path = "../db" , version = "0.1.45" }
+git = { path = "../git" , version = "0.1.45" }
+utils = { path = "../utils" , version = "0.1.45" }
+worktree-manager = { path = "../worktree-manager" , version = "0.1.45" }
 sqlx = "0.8.6"
 tokio = { workspace = true }
 thiserror = { workspace = true }

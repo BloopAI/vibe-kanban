@@ -1,6 +1,6 @@
 [package]
 name = "relay-webrtc"
-version = "0.1.44"
+version = "0.1.45"
 edition = "2024"
 
 [dependencies]
@@ -15,8 +15,8 @@ ts-rs = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 reqwest = { workspace = true }
-relay-protocol = { path = "../relay-protocol" }
-ws-bridge = { path = "../ws-bridge" }
+relay-protocol = { path = "../relay-protocol" , version = "0.1.45" }
+ws-bridge = { path = "../ws-bridge" , version = "0.1.45" }
 tokio-tungstenite = "0.26"
 futures-util = { version = "0.3", features = ["sink"] }
 http = "1"

@@ -1,6 +1,6 @@
 [package]
 name = "services"
-version = "0.1.44"
+version = "0.1.45"
 edition = "2024"
 
 [features]
@@ -10,14 +10,14 @@ qa-mode = ["executors/qa-mode"]
 
 [dependencies]
 indicatif = "0.17"
-api-types = { path = "../api-types" }
-relay-types = { path = "../relay-types" }
-utils = { path = "../utils" }
-git = { path = "../git" }
-git-host = { path = "../git-host" }
-executors = { path = "../executors" }
-db = { path = "../db" }
-worktree-manager = { path = "../worktree-manager" }
+api-types = { path = "../api-types" , version = "0.1.45" }
+relay-types = { path = "../relay-types" , version = "0.1.45" }
+utils = { path = "../utils" , version = "0.1.45" }
+git = { path = "../git" , version = "0.1.45" }
+git-host = { path = "../git-host" , version = "0.1.45" }
+executors = { path = "../executors" , version = "0.1.45" }
+db = { path = "../db" , version = "0.1.45" }
+worktree-manager = { path = "../worktree-manager" , version = "0.1.45" }
 tokio = { workspace = true }
 tokio-util = { version = "0.7", features = ["io"] }
 serde = { workspace = true }
