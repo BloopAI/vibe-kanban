@@ -246,8 +246,6 @@ impl StandardCodingAgentExecutor for Droid {
                     ("claude-sonnet-4-6", "Claude Sonnet 4.6"),
                     ("kimi-k2.5", "Kimi K2.5"),
                     ("minimax-m3", "MiniMax M3"),
-                    ("minimax-m2.7", "MiniMax M2.7"),
-                    ("minimax-m2.7-highspeed", "MiniMax M2.7 Highspeed"),
                     ("glm-4.7", "GLM-4.7"),
                     ("claude-opus-4-5-20251101", "Claude Opus 4.5"),
                     ("claude-sonnet-4-5-20250929", "Claude Sonnet 4.5"),
@@ -275,5 +273,91 @@ impl StandardCodingAgentExecutor for Droid {
         Ok(Box::pin(futures::stream::once(async move {
             patch::executor_discovered_options(options)
         })))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use futures::StreamExt;
+    use serde_json::json;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn discovery_offers_only_factory_supported_current_minimax_models() {
+        let droid: Droid = serde_json::from_value(json!({})).unwrap();
+        let mut patches = droid.discover_options(None, None).await.unwrap();
+        let mut state = json!({"options": {}});
+        while let Some(patch) = patches.next().await {
+            json_patch::patch(&mut state, &patch).unwrap();
+        }
+        let options: ExecutorDiscoveredOptions =
+            serde_json::from_value(state["options"].clone()).unwrap();
+        let models = &options.model_selector.models;
+        let minimax: Vec<_> = models
+            .iter()
+            .filter(|model| model.id.starts_with("minimax-"))
+            .map(|model| model.id.as_str())
+            .collect();
+        assert_eq!(minimax, ["minimax-m3"]);
+        assert!(models.iter().any(|model| model.id == "gpt-5.3-codex"));
+        assert!(options.model_selector.default_model.is_none());
+        assert!(droid.get_preset_options().model_id.is_none());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn spawned_droid_preserves_default_saved_and_selected_model_arguments() {
+        use tokio::io::AsyncReadExt;
+
+        let current_dir = std::env::current_dir().unwrap();
+        let env = ExecutionEnv::new(current_dir.clone(), current_dir.clone(), Vec::new());
+        for model in [
+            None,
+            Some("minimax-m3"),
+            Some("minimax-m2.7"),
+            Some("minimax-m2.7-highspeed"),
+            Some("custom:MiniMax-M2.7-private-0"),
+            Some("gpt-5.3-codex"),
+        ] {
+            for follow_up in [false, true] {
+                // Deserialize a saved profile, then exercise the same override path as
+                // the model picker for M3. The recorder replaces only the executable.
+                let mut droid: Droid = serde_json::from_value(json!({"model": model})).unwrap();
+                if model == Some("minimax-m3") {
+                    droid.model = Some("minimax-m2.7".to_string());
+                    let mut selection = droid.get_preset_options();
+                    selection.model_id = model.map(str::to_string);
+                    droid.apply_overrides(&selection);
+                }
+                droid.cmd.base_command_override = Some(
+                    r#"sh -c 'printf "%s\n" "$@"; printf "PROMPT:"; cat' droid exec"#.to_string(),
+                );
+                let prompt = "Keep this prompt unchanged.";
+                let mut spawned = if follow_up {
+                    droid
+                        .spawn_follow_up(&current_dir, prompt, "saved-session", None, &env)
+                        .await
+                } else {
+                    droid.spawn(&current_dir, prompt, &env).await
+                }
+                .unwrap();
+                let mut stdout = spawned.child.inner().stdout.take().unwrap();
+                let mut output = String::new();
+                stdout.read_to_string(&mut output).await.unwrap();
+                assert!(spawned.child.wait().await.unwrap().success());
+
+                let mut expected =
+                    "exec\n--output-format\nstream-json\n--skip-permissions-unsafe\n".to_string();
+                if let Some(model) = model {
+                    expected.push_str(&format!("--model\n{model}\n"));
+                }
+                if follow_up {
+                    expected.push_str("--session-id\nsaved-session\n");
+                }
+                expected.push_str(&format!("PROMPT:{prompt}"));
+                assert_eq!(output, expected, "model={model:?}, follow_up={follow_up}");
+            }
+        }
     }
 }
