@@ -18,6 +18,9 @@ enum McpLaunchMode {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct LaunchConfig {
     mode: McpLaunchMode,
+    port: Option<u16>,
+    host: Option<String>,
+    backend_url: Option<String>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -31,8 +34,8 @@ fn main() -> anyhow::Result<()> {
             let version = env!("CARGO_PKG_VERSION");
             init_process_logging("vibe-kanban-mcp", version);
 
-            let base_url = resolve_base_url("vibe-kanban-mcp").await?;
-            let LaunchConfig { mode } = launch_config;
+            let base_url = resolve_base_url("vibe-kanban-mcp", &launch_config).await?;
+            let LaunchConfig { mode, .. } = launch_config;
 
             let server = match mode {
                 McpLaunchMode::Global => McpServer::new_global(&base_url),
@@ -58,6 +61,9 @@ where
     I: Iterator<Item = String>,
 {
     let mut mode = None;
+    let mut port = None;
+    let mut host = None;
+    let mut backend_url = None;
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -66,13 +72,38 @@ where
                     anyhow::anyhow!("Missing value for --mode. Expected 'global' or 'orchestrator'")
                 })?);
             }
+            "--port" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| anyhow::anyhow!("Missing value for --port"))?;
+                port = Some(
+                    value
+                        .trim()
+                        .parse::<u16>()
+                        .map_err(|e| anyhow::anyhow!("Invalid port '{}': {}", value, e))?,
+                );
+            }
+            "--host" => {
+                host = Some(
+                    args.next()
+                        .ok_or_else(|| anyhow::anyhow!("Missing value for --host"))?,
+                );
+            }
+            "--backend-url" => {
+                backend_url = Some(
+                    args.next()
+                        .ok_or_else(|| anyhow::anyhow!("Missing value for --backend-url"))?,
+                );
+            }
             "-h" | "--help" => {
-                println!("Usage: vibe-kanban-mcp --mode <global|orchestrator>");
+                println!(
+                    "Usage: vibe-kanban-mcp [--mode <global|orchestrator>] [--port <PORT>] [--host <HOST>] [--backend-url <URL>]"
+                );
                 std::process::exit(0);
             }
             _ => {
                 return Err(anyhow::anyhow!(
-                    "Unknown argument '{arg}'. Usage: vibe-kanban-mcp --mode <global|orchestrator>"
+                    "Unknown argument '{arg}'. Usage: vibe-kanban-mcp [--mode <global|orchestrator>] [--port <PORT>] [--host <HOST>] [--backend-url <URL>]"
                 ));
             }
         }
@@ -94,38 +125,56 @@ where
         }
     };
 
-    Ok(LaunchConfig { mode })
+    Ok(LaunchConfig {
+        mode,
+        port,
+        host,
+        backend_url,
+    })
 }
 
-async fn resolve_base_url(log_prefix: &str) -> anyhow::Result<String> {
-    if let Ok(url) = std::env::var("VIBE_BACKEND_URL") {
+async fn resolve_base_url(log_prefix: &str, config: &LaunchConfig) -> anyhow::Result<String> {
+    if let Some(url) = &config.backend_url {
         tracing::info!(
-            "[{}] Using backend URL from VIBE_BACKEND_URL: {}",
+            "[{}] Using backend URL from --backend-url: {}",
             log_prefix,
             url
         );
+        return Ok(url.clone());
+    }
+
+    let host_override = config.host.clone().or_else(|| std::env::var(HOST_ENV).ok());
+    let port_override = config
+        .port
+        .or_else(|| std::env::var(PORT_ENV).ok().and_then(|s| s.parse().ok()));
+
+    if let Some(mut base) = std::env::var("VIBE_BACKEND_URL")
+        .ok()
+        .and_then(|u| url::Url::parse(&u).ok())
+    {
+        if let Some(h) = &host_override {
+            let _ = base.set_host(Some(h));
+        }
+        if let Some(p) = port_override {
+            let _ = base.set_port(Some(p));
+        }
+        let url = base.as_str().trim_end_matches('/').to_string();
+        tracing::info!("[{}] Using backend URL: {}", log_prefix, url);
         return Ok(url);
     }
 
-    let host = std::env::var(HOST_ENV)
-        .or_else(|_| std::env::var("HOST"))
-        .unwrap_or_else(|_| "127.0.0.1".to_string());
+    let host = host_override
+        .or_else(|| std::env::var("HOST").ok())
+        .unwrap_or_else(|| "127.0.0.1".to_string());
 
-    let port = match std::env::var(PORT_ENV)
-        .or_else(|_| std::env::var("BACKEND_PORT"))
-        .or_else(|_| std::env::var("PORT"))
-    {
-        Ok(port_str) => {
-            tracing::info!("[{}] Using port from environment: {}", log_prefix, port_str);
-            port_str
-                .parse::<u16>()
-                .map_err(|error| anyhow::anyhow!("Invalid port value '{}': {}", port_str, error))?
-        }
-        Err(_) => {
-            let port = read_port_file("vibe-kanban").await?;
-            tracing::info!("[{}] Using port from port file: {}", log_prefix, port);
-            port
-        }
+    let port = if let Some(p) = port_override {
+        p
+    } else if let Ok(port_str) = std::env::var("BACKEND_PORT").or_else(|_| std::env::var("PORT")) {
+        port_str
+            .parse::<u16>()
+            .map_err(|error| anyhow::anyhow!("Invalid port value '{}': {}", port_str, error))?
+    } else {
+        read_port_file("vibe-kanban").await?
     };
 
     let url = format!("http://{}:{}", host, port);
@@ -170,7 +219,10 @@ mod tests {
         assert_eq!(
             config,
             LaunchConfig {
-                mode: McpLaunchMode::Orchestrator
+                mode: McpLaunchMode::Orchestrator,
+                port: None,
+                host: None,
+                backend_url: None,
             }
         );
     }
