@@ -2,8 +2,7 @@ import type { Issue } from 'shared/remote-types';
 import type { SelectionPage } from '../SelectionDialog';
 
 export type SubIssueSelectionResult =
-  | { type: 'selected'; issueId: string }
-  | { type: 'createNew' };
+  { type: 'selected'; issueId: string } | { type: 'createNew' };
 
 export function buildSubIssueSelectionPages(
   issues: Issue[],

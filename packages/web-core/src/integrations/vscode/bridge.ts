@@ -242,9 +242,7 @@ function enqueueInsert(text: string) {
     const el =
       activeEditable() ||
       (document.querySelector(EDITABLE_SELECTOR) as
-        | HTMLTextAreaElement
-        | HTMLInputElement
-        | null);
+        HTMLTextAreaElement | HTMLInputElement | null);
     if (el) {
       // drain queue
       while (insertQueue.length > 0) {
@@ -330,9 +328,7 @@ window.addEventListener('message', (e: MessageEvent) => {
     const el =
       activeEditable() ||
       (document.querySelector(EDITABLE_SELECTOR) as
-        | HTMLTextAreaElement
-        | HTMLInputElement
-        | null);
+        HTMLTextAreaElement | HTMLInputElement | null);
     if (el) insertTextAtCaretGeneric(msg.text);
     else enqueueInsert(msg.text);
   }
@@ -363,9 +359,7 @@ export function installVSCodeIframeKeyboardBridge() {
       }
     } else if (isCut(e)) {
       const el = activeEditable() as
-        | HTMLInputElement
-        | HTMLTextAreaElement
-        | null;
+        HTMLInputElement | HTMLTextAreaElement | null;
       if (el) {
         e.preventDefault();
         e.stopPropagation();

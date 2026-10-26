@@ -136,9 +136,7 @@ interface PlaceholderProps extends SharedProps {
 }
 
 type SessionChatBoxContainerProps =
-  | ExistingSessionProps
-  | NewSessionProps
-  | PlaceholderProps;
+  ExistingSessionProps | NewSessionProps | PlaceholderProps;
 
 export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const {

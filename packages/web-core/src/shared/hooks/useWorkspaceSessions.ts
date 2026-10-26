@@ -11,8 +11,7 @@ interface UseWorkspaceSessionsOptions {
 
 /** Discriminated union for session selection state */
 export type SessionSelection =
-  | { mode: 'existing'; sessionId: string }
-  | { mode: 'new' };
+  { mode: 'existing'; sessionId: string } | { mode: 'new' };
 
 interface UseWorkspaceSessionsResult {
   sessions: Session[];

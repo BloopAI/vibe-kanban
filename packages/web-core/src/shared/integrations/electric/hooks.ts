@@ -29,8 +29,11 @@ export interface UseShapeResult<TRow> {
 /**
  * Extended result when mutation is provided — adds insert/update/remove.
  */
-export interface UseShapeMutationResult<TRow, TCreate, TUpdate>
-  extends UseShapeResult<TRow> {
+export interface UseShapeMutationResult<
+  TRow,
+  TCreate,
+  TUpdate,
+> extends UseShapeResult<TRow> {
   /** Insert a new row (optimistic), returns row and persistence promise */
   insert: (data: TCreate) => InsertResult<TRow>;
   /** Update a row by ID (optimistic), returns persistence promise */
@@ -47,9 +50,8 @@ export interface UseShapeMutationResult<TRow, TCreate, TUpdate>
  * Options for the useShape hook.
  */
 export interface UseShapeOptions<
-  M extends
-    | MutationDefinition<unknown, unknown, unknown>
-    | undefined = undefined,
+  M extends MutationDefinition<unknown, unknown, unknown> | undefined =
+    undefined,
 > {
   /**
    * Whether to enable the Electric sync subscription.
@@ -85,9 +87,8 @@ export interface UseShapeOptions<
  */
 export function useShape<
   T extends Record<string, unknown>,
-  M extends
-    | MutationDefinition<unknown, unknown, unknown>
-    | undefined = undefined,
+  M extends MutationDefinition<unknown, unknown, unknown> | undefined =
+    undefined,
 >(
   shape: ShapeDefinition<T>,
   params: Record<string, string>,

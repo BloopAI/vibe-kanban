@@ -19,8 +19,7 @@ import { isTauriApp } from '@/shared/lib/platform';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 type OnboardingDestination =
-  | { kind: 'workspaces-create' }
-  | { kind: 'project'; projectId: string };
+  { kind: 'workspaces-create' } | { kind: 'project'; projectId: string };
 
 const COMPARISON_ROWS = [
   {

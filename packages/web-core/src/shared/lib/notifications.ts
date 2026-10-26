@@ -16,11 +16,7 @@ export function getDeeplinkPath(n: Notification): string | null {
 }
 
 type IssueChangeField =
-  | 'title'
-  | 'description'
-  | 'priority'
-  | 'assignee'
-  | 'unassigned';
+  'title' | 'description' | 'priority' | 'assignee' | 'unassigned';
 
 type GroupableNotificationKind = Exclude<NotificationGroupKind, 'single'>;
 

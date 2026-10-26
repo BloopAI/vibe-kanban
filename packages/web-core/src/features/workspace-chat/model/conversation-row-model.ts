@@ -47,11 +47,7 @@ export type RowFamily =
  * Coarse height bucket used before real DOM measurement is available.
  */
 export type SizeEstimationHint =
-  | 'compact'
-  | 'medium'
-  | 'tall'
-  | 'dynamic'
-  | 'hidden';
+  'compact' | 'medium' | 'tall' | 'dynamic' | 'hidden';
 
 // ---------------------------------------------------------------------------
 // Conversation Row

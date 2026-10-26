@@ -21,8 +21,7 @@ export interface SelectionPage<TResult = unknown> {
   onSelect: (
     item: ResolvedGroupItem
   ) =>
-    | { type: 'complete'; data: TResult }
-    | { type: 'navigate'; pageId: string };
+    { type: 'complete'; data: TResult } | { type: 'navigate'; pageId: string };
 }
 
 export interface SelectionDialogProps {

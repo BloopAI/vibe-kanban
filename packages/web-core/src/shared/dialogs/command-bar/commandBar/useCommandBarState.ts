@@ -15,8 +15,7 @@ export type CommandBarEvent =
   | { type: 'SELECT_ITEM'; item: ResolvedGroupItem };
 
 export type CommandBarEffect =
-  | { type: 'none' }
-  | { type: 'execute'; action: ActionDefinition };
+  { type: 'none' } | { type: 'execute'; action: ActionDefinition };
 
 const initial = (page: PageId): CommandBarState => ({
   page,
