@@ -83,15 +83,19 @@ job_frontend() {
 }
 
 job_backend_schema() {
+  local failed=0
   log_job "backend-schema-checks" "generated types + sqlx"
-  run_step "Check generated TS types" npm run generate-types:check
-  run_step "SQLx offline check"       npm run prepare-db:check
+  run_step "Check generated TS types" npm run generate-types:check || failed=1
+  run_step "SQLx offline check"       npm run prepare-db:check      || failed=1
+  return $failed
 }
 
 job_backend_clippy() {
+  local failed=0
   log_job "backend-clippy" "cargo fmt + clippy (excludes tauri)"
-  run_step "cargo fmt check" cargo fmt --all -- --check
-  run_step "cargo clippy"    cargo clippy --workspace --all-targets --exclude vibe-kanban-tauri -- -D warnings
+  run_step "cargo fmt check" cargo fmt --all -- --check                                                        || failed=1
+  run_step "cargo clippy"    cargo clippy --workspace --all-targets --exclude vibe-kanban-tauri -- -D warnings || failed=1
+  return $failed
 }
 
 job_backend_test() {
@@ -105,26 +109,30 @@ job_backend_test() {
 }
 
 job_backend_remote() {
+  local failed=0
   log_job "backend-remote-checks" "remote crates fmt, clippy, types, sqlx"
   echo -e "${YELLOW}  ! Note: requires SSH access to private deps (VK_PRIVATE_DEPLOY_KEY)${RESET}"
-  run_step "Check remote Cargo.lock (remote)"       bash -c 'cargo metadata --locked --format-version 1 --manifest-path crates/remote/Cargo.toml > /dev/null'
-  run_step "Check remote Cargo.lock (relay-tunnel)" bash -c 'cargo metadata --locked --format-version 1 --manifest-path crates/relay-tunnel/Cargo.toml > /dev/null'
-  run_step "cargo fmt check (remote)"       cargo fmt --all --manifest-path crates/remote/Cargo.toml -- --check
-  run_step "cargo fmt check (relay-tunnel)" cargo fmt --all --manifest-path crates/relay-tunnel/Cargo.toml -- --check
-  run_step "cargo clippy (remote)"       cargo clippy --all-targets --manifest-path crates/remote/Cargo.toml -- -D warnings
-  run_step "cargo clippy (relay-tunnel)" cargo clippy --all-targets --manifest-path crates/relay-tunnel/Cargo.toml -- -D warnings
-  run_step "Check remote generated TS types" npm run remote:generate-types:check
-  run_step "Remote SQLx offline check"       npm run remote:prepare-db:check
+  run_step "Check remote Cargo.lock (remote)"       bash -c 'cargo metadata --locked --format-version 1 --manifest-path crates/remote/Cargo.toml > /dev/null'        || failed=1
+  run_step "Check remote Cargo.lock (relay-tunnel)" bash -c 'cargo metadata --locked --format-version 1 --manifest-path crates/relay-tunnel/Cargo.toml > /dev/null'   || failed=1
+  run_step "cargo fmt check (remote)"       cargo fmt --all --manifest-path crates/remote/Cargo.toml -- --check                                                        || failed=1
+  run_step "cargo fmt check (relay-tunnel)" cargo fmt --all --manifest-path crates/relay-tunnel/Cargo.toml -- --check                                                  || failed=1
+  run_step "cargo clippy (remote)"       cargo clippy --all-targets --manifest-path crates/remote/Cargo.toml -- -D warnings                                            || failed=1
+  run_step "cargo clippy (relay-tunnel)" cargo clippy --all-targets --manifest-path crates/relay-tunnel/Cargo.toml -- -D warnings                                      || failed=1
+  run_step "Check remote generated TS types" npm run remote:generate-types:check || failed=1
+  run_step "Remote SQLx offline check"       npm run remote:prepare-db:check      || failed=1
+  return $failed
 }
 
 job_tauri() {
+  local failed=0
   log_job "tauri-checks" "tauri fmt + clippy + check"
   if [[ "$(uname)" != "Linux" ]]; then
     echo -e "${YELLOW}  ! Tauri Linux deps (libwebkit2gtk etc.) only available on Linux — skipping apt-get${RESET}"
   fi
-  run_step "cargo fmt check (tauri)" cargo fmt --all --manifest-path crates/tauri-app/Cargo.toml -- --check
-  run_step "cargo clippy (tauri)"    cargo clippy --all-targets --manifest-path crates/tauri-app/Cargo.toml -- -D warnings
-  run_step "cargo check (tauri)"     cargo check -p vibe-kanban-tauri
+  run_step "cargo fmt check (tauri)" cargo fmt --all --manifest-path crates/tauri-app/Cargo.toml -- --check       || failed=1
+  run_step "cargo clippy (tauri)"    cargo clippy --all-targets --manifest-path crates/tauri-app/Cargo.toml -- -D warnings || failed=1
+  run_step "cargo check (tauri)"     cargo check -p vibe-kanban-tauri                                              || failed=1
+  return $failed
 }
 
 # ---------------------------------------------------------------------------
