@@ -110,7 +110,7 @@ impl StandardCodingAgentExecutor for Copilot {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let harness = AcpAgentHarness::new();
+        let harness = AcpAgentHarness::new("copilot_sessions");
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let copilot_command = self.build_command_builder()?.build_initial()?;
         harness
@@ -133,7 +133,7 @@ impl StandardCodingAgentExecutor for Copilot {
         _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let harness = AcpAgentHarness::new();
+        let harness = AcpAgentHarness::new("copilot_sessions");
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let copilot_command = self.build_command_builder()?.build_follow_up(&[])?;
         harness

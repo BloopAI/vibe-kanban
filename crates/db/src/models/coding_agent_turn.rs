@@ -232,6 +232,25 @@ impl CodingAgentTurn {
         Ok(())
     }
 
+    /// Find all distinct agent_session_id values for sessions with the given executor.
+    /// Used to migrate session files when the storage namespace changes.
+    pub async fn find_agent_session_ids_for_executor(
+        pool: &SqlitePool,
+        executor: &str,
+    ) -> Result<Vec<String>, sqlx::Error> {
+        sqlx::query_scalar!(
+            r#"SELECT DISTINCT cat.agent_session_id as "agent_session_id!"
+               FROM coding_agent_turns cat
+               JOIN execution_processes ep ON ep.id = cat.execution_process_id
+               JOIN sessions s ON s.id = ep.session_id
+               WHERE s.executor = $1
+                 AND cat.agent_session_id IS NOT NULL"#,
+            executor
+        )
+        .fetch_all(pool)
+        .await
+    }
+
     /// Check if a workspace has any unseen coding agent turns
     /// Find all workspaces that have unseen coding agent turns, filtered by archived status
     pub async fn find_workspaces_with_unseen(

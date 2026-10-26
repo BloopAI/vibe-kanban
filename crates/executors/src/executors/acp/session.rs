@@ -138,6 +138,34 @@ impl SessionManager {
         Ok(())
     }
 
+    /// Move a session file from `src` namespace into `self` namespace.
+    ///
+    /// Returns `true` if the file was moved, `false` if it was not present in `src`
+    /// (already in the correct namespace, or never recorded).  The destination is
+    /// left untouched if it already exists.
+    pub fn migrate_session_from(&self, src: &SessionManager, session_id: &str) -> Result<bool> {
+        let src_path = src.session_file_path(session_id);
+        if !src_path.exists() {
+            return Ok(false);
+        }
+
+        let dst_path = self.session_file_path(session_id);
+        if dst_path.exists() {
+            return Ok(false);
+        }
+
+        fs::rename(&src_path, &dst_path).or_else(|e| {
+            if e.kind() == io::ErrorKind::CrossesDevices {
+                fs::copy(&src_path, &dst_path)?;
+                fs::remove_file(&src_path)
+            } else {
+                Err(e)
+            }
+        })?;
+
+        Ok(true)
+    }
+
     /// Generate a resume prompt from session history
     pub fn generate_resume_prompt(&self, session_id: &str, current_prompt: &str) -> Result<String> {
         let session_context = self.read_session_raw(session_id)?;
