@@ -87,7 +87,7 @@ impl StandardCodingAgentExecutor for Gemini {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let harness = AcpAgentHarness::new();
+        let harness = AcpAgentHarness::new("gemini_sessions");
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let gemini_command = self.build_command_builder()?.build_initial()?;
         let approvals = if self.yolo.unwrap_or(false) {
@@ -115,7 +115,7 @@ impl StandardCodingAgentExecutor for Gemini {
         _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let harness = AcpAgentHarness::new();
+        let harness = AcpAgentHarness::new("gemini_sessions");
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let gemini_command = self.build_command_builder()?.build_follow_up(&[])?;
         let approvals = if self.yolo.unwrap_or(false) {

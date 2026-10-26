@@ -86,7 +86,7 @@ impl StandardCodingAgentExecutor for QwenCode {
     ) -> Result<SpawnedChild, ExecutorError> {
         let qwen_command = self.build_command_builder()?.build_initial()?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let mut harness = AcpAgentHarness::with_session_namespace("qwen_sessions");
+        let mut harness = AcpAgentHarness::new("qwen_sessions");
         if let Some(model) = &self.model {
             harness = harness.with_model(model);
         }
@@ -120,7 +120,7 @@ impl StandardCodingAgentExecutor for QwenCode {
     ) -> Result<SpawnedChild, ExecutorError> {
         let qwen_command = self.build_command_builder()?.build_follow_up(&[])?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let mut harness = AcpAgentHarness::with_session_namespace("qwen_sessions");
+        let mut harness = AcpAgentHarness::new("qwen_sessions");
         if let Some(model) = &self.model {
             harness = harness.with_model(model);
         }
