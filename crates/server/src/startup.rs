@@ -154,6 +154,7 @@ pub async fn initialize_deployment(
 
     let deployment = DeploymentImpl::new(shutdown).await?;
     migrate_legacy_attachment_directories(&deployment).await?;
+    migrate_copilot_sessions(&deployment).await;
     deployment.update_sentry_scope().await?;
     deployment
         .container()
@@ -189,6 +190,79 @@ pub async fn perform_cleanup_actions(deployment: &DeploymentImpl) {
         .kill_all_running_processes()
         .await
         .expect("Failed to cleanly kill running execution processes");
+}
+
+const COPILOT_SESSION_MIGRATION_MARKER: &str = ".copilot-sessions-migrated-v1";
+
+/// Move Copilot session JSONL files from `gemini_sessions/` to `copilot_sessions/`.
+///
+/// Before the executor namespace was made explicit, all ACP-based executors
+/// (Gemini and Copilot alike) stored their session files under `gemini_sessions/`.
+/// This runs once at startup: it queries the DB for every `agent_session_id`
+/// belonging to a COPILOT session and moves those files to the correct directory.
+async fn migrate_copilot_sessions(deployment: &DeploymentImpl) {
+    use db::models::coding_agent_turn::CodingAgentTurn;
+    use executors::executors::acp::SessionManager;
+
+    let marker_path = asset_dir().join(COPILOT_SESSION_MIGRATION_MARKER);
+    if marker_path.exists() {
+        return;
+    }
+
+    let session_ids = match CodingAgentTurn::find_agent_session_ids_for_executor(
+        &deployment.db().pool,
+        "COPILOT",
+    )
+    .await
+    {
+        Ok(ids) => ids,
+        Err(err) => {
+            tracing::warn!("Copilot session migration: DB query failed: {err}");
+            return;
+        }
+    };
+
+    if session_ids.is_empty() {
+        let _ = fs::write(&marker_path, b"ok");
+        return;
+    }
+
+    let (src, dst) = match (
+        SessionManager::new("gemini_sessions"),
+        SessionManager::new("copilot_sessions"),
+    ) {
+        (Ok(s), Ok(d)) => (s, d),
+        _ => {
+            tracing::warn!("Copilot session migration: failed to create session managers");
+            return;
+        }
+    };
+
+    let mut moved = 0u32;
+    let mut failures = 0u32;
+
+    for id in &session_ids {
+        match dst.migrate_session_from(&src, id) {
+            Ok(true) => moved += 1,
+            Ok(false) => {}
+            Err(err) => {
+                tracing::warn!("Copilot session migration: failed to move {id}: {err}");
+                failures += 1;
+            }
+        }
+    }
+
+    if failures == 0 {
+        let _ = fs::write(&marker_path, b"ok");
+        tracing::info!(
+            "Copilot session migration complete: moved {moved}/{} files",
+            session_ids.len()
+        );
+    } else {
+        tracing::warn!(
+            "Copilot session migration: {failures} failures; will retry on next startup"
+        );
+    }
 }
 
 const LEGACY_ATTACHMENT_MIGRATION_MARKER: &str = ".attachment-directories-migrated-v1";
