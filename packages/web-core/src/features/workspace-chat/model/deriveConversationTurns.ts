@@ -10,18 +10,12 @@ import { deriveConversationSemanticTimeline } from './deriveConversationSemantic
 import type { ConversationTimelineSource } from '@/shared/hooks/useConversationHistory/types';
 
 type ScriptTurnKind =
-  | 'setup_script'
-  | 'cleanup_script'
-  | 'archive_script'
-  | 'tool_install_script';
+  'setup_script' | 'cleanup_script' | 'archive_script' | 'tool_install_script';
 
 export interface ConversationAgentTurn {
   readonly key: string;
   readonly kind:
-    | 'agent_idle'
-    | 'agent_running'
-    | 'agent_pending_approval'
-    | 'agent_failed';
+    'agent_idle' | 'agent_running' | 'agent_pending_approval' | 'agent_failed';
   readonly process: ConversationSemanticProcessItem;
   readonly prompt: string | null;
   readonly shouldEmitUserMessage: boolean;

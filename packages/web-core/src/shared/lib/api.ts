@@ -184,11 +184,7 @@ type ListRemoteProjectsResponse = {
 };
 
 export type OrganizationBillingStatus =
-  | 'free'
-  | 'active'
-  | 'past_due'
-  | 'cancelled'
-  | 'requires_subscription';
+  'free' | 'active' | 'past_due' | 'cancelled' | 'requires_subscription';
 
 export interface OrganizationBillingStatusResponse {
   status: OrganizationBillingStatus;

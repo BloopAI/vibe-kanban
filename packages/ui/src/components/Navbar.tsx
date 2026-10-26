@@ -49,8 +49,7 @@ function isDivider(item: NavbarSectionItem): item is NavbarDividerItem {
 }
 
 // NavbarIconButton - inlined from primitives
-interface NavbarIconButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface NavbarIconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon: Icon;
   isActive?: boolean;
   tooltip?: string;
@@ -93,12 +92,7 @@ function NavbarIconButton({
 }
 
 export type MobileTabId =
-  | 'workspaces'
-  | 'chat'
-  | 'changes'
-  | 'logs'
-  | 'preview'
-  | 'git';
+  'workspaces' | 'chat' | 'changes' | 'logs' | 'preview' | 'git';
 
 export const MOBILE_TABS: { id: MobileTabId; icon: Icon; label: string }[] = [
   { id: 'workspaces', icon: LayoutIcon, label: 'Wksps' },

@@ -244,7 +244,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
     const showDownloadButton = Boolean(
       (isAttachment &&
         (localAttachment?.proxy_url || fullSizeUrl || metadata?.proxy_url)) ||
-        (!isWorkspaceImage && metadata?.proxy_url)
+      (!isWorkspaceImage && metadata?.proxy_url)
     );
 
     const handleClick = useCallback(
