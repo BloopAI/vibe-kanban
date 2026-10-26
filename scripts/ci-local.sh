@@ -131,15 +131,16 @@ job_tauri() {
 # Groups: expand to constituent jobs, deduplicating
 # ---------------------------------------------------------------------------
 
-# Associative array tracking which atomic jobs have been queued
-declare -A QUEUED_JOBS=()
+# Track which atomic jobs have been queued (bash 3 compatible)
+QUEUED_JOBS=()
 
 enqueue_job() {
-  local job="$1"
-  if [[ -z "${QUEUED_JOBS[$job]:-}" ]]; then
-    QUEUED_JOBS[$job]=1
-    ATOMIC_JOBS+=("$job")
-  fi
+  local job="$1" j
+  for j in "${QUEUED_JOBS[@]:-}"; do
+    [[ "$j" == "$job" ]] && return
+  done
+  QUEUED_JOBS+=("$job")
+  ATOMIC_JOBS+=("$job")
 }
 
 expand_group() {
