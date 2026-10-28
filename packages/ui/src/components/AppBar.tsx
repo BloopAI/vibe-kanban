@@ -51,6 +51,8 @@ interface AppBarProps {
   onCreateProject: () => void;
   onExportClick?: () => void;
   onWorkspacesClick: () => void;
+  onLocalBoardClick?: () => void;
+  isLocalBoardActive?: boolean;
   onHostClick?: (hostId: string, status: AppBarHostStatus) => void;
   showWorkspacesButton?: boolean;
   onProjectClick: (projectId: string) => void;
@@ -203,6 +205,8 @@ export function AppBar({
   onCreateProject,
   onExportClick,
   onWorkspacesClick,
+  onLocalBoardClick,
+  isLocalBoardActive,
   onHostClick,
   showWorkspacesButton = true,
   onProjectClick,
@@ -283,7 +287,16 @@ export function AppBar({
 
   const projectSectionItems: AppBarSectionItem[] = [];
 
-  if (!isSignedIn) {
+  if (onLocalBoardClick) {
+    projectSectionItems.push({
+      key: 'local-kanban',
+      kind: 'icon-button',
+      label: 'Local kanban boards',
+      icon: KanbanIcon,
+      isActive: isLocalBoardActive,
+      onClick: onLocalBoardClick,
+    });
+  } else if (!isSignedIn) {
     projectSectionItems.push({
       key: 'kanban-cta',
       kind: 'kanban-cta',

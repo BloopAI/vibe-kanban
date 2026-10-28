@@ -56,7 +56,11 @@ import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSideba
 import { useRemoteCloudHostsAppBarModel } from '@/shared/hooks/useRemoteCloudHosts';
 import { CloudShutdownExportBanner } from '@/shared/components/CloudShutdownExportBanner';
 
-export function SharedAppLayout() {
+export function SharedAppLayout({
+  localBoardNavigation,
+}: {
+  localBoardNavigation?: { onClick: () => void; active: boolean };
+}) {
   const appNavigation = useAppNavigation();
   const currentDestination = useCurrentAppDestination();
   const isMobile = useIsMobile();
@@ -337,6 +341,8 @@ export function SharedAppLayout() {
               onCreateProject={handleCreateProject}
               onExportClick={handleExportClick}
               onWorkspacesClick={handleWorkspacesClick}
+              onLocalBoardClick={localBoardNavigation?.onClick}
+              isLocalBoardActive={localBoardNavigation?.active}
               onHostClick={handleHostClick}
               onPairHostClick={handlePairHostClick}
               onProjectClick={handleProjectClick}
@@ -479,7 +485,18 @@ export function SharedAppLayout() {
 
             {/* Project list */}
             <div className="flex-1 overflow-y-auto p-2">
-              {isSignedIn ? (
+              {localBoardNavigation ? (
+                <button
+                  type="button"
+                  className="w-full rounded-sm px-4 py-3 text-left text-normal hover:bg-secondary"
+                  onClick={() => {
+                    localBoardNavigation.onClick();
+                    setIsDrawerOpen(false);
+                  }}
+                >
+                  Local kanban boards
+                </button>
+              ) : isSignedIn ? (
                 orderedProjects.map((project) => (
                   <button
                     type="button"

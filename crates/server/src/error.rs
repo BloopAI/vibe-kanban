@@ -73,6 +73,8 @@ pub enum ApiError {
     Unauthorized,
     #[error("Bad request: {0}")]
     BadRequest(String),
+    #[error("Not found: {0}")]
+    NotFound(String),
     #[error("Conflict: {0}")]
     Conflict(String),
     #[error("Forbidden: {0}")]
@@ -486,6 +488,7 @@ impl IntoResponse for ApiError {
             ApiError::Container(_) => ErrorInfo::internal("ContainerError"),
             ApiError::Executor(_) => ErrorInfo::internal("ExecutorError"),
             ApiError::CommandBuilder(_) => ErrorInfo::internal("CommandBuildError"),
+            ApiError::NotFound(message) => ErrorInfo::not_found("NotFound", message),
             ApiError::Database(_) => ErrorInfo::internal("DatabaseError"),
             ApiError::Worktree(err) => ErrorInfo::with_status(
                 StatusCode::INTERNAL_SERVER_ERROR,

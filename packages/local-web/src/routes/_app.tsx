@@ -3,6 +3,7 @@ import {
   createFileRoute,
   useParams,
   useLocation,
+  useNavigate,
 } from '@tanstack/react-router';
 import { Provider as NiceModalProvider } from '@ebay/nice-modal-react';
 import { SequenceTrackerProvider } from '@/shared/keyboard/SequenceTracker';
@@ -103,6 +104,8 @@ function AppRouteProviders({ children }: { children: ReactNode }) {
 
 function AppLayoutRouteComponent() {
   const { hostId } = useParams({ strict: false });
+  const navigate = useNavigate();
+  const location = useLocation();
 
   return (
     <AppRouteProviders key={hostId ?? 'local'}>
@@ -111,7 +114,18 @@ function AppLayoutRouteComponent() {
         <SequenceIndicator />
         <KeyboardShortcutsHandler />
         <TerminalProvider>
-          <SharedAppLayout />
+          <SharedAppLayout
+            localBoardNavigation={
+              hostId
+                ? undefined
+                : {
+                    onClick: () => {
+                      void navigate({ to: '/local-board' });
+                    },
+                    active: location.pathname === '/local-board',
+                  }
+            }
+          />
         </TerminalProvider>
       </SequenceTrackerProvider>
     </AppRouteProviders>

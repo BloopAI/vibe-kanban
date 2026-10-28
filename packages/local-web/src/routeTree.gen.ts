@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as AppExportRouteImport } from './routes/_app.export'
+import { Route as AppLocalBoardRouteImport } from './routes/_app.local-board'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
 import { Route as AppWorkspacesRouteImport } from './routes/_app.workspaces'
 import { Route as OnboardingSignInRouteImport } from './routes/onboarding_.sign-in'
@@ -50,6 +51,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
 const AppExportRoute = AppExportRouteImport.update({
   id: '/export',
   path: '/export',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLocalBoardRoute = AppLocalBoardRouteImport.update({
+  id: '/local-board',
+  path: '/local-board',
   getParentRoute: () => AppRoute,
 } as any)
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
@@ -170,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
   '/export': typeof AppExportRoute
+  '/local-board': typeof AppLocalBoardRoute
   '/notifications': typeof AppNotificationsRoute
   '/workspaces': typeof AppWorkspacesRoute
   '/onboarding/sign-in': typeof OnboardingSignInRoute
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
   '/export': typeof AppExportRoute
+  '/local-board': typeof AppLocalBoardRoute
   '/notifications': typeof AppNotificationsRoute
   '/workspaces': typeof AppWorkspacesRoute
   '/onboarding/sign-in': typeof OnboardingSignInRoute
@@ -220,6 +228,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/_app/export': typeof AppExportRoute
+  '/_app/local-board': typeof AppLocalBoardRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/workspaces': typeof AppWorkspacesRoute
   '/onboarding_/sign-in': typeof OnboardingSignInRoute
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
     | '/'
     | '/onboarding'
     | '/export'
+    | '/local-board'
     | '/notifications'
     | '/workspaces'
     | '/onboarding/sign-in'
@@ -270,6 +280,7 @@ export interface FileRouteTypes {
     | '/'
     | '/onboarding'
     | '/export'
+    | '/local-board'
     | '/notifications'
     | '/workspaces'
     | '/onboarding/sign-in'
@@ -295,6 +306,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/onboarding'
     | '/_app/export'
+    | '/_app/local-board'
     | '/_app/notifications'
     | '/_app/workspaces'
     | '/onboarding_/sign-in'
@@ -353,6 +365,13 @@ declare module '@tanstack/react-router' {
       path: '/export'
       fullPath: '/export'
       preLoaderRoute: typeof AppExportRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/local-board': {
+      id: '/_app/local-board'
+      path: '/local-board'
+      fullPath: '/local-board'
+      preLoaderRoute: typeof AppLocalBoardRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/notifications': {
@@ -493,6 +512,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppExportRoute: typeof AppExportRoute
+  AppLocalBoardRoute: typeof AppLocalBoardRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppWorkspacesRoute: typeof AppWorkspacesRoute
   AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRoute
@@ -513,6 +533,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppExportRoute: AppExportRoute,
+  AppLocalBoardRoute: AppLocalBoardRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppWorkspacesRoute: AppWorkspacesRoute,
   AppProjectsProjectIdRoute: AppProjectsProjectIdRoute,
