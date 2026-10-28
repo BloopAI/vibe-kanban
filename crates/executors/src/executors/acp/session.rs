@@ -36,6 +36,10 @@ impl SessionManager {
         self.base_dir.join(format!("{session_id}.jsonl"))
     }
 
+    pub fn has_session(&self, session_id: &str) -> bool {
+        self.session_file_path(session_id).exists()
+    }
+
     /// Append a raw JSON line to the session log
     ///
     /// We normalize ACP payloads by:
