@@ -4,8 +4,12 @@ import path from 'path';
 import crypto from 'crypto';
 import os from 'os';
 
-// Replaced during npm pack by workflow
-export const R2_BASE_URL = '__R2_PUBLIC_URL__';
+// Replaced during npm pack by workflow. Operators can override at runtime via
+// VIBE_KANBAN_BINARY_BASE_URL when the baked CDN is unreachable (expired cert,
+// 403/404, corporate TLS inspection, or community mirrors after sunset).
+const BAKED_R2_BASE_URL = '__R2_PUBLIC_URL__';
+
+export const R2_BASE_URL = resolveBinaryBaseUrl();
 export const BINARY_TAG = '__BINARY_TAG__'; // e.g., v0.0.135-20251215122030
 export const CACHE_DIR = path.join(os.homedir(), '.vibe-kanban', 'bin');
 
@@ -54,7 +58,13 @@ function fetchJson<T>(url: string): Promise<T> {
             .catch(reject);
         }
         if (res.statusCode !== 200) {
-          return reject(new Error(`HTTP ${res.statusCode} fetching ${url}`));
+          return reject(
+            new Error(
+              `HTTP ${res.statusCode} fetching ${url}. ` +
+                `If the default binary CDN is down, set VIBE_KANBAN_BINARY_BASE_URL ` +
+                `to a mirror that hosts binaries/<tag>/manifest.json.`
+            )
+          );
         }
         let data = '';
         res.on('data', (chunk: string) => (data += chunk));
@@ -106,7 +116,10 @@ function downloadFile(
           file.close();
           cleanup();
           return reject(
-            new Error(`HTTP ${res.statusCode} downloading ${url}`)
+            new Error(
+              `HTTP ${res.statusCode} downloading ${url}. ` +
+                `Override with VIBE_KANBAN_BINARY_BASE_URL if needed.`
+            )
           );
         }
 
@@ -273,3 +286,14 @@ export async function getLatestVersion(): Promise<string | undefined> {
   );
   return manifest.latest;
 }
+
+
+/** Resolve binary CDN base URL (baked publish value or runtime override). */
+export function resolveBinaryBaseUrl(
+  baked: string = BAKED_R2_BASE_URL,
+  envValue: string | undefined = process.env.VIBE_KANBAN_BINARY_BASE_URL
+): string {
+  const raw = (envValue && envValue.trim()) || baked;
+  return raw.replace(/\/$/, '');
+}
+

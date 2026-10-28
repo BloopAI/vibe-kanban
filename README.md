@@ -52,6 +52,14 @@ Make sure you have authenticated with your favourite coding agent. A full list o
 npx vibe-kanban
 ```
 
+If binary download fails (CDN/TLS issues after the commercial sunset), point the CLI at a mirror that hosts the same `binaries/<tag>/...` layout:
+
+```bash
+VIBE_KANBAN_BINARY_BASE_URL=https://your-mirror.example npx vibe-kanban
+```
+
+Or build from source with `./local-build.sh` and run with `VIBE_KANBAN_LOCAL=1`.
+
 ## Documentation
 
 Head to the [website](https://vibekanban.com/docs) for the latest documentation and user guides.
