@@ -17,7 +17,7 @@ use services::services::container::ContainerService;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 
-use super::{codex_setup, cursor_setup, gh_cli_setup::GhCliSetupError};
+use super::{codex_setup, cursor_setup, devin_cli_setup, gh_cli_setup::GhCliSetupError};
 use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -72,6 +72,9 @@ pub async fn run_agent_setup(
         }
         CodingAgent::Codex(codex) => {
             codex_setup::run_codex_setup(&deployment, &workspace, &codex).await?;
+        }
+        CodingAgent::DevinCli(devin_cli) => {
+            devin_cli_setup::run_devin_cli_setup(&deployment, &workspace, &devin_cli).await?;
         }
         _ => return Err(ApiError::Executor(ExecutorError::SetupHelperNotSupported)),
     }
