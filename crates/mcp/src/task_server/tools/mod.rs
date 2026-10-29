@@ -415,6 +415,7 @@ mod tests {
     fn orchestrator_mode_exposes_only_scoped_workflow_tools() {
         let actual = tool_names(McpServer::orchestrator_mode_router());
         let expected = BTreeSet::from([
+            "create_and_run_session".to_string(),
             "create_session".to_string(),
             "get_context".to_string(),
             "get_execution".to_string(),

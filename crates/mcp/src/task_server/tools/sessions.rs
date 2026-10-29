@@ -77,6 +77,30 @@ struct RunCodingAgentInSessionRequest {
     prompt: String,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct CreateAndRunSessionRequest {
+    #[schemars(
+        description = "Workspace ID to create the session in. Optional when running inside a scoped orchestrator MCP."
+    )]
+    workspace_id: Option<Uuid>,
+    #[schemars(
+        description = "The coding agent executor to run (e.g. 'CLAUDE_CODE', 'GEMINI', 'CODEX')"
+    )]
+    executor: String,
+    #[schemars(description = "Prompt for the coding agent")]
+    prompt: String,
+    #[schemars(description = "Optional display name for the session")]
+    name: Option<String>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct CreateAndRunSessionResponse {
+    session_id: String,
+    execution_id: String,
+    session: SessionSummary,
+    execution: serde_json::Value,
+}
+
 #[derive(Debug, Serialize)]
 struct FollowUpPayload {
     prompt: String,
@@ -187,6 +211,115 @@ impl McpServer {
 
         Self::success(&CreateSessionResponse {
             session: self.session_summary(session),
+        })
+    }
+
+    #[tool(
+        description = "Create a new session in a workspace and immediately run a coding agent prompt in it. Combines create_session + run_session_prompt into a single call."
+    )]
+    async fn create_and_run_session(
+        &self,
+        Parameters(CreateAndRunSessionRequest {
+            workspace_id,
+            executor,
+            prompt,
+            name,
+        }): Parameters<CreateAndRunSessionRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let prompt = prompt.trim();
+        if prompt.is_empty() {
+            return Self::err("prompt must not be empty", None);
+        }
+
+        let workspace_id = match self.resolve_workspace_id(workspace_id) {
+            Ok(id) => id,
+            Err(error_result) => return Ok(Self::tool_error(error_result)),
+        };
+        if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
+            return Ok(Self::tool_error(error_result));
+        }
+
+        // Validate executor up front
+        let executor_name = match Self::normalize_executor_name(Some(&executor)) {
+            Ok(name) => name,
+            Err(error_result) => return Ok(Self::tool_error(error_result)),
+        };
+
+        // 1. Create the session
+        let create_payload = CreateSessionPayload {
+            workspace_id,
+            executor: Some(executor_name.clone()),
+            name: name.and_then(|value| {
+                let trimmed = value.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                }
+            }),
+        };
+
+        let create_url = self.url("/api/sessions");
+        let session: Session = match self
+            .send_json(self.client.post(&create_url).json(&create_payload))
+            .await
+        {
+            Ok(value) => value,
+            Err(error_result) => return Ok(Self::tool_error(error_result)),
+        };
+
+        let session_id = session.id;
+        let session_summary = self.session_summary(session);
+
+        // 2. Run the prompt
+        let follow_up_payload = FollowUpPayload {
+            prompt: prompt.to_string(),
+            executor_config: ExecutorConfigPayload {
+                executor: executor_name,
+                variant: None,
+                model_id: None,
+                agent_id: None,
+                reasoning_id: None,
+                permission_policy: None,
+            },
+            retry_process_id: None,
+            force_when_dirty: None,
+            perform_git_reset: None,
+        };
+
+        let follow_up_url = self.url(&format!("/api/sessions/{session_id}/follow-up"));
+        let execution_process: ExecutionProcess = match self
+            .send_json(self.client.post(&follow_up_url).json(&follow_up_payload))
+            .await
+        {
+            Ok(value) => value,
+            Err(error_result) => {
+                // Session was created but prompt failed. Return the session_id
+                // so callers can retry with run_session_prompt instead of
+                // accumulating orphaned sessions.
+                let mut err = Self::tool_error(error_result);
+                err.content.push(rmcp::model::Content::text(
+                    serde_json::json!({
+                        "session_id": session_id.to_string(),
+                        "note": "Session was created but the prompt failed to start. Use run_session_prompt with this session_id to retry."
+                    })
+                    .to_string(),
+                ));
+                return Ok(err);
+            }
+        };
+
+        let execution_id = execution_process.id.to_string();
+        let execution = match Self::serialize_execution_process(&execution_process) {
+            Ok(value) => value,
+            Err(error_result) => return Ok(Self::tool_error(error_result)),
+        };
+
+        Self::success(&CreateAndRunSessionResponse {
+            session_id: session_id.to_string(),
+            execution_id,
+            session: session_summary,
+            execution,
         })
     }
 
