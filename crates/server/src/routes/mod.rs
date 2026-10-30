@@ -1,5 +1,7 @@
 use axum::{
     Router,
+    http::StatusCode,
+    response::{IntoResponse, Json as ResponseJson},
     routing::{IntoMakeService, get},
 };
 use tower_http::{compression::CompressionLayer, validate_request::ValidateRequestHeaderLayer};
@@ -71,6 +73,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(relay_auth::router())
         .merge(host_relay::router(&deployment))
         .merge(relay_signed_routes)
+        .fallback(api_fallback)
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,
         ))
@@ -79,8 +82,19 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
 
     Router::new()
         .route("/", get(frontend::serve_frontend_root))
-        .route("/{*path}", get(frontend::serve_frontend))
         .nest("/api", api_routes)
+        .fallback(get(frontend::serve_frontend))
         .layer(CompressionLayer::new())
         .into_make_service()
+}
+
+/// Catch-all handler for unmatched API routes. Without this fallback,
+/// non-GET requests (POST, PUT, DELETE) that don't match any API route
+/// fall through to the frontend's GET-only `/{*path}` wildcard, which
+/// returns 405 Method Not Allowed instead of the expected 404.
+async fn api_fallback() -> impl IntoResponse {
+    (
+        StatusCode::NOT_FOUND,
+        ResponseJson(serde_json::json!({ "error": "Not found" })),
+    )
 }
