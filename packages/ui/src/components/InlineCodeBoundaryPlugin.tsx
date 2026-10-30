@@ -74,23 +74,31 @@ export function InlineCodeBoundaryPlugin() {
       COMMAND_PRIORITY_NORMAL
     );
 
-    // Handle backtick key to exit code formatting
-    const rootElement = editor.getRootElement();
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== '`' || event.metaKey || event.ctrlKey) return;
+      if (event.key !== '`' || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
 
       editor.update(() => {
         if ($exitCodeNodeIfAtEnd()) {
           event.preventDefault();
+          event.stopPropagation();
         }
       });
     }
 
-    rootElement?.addEventListener('keydown', handleKeyDown);
+    // Keep the backtick escape handler attached even if Lexical swaps the
+    // contentEditable root during focus/mount transitions.
+    const unregisterRootListener = editor.registerRootListener(
+      (rootElement, prevRootElement) => {
+        prevRootElement?.removeEventListener('keydown', handleKeyDown);
+        rootElement?.addEventListener('keydown', handleKeyDown);
+      }
+    );
 
     return () => {
       unregisterArrowRight();
-      rootElement?.removeEventListener('keydown', handleKeyDown);
+      unregisterRootListener();
     };
   }, [editor]);
 
