@@ -163,11 +163,6 @@ impl LocalContainerService {
     ) -> Result<(Vec<Repo>, Vec<RepoWorkspaceInput>), ContainerError> {
         let workspace_repos =
             WorkspaceRepo::find_by_workspace_id(&self.db.pool, workspace_id).await?;
-        if workspace_repos.is_empty() {
-            return Err(ContainerError::Other(anyhow!(
-                "Workspace has no repositories configured"
-            )));
-        }
 
         let repositories =
             WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace_id).await?;

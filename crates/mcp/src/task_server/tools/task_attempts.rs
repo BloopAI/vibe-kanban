@@ -103,10 +103,6 @@ impl McpServer {
             issue_id,
         }): Parameters<StartWorkspaceRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        if repositories.is_empty() {
-            return Self::err("At least one repository must be specified.", None::<&str>);
-        }
-
         let executor_trimmed = executor.trim();
         if executor_trimmed.is_empty() {
             return Self::err("Executor must not be empty.", None::<&str>);
