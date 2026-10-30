@@ -1,0 +1,33 @@
+---
+title: "omp"
+description: "Set up omp coding assistant"
+icon: https://omp.sh/og-image.png
+---
+
+<Steps>
+<Step title="Verify omp installation">
+  Ensure `omp` is installed and on your `PATH`:
+
+  ```bash
+  omp --version
+  ```
+</Step>
+
+<Step title="Verify authentication">
+  Ensure your provider API keys or OAuth accounts are configured in `omp`:
+
+  ```bash
+  omp models
+  ```
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Launch Vibe Kanban:
+
+  ```bash
+  npx vibe-kanban
+  ```
+
+  You can now select `omp` as your coding agent for task execution and workspace workflows.
+</Step>
+</Steps>
