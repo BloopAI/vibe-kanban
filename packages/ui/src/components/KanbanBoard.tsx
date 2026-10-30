@@ -21,6 +21,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type MutableRefObject,
+  type CSSProperties,
   type ReactNode,
   type Ref,
 } from 'react';
@@ -55,7 +56,7 @@ export type KanbanBoardProps = {
 
 export const KanbanBoard = ({ children, className }: KanbanBoardProps) => {
   return (
-    <div className={cn('flex flex-col min-h-40', className)}>{children}</div>
+    <div className={cn('flex min-h-40 flex-col', className)}>{children}</div>
   );
 };
 
@@ -259,20 +260,23 @@ export type KanbanProviderProps = {
   children: ReactNode;
   onDragEnd: (result: DropResult) => void;
   className?: string;
+  style?: CSSProperties;
 };
 
 export const KanbanProvider = ({
   children,
   onDragEnd,
   className,
+  style,
 }: KanbanProviderProps) => {
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div
         className={cn(
-          'inline-grid grid-flow-col auto-cols-[minmax(200px,400px)] divide-x border-x items-stretch min-h-full',
+          'inline-grid min-h-full min-w-full items-stretch divide-x border-x',
           className
         )}
+        style={style}
       >
         {children}
       </div>

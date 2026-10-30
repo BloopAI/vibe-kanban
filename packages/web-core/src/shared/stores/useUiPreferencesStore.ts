@@ -110,6 +110,7 @@ export type KanbanProjectViewPreferences = {
   showSubIssues: boolean;
   showWorkspaces: boolean;
   hideBlocked: boolean;
+  collapsedStatusIds: string[];
 };
 
 export type ResolvedKanbanProjectState = {
@@ -118,6 +119,7 @@ export type ResolvedKanbanProjectState = {
   showSubIssues: boolean;
   showWorkspaces: boolean;
   hideBlocked: boolean;
+  collapsedStatusIds: string[];
 };
 
 const cloneKanbanFilters = (filters: KanbanFilterState): KanbanFilterState => ({
@@ -173,6 +175,7 @@ const createDefaultKanbanProjectViewPreferences = (
     showSubIssues: view.showSubIssues,
     showWorkspaces: view.showWorkspaces,
     hideBlocked: view.hideBlocked,
+    collapsedStatusIds: [],
   };
 };
 
@@ -191,6 +194,7 @@ export const resolveKanbanProjectState = (
     showSubIssues: activeView.showSubIssues,
     showWorkspaces: activeView.showWorkspaces,
     hideBlocked: activeView.hideBlocked,
+    collapsedStatusIds: [],
   };
 };
 
@@ -406,6 +410,11 @@ type State = {
     projectId: string,
     viewId: string,
     hide: boolean
+  ) => void;
+  setKanbanProjectViewCollapsedStatusIds: (
+    projectId: string,
+    viewId: string,
+    statusIds: string[]
   ) => void;
   clearKanbanProjectViewPreferences: (
     projectId: string,
@@ -753,6 +762,33 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
     });
   },
 
+  setKanbanProjectViewCollapsedStatusIds: (projectId, viewId, statusIds) => {
+    if (!isKanbanProjectViewId(viewId)) {
+      return;
+    }
+
+    set((s) => {
+      const projectPreferences =
+        s.kanbanProjectViewPreferences[projectId] ?? {};
+      const existingPreferences =
+        projectPreferences[viewId] ??
+        createDefaultKanbanProjectViewPreferences(viewId);
+
+      return {
+        kanbanProjectViewPreferences: {
+          ...s.kanbanProjectViewPreferences,
+          [projectId]: {
+            ...projectPreferences,
+            [viewId]: {
+              ...existingPreferences,
+              collapsedStatusIds: [...statusIds],
+            },
+          },
+        },
+      };
+    });
+  },
+
   clearKanbanProjectViewPreferences: (projectId, viewId) => {
     if (!isKanbanProjectViewId(viewId)) {
       return;
@@ -765,7 +801,17 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
       }
 
       const nextProjectPreferences = { ...projectPreferences };
-      delete nextProjectPreferences[viewId];
+      const collapsedStatusIds =
+        nextProjectPreferences[viewId]?.collapsedStatusIds ?? [];
+
+      if (collapsedStatusIds.length > 0) {
+        nextProjectPreferences[viewId] = {
+          ...createDefaultKanbanProjectViewPreferences(viewId),
+          collapsedStatusIds,
+        };
+      } else {
+        delete nextProjectPreferences[viewId];
+      }
 
       const nextAllPreferences = { ...s.kanbanProjectViewPreferences };
       if (Object.keys(nextProjectPreferences).length === 0) {
