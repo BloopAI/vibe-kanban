@@ -38,6 +38,10 @@ pub struct Acp {
     pub args: Vec<String>,
     #[serde(default)]
     pub append_prompt: AppendPrompt,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mode: Option<String>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
     #[serde(skip)]
@@ -52,6 +56,17 @@ impl Acp {
             CommandBuilder::new(self.command.clone()).extend_params(self.args.iter().cloned());
         apply_overrides(builder, &self.cmd)
     }
+
+    fn harness(&self) -> AcpAgentHarness {
+        let mut harness = AcpAgentHarness::new(SESSION_NAMESPACE);
+        if let Some(model) = &self.model {
+            harness = harness.with_model(model);
+        }
+        if let Some(mode) = &self.mode {
+            harness = harness.with_mode(mode);
+        }
+        harness
+    }
 }
 
 #[async_trait]
@@ -61,9 +76,12 @@ impl StandardCodingAgentExecutor for Acp {
     }
 
     fn apply_overrides(&mut self, executor_config: &ExecutorConfig) {
-        // Acp has no model/mode fields to map; harness consumes what it supports.
-        let mut harness = AcpAgentHarness::with_session_namespace(SESSION_NAMESPACE);
-        harness.apply_overrides(executor_config);
+        if let Some(model_id) = &executor_config.model_id {
+            self.model = Some(model_id.clone());
+        }
+        if let Some(agent_id) = &executor_config.agent_id {
+            self.mode = Some(agent_id.clone());
+        }
     }
 
     async fn spawn(
@@ -72,7 +90,7 @@ impl StandardCodingAgentExecutor for Acp {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let harness = AcpAgentHarness::with_session_namespace(SESSION_NAMESPACE);
+        let harness = self.harness();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let command = self.build_command_builder()?.build_initial()?;
         harness
@@ -95,7 +113,7 @@ impl StandardCodingAgentExecutor for Acp {
         _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let harness = AcpAgentHarness::with_session_namespace(SESSION_NAMESPACE);
+        let harness = self.harness();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let command = self.build_command_builder()?.build_follow_up(&[])?;
         harness
@@ -124,7 +142,12 @@ impl StandardCodingAgentExecutor for Acp {
     }
 
     fn get_availability_info(&self) -> AvailabilityInfo {
-        if resolve_executable_path_blocking(&self.command).is_some() {
+        // Resolve the program spawn would run, so base_command_override is honored.
+        let found = self
+            .build_command_builder()
+            .and_then(|b| b.build_initial())
+            .is_ok_and(|parts| resolve_executable_path_blocking(parts.program()).is_some());
+        if found {
             AvailabilityInfo::InstallationFound
         } else {
             AvailabilityInfo::NotFound
@@ -135,8 +158,8 @@ impl StandardCodingAgentExecutor for Acp {
         ExecutorConfig {
             executor: BaseCodingAgent::Acp,
             variant: None,
-            model_id: None,
-            agent_id: None,
+            model_id: self.model.clone(),
+            agent_id: self.mode.clone(),
             reasoning_id: None,
             permission_policy: None,
         }
@@ -153,6 +176,8 @@ mod tests {
             command: "omp".to_string(),
             args: vec!["acp".to_string()],
             append_prompt: AppendPrompt::default(),
+            model: None,
+            mode: None,
             cmd: CmdOverrides::default(),
             approvals: None,
         }
@@ -201,5 +226,47 @@ mod tests {
         };
         let overridden = override_acp.build_command_builder().unwrap();
         assert_eq!(overridden.base, "omp-other --flag");
+    }
+
+    #[test]
+    fn overrides_persist_on_profile_and_preset() {
+        let mut acp = test_acp();
+        acp.apply_overrides(&ExecutorConfig {
+            executor: BaseCodingAgent::Acp,
+            variant: None,
+            model_id: Some("m1".to_string()),
+            agent_id: Some("plan".to_string()),
+            reasoning_id: None,
+            permission_policy: None,
+        });
+        assert_eq!(acp.model.as_deref(), Some("m1"));
+        assert_eq!(acp.mode.as_deref(), Some("plan"));
+        let preset = acp.get_preset_options();
+        assert_eq!(preset.model_id.as_deref(), Some("m1"));
+        assert_eq!(preset.agent_id.as_deref(), Some("plan"));
+    }
+
+    #[test]
+    fn availability_uses_base_command_override() {
+        let missing = Acp {
+            command: "definitely-not-a-real-binary-xyz".to_string(),
+            ..test_acp()
+        };
+        assert!(matches!(
+            missing.get_availability_info(),
+            AvailabilityInfo::NotFound
+        ));
+        // `cargo` exists wherever these tests run.
+        let overridden = Acp {
+            cmd: CmdOverrides {
+                base_command_override: Some("cargo --version".to_string()),
+                ..Default::default()
+            },
+            ..missing
+        };
+        assert!(matches!(
+            overridden.get_availability_info(),
+            AvailabilityInfo::InstallationFound
+        ));
     }
 }
