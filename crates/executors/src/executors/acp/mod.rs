@@ -1,4 +1,5 @@
 pub mod client;
+pub mod executor;
 pub mod harness;
 pub mod normalize_logs;
 pub mod session;
@@ -6,6 +7,7 @@ pub mod session;
 use std::{fmt::Display, str::FromStr};
 
 pub use client::AcpClient;
+pub use executor::Acp;
 pub use harness::AcpAgentHarness;
 pub use normalize_logs::*;
 use serde::{Deserialize, Serialize};

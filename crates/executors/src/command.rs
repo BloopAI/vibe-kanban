@@ -31,6 +31,10 @@ impl CommandParts {
         Self { program, args }
     }
 
+    pub fn program(&self) -> &str {
+        &self.program
+    }
+
     pub async fn into_resolved(self) -> Result<(PathBuf, Vec<String>), ExecutorError> {
         let CommandParts { program, args } = self;
         let executable = resolve_executable_path(&program)
