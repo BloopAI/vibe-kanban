@@ -283,6 +283,14 @@ export function prepareToolOutputForDisplay(content: string): string {
   return `${content.slice(0, cutoff)}\n\n[Tool output truncated: ${formatCharacterCount(omittedCharacters)} characters omitted.]`;
 }
 
+export function prepareToolOutputForPanel(content: string): string {
+  if (isBinaryLike(content)) {
+    return `[Binary tool output not displayed (${formatCharacterCount(content.length)} characters).]`;
+  }
+
+  return content;
+}
+
 export function prepareToolResultForDisplay(value: JsonValue): string {
   if (typeof value === 'string') {
     return prepareToolOutputForDisplay(value);
@@ -297,6 +305,22 @@ export function prepareToolResultForDisplay(value: JsonValue): string {
   }
 
   return prepareToolOutputForDisplay(JSON.stringify(value, null, 2));
+}
+
+export function prepareToolResultForPanel(value: JsonValue): string {
+  if (typeof value === 'string') {
+    return prepareToolOutputForPanel(value);
+  }
+
+  const status = inspectStructuredValue(value, 0, { size: 0 });
+  if (status === 'binary') {
+    return '[Binary tool output not displayed.]';
+  }
+  if (status === 'too_large') {
+    return '[Structured tool output not displayed because it is too large.]';
+  }
+
+  return JSON.stringify(value, null, 2);
 }
 
 export function prepareSubagentResultForDisplay(

@@ -5,7 +5,9 @@ import {
   TOOL_OUTPUT_TRUNCATION_LIMIT,
   prepareSubagentResultForDisplay,
   prepareToolOutputForDisplay,
+  prepareToolOutputForPanel,
   prepareToolResultForDisplay,
+  prepareToolResultForPanel,
 } from './toolOutputDisplay.ts';
 
 describe('prepareToolOutputForDisplay', () => {
@@ -144,5 +146,31 @@ describe('prepareToolOutputForDisplay', () => {
     assert.equal(prepareSubagentResultForDisplay(0), null);
     assert.equal(prepareSubagentResultForDisplay(null), null);
     assert.equal(prepareSubagentResultForDisplay(''), null);
+  });
+});
+
+describe('prepareToolOutputForPanel', () => {
+  it('preserves complete non-binary output', () => {
+    const content = `${'build output\n'.repeat(1_000)}final test failure`;
+
+    assert.equal(prepareToolOutputForPanel(content), content);
+  });
+
+  it('omits binary-like output', () => {
+    const content = `%PDF-1.7\n${'printable-pdf-stream'.repeat(100)}`;
+    const result = prepareToolOutputForPanel(content);
+
+    assert.match(result, /binary tool output.+not displayed/i);
+    assert.doesNotMatch(result, /%PDF|printable-pdf-stream/);
+  });
+
+  it('preserves complete safely serializable structured output', () => {
+    const value = { output: `${'line\n'.repeat(1_000)}final test failure` };
+
+    assert.equal(
+      prepareToolResultForPanel(value),
+      JSON.stringify(value, null, 2)
+    );
+    assert.match(prepareToolResultForPanel(value), /final test failure/);
   });
 });

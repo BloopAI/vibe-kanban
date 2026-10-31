@@ -27,8 +27,8 @@ import { useChangesViewActions } from '@/shared/hooks/useChangesView';
 import { useLogsPanelActions } from '@/shared/hooks/useLogsPanel';
 import {
   prepareSubagentResultForDisplay,
-  prepareToolOutputForDisplay,
-  prepareToolResultForDisplay,
+  prepareToolOutputForPanel,
+  prepareToolResultForPanel,
 } from '@/shared/lib/toolOutputDisplay';
 import { cn } from '@/shared/lib/utils';
 import {
@@ -128,7 +128,7 @@ function getToolSummary(
  * - tool: result.value (JSON stringified if object)
  * - others: fall back to entry.content
  */
-function getToolOutput(
+function getToolPanelOutput(
   entryType: Extract<NormalizedEntry['entry_type'], { type: 'tool_use' }>,
   entryContent: string
 ): string {
@@ -136,16 +136,16 @@ function getToolOutput(
 
   switch (action_type.action) {
     case 'command_run':
-      return prepareToolOutputForDisplay(
+      return prepareToolOutputForPanel(
         action_type.result?.output ?? entryContent
       );
     case 'tool':
       if (action_type.result?.value != null) {
-        return prepareToolResultForDisplay(action_type.result.value);
+        return prepareToolResultForPanel(action_type.result.value);
       }
-      return prepareToolOutputForDisplay(entryContent);
+      return prepareToolOutputForPanel(entryContent);
     default:
-      return prepareToolOutputForDisplay(entryContent);
+      return prepareToolOutputForPanel(entryContent);
   }
 }
 
@@ -293,7 +293,7 @@ function renderToolUseEntry(
       summary={getToolSummary(entryType, t)}
       expansionKey={expansionKey}
       status={status}
-      content={getToolOutput(entryType, entry.content)}
+      panelContent={getToolPanelOutput(entryType, entry.content)}
       toolName={entryType.tool_name}
       command={getToolCommand(entryType)}
       actionType={action_type.action}
@@ -910,7 +910,7 @@ function ToolSummaryEntry({
   summary,
   expansionKey,
   status,
-  content,
+  panelContent,
   toolName,
   command,
   actionType,
@@ -918,7 +918,7 @@ function ToolSummaryEntry({
   summary: string;
   expansionKey: string;
   status: ToolStatus;
-  content: string;
+  panelContent: string;
   toolName: string;
   command: string | undefined;
   actionType: string;
@@ -939,11 +939,11 @@ function ToolSummaryEntry({
   }, [summary, expanded]);
 
   // Any tool with output can open the logs panel
-  const hasOutput = content && content.trim().length > 0;
+  const hasOutput = panelContent.trim().length > 0;
 
   const handleViewContent = useCallback(() => {
-    viewToolContentInPanel(toolName, content, command);
-  }, [viewToolContentInPanel, toolName, content, command]);
+    viewToolContentInPanel(toolName, panelContent, command);
+  }, [viewToolContentInPanel, toolName, panelContent, command]);
 
   return (
     <ChatToolSummary

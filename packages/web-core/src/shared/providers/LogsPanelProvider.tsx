@@ -16,7 +16,7 @@ import {
   LogsPanelActionsContext,
   LogsPanelContext,
 } from '@/shared/hooks/useLogsPanel';
-import { prepareToolOutputForDisplay } from '@/shared/lib/toolOutputDisplay';
+import { prepareToolOutputForPanel } from '@/shared/lib/toolOutputDisplay';
 
 interface LogsPanelProviderProps {
   children: ReactNode;
@@ -95,7 +95,7 @@ export function LogsPanelProvider({ children }: LogsPanelProviderProps) {
       setLogsPanelContent({
         type: 'tool',
         toolName,
-        content: prepareToolOutputForDisplay(content),
+        content: prepareToolOutputForPanel(content),
         command,
       });
     },
