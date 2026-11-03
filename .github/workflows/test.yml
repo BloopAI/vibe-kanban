@@ -172,6 +172,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Audit dependencies
+        run: pnpm audit --prod
+
       - name: Run frontend checks
         env:
           NODE_OPTIONS: --max-old-space-size=8192

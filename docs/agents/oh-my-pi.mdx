@@ -1,0 +1,28 @@
+---
+title: "Oh My Pi"
+description: "Set up Oh My Pi (omp)"
+---
+
+<Steps>
+<Step title="Install Oh My Pi">
+  ```bash
+  bun install -g @oh-my-pi/pi-coding-agent
+  # or
+  brew install can1357/tap/omp
+  ```
+</Step>
+
+<Step title="Configure credentials">
+  Oh My Pi uses the provider keys and OAuth state already configured under `~/.omp` — no extra login is required if you have used the `omp` CLI before. See the [Oh My Pi repository](https://github.com/can1357/oh-my-pi) for details.
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Vibe Kanban launches Oh My Pi through its built-in ACP server (`omp acp`) automatically. Once `omp` is on your PATH, start Vibe Kanban:
+
+  ```bash
+  npx vibe-kanban
+  ```
+
+  You can now select Oh My Pi when creating task attempts.
+</Step>
+</Steps>
