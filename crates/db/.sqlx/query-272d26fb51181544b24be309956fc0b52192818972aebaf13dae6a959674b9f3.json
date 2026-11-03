@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COUNT(*) as \"count!: i64\"\n               FROM execution_processes ep\n               JOIN sessions s ON ep.session_id = s.id\n               WHERE s.workspace_id = $1\n                 AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')",
+  "describe": {
+    "columns": [
+      {
+        "name": "count!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "272d26fb51181544b24be309956fc0b52192818972aebaf13dae6a959674b9f3"
+}
