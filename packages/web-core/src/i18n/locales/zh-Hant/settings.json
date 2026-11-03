@@ -376,7 +376,7 @@
         "addServerFailed": "新增預設伺服器失敗",
         "mcpError": "MCP 設定錯誤：{{error}}",
         "notSupported": "不支援 MCP",
-        "supportMessage": "要使用 MCP 伺服器，請在上方選擇支援 MCP 的其他執行器（Claude、Amp、Gemini、Codex 或 Opencode）。"
+        "supportMessage": "要使用 MCP 伺服器，請在上方選擇支援 MCP 的其他執行器（Claude、Amp、Gemini、Codex、Devin 或 Opencode）。"
       },
       "save": {
         "button": "儲存 MCP 設定",

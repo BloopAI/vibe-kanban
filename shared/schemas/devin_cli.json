@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "append_prompt": {
+      "title": "Append Prompt",
+      "description": "Extra text appended to the prompt",
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "textarea",
+      "default": null
+    },
+    "permission_mode": {
+      "title": "Permission Mode",
+      "description": "Permission mode: auto (ask for writes) or dangerous (auto-approve all)",
+      "oneOf": [
+        {
+          "description": "Default: auto-approve read-only tools, ask for write/execute",
+          "type": "string",
+          "const": "auto"
+        },
+        {
+          "description": "Auto-approve all tools including writes and shell commands",
+          "type": "string",
+          "const": "dangerous"
+        }
+      ],
+      "default": "dangerous"
+    },
+    "model": {
+      "title": "Model",
+      "description": "Model to use (e.g., opus, sonnet, swe, codex, gemini)",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "base_command_override": {
+      "title": "Base Command Override",
+      "description": "Override the base command with a custom command",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "additional_params": {
+      "title": "Additional Parameters",
+      "description": "Additional parameters to append to the base command",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "env": {
+      "title": "Environment Variables",
+      "description": "Environment variables to set when running the executor",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "description": "Devin CLI executor configuration",
+  "type": "object"
+}
