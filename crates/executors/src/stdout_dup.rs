@@ -97,6 +97,9 @@ fn wrap_fd_as_child_stdout(
     {
         // On Unix: PipeReader -> raw fd -> OwnedFd -> std::process::ChildStdout -> tokio::process::ChildStdout
         let raw_fd = pipe_reader.into_raw_fd();
+        // SAFETY: raw_fd is a valid, open file descriptor produced by
+        // os_pipe::pipe(). into_raw_fd() transfers ownership, so we are the
+        // sole owner and OwnedFd takes over lifetime management.
         let owned_fd = unsafe { OwnedFd::from_raw_fd(raw_fd) };
         let std_stdout = std::process::ChildStdout::from(owned_fd);
         tokio::process::ChildStdout::from_std(std_stdout).map_err(ExecutorError::Io)
@@ -106,6 +109,8 @@ fn wrap_fd_as_child_stdout(
     {
         // On Windows: PipeReader -> raw handle -> OwnedHandle -> std::process::ChildStdout -> tokio::process::ChildStdout
         let raw_handle = pipe_reader.into_raw_handle();
+        // SAFETY: raw_handle is a valid HANDLE produced by os_pipe::pipe().
+        // into_raw_handle() transfers ownership, so OwnedHandle is the sole owner.
         let owned_handle = unsafe { OwnedHandle::from_raw_handle(raw_handle) };
         let std_stdout = std::process::ChildStdout::from(owned_handle);
         tokio::process::ChildStdout::from_std(std_stdout).map_err(ExecutorError::Io)
@@ -120,6 +125,8 @@ fn wrap_fd_as_tokio_writer(
     {
         // On Unix: PipeWriter -> raw fd -> OwnedFd -> std::fs::File -> tokio::fs::File
         let raw_fd = pipe_writer.into_raw_fd();
+        // SAFETY: raw_fd is a valid, open file descriptor produced by
+        // os_pipe::pipe(). into_raw_fd() transfers ownership, so OwnedFd is sole owner.
         let owned_fd = unsafe { OwnedFd::from_raw_fd(raw_fd) };
         let std_file = std::fs::File::from(owned_fd);
         Ok(tokio::fs::File::from_std(std_file))
@@ -129,6 +136,8 @@ fn wrap_fd_as_tokio_writer(
     {
         // On Windows: PipeWriter -> raw handle -> OwnedHandle -> std::fs::File -> tokio::fs::File
         let raw_handle = pipe_writer.into_raw_handle();
+        // SAFETY: raw_handle is a valid HANDLE produced by os_pipe::pipe().
+        // into_raw_handle() transfers ownership, so OwnedHandle is the sole owner.
         let owned_handle = unsafe { OwnedHandle::from_raw_handle(raw_handle) };
         let std_file = std::fs::File::from(owned_handle);
         Ok(tokio::fs::File::from_std(std_file))
