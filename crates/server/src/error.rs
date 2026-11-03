@@ -12,6 +12,7 @@ use deployment::{DeploymentError, RelayHostsNotConfigured, RemoteClientNotConfig
 use executors::{
     command::CommandBuildError,
     executors::{ExecutorError, acp::registry::RegistryError},
+    profile::ProfileError,
 };
 use git::GitServiceError;
 use git_host::GitHostError;
@@ -58,6 +59,8 @@ pub enum ApiError {
     Executor(#[from] ExecutorError),
     #[error(transparent)]
     AcpRegistry(#[from] RegistryError),
+    #[error(transparent)]
+    Profile(#[from] ProfileError),
     #[error(transparent)]
     Database(#[from] sqlx::Error),
     #[error(transparent)]
@@ -490,6 +493,12 @@ impl IntoResponse for ApiError {
             ApiError::Deployment(_) => ErrorInfo::internal("DeploymentError"),
             ApiError::Container(_) => ErrorInfo::internal("ContainerError"),
             ApiError::Executor(_) => ErrorInfo::internal("ExecutorError"),
+            ApiError::Profile(
+                err @ (ProfileError::Validation(_)
+                | ProfileError::CannotDeleteExecutor { .. }
+                | ProfileError::CannotDeleteBuiltInConfig { .. }),
+            ) => ErrorInfo::bad_request("ProfileError", err.to_string()),
+            ApiError::Profile(_) => ErrorInfo::internal("ProfileError"),
             ApiError::AcpRegistry(err) => {
                 ErrorInfo::with_status(StatusCode::BAD_GATEWAY, "AcpRegistryError", err.to_string())
             }

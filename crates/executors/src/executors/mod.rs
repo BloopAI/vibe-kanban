@@ -21,8 +21,8 @@ use crate::{
     command::CommandBuildError,
     env::ExecutionEnv,
     executors::{
-        amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
-        droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
+        acp_server::AcpServer, amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot,
+        cursor::CursorAgent, droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
     },
     logs::utils::patch,
     mcp_config::McpConfig,
@@ -30,6 +30,7 @@ use crate::{
 };
 
 pub mod acp;
+pub mod acp_server;
 pub mod amp;
 pub mod claude;
 pub mod codex;
@@ -88,6 +89,8 @@ pub enum ExecutorError {
     SetupHelperNotSupported,
     #[error("Auth required: {0}")]
     AuthRequired(String),
+    #[error("ACP registry agents can't run yet")]
+    AcpServerNotRunnable,
 }
 
 #[enum_dispatch]
@@ -105,6 +108,7 @@ pub enum CodingAgent {
     QwenCode,
     Copilot,
     Droid,
+    AcpServer,
     #[cfg(feature = "qa-mode")]
     QaMock(QaMockExecutor),
 }
@@ -115,7 +119,11 @@ pub struct BaseCodingAgent(String);
 
 impl From<&CodingAgent> for BaseCodingAgent {
     fn from(agent: &CodingAgent) -> Self {
-        BaseCodingAgent(agent.to_string())
+        match agent {
+            // Registry agents share one variant, so the key comes from the id
+            CodingAgent::AcpServer(server) => acp::registry::registry_key(&server.registry_id),
+            _ => BaseCodingAgent(agent.to_string()),
+        }
     }
 }
 
@@ -224,6 +232,15 @@ impl CodingAgent {
                 self.preconfigured_mcp(),
                 false,
             ),
+            // No MCP config file yet; ACP passes MCP servers in session/new
+            Self::AcpServer(_) => McpConfig::new(
+                vec!["mcpServers".to_string()],
+                serde_json::json!({
+                    "mcpServers": {}
+                }),
+                self.preconfigured_mcp(),
+                false,
+            ),
             _ => McpConfig::new(
                 vec!["mcpServers".to_string()],
                 serde_json::json!({
@@ -259,6 +276,7 @@ impl CodingAgent {
             }
             Self::CursorAgent(_) => vec![BaseAgentCapability::SetupHelper],
             Self::Amp(_) | Self::Copilot(_) | Self::Droid(_) => vec![],
+            Self::AcpServer(_) => vec![],
             #[cfg(feature = "qa-mode")]
             Self::QaMock(_) => vec![], // QA mock doesn't need special capabilities
         }

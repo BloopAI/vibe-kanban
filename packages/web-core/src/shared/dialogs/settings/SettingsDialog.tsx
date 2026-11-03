@@ -7,7 +7,7 @@ import { defineModal } from '@/shared/lib/modals';
 
 import { cn } from '@/shared/lib/utils';
 import { SettingsSection } from './settings/SettingsSection';
-import { SettingsSelect } from './settings/SettingsComponents';
+import { SettingsSelect } from './settings/shared/SettingsComponents';
 import type {
   SettingsSectionType,
   SettingsSectionInitialState,
