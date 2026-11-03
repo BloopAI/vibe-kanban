@@ -25,6 +25,11 @@ import { useMessageEditContext } from '../model/contexts/MessageEditContext';
 import type { UseResetProcessResult } from '../model/hooks/useResetProcess';
 import { useChangesViewActions } from '@/shared/hooks/useChangesView';
 import { useLogsPanelActions } from '@/shared/hooks/useLogsPanel';
+import {
+  prepareSubagentResultForDisplay,
+  prepareToolOutputForPanel,
+  prepareToolResultForPanel,
+} from '@/shared/lib/toolOutputDisplay';
 import { cn } from '@/shared/lib/utils';
 import {
   ScriptFixerDialog,
@@ -123,7 +128,7 @@ function getToolSummary(
  * - tool: result.value (JSON stringified if object)
  * - others: fall back to entry.content
  */
-function getToolOutput(
+function getToolPanelOutput(
   entryType: Extract<NormalizedEntry['entry_type'], { type: 'tool_use' }>,
   entryContent: string
 ): string {
@@ -131,16 +136,16 @@ function getToolOutput(
 
   switch (action_type.action) {
     case 'command_run':
-      return action_type.result?.output ?? entryContent;
+      return prepareToolOutputForPanel(
+        action_type.result?.output ?? entryContent
+      );
     case 'tool':
       if (action_type.result?.value != null) {
-        return typeof action_type.result.value === 'string'
-          ? action_type.result.value
-          : JSON.stringify(action_type.result.value, null, 2);
+        return prepareToolResultForPanel(action_type.result.value);
       }
-      return entryContent;
+      return prepareToolOutputForPanel(entryContent);
     default:
-      return entryContent;
+      return prepareToolOutputForPanel(entryContent);
   }
 }
 
@@ -288,7 +293,7 @@ function renderToolUseEntry(
       summary={getToolSummary(entryType, t)}
       expansionKey={expansionKey}
       status={status}
-      content={getToolOutput(entryType, entry.content)}
+      panelContent={getToolPanelOutput(entryType, entry.content)}
       toolName={entryType.tool_name}
       command={getToolCommand(entryType)}
       actionType={action_type.action}
@@ -905,7 +910,7 @@ function ToolSummaryEntry({
   summary,
   expansionKey,
   status,
-  content,
+  panelContent,
   toolName,
   command,
   actionType,
@@ -913,7 +918,7 @@ function ToolSummaryEntry({
   summary: string;
   expansionKey: string;
   status: ToolStatus;
-  content: string;
+  panelContent: string;
   toolName: string;
   command: string | undefined;
   actionType: string;
@@ -934,11 +939,11 @@ function ToolSummaryEntry({
   }, [summary, expanded]);
 
   // Any tool with output can open the logs panel
-  const hasOutput = content && content.trim().length > 0;
+  const hasOutput = panelContent.trim().length > 0;
 
   const handleViewContent = useCallback(() => {
-    viewToolContentInPanel(toolName, content, command);
-  }, [viewToolContentInPanel, toolName, content, command]);
+    viewToolContentInPanel(toolName, panelContent, command);
+  }, [viewToolContentInPanel, toolName, panelContent, command]);
 
   return (
     <ChatToolSummary
@@ -993,8 +998,11 @@ function SubagentEntry({
   workspaceId: string | undefined;
   sessionId: string | undefined;
 }) {
-  // Only auto-expand if there's a result to show
-  const hasResult = Boolean(result?.value);
+  const resultContent = useMemo(
+    () => prepareSubagentResultForDisplay(result?.value),
+    [result?.value]
+  );
+  const hasResult = resultContent !== null;
   const [expanded, toggle] = usePersistedExpanded(
     `subagent:${expansionKey}`,
     false
@@ -1004,7 +1012,7 @@ function SubagentEntry({
     <ChatSubagentEntry
       description={description}
       subagentType={subagentType}
-      result={result}
+      resultContent={resultContent}
       expanded={expanded}
       onToggle={hasResult ? toggle : undefined}
       status={status}
