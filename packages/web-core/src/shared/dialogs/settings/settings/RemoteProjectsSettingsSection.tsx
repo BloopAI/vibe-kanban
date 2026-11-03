@@ -66,7 +66,7 @@ import {
   TwoColumnPickerItem,
   TwoColumnPickerBadge,
   TwoColumnPickerEmpty,
-} from './SettingsComponents';
+} from './shared/SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 import type { DraftWorkspaceRepo, GitBranch, Repo } from 'shared/types';
 import { repoApi } from '@/shared/lib/api';

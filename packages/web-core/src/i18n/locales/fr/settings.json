@@ -338,7 +338,14 @@
         "expand": "Afficher",
         "loading": "Chargement des agents disponibles...",
         "loadFailed": "Impossible de charger les agents disponibles.",
-        "empty": "Aucun agent disponible."
+        "empty": "Aucun agent disponible.",
+        "install": "Installer",
+        "installed": "Installé",
+        "uninstall": "Désinstaller",
+        "installFailed": "Impossible d’installer {{name}} : {{message}}",
+        "uninstallFailed": "Impossible de désinstaller {{name}} : {{message}}",
+        "unsavedChangesHint": "Enregistrez ou annulez vos modifications de configuration avant d’installer ou de désinstaller des agents.",
+        "defaultAgentHint": "Il s’agit de l’agent par défaut. Choisissez un autre agent par défaut avant de le désinstaller."
       },
       "errors": {
         "deleteFailed": "Échec de la suppression de la configuration. Veuillez réessayer.",

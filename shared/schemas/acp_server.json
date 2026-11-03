@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "required": [
+    "registry_id"
+  ],
+  "description": "An agent installed from the ACP registry",
+  "type": "object",
+  "properties": {
+    "registry_id": {
+      "title": "Registry ID",
+      "description": "ID of the agent in the ACP registry",
+      "type": "string",
+      "readOnly": true
+    }
+  }
+}

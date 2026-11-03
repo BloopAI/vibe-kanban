@@ -338,7 +338,14 @@
         "expand": "显示",
         "loading": "正在加载可用代理...",
         "loadFailed": "无法加载可用代理。",
-        "empty": "没有可用的代理。"
+        "empty": "没有可用的代理。",
+        "install": "安装",
+        "installed": "已安装",
+        "uninstall": "卸载",
+        "installFailed": "无法安装 {{name}}：{{message}}",
+        "uninstallFailed": "无法卸载 {{name}}：{{message}}",
+        "unsavedChangesHint": "安装或卸载代理前，请先保存或放弃配置更改。",
+        "defaultAgentHint": "这是默认代理。卸载前请先选择其他默认代理。"
       },
       "errors": {
         "deleteFailed": "删除配置失败。请重试。",

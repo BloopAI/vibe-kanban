@@ -40,7 +40,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuTriggerButton,
 } from '@vibe/ui/components/Dropdown';
-import { SettingsCard, SettingsField } from './SettingsComponents';
+import { SettingsCard, SettingsField } from './shared/SettingsComponents';
 
 export function OrganizationsSettingsSection() {
   const { t } = useTranslation('organization');

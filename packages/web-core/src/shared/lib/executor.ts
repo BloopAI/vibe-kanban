@@ -18,6 +18,16 @@ export function getExecutorVariantKeys(
   );
 }
 
+/**
+ * Variant name a configuration is stored under, e.g. `ACP_SERVER` for an agent
+ * installed from the ACP registry under the `KILO` key. Built-ins store theirs
+ * under their own executor key, which is the fallback.
+ */
+export function getConfigVariant(config: unknown, fallback: string): string {
+  const keys = config && typeof config === 'object' ? Object.keys(config) : [];
+  return keys[0] ?? fallback;
+}
+
 function sortVariantKeys(variants: string[]): string[] {
   return variants.sort((a, b) => {
     if (a === 'DEFAULT') return -1;

@@ -51,6 +51,8 @@ export interface MachineClient {
     data: UpdateMcpServersBody
   ) => Promise<void>;
   listAcpRegistryAgents: () => Promise<AcpRegistryAgent[]>;
+  installAcpRegistryAgent: (id: string) => Promise<AcpRegistryAgent>;
+  uninstallAcpRegistryAgent: (id: string) => Promise<void>;
 }
 
 function getMachineRequestOptions(
@@ -190,5 +192,24 @@ export function createMachineClient(
       handleApiResponse<AcpRegistryAgent[]>(
         await makeMachineRequest(runtime, target, '/api/acp-registry/agents')
       ),
+    installAcpRegistryAgent: async (id) =>
+      handleApiResponse<AcpRegistryAgent>(
+        await makeMachineRequest(
+          runtime,
+          target,
+          `/api/acp-registry/agents/${encodeURIComponent(id)}`,
+          { method: 'POST' }
+        )
+      ),
+    uninstallAcpRegistryAgent: async (id) => {
+      await handleApiResponse<void>(
+        await makeMachineRequest(
+          runtime,
+          target,
+          `/api/acp-registry/agents/${encodeURIComponent(id)}`,
+          { method: 'DELETE' }
+        )
+      );
+    },
   };
 }

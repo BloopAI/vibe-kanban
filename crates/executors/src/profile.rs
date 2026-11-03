@@ -556,3 +556,41 @@ impl ExecutorConfigs {
         Ok(ExecutorProfileId::new(selected))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::executors::{acp::registry::registry_key, acp_server::AcpServer};
+
+    #[test]
+    fn validate_merged_accepts_registry_agent() {
+        let mut profiles = ExecutorConfigs::from_defaults();
+        let mut profile = ExecutorProfile {
+            recently_used_models: None,
+            configurations: HashMap::new(),
+        };
+        profile.set_default(CodingAgent::AcpServer(AcpServer {
+            registry_id: "glm-acp-agent".to_string(),
+        }));
+        profiles
+            .executors
+            .insert(registry_key("glm-acp-agent"), profile);
+
+        ExecutorConfigs::validate_merged(&profiles).unwrap();
+    }
+
+    #[test]
+    fn registry_agent_round_trips_through_profiles_json() {
+        let json =
+            r#"{"executors": {"KILO": {"DEFAULT": {"ACP_SERVER": {"registry_id": "kilo"}}}}}"#;
+        let profiles: ExecutorConfigs = serde_json::from_str(json).unwrap();
+        let config = profiles.executors[&registry_key("kilo")]
+            .get_variant("DEFAULT")
+            .unwrap();
+        assert_eq!(BaseCodingAgent::from(config), registry_key("kilo"));
+        assert_eq!(
+            serde_json::to_value(&profiles).unwrap(),
+            serde_json::from_str::<serde_json::Value>(json).unwrap()
+        );
+    }
+}

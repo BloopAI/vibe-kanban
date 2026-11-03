@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  CaretDownIcon,
   DotsThreeIcon,
   PlusIcon,
   SpinnerIcon,
@@ -14,13 +13,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@vibe/ui/components/Dropdown';
-import { ExecutorConfigForm } from './ExecutorConfigForm';
+import { AvailableAgentsCard } from './agents/AvailableAgentsCard';
+import { ExecutorConfigForm } from './agents/ExecutorConfigForm';
+import { RegistryAgentIcon } from './agents/RegistryAgentIcon';
+import { useMachineAcpRegistryAgents } from '@/shared/hooks/useAcpRegistryAgents';
 import { useMachineProfiles } from '@/shared/hooks/useProfiles';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { CreateConfigurationDialog } from '../CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '../DeleteConfigurationDialog';
 import type {
   AcpRegistryAgent,
+  AcpServer,
   BaseCodingAgent,
   CodingAgent,
   ExecutorConfigs,
@@ -35,13 +38,14 @@ import {
   TwoColumnPickerColumn,
   TwoColumnPickerEmpty,
   TwoColumnPickerItem,
-} from './SettingsComponents';
+} from './shared/SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 import { useSettingsMachineClient } from './SettingsHostContext';
-import { useMachineAcpRegistryAgents } from '@/shared/hooks/useAcpRegistryAgents';
-import type { MachineClient } from '@/shared/lib/machineClient';
 import { AgentIcon } from '@/shared/components/AgentIcon';
-import { getExecutorVariantKeys } from '@/shared/lib/executor';
+import {
+  getConfigVariant,
+  getExecutorVariantKeys,
+} from '@/shared/lib/executor';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 
@@ -58,6 +62,16 @@ export function AgentsSettingsSection() {
     error: profilesError,
     save: saveProfiles,
   } = useMachineProfiles(machineClient);
+
+  // Installed registry agents show their registry icon and name
+  const { data: registryAgents } = useMachineAcpRegistryAgents(machineClient);
+  const registryAgentsByExecutor = useMemo(
+    () =>
+      new Map<string, AcpRegistryAgent>(
+        (registryAgents ?? []).map((agent) => [agent.executor, agent])
+      ),
+    [registryAgents]
+  );
 
   const { config, updateAndSaveConfig, reloadSystem } = useUserSystem();
 
@@ -133,10 +147,15 @@ export function AgentsSettingsSection() {
 
     const executorsMap =
       localParsedProfiles.executors as unknown as ExecutorsMap;
+    const defaultConfig = executorsMap[executorType]?.DEFAULT;
+    const variant = getConfigVariant(defaultConfig, executorType);
     const base =
-      baseConfig && executorsMap[executorType]?.[baseConfig]?.[executorType]
-        ? executorsMap[executorType][baseConfig][executorType]
-        : {};
+      baseConfig && executorsMap[executorType]?.[baseConfig]?.[variant]
+        ? executorsMap[executorType][baseConfig][variant]
+        : variant === 'ACP_SERVER'
+          ? // registry_id is the agent's identity, so a fresh config keeps it
+            { registry_id: (defaultConfig?.[variant] as AcpServer).registry_id }
+          : {};
 
     const updatedProfiles = {
       ...localParsedProfiles,
@@ -145,7 +164,7 @@ export function AgentsSettingsSection() {
         [executorType]: {
           ...executorsMap[executorType],
           [configName]: {
-            [executorType]: base,
+            [variant]: base,
           },
         },
       },
@@ -191,6 +210,10 @@ export function AgentsSettingsSection() {
         return;
       }
 
+      const variant = getConfigVariant(
+        executorConfigs[configToDelete],
+        executorType
+      );
       const remainingConfigs = { ...executorConfigs };
       delete remainingConfigs[configToDelete];
 
@@ -205,7 +228,7 @@ export function AgentsSettingsSection() {
       const executorsMap = updatedProfiles.executors as unknown as ExecutorsMap;
       if (getExecutorVariantKeys(remainingConfigs).length === 0) {
         executorsMap[executorType] = {
-          DEFAULT: { [executorType]: {} },
+          DEFAULT: { [variant]: {} },
         };
       }
 
@@ -261,7 +284,11 @@ export function AgentsSettingsSection() {
     const executorsMap =
       localParsedProfiles.executors as unknown as ExecutorsMap;
 
-    const agentConfig = { [executorType]: formData } as CodingAgent;
+    const variant = getConfigVariant(
+      executorsMap[executorType]?.[configuration],
+      executorType
+    );
+    const agentConfig = { [variant]: formData } as CodingAgent;
 
     const updatedProfiles = {
       ...localParsedProfiles,
@@ -288,7 +315,13 @@ export function AgentsSettingsSection() {
 
     setSaveError(null);
 
-    const agentConfig = { [selectedExecutorType]: formData } as CodingAgent;
+    const variant = getConfigVariant(
+      localParsedProfiles.executors[selectedExecutorType]?.[
+        selectedConfiguration
+      ],
+      selectedExecutorType
+    );
+    const agentConfig = { [variant]: formData } as CodingAgent;
 
     const updatedProfiles = {
       ...localParsedProfiles,
@@ -325,10 +358,9 @@ export function AgentsSettingsSection() {
     ) {
       const executorsMap =
         localParsedProfiles.executors as unknown as ExecutorsMap;
-      const formData =
-        executorsMap[selectedExecutorType]?.[selectedConfiguration]?.[
-          selectedExecutorType
-        ];
+      const config =
+        executorsMap[selectedExecutorType]?.[selectedConfiguration];
+      const formData = config?.[getConfigVariant(config, selectedExecutorType)];
       if (formData) {
         await handleExecutorConfigSave(formData);
       }
@@ -362,10 +394,21 @@ export function AgentsSettingsSection() {
 
   const executorsMap =
     localParsedProfiles?.executors as unknown as ExecutorsMap;
+  const selectedConfig =
+    selectedExecutorType && selectedConfiguration
+      ? executorsMap?.[selectedExecutorType]?.[selectedConfiguration]
+      : undefined;
+  const selectedVariant = getConfigVariant(
+    selectedConfig,
+    selectedExecutorType ?? ''
+  );
 
   return (
     <>
-      <AvailableAgentsCard machineClient={machineClient} />
+      <AvailableAgentsCard
+        machineClient={machineClient}
+        hasUnsavedChanges={isDirty}
+      />
 
       {/* Status messages */}
       {!!profilesError && (
@@ -405,6 +448,15 @@ export function AgentsSettingsSection() {
                 {Object.keys(localParsedProfiles.executors).map((executor) => {
                   const isDefault =
                     config?.executor_profile?.executor === executor;
+                  // Only for ACP_SERVER executors, so a registry id that maps
+                  // onto a built-in key never replaces the built-in's icon
+                  const registryAgent =
+                    getConfigVariant(
+                      executorsMap?.[executor]?.DEFAULT,
+                      executor
+                    ) === 'ACP_SERVER'
+                      ? registryAgentsByExecutor.get(executor)
+                      : undefined;
                   return (
                     <TwoColumnPickerItem
                       key={executor}
@@ -421,10 +473,17 @@ export function AgentsSettingsSection() {
                         }
                       }}
                       leading={
-                        <AgentIcon
-                          agent={executor as BaseCodingAgent}
-                          className="size-icon-sm shrink-0"
-                        />
+                        registryAgent ? (
+                          <RegistryAgentIcon
+                            agent={registryAgent}
+                            className="size-icon-sm text-sm"
+                          />
+                        ) : (
+                          <AgentIcon
+                            agent={executor as BaseCodingAgent}
+                            className="size-icon-sm shrink-0"
+                          />
+                        )
                       }
                       trailing={
                         isDefault && (
@@ -434,7 +493,7 @@ export function AgentsSettingsSection() {
                         )
                       }
                     >
-                      {toPrettyCase(executor)}
+                      {registryAgent?.name ?? toPrettyCase(executor)}
                     </TwoColumnPickerItem>
                   );
                 })}
@@ -508,11 +567,12 @@ export function AgentsSettingsSection() {
               <div className="bg-secondary/50 border border-border rounded-sm p-4">
                 <ExecutorConfigForm
                   key={`${selectedExecutorType}-${selectedConfiguration}`}
-                  executor={selectedExecutorType}
+                  variant={selectedVariant}
                   value={
-                    (executorsMap?.[selectedExecutorType]?.[
-                      selectedConfiguration
-                    ]?.[selectedExecutorType] as Record<string, unknown>) || {}
+                    (selectedConfig?.[selectedVariant] as Record<
+                      string,
+                      unknown
+                    >) || {}
                   }
                   onChange={(formData) =>
                     handleExecutorConfigChange(
@@ -538,136 +598,6 @@ export function AgentsSettingsSection() {
         onDiscard={handleDiscard}
       />
     </>
-  );
-}
-
-function AvailableAgentsCard({
-  machineClient,
-}: {
-  machineClient: MachineClient | null;
-}) {
-  const { t } = useTranslation(['settings', 'common']);
-  const [expanded, setExpanded] = useState(false);
-  const {
-    data: agents,
-    isLoading,
-    isError,
-    refetch,
-  } = useMachineAcpRegistryAgents(machineClient);
-
-  return (
-    // Same layout as SettingsCard, but the whole header toggles the list
-    <div className="space-y-4 pb-6 border-b border-border last:border-b-0 last:pb-0">
-      <button
-        className="group flex w-full items-center justify-between gap-base text-left"
-        onClick={() => setExpanded((prev) => !prev)}
-        aria-expanded={expanded}
-      >
-        <span>
-          <span className="block text-base font-medium text-high">
-            {t('settings.agents.available.title')}
-          </span>
-          <span className="block text-sm text-low mt-1">
-            {t('settings.agents.available.description')}
-          </span>
-        </span>
-        <span className="shrink-0 flex items-center gap-half text-sm text-low group-hover:text-normal">
-          {expanded
-            ? t('settings.agents.available.hide')
-            : agents
-              ? t('settings.agents.available.show', { count: agents.length })
-              : t('settings.agents.available.expand')}
-          <CaretDownIcon
-            className={cn(
-              'size-icon-2xs transition-transform',
-              expanded && 'rotate-180'
-            )}
-            weight="bold"
-          />
-        </span>
-      </button>
-      {expanded &&
-        (isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-4">
-            <SpinnerIcon
-              className="size-icon-sm animate-spin text-brand"
-              weight="bold"
-            />
-            <span className="text-sm text-low">
-              {t('settings.agents.available.loading')}
-            </span>
-          </div>
-        ) : isError ? (
-          <div className="flex items-center justify-between gap-base bg-error/10 border border-error/50 rounded-sm p-base text-sm text-error">
-            {t('settings.agents.available.loadFailed')}
-            <button
-              className="shrink-0 underline hover:no-underline"
-              onClick={() => void refetch()}
-            >
-              {t('common:buttons.retry')}
-            </button>
-          </div>
-        ) : agents && agents.length > 0 ? (
-          <AvailableAgentsList agents={agents} />
-        ) : (
-          <p className="py-4 text-sm text-low text-center">
-            {t('settings.agents.available.empty')}
-          </p>
-        ))}
-    </div>
-  );
-}
-
-function AvailableAgentsList({ agents }: { agents: AcpRegistryAgent[] }) {
-  return (
-    <div className="relative overflow-hidden border border-border rounded-sm bg-secondary">
-      {/* Capped at ~4 rows so the configurations below stay in view; the
-          bottom padding lets the last row scroll clear of the fade */}
-      <ul className="max-h-64 overflow-y-auto pb-6 divide-y divide-border">
-        {agents.map((agent) => (
-          <li key={agent.id} className="flex items-start gap-base p-base">
-            <RegistryAgentIcon agent={agent} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-half min-h-6">
-                <span className="text-base font-medium text-high truncate">
-                  {agent.name}
-                </span>
-                <span className="text-sm text-low font-ibm-plex-mono shrink-0">
-                  v{agent.version}
-                </span>
-              </div>
-              <p className="text-sm text-low mt-0.5 line-clamp-2">
-                {agent.description}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
-      {/* Fade hints that the list scrolls */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-secondary to-transparent" />
-    </div>
-  );
-}
-
-function RegistryAgentIcon({ agent }: { agent: AcpRegistryAgent }) {
-  const [failed, setFailed] = useState(false);
-
-  return (
-    <div className="size-6 shrink-0 flex items-center justify-center rounded-sm bg-primary border border-border">
-      {agent.icon && !failed ? (
-        // Registry icons are monochrome, so invert them for dark mode
-        <img
-          src={agent.icon}
-          alt={agent.name}
-          className="size-icon-base dark:invert"
-          onError={() => setFailed(true)}
-        />
-      ) : (
-        <span className="text-base font-medium text-low">
-          {agent.name.charAt(0).toUpperCase()}
-        </span>
-      )}
-    </div>
   );
 }
 

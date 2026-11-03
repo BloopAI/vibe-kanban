@@ -13,7 +13,7 @@ import {
   SettingsField,
   SettingsInput,
   SettingsSelect,
-} from './SettingsComponents';
+} from '../shared/SettingsComponents';
 import { PairingCodeInput } from './PairingCodeInput';
 import { normalizeEnrollmentCode } from '@/shared/lib/relayPake';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
