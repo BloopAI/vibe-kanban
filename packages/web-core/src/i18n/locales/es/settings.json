@@ -330,6 +330,12 @@
         "jsonLoading": "Cargando...",
         "pathLabel": "Ubicación del archivo de configuración:"
       },
+      "available": {
+        "title": "Agentes disponibles",
+        "description": "Agentes del registro ACP que puedes instalar y usar.",
+        "show": "Mostrar ({{count}})",
+        "hide": "Ocultar"
+      },
       "errors": {
         "deleteFailed": "Error al eliminar la configuración. Por favor, inténtalo de nuevo.",
         "saveFailed": "Error al guardar la configuración de los agentes. Por favor, inténtalo de nuevo.",

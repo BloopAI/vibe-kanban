@@ -330,6 +330,12 @@
         "jsonLoading": "加载中...",
         "pathLabel": "配置文件位置："
       },
+      "available": {
+        "title": "可用代理",
+        "description": "可从 ACP 注册表安装并使用的代理。",
+        "show": "显示 ({{count}})",
+        "hide": "隐藏"
+      },
       "errors": {
         "deleteFailed": "删除配置失败。请重试。",
         "saveFailed": "保存代理配置失败。请重试。",

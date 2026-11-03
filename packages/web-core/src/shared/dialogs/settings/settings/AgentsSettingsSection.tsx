@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  CaretDownIcon,
   DotsThreeIcon,
   PlusIcon,
   SpinnerIcon,
@@ -26,6 +27,7 @@ import type {
 import { cn } from '@/shared/lib/utils';
 import { toPrettyCase } from '@/shared/lib/string';
 import {
+  SettingsCard,
   SettingsSaveBar,
   TwoColumnPicker,
   TwoColumnPickerBadge,
@@ -39,6 +41,66 @@ import { AgentIcon } from '@/shared/components/AgentIcon';
 import { getExecutorVariantKeys } from '@/shared/lib/executor';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
+
+// Mirrors the agent entries of the ACP registry (crates/executors/src/executors/acp/registry.rs)
+type RegistryAgent = {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  icon: string | null;
+};
+
+// TODO: replace with data fetched from the ACP registry
+// Real registry entries; qoder's icon URL is deliberately broken to exercise
+// the fallback letter
+const AVAILABLE_AGENTS: RegistryAgent[] = [
+  {
+    id: 'auggie',
+    name: 'Auggie CLI',
+    version: '0.36.0',
+    description:
+      "Augment Code's powerful software agent, backed by industry-leading context engine",
+    icon: 'https://cdn.agentclientprotocol.com/registry/v1/latest/auggie.svg',
+  },
+  {
+    id: 'cline',
+    name: 'Cline',
+    version: '3.0.74',
+    description:
+      'Autonomous coding agent CLI - capable of creating/editing files, running commands, using the browser, and more',
+    icon: 'https://cdn.agentclientprotocol.com/registry/v1/latest/cline.svg',
+  },
+  {
+    id: 'glm-acp-agent',
+    name: 'GLM Agent',
+    version: '1.17.0',
+    description:
+      "ACP agent powered by Zhipu AI's GLM Coding Plan models (glm-5.1, glm-5-turbo, glm-4.7, glm-4.5-air). Supports streaming, tool calls, mid-session model switching, image input via Z.AI Coding Plan Vision MCP, and session load/fork/resume with on-disk persistence.",
+    icon: 'https://cdn.agentclientprotocol.com/registry/v1/latest/glm-acp-agent.svg',
+  },
+  {
+    id: 'grok-build',
+    name: 'Grok Build',
+    version: '1.0.73',
+    description: "xAI's coding agent and CLI",
+    icon: 'https://cdn.agentclientprotocol.com/registry/v1/latest/grok-build.svg',
+  },
+  {
+    id: 'kilo',
+    name: 'Kilo',
+    version: '7.8.18',
+    description: 'The open source coding agent',
+    icon: 'https://cdn.agentclientprotocol.com/registry/v1/latest/kilo.svg',
+  },
+  {
+    id: 'qoder',
+    name: 'Qoder CLI',
+    version: '0.2.14',
+    description: 'AI coding assistant with agentic capabilities',
+    icon: 'https://cdn.agentclientprotocol.com/registry/v1/latest/qoder-missing.svg',
+  },
+];
 
 export function AgentsSettingsSection() {
   const { t } = useTranslation(['settings', 'common']);
@@ -360,6 +422,8 @@ export function AgentsSettingsSection() {
 
   return (
     <>
+      <AvailableAgentsCard agents={AVAILABLE_AGENTS} />
+
       {/* Status messages */}
       {!!profilesError && (
         <div className="bg-error/10 border border-error/50 rounded-sm p-4 text-error mb-4">
@@ -381,141 +445,146 @@ export function AgentsSettingsSection() {
         </div>
       )}
 
-      {localParsedProfiles?.executors ? (
-        /* Two-column layout: agents and variants on top, config form below */
-        <div className="space-y-4">
-          {/* Two-column selector - Finder-like style, stacked on mobile */}
-          <TwoColumnPicker>
-            {/* Agents column */}
-            <TwoColumnPickerColumn
-              label={t('settings.agents.editor.agentLabel')}
-              isFirst
-            >
-              {Object.keys(localParsedProfiles.executors).map((executor) => {
-                const isDefault =
-                  config?.executor_profile?.executor === executor;
-                return (
-                  <TwoColumnPickerItem
-                    key={executor}
-                    selected={selectedExecutorType === executor}
-                    onClick={() => {
-                      setSelectedExecutorType(executor as BaseCodingAgent);
-                      const configs = getExecutorVariantKeys(
-                        localParsedProfiles.executors[
-                          executor as BaseCodingAgent
-                        ]
-                      );
-                      if (configs.length > 0) {
-                        setSelectedConfiguration(configs[0]);
-                      }
-                    }}
-                    leading={
-                      <AgentIcon
-                        agent={executor as BaseCodingAgent}
-                        className="size-icon-sm shrink-0"
-                      />
-                    }
-                    trailing={
-                      isDefault && (
-                        <TwoColumnPickerBadge variant="brand">
-                          {t('settings.agents.editor.isDefault')}
-                        </TwoColumnPickerBadge>
-                      )
-                    }
-                  >
-                    {toPrettyCase(executor)}
-                  </TwoColumnPickerItem>
-                );
-              })}
-            </TwoColumnPickerColumn>
-
-            {/* Variants column */}
-            <TwoColumnPickerColumn
-              label={t('settings.agents.editor.configLabel')}
-              headerAction={
-                selectedExecutorType && (
-                  <button
-                    className="p-half rounded-sm hover:bg-secondary text-low hover:text-normal"
-                    onClick={() => handleCreateConfig(selectedExecutorType)}
-                    disabled={profilesSaving}
-                    title={t('settings.agents.editor.createNew')}
-                  >
-                    <PlusIcon className="size-icon-2xs" weight="bold" />
-                  </button>
-                )
-              }
-            >
-              {selectedExecutorType &&
-              localParsedProfiles.executors[selectedExecutorType] ? (
-                getExecutorVariantKeys(
-                  localParsedProfiles.executors[selectedExecutorType]
-                ).map((configName) => {
+      <SettingsCard
+        title={t('settings.agents.title')}
+        description={t('settings.agents.description')}
+      >
+        {localParsedProfiles?.executors ? (
+          /* Two-column layout: agents and variants on top, config form below */
+          <div className="space-y-4">
+            {/* Two-column selector - Finder-like style, stacked on mobile */}
+            <TwoColumnPicker>
+              {/* Agents column */}
+              <TwoColumnPickerColumn
+                label={t('settings.agents.editor.agentLabel')}
+                isFirst
+              >
+                {Object.keys(localParsedProfiles.executors).map((executor) => {
                   const isDefault =
-                    config?.executor_profile?.executor ===
-                      selectedExecutorType &&
-                    config?.executor_profile?.variant === configName;
-                  const configCount = getExecutorVariantKeys(
-                    localParsedProfiles.executors[selectedExecutorType]
-                  ).length;
+                    config?.executor_profile?.executor === executor;
                   return (
                     <TwoColumnPickerItem
-                      key={configName}
-                      selected={selectedConfiguration === configName}
-                      onClick={() => setSelectedConfiguration(configName)}
+                      key={executor}
+                      selected={selectedExecutorType === executor}
+                      onClick={() => {
+                        setSelectedExecutorType(executor as BaseCodingAgent);
+                        const configs = getExecutorVariantKeys(
+                          localParsedProfiles.executors[
+                            executor as BaseCodingAgent
+                          ]
+                        );
+                        if (configs.length > 0) {
+                          setSelectedConfiguration(configs[0]);
+                        }
+                      }}
+                      leading={
+                        <AgentIcon
+                          agent={executor as BaseCodingAgent}
+                          className="size-icon-sm shrink-0"
+                        />
+                      }
                       trailing={
-                        <>
-                          {isDefault && (
-                            <TwoColumnPickerBadge variant="brand">
-                              {t('settings.agents.editor.isDefault')}
-                            </TwoColumnPickerBadge>
-                          )}
-                          <ConfigActionsDropdown
-                            executorType={selectedExecutorType}
-                            configName={configName}
-                            isDefault={isDefault}
-                            configCount={configCount}
-                            onMakeDefault={handleMakeDefault}
-                            onDelete={handleDeleteConfig}
-                          />
-                        </>
+                        isDefault && (
+                          <TwoColumnPickerBadge variant="brand">
+                            {t('settings.agents.editor.isDefault')}
+                          </TwoColumnPickerBadge>
+                        )
                       }
                     >
-                      {toPrettyCase(configName)}
+                      {toPrettyCase(executor)}
                     </TwoColumnPickerItem>
                   );
-                })
-              ) : (
-                <TwoColumnPickerEmpty>
-                  {t('settings.agents.selectAgent')}
-                </TwoColumnPickerEmpty>
-              )}
-            </TwoColumnPickerColumn>
-          </TwoColumnPicker>
+                })}
+              </TwoColumnPickerColumn>
 
-          {/* Config form */}
-          {selectedExecutorType && selectedConfiguration && (
-            <div className="bg-secondary/50 border border-border rounded-sm p-4">
-              <ExecutorConfigForm
-                key={`${selectedExecutorType}-${selectedConfiguration}`}
-                executor={selectedExecutorType}
-                value={
-                  (executorsMap?.[selectedExecutorType]?.[
-                    selectedConfiguration
-                  ]?.[selectedExecutorType] as Record<string, unknown>) || {}
-                }
-                onChange={(formData) =>
-                  handleExecutorConfigChange(
-                    selectedExecutorType,
-                    selectedConfiguration,
-                    formData
+              {/* Variants column */}
+              <TwoColumnPickerColumn
+                label={t('settings.agents.editor.configLabel')}
+                headerAction={
+                  selectedExecutorType && (
+                    <button
+                      className="p-half rounded-sm hover:bg-secondary text-low hover:text-normal"
+                      onClick={() => handleCreateConfig(selectedExecutorType)}
+                      disabled={profilesSaving}
+                      title={t('settings.agents.editor.createNew')}
+                    >
+                      <PlusIcon className="size-icon-2xs" weight="bold" />
+                    </button>
                   )
                 }
-                disabled={profilesSaving}
-              />
-            </div>
-          )}
-        </div>
-      ) : null}
+              >
+                {selectedExecutorType &&
+                localParsedProfiles.executors[selectedExecutorType] ? (
+                  getExecutorVariantKeys(
+                    localParsedProfiles.executors[selectedExecutorType]
+                  ).map((configName) => {
+                    const isDefault =
+                      config?.executor_profile?.executor ===
+                        selectedExecutorType &&
+                      config?.executor_profile?.variant === configName;
+                    const configCount = getExecutorVariantKeys(
+                      localParsedProfiles.executors[selectedExecutorType]
+                    ).length;
+                    return (
+                      <TwoColumnPickerItem
+                        key={configName}
+                        selected={selectedConfiguration === configName}
+                        onClick={() => setSelectedConfiguration(configName)}
+                        trailing={
+                          <>
+                            {isDefault && (
+                              <TwoColumnPickerBadge variant="brand">
+                                {t('settings.agents.editor.isDefault')}
+                              </TwoColumnPickerBadge>
+                            )}
+                            <ConfigActionsDropdown
+                              executorType={selectedExecutorType}
+                              configName={configName}
+                              isDefault={isDefault}
+                              configCount={configCount}
+                              onMakeDefault={handleMakeDefault}
+                              onDelete={handleDeleteConfig}
+                            />
+                          </>
+                        }
+                      >
+                        {toPrettyCase(configName)}
+                      </TwoColumnPickerItem>
+                    );
+                  })
+                ) : (
+                  <TwoColumnPickerEmpty>
+                    {t('settings.agents.selectAgent')}
+                  </TwoColumnPickerEmpty>
+                )}
+              </TwoColumnPickerColumn>
+            </TwoColumnPicker>
+
+            {/* Config form */}
+            {selectedExecutorType && selectedConfiguration && (
+              <div className="bg-secondary/50 border border-border rounded-sm p-4">
+                <ExecutorConfigForm
+                  key={`${selectedExecutorType}-${selectedConfiguration}`}
+                  executor={selectedExecutorType}
+                  value={
+                    (executorsMap?.[selectedExecutorType]?.[
+                      selectedConfiguration
+                    ]?.[selectedExecutorType] as Record<string, unknown>) || {}
+                  }
+                  onChange={(formData) =>
+                    handleExecutorConfigChange(
+                      selectedExecutorType,
+                      selectedConfiguration,
+                      formData
+                    )
+                  }
+                  disabled={profilesSaving}
+                />
+              </div>
+            )}
+          </div>
+        ) : null}
+      </SettingsCard>
 
       <SettingsSaveBar
         show={isDirty}
@@ -526,6 +595,97 @@ export function AgentsSettingsSection() {
         onDiscard={handleDiscard}
       />
     </>
+  );
+}
+
+function AvailableAgentsCard({ agents }: { agents: RegistryAgent[] }) {
+  const { t } = useTranslation(['settings']);
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    // Same layout as SettingsCard, but the whole header toggles the list
+    <div className="space-y-4 pb-6 border-b border-border last:border-b-0 last:pb-0">
+      <button
+        className="group flex w-full items-center justify-between gap-base text-left"
+        onClick={() => setExpanded((prev) => !prev)}
+        aria-expanded={expanded}
+      >
+        <span>
+          <span className="block text-base font-medium text-high">
+            {t('settings.agents.available.title')}
+          </span>
+          <span className="block text-sm text-low mt-1">
+            {t('settings.agents.available.description')}
+          </span>
+        </span>
+        <span className="shrink-0 flex items-center gap-half text-sm text-low group-hover:text-normal">
+          {expanded
+            ? t('settings.agents.available.hide')
+            : t('settings.agents.available.show', { count: agents.length })}
+          <CaretDownIcon
+            className={cn(
+              'size-icon-2xs transition-transform',
+              expanded && 'rotate-180'
+            )}
+            weight="bold"
+          />
+        </span>
+      </button>
+      {expanded && <AvailableAgentsList agents={agents} />}
+    </div>
+  );
+}
+
+function AvailableAgentsList({ agents }: { agents: RegistryAgent[] }) {
+  return (
+    <div className="relative overflow-hidden border border-border rounded-sm bg-secondary">
+      {/* Capped at ~4 rows so the configurations below stay in view; the
+          bottom padding lets the last row scroll clear of the fade */}
+      <ul className="max-h-64 overflow-y-auto pb-6 divide-y divide-border">
+        {agents.map((agent) => (
+          <li key={agent.id} className="flex items-start gap-base p-base">
+            <RegistryAgentIcon agent={agent} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-half min-h-6">
+                <span className="text-base font-medium text-high truncate">
+                  {agent.name}
+                </span>
+                <span className="text-sm text-low font-ibm-plex-mono shrink-0">
+                  v{agent.version}
+                </span>
+              </div>
+              <p className="text-sm text-low mt-0.5 line-clamp-2">
+                {agent.description}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {/* Fade hints that the list scrolls */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-secondary to-transparent" />
+    </div>
+  );
+}
+
+function RegistryAgentIcon({ agent }: { agent: RegistryAgent }) {
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <div className="size-6 shrink-0 flex items-center justify-center rounded-sm bg-primary border border-border">
+      {agent.icon && !failed ? (
+        // Registry icons are monochrome, so invert them for dark mode
+        <img
+          src={agent.icon}
+          alt={agent.name}
+          className="size-icon-base dark:invert"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span className="text-base font-medium text-low">
+          {agent.name.charAt(0).toUpperCase()}
+        </span>
+      )}
+    </div>
   );
 }
 
