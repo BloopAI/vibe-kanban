@@ -31,9 +31,8 @@ use executors::{
         coding_agent_follow_up::CodingAgentFollowUpRequest,
         coding_agent_initial::CodingAgentInitialRequest,
     },
-    approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
     env::{ExecutionEnv, RepoContext},
-    executors::{BaseCodingAgent, CancellationToken, ExecutorExitResult, ExecutorExitSignal},
+    executors::{CancellationToken, ExecutorExitResult, ExecutorExitSignal},
     logs::{NormalizedEntryType, utils::patch::extract_normalized_entry_from_patch},
 };
 use futures::{FutureExt, TryStreamExt, stream::select};
@@ -1328,28 +1327,12 @@ impl ContainerService for LocalContainerService {
             )))?;
         let current_dir = PathBuf::from(container_ref);
 
-        let supports_approvals = executor_action.base_executor().is_some_and(|agent| {
-            [
-                BaseCodingAgent::codex(),
-                BaseCodingAgent::copilot(),
-                BaseCodingAgent::claude_code(),
-                BaseCodingAgent::gemini(),
-                BaseCodingAgent::qwen_code(),
-                BaseCodingAgent::opencode(),
-            ]
-            .contains(&agent)
-        });
-
-        let approvals_service: Arc<dyn ExecutorApprovalService> = if supports_approvals {
-            ExecutorApprovalBridge::new(
-                self.approvals.clone(),
-                self.db.clone(),
-                self.notification_service.clone(),
-                execution_process.id,
-            )
-        } else {
-            Arc::new(NoopExecutorApprovalService {})
-        };
+        let approvals_service = ExecutorApprovalBridge::new(
+            self.approvals.clone(),
+            self.db.clone(),
+            self.notification_service.clone(),
+            execution_process.id,
+        );
 
         let repos = WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
         let repo_names: Vec<String> = repos.iter().map(|r| r.name.clone()).collect();
