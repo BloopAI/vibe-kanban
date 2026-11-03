@@ -146,7 +146,7 @@ fn spawn_global_cache_refresh_for_agent_with_configs(
 /// This should be called on startup to warm the cache.
 pub async fn preload_global_executor_options_cache() {
     let configs = ExecutorConfigs::get_cached();
-    let executors: Vec<BaseCodingAgent> = configs.executors.keys().copied().collect();
+    let executors: Vec<BaseCodingAgent> = configs.executors.keys().cloned().collect();
 
     for base_agent in executors {
         spawn_global_cache_refresh_for_agent_with_configs(base_agent, configs.clone());

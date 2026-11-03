@@ -164,7 +164,7 @@ async fn get_user_system_info(
             let mut caps: HashMap<String, Vec<BaseAgentCapability>> = HashMap::new();
             let profs = ExecutorConfigs::get_cached();
             for key in profs.executors.keys() {
-                if let Some(agent) = profs.get_coding_agent(&ExecutorProfileId::new(*key)) {
+                if let Some(agent) = profs.get_coding_agent(&ExecutorProfileId::new(key.clone())) {
                     caps.insert(key.to_string(), agent.capabilities());
                 }
             }
@@ -571,9 +571,9 @@ async fn get_agent_preset_options(
 ) -> ResponseJson<ApiResponse<executors::profile::ExecutorConfig>> {
     let profiles = ExecutorConfigs::get_cached();
     let profile_id = if let Some(variant) = query.variant {
-        ExecutorProfileId::with_variant(query.executor, variant)
+        ExecutorProfileId::with_variant(query.executor.clone(), variant)
     } else {
-        ExecutorProfileId::new(query.executor)
+        ExecutorProfileId::new(query.executor.clone())
     };
 
     let options = match profiles.get_coding_agent(&profile_id) {

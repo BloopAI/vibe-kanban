@@ -37,7 +37,7 @@ pub struct ReviewRequest {
 
 impl ReviewRequest {
     pub fn base_executor(&self) -> BaseCodingAgent {
-        self.executor_config.executor
+        self.executor_config.executor.clone()
     }
 
     pub fn effective_dir(&self, current_dir: &Path) -> std::path::PathBuf {

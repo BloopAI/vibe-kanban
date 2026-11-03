@@ -67,10 +67,10 @@ pub async fn run_agent_setup(
     let config = ExecutorConfigs::get_cached();
     let coding_agent = config.get_coding_agent_or_default(&executor_profile_id);
     match coding_agent {
-        CodingAgent::CursorAgent(_) => {
+        Some(CodingAgent::CursorAgent(_)) => {
             cursor_setup::run_cursor_setup(&deployment, &workspace).await?;
         }
-        CodingAgent::Codex(codex) => {
+        Some(CodingAgent::Codex(codex)) => {
             codex_setup::run_codex_setup(&deployment, &workspace, &codex).await?;
         }
         _ => return Err(ApiError::Executor(ExecutorError::SetupHelperNotSupported)),

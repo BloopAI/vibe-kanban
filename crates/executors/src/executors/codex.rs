@@ -297,7 +297,7 @@ impl StandardCodingAgentExecutor for Codex {
         };
 
         ExecutorConfig {
-            executor: BaseCodingAgent::Codex,
+            executor: BaseCodingAgent::codex(),
             variant: None,
             model_id: self.model.clone(),
             agent_id: None,
