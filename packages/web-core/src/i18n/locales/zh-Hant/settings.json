@@ -334,7 +334,11 @@
         "title": "可用代理",
         "description": "可從 ACP 登錄檔安裝並使用的代理。",
         "show": "顯示 ({{count}})",
-        "hide": "隱藏"
+        "hide": "隱藏",
+        "expand": "顯示",
+        "loading": "正在載入可用代理...",
+        "loadFailed": "無法載入可用代理。",
+        "empty": "沒有可用的代理。"
       },
       "errors": {
         "deleteFailed": "刪除設定失敗。請重試。",

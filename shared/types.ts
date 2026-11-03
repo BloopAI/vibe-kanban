@@ -288,6 +288,8 @@ export type CheckAgentAvailabilityQuery = { executor: BaseCodingAgent, };
 
 export type AgentPresetOptionsQuery = { executor: BaseCodingAgent, variant: string | null, };
 
+export type AcpRegistryAgent = { id: string, name: string, version: string, description: string, icon: string | null, };
+
 export type CurrentUserResponse = { user_id: string, };
 
 export type StartSpake2EnrollmentRequest = { enrollment_code: string, client_message_b64: string, };
