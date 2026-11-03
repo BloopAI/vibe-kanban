@@ -334,7 +334,11 @@
         "title": "Agentes disponibles",
         "description": "Agentes del registro ACP que puedes instalar y usar.",
         "show": "Mostrar ({{count}})",
-        "hide": "Ocultar"
+        "hide": "Ocultar",
+        "expand": "Mostrar",
+        "loading": "Cargando agentes disponibles...",
+        "loadFailed": "No se pudieron cargar los agentes disponibles.",
+        "empty": "No hay agentes disponibles."
       },
       "errors": {
         "deleteFailed": "Error al eliminar la configuración. Por favor, inténtalo de nuevo.",

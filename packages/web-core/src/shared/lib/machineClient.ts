@@ -1,4 +1,5 @@
 import type {
+  AcpRegistryAgent,
   Config,
   GetMcpServerResponse,
   GitBranch,
@@ -49,6 +50,7 @@ export interface MachineClient {
     query: McpServerQuery,
     data: UpdateMcpServersBody
   ) => Promise<void>;
+  listAcpRegistryAgents: () => Promise<AcpRegistryAgent[]>;
 }
 
 function getMachineRequestOptions(
@@ -184,5 +186,9 @@ export function createMachineClient(
         )
       );
     },
+    listAcpRegistryAgents: async () =>
+      handleApiResponse<AcpRegistryAgent[]>(
+        await makeMachineRequest(runtime, target, '/api/acp-registry/agents')
+      ),
   };
 }

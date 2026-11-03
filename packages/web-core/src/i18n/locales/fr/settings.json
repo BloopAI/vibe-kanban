@@ -334,7 +334,11 @@
         "title": "Agents disponibles",
         "description": "Agents du registre ACP que vous pouvez installer et utiliser.",
         "show": "Afficher ({{count}})",
-        "hide": "Masquer"
+        "hide": "Masquer",
+        "expand": "Afficher",
+        "loading": "Chargement des agents disponibles...",
+        "loadFailed": "Impossible de charger les agents disponibles.",
+        "empty": "Aucun agent disponible."
       },
       "errors": {
         "deleteFailed": "Échec de la suppression de la configuration. Veuillez réessayer.",

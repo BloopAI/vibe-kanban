@@ -3,6 +3,7 @@ pub mod harness;
 pub mod harness_v2;
 pub mod normalize_logs;
 mod permissions;
+pub mod registry;
 pub mod session;
 
 use std::{fmt::Display, str::FromStr};

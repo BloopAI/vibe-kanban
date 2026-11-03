@@ -20,6 +20,7 @@ import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { CreateConfigurationDialog } from '../CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '../DeleteConfigurationDialog';
 import type {
+  AcpRegistryAgent,
   BaseCodingAgent,
   CodingAgent,
   ExecutorConfigs,
@@ -37,70 +38,12 @@ import {
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 import { useSettingsMachineClient } from './SettingsHostContext';
+import { useMachineAcpRegistryAgents } from '@/shared/hooks/useAcpRegistryAgents';
+import type { MachineClient } from '@/shared/lib/machineClient';
 import { AgentIcon } from '@/shared/components/AgentIcon';
 import { getExecutorVariantKeys } from '@/shared/lib/executor';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
-
-// Mirrors the agent entries of the ACP registry (crates/executors/src/executors/acp/registry.rs)
-type RegistryAgent = {
-  id: string;
-  name: string;
-  version: string;
-  description: string;
-  icon: string | null;
-};
-
-// TODO: replace with data fetched from the ACP registry
-// Real registry entries; qoder's icon URL is deliberately broken to exercise
-// the fallback letter
-const AVAILABLE_AGENTS: RegistryAgent[] = [
-  {
-    id: 'auggie',
-    name: 'Auggie CLI',
-    version: '0.36.0',
-    description:
-      "Augment Code's powerful software agent, backed by industry-leading context engine",
-    icon: 'https://cdn.agentclientprotocol.com/registry/v1/latest/auggie.svg',
-  },
-  {
-    id: 'cline',
-    name: 'Cline',
-    version: '3.0.74',
-    description:
-      'Autonomous coding agent CLI - capable of creating/editing files, running commands, using the browser, and more',
-    icon: 'https://cdn.agentclientprotocol.com/registry/v1/latest/cline.svg',
-  },
-  {
-    id: 'glm-acp-agent',
-    name: 'GLM Agent',
-    version: '1.17.0',
-    description:
-      "ACP agent powered by Zhipu AI's GLM Coding Plan models (glm-5.1, glm-5-turbo, glm-4.7, glm-4.5-air). Supports streaming, tool calls, mid-session model switching, image input via Z.AI Coding Plan Vision MCP, and session load/fork/resume with on-disk persistence.",
-    icon: 'https://cdn.agentclientprotocol.com/registry/v1/latest/glm-acp-agent.svg',
-  },
-  {
-    id: 'grok-build',
-    name: 'Grok Build',
-    version: '1.0.73',
-    description: "xAI's coding agent and CLI",
-    icon: 'https://cdn.agentclientprotocol.com/registry/v1/latest/grok-build.svg',
-  },
-  {
-    id: 'kilo',
-    name: 'Kilo',
-    version: '7.8.18',
-    description: 'The open source coding agent',
-    icon: 'https://cdn.agentclientprotocol.com/registry/v1/latest/kilo.svg',
-  },
-  {
-    id: 'qoder',
-    name: 'Qoder CLI',
-    version: '0.2.14',
-    description: 'AI coding assistant with agentic capabilities',
-    icon: 'https://cdn.agentclientprotocol.com/registry/v1/latest/qoder-missing.svg',
-  },
-];
 
 export function AgentsSettingsSection() {
   const { t } = useTranslation(['settings', 'common']);
@@ -422,7 +365,7 @@ export function AgentsSettingsSection() {
 
   return (
     <>
-      <AvailableAgentsCard agents={AVAILABLE_AGENTS} />
+      <AvailableAgentsCard machineClient={machineClient} />
 
       {/* Status messages */}
       {!!profilesError && (
@@ -598,9 +541,19 @@ export function AgentsSettingsSection() {
   );
 }
 
-function AvailableAgentsCard({ agents }: { agents: RegistryAgent[] }) {
-  const { t } = useTranslation(['settings']);
+function AvailableAgentsCard({
+  machineClient,
+}: {
+  machineClient: MachineClient | null;
+}) {
+  const { t } = useTranslation(['settings', 'common']);
   const [expanded, setExpanded] = useState(false);
+  const {
+    data: agents,
+    isLoading,
+    isError,
+    refetch,
+  } = useMachineAcpRegistryAgents(machineClient);
 
   return (
     // Same layout as SettingsCard, but the whole header toggles the list
@@ -621,7 +574,9 @@ function AvailableAgentsCard({ agents }: { agents: RegistryAgent[] }) {
         <span className="shrink-0 flex items-center gap-half text-sm text-low group-hover:text-normal">
           {expanded
             ? t('settings.agents.available.hide')
-            : t('settings.agents.available.show', { count: agents.length })}
+            : agents
+              ? t('settings.agents.available.show', { count: agents.length })
+              : t('settings.agents.available.expand')}
           <CaretDownIcon
             className={cn(
               'size-icon-2xs transition-transform',
@@ -631,12 +586,39 @@ function AvailableAgentsCard({ agents }: { agents: RegistryAgent[] }) {
           />
         </span>
       </button>
-      {expanded && <AvailableAgentsList agents={agents} />}
+      {expanded &&
+        (isLoading ? (
+          <div className="flex items-center justify-center gap-2 py-4">
+            <SpinnerIcon
+              className="size-icon-sm animate-spin text-brand"
+              weight="bold"
+            />
+            <span className="text-sm text-low">
+              {t('settings.agents.available.loading')}
+            </span>
+          </div>
+        ) : isError ? (
+          <div className="flex items-center justify-between gap-base bg-error/10 border border-error/50 rounded-sm p-base text-sm text-error">
+            {t('settings.agents.available.loadFailed')}
+            <button
+              className="shrink-0 underline hover:no-underline"
+              onClick={() => void refetch()}
+            >
+              {t('common:buttons.retry')}
+            </button>
+          </div>
+        ) : agents && agents.length > 0 ? (
+          <AvailableAgentsList agents={agents} />
+        ) : (
+          <p className="py-4 text-sm text-low text-center">
+            {t('settings.agents.available.empty')}
+          </p>
+        ))}
     </div>
   );
 }
 
-function AvailableAgentsList({ agents }: { agents: RegistryAgent[] }) {
+function AvailableAgentsList({ agents }: { agents: AcpRegistryAgent[] }) {
   return (
     <div className="relative overflow-hidden border border-border rounded-sm bg-secondary">
       {/* Capped at ~4 rows so the configurations below stay in view; the
@@ -667,7 +649,7 @@ function AvailableAgentsList({ agents }: { agents: RegistryAgent[] }) {
   );
 }
 
-function RegistryAgentIcon({ agent }: { agent: RegistryAgent }) {
+function RegistryAgentIcon({ agent }: { agent: AcpRegistryAgent }) {
   const [failed, setFailed] = useState(false);
 
   return (

@@ -334,7 +334,11 @@
         "title": "可用代理",
         "description": "可从 ACP 注册表安装并使用的代理。",
         "show": "显示 ({{count}})",
-        "hide": "隐藏"
+        "hide": "隐藏",
+        "expand": "显示",
+        "loading": "正在加载可用代理...",
+        "loadFailed": "无法加载可用代理。",
+        "empty": "没有可用的代理。"
       },
       "errors": {
         "deleteFailed": "删除配置失败。请重试。",

@@ -9,7 +9,10 @@ use db::models::{
     session::SessionError, workspace::WorkspaceError,
 };
 use deployment::{DeploymentError, RelayHostsNotConfigured, RemoteClientNotConfigured};
-use executors::{command::CommandBuildError, executors::ExecutorError};
+use executors::{
+    command::CommandBuildError,
+    executors::{ExecutorError, acp::registry::RegistryError},
+};
 use git::GitServiceError;
 use git_host::GitHostError;
 use local_deployment::pty::PtyError;
@@ -53,6 +56,8 @@ pub enum ApiError {
     Container(ContainerError),
     #[error(transparent)]
     Executor(#[from] ExecutorError),
+    #[error(transparent)]
+    AcpRegistry(#[from] RegistryError),
     #[error(transparent)]
     Database(#[from] sqlx::Error),
     #[error(transparent)]
@@ -485,6 +490,9 @@ impl IntoResponse for ApiError {
             ApiError::Deployment(_) => ErrorInfo::internal("DeploymentError"),
             ApiError::Container(_) => ErrorInfo::internal("ContainerError"),
             ApiError::Executor(_) => ErrorInfo::internal("ExecutorError"),
+            ApiError::AcpRegistry(err) => {
+                ErrorInfo::with_status(StatusCode::BAD_GATEWAY, "AcpRegistryError", err.to_string())
+            }
             ApiError::CommandBuilder(_) => ErrorInfo::internal("CommandBuildError"),
             ApiError::Database(_) => ErrorInfo::internal("DatabaseError"),
             ApiError::Worktree(err) => ErrorInfo::with_status(
