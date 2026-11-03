@@ -7,6 +7,7 @@ pub mod github;
 use std::path::Path;
 
 use async_trait::async_trait;
+pub use db::models::merge::PullRequestInfo;
 use detection::detect_provider_from_url;
 use enum_dispatch::enum_dispatch;
 pub use types::{
