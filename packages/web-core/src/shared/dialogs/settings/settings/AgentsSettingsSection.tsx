@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  SpinnerIcon,
-  PlusIcon,
-  TrashIcon,
   DotsThreeIcon,
+  PlusIcon,
+  SpinnerIcon,
   StarIcon,
+  TrashIcon,
 } from '@phosphor-icons/react';
 import {
   DropdownMenu,
@@ -18,16 +18,20 @@ import { useMachineProfiles } from '@/shared/hooks/useProfiles';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { CreateConfigurationDialog } from '../CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '../DeleteConfigurationDialog';
-import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
+import type {
+  BaseCodingAgent,
+  CodingAgent,
+  ExecutorConfigs,
+} from 'shared/types';
 import { cn } from '@/shared/lib/utils';
 import { toPrettyCase } from '@/shared/lib/string';
 import {
   SettingsSaveBar,
   TwoColumnPicker,
-  TwoColumnPickerColumn,
-  TwoColumnPickerItem,
   TwoColumnPickerBadge,
+  TwoColumnPickerColumn,
   TwoColumnPickerEmpty,
+  TwoColumnPickerItem,
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 import { useSettingsMachineClient } from './SettingsHostContext';
@@ -251,15 +255,16 @@ export function AgentsSettingsSection() {
 
     const executorsMap =
       localParsedProfiles.executors as unknown as ExecutorsMap;
+
+    const agentConfig = { [executorType]: formData } as CodingAgent;
+
     const updatedProfiles = {
       ...localParsedProfiles,
       executors: {
         ...localParsedProfiles.executors,
         [executorType]: {
           ...executorsMap[executorType],
-          [configuration]: {
-            [executorType]: formData,
-          },
+          [configuration]: agentConfig,
         },
       },
     };
@@ -278,15 +283,15 @@ export function AgentsSettingsSection() {
 
     setSaveError(null);
 
+    const agentConfig = { [selectedExecutorType]: formData } as CodingAgent;
+
     const updatedProfiles = {
       ...localParsedProfiles,
       executors: {
         ...localParsedProfiles.executors,
         [selectedExecutorType]: {
           ...localParsedProfiles.executors[selectedExecutorType],
-          [selectedConfiguration]: {
-            [selectedExecutorType]: formData,
-          },
+          [selectedConfiguration]: agentConfig,
         },
       },
     };

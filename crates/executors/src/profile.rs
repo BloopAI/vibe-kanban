@@ -1,12 +1,11 @@
 use std::{
     collections::HashMap,
     fs,
-    str::FromStr,
     sync::{LazyLock, RwLock},
 };
 
 use convert_case::{Case, Casing};
-use serde::{Deserialize, Deserializer, Serialize, de::Error as DeError};
+use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
 
@@ -78,8 +77,7 @@ where
     let raw = String::deserialize(de)?;
     // kebab-case -> SCREAMING_SNAKE_CASE
     let norm = raw.replace('-', "_").to_ascii_uppercase();
-    BaseCodingAgent::from_str(&norm)
-        .map_err(|_| D::Error::custom(format!("unknown executor '{raw}' (normalized to '{norm}')")))
+    Ok(BaseCodingAgent::from(norm))
 }
 
 impl ExecutorProfileId {
@@ -159,7 +157,7 @@ impl ExecutorConfig {
     /// Extract the profile identity portion for profile lookup
     pub fn profile_id(&self) -> ExecutorProfileId {
         ExecutorProfileId {
-            executor: self.executor,
+            executor: self.executor.clone(),
             variant: self.variant.clone(),
         }
     }
@@ -368,7 +366,7 @@ impl ExecutorConfigs {
             // Check if executor was removed entirely
             if !current.executors.contains_key(executor_key) {
                 return Err(ProfileError::CannotDeleteExecutor {
-                    executor: *executor_key,
+                    executor: executor_key.clone(),
                 });
             }
 
@@ -378,7 +376,7 @@ impl ExecutorConfigs {
             for config_name in default_profile.configurations.keys() {
                 if !current_profile.configurations.contains_key(config_name) {
                     return Err(ProfileError::CannotDeleteBuiltInConfig {
-                        executor: *executor_key,
+                        executor: executor_key.clone(),
                         variant: config_name.clone(),
                     });
                 }
@@ -418,13 +416,15 @@ impl ExecutorConfigs {
                 if !override_profile.configurations.is_empty()
                     || override_profile.recently_used_models.is_some()
                 {
-                    overrides.executors.insert(*executor_key, override_profile);
+                    overrides
+                        .executors
+                        .insert(executor_key.clone(), override_profile);
                 }
             } else {
                 // New executor, include completely
                 overrides
                     .executors
-                    .insert(*executor_key, current_profile.clone());
+                    .insert(executor_key.clone(), current_profile.clone());
             }
         }
 
@@ -485,26 +485,26 @@ impl ExecutorConfigs {
     pub fn get_coding_agent_or_default(
         &self,
         executor_profile_id: &ExecutorProfileId,
-    ) -> CodingAgent {
-        self.get_coding_agent(executor_profile_id)
-            .unwrap_or_else(|| {
-                let mut default_executor_profile_id = executor_profile_id.clone();
-                default_executor_profile_id.variant = Some("DEFAULT".to_string());
-                self.get_coding_agent(&default_executor_profile_id)
-                    .expect("No default variant found")
-            })
+    ) -> Option<CodingAgent> {
+        if let Some(coding_agent) = self.get_coding_agent(executor_profile_id) {
+            Some(coding_agent)
+        } else {
+            let mut default_executor_profile_id = executor_profile_id.clone();
+            default_executor_profile_id.variant = Some("DEFAULT".to_string());
+            self.get_coding_agent(&default_executor_profile_id)
+        }
     }
     pub async fn get_recommended_executor_profile(
         &self,
     ) -> Result<ExecutorProfileId, ProfileError> {
         let mut agents_with_info: Vec<(BaseCodingAgent, AvailabilityInfo)> = Vec::new();
 
-        for &base_agent in self.executors.keys() {
-            let profile_id = ExecutorProfileId::new(base_agent);
+        for base_agent in self.executors.keys() {
+            let profile_id = ExecutorProfileId::new(base_agent.clone());
             if let Some(coding_agent) = self.get_coding_agent(&profile_id) {
                 let info = coding_agent.get_availability_info();
                 if info.is_available() {
-                    agents_with_info.push((base_agent, info));
+                    agents_with_info.push((base_agent.clone(), info));
                 }
             }
         }
@@ -551,7 +551,7 @@ impl ExecutorConfigs {
             }
         });
 
-        let selected = agents_with_info[0].0;
+        let selected = agents_with_info[0].0.clone();
         tracing::info!("Recommended executor: {}", selected);
         Ok(ExecutorProfileId::new(selected))
     }

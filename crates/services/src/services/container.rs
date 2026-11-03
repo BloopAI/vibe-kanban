@@ -175,14 +175,18 @@ pub trait ContainerService {
             let executor =
                 ExecutorConfigs::get_cached().get_coding_agent_or_default(&executor_profile_id);
 
-            // Spawn background task to refresh global cache for this executor
-            let base_agent = executors::executors::BaseCodingAgent::from(&executor);
-            executors::executors::utils::spawn_global_cache_refresh_for_agent(base_agent);
+            if let Some(executor) = executor {
+                // Spawn background task to refresh global cache for this executor
+                let base_agent = executors::executors::BaseCodingAgent::from(&executor);
+                executors::executors::utils::spawn_global_cache_refresh_for_agent(base_agent);
 
-            let stream = executor
-                .discover_options(workdir.as_deref(), repo_path.as_deref())
-                .await?;
-            Ok(Some(stream))
+                let stream = executor
+                    .discover_options(workdir.as_deref(), repo_path.as_deref())
+                    .await?;
+                Ok(Some(stream))
+            } else {
+                Err(ContainerError::Other(anyhow!("Executor not found")))
+            }
         }
     }
 
@@ -925,12 +929,20 @@ pub trait ContainerService {
                     }
                     #[cfg(not(feature = "qa-mode"))]
                     {
-                        let executor = ExecutorConfigs::get_cached()
-                            .get_coding_agent_or_default(&request.executor_config.profile_id());
-                        executor.normalize_logs(
-                            temp_store.clone(),
-                            &request.effective_dir(&current_dir),
-                        )
+                        if let Some(executor) = ExecutorConfigs::get_cached()
+                            .get_coding_agent_or_default(&request.executor_config.profile_id())
+                        {
+                            executor.normalize_logs(
+                                temp_store.clone(),
+                                &request.effective_dir(&current_dir),
+                            )
+                        } else {
+                            tracing::warn!(
+                                "Failed to get executor for profile id: {}",
+                                request.executor_config.profile_id()
+                            );
+                            return None;
+                        }
                     }
                 }
                 ExecutorActionType::CodingAgentFollowUpRequest(request) => {
@@ -944,12 +956,20 @@ pub trait ContainerService {
                     }
                     #[cfg(not(feature = "qa-mode"))]
                     {
-                        let executor = ExecutorConfigs::get_cached()
-                            .get_coding_agent_or_default(&request.executor_config.profile_id());
-                        executor.normalize_logs(
-                            temp_store.clone(),
-                            &request.effective_dir(&current_dir),
-                        )
+                        if let Some(executor) = ExecutorConfigs::get_cached()
+                            .get_coding_agent_or_default(&request.executor_config.profile_id())
+                        {
+                            executor.normalize_logs(
+                                temp_store.clone(),
+                                &request.effective_dir(&current_dir),
+                            )
+                        } else {
+                            tracing::warn!(
+                                "No executor found for profile id: {}",
+                                request.executor_config.profile_id()
+                            );
+                            return None;
+                        }
                     }
                 }
                 #[cfg(feature = "qa-mode")]
@@ -959,9 +979,17 @@ pub trait ContainerService {
                 }
                 #[cfg(not(feature = "qa-mode"))]
                 ExecutorActionType::ReviewRequest(request) => {
-                    let executor = ExecutorConfigs::get_cached()
-                        .get_coding_agent_or_default(&request.executor_config.profile_id());
-                    executor.normalize_logs(temp_store.clone(), &current_dir)
+                    if let Some(executor) = ExecutorConfigs::get_cached()
+                        .get_coding_agent_or_default(&request.executor_config.profile_id())
+                    {
+                        executor.normalize_logs(temp_store.clone(), &current_dir)
+                    } else {
+                        tracing::warn!(
+                            "No executor found for profile id: {}",
+                            request.executor_config.profile_id()
+                        );
+                        return None;
+                    }
                 }
                 _ => {
                     tracing::debug!(

@@ -180,7 +180,7 @@ impl StandardCodingAgentExecutor for Copilot {
 
     fn get_preset_options(&self) -> ExecutorConfig {
         ExecutorConfig {
-            executor: BaseCodingAgent::Copilot,
+            executor: BaseCodingAgent::copilot(),
             variant: None,
             model_id: self.model.clone(),
             agent_id: None,
