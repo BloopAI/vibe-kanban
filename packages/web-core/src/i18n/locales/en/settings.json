@@ -338,6 +338,12 @@
         "jsonLoading": "Loading...",
         "pathLabel": "Configuration file location:"
       },
+      "available": {
+        "title": "Available agents",
+        "description": "Agents from the ACP registry that you can install and use.",
+        "show": "Show ({{count}})",
+        "hide": "Hide"
+      },
       "errors": {
         "deleteFailed": "Failed to delete configuration. Please try again.",
         "saveFailed": "Failed to save agent configurations. Please try again.",
