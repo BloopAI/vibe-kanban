@@ -60,6 +60,16 @@ Head to the [website](https://vibekanban.com/docs) for the latest documentation 
 
 Want to host your own Vibe Kanban Cloud instance? See our [self-hosting guide](https://vibekanban.com/docs/self-hosting/deploy-docker).
 
+When building for a private/self-hosted deployment, set `VITE_DISABLE_SHUTDOWN_NOTIFICATION=true` at build time to suppress the cloud-shutdown banner and restore full kanban functionality:
+
+```bash
+# Docker
+docker build --build-arg VITE_DISABLE_SHUTDOWN_NOTIFICATION=true .
+
+# pnpm build
+VITE_DISABLE_SHUTDOWN_NOTIFICATION=true pnpm run build
+```
+
 ## Support
 
 We use [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) for feature requests. Please open a discussion to create a feature request. For bugs please open an issue on this repo.
@@ -128,6 +138,7 @@ The following environment variables can be configured at build time or runtime:
 | `VK_SHARED_API_BASE` | Runtime | Not set | Base URL for the remote/cloud API used by the local desktop app |
 | `VK_SHARED_RELAY_API_BASE` | Runtime | Not set | Base URL for the relay API used by tunnel-mode connections |
 | `VK_TUNNEL` | Runtime | Not set | Enable relay tunnel mode when set (requires relay API base URL) |
+| `VITE_DISABLE_SHUTDOWN_NOTIFICATION` | Build-time | Not set | Disable all cloud-shutdown UI (banner and sunset page) for private/self-hosted deployments |
 
 **Build-time variables** must be set when running `pnpm run build`. **Runtime variables** are read when the application starts.
 
