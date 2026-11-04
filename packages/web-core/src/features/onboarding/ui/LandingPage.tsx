@@ -6,30 +6,30 @@ import {
   useRef,
   useState,
 } from 'react';
+import type { IconProps } from '@phosphor-icons/react';
 import {
-  BookOpenIcon,
   BirdIcon,
+  BookOpenIcon,
   CheckIcon,
   CowIcon,
   DeviceMobileIcon,
   GithubLogoIcon,
+  type Icon,
   MusicNoteIcon,
   MusicNotesIcon,
   SpeakerHighIcon,
   SpeakerXIcon,
   WarningIcon,
   WaveformIcon,
-  type Icon,
 } from '@phosphor-icons/react';
-import type { IconProps } from '@phosphor-icons/react';
 import { usePostHog } from 'posthog-js/react';
 import { siDiscord } from 'simple-icons';
 import {
   BaseCodingAgent,
+  type EditorConfig,
   EditorType,
   SoundFile,
   ThemeMode,
-  type EditorConfig,
 } from 'shared/types';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useTheme } from '@/shared/hooks/useTheme';
@@ -86,10 +86,10 @@ const SOUND_OPTIONS: SoundOption[] = [
 ];
 
 const AGENT_PRIORITY: BaseCodingAgent[] = [
-  BaseCodingAgent.CLAUDE_CODE,
-  BaseCodingAgent.CODEX,
-  BaseCodingAgent.OPENCODE,
-  BaseCodingAgent.GEMINI,
+  'CLAUDE_CODE',
+  'CODEX',
+  'OPENCODE',
+  'GEMINI',
 ];
 
 const DiscordIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
@@ -154,9 +154,8 @@ export function LandingPage() {
 
   const [initialized, setInitialized] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [selectedAgent, setSelectedAgent] = useState<BaseCodingAgent>(
-    BaseCodingAgent.CLAUDE_CODE
-  );
+  const [selectedAgent, setSelectedAgent] =
+    useState<BaseCodingAgent>('CLAUDE_CODE');
   const [editorType, setEditorType] = useState<EditorType>(EditorType.VS_CODE);
   const [customCommand, setCustomCommand] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -211,25 +210,12 @@ export function LandingPage() {
   }, [appNavigation, config?.remote_onboarding_acknowledged]);
 
   const executorOptions = useMemo(() => {
-    const compareAgents = (a: BaseCodingAgent, b: BaseCodingAgent) => {
-      const priorityA = AGENT_PRIORITY.indexOf(a);
-      const priorityB = AGENT_PRIORITY.indexOf(b);
-      const hasPriorityA = priorityA !== -1;
-      const hasPriorityB = priorityB !== -1;
-
-      if (hasPriorityA && hasPriorityB) {
-        return priorityA - priorityB;
-      }
-      if (hasPriorityA) return -1;
-      if (hasPriorityB) return 1;
-
-      return getAgentName(a).localeCompare(getAgentName(b));
-    };
-
-    if (profiles) {
-      return (Object.keys(profiles) as BaseCodingAgent[]).sort(compareAgents);
-    }
-    return [...Object.values(BaseCodingAgent)].sort(compareAgents);
+    const available = Object.keys(profiles ?? {});
+    const prioritized = AGENT_PRIORITY.filter((a) => available.includes(a));
+    const rest = available
+      .filter((a) => !AGENT_PRIORITY.includes(a))
+      .sort((a, b) => getAgentName(a).localeCompare(getAgentName(b)));
+    return [...prioritized, ...rest];
   }, [profiles]);
 
   const editorOptions = useMemo(() => Object.values(EditorType), []);

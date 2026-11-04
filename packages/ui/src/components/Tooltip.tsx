@@ -9,6 +9,8 @@ interface TooltipProps {
   shortcut?: string;
   side?: 'top' | 'bottom' | 'left' | 'right';
   className?: string;
+  /** Milliseconds before the tooltip opens */
+  delayDuration?: number;
 }
 
 export function Tooltip({
@@ -17,11 +19,12 @@ export function Tooltip({
   shortcut,
   side = 'bottom',
   className,
+  delayDuration = 300,
 }: TooltipProps) {
   const formattedShortcut = shortcut?.replace('{mod}', getModifierKey());
 
   return (
-    <TooltipPrimitive.Provider delayDuration={300}>
+    <TooltipPrimitive.Provider delayDuration={delayDuration}>
       <TooltipPrimitive.Root>
         <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
         <TooltipPrimitive.Portal>

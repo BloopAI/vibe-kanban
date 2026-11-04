@@ -53,43 +53,6 @@ pub trait ExecutorApprovalService: Send + Sync {
     ) -> Result<QuestionStatus, ExecutorApprovalError>;
 }
 
-#[derive(Debug, Default)]
-pub struct NoopExecutorApprovalService;
-
-#[async_trait]
-impl ExecutorApprovalService for NoopExecutorApprovalService {
-    async fn create_tool_approval(
-        &self,
-        _tool_name: &str,
-    ) -> Result<String, ExecutorApprovalError> {
-        Ok("noop".to_string())
-    }
-
-    async fn create_question_approval(
-        &self,
-        _tool_name: &str,
-        _question_count: usize,
-    ) -> Result<String, ExecutorApprovalError> {
-        Ok("noop".to_string())
-    }
-
-    async fn wait_tool_approval(
-        &self,
-        _approval_id: &str,
-        _cancel: CancellationToken,
-    ) -> Result<ApprovalStatus, ExecutorApprovalError> {
-        Ok(ApprovalStatus::Approved)
-    }
-
-    async fn wait_question_answer(
-        &self,
-        _approval_id: &str,
-        _cancel: CancellationToken,
-    ) -> Result<QuestionStatus, ExecutorApprovalError> {
-        Err(ExecutorApprovalError::ServiceUnavailable)
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ToolCallMetadata {
     pub tool_call_id: String,

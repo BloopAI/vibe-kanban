@@ -38,7 +38,7 @@ impl CodingAgentFollowUpRequest {
     }
 
     pub fn base_executor(&self) -> BaseCodingAgent {
-        self.executor_config.executor
+        self.executor_config.executor.clone()
     }
 }
 

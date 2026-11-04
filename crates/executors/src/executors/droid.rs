@@ -218,7 +218,7 @@ impl StandardCodingAgentExecutor for Droid {
 
     fn get_preset_options(&self) -> ExecutorConfig {
         ExecutorConfig {
-            executor: BaseCodingAgent::Droid,
+            executor: BaseCodingAgent::droid(),
             variant: None,
             model_id: self.model.clone(),
             agent_id: None,
