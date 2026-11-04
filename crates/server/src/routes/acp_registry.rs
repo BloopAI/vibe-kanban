@@ -101,9 +101,7 @@ async fn install_agent(
         recently_used_models: None,
         configurations: HashMap::new(),
     };
-    profile.set_default(CodingAgent::AcpServer(AcpServer {
-        registry_id: agent.id.clone(),
-    }));
+    profile.set_default(CodingAgent::AcpServer(AcpServer::new(agent.id.clone())));
     profiles.executors.insert(key, profile);
     profiles.save_overrides()?;
     ExecutorConfigs::reload();
@@ -160,9 +158,9 @@ mod tests {
             recently_used_models: None,
             configurations: HashMap::new(),
         };
-        profile.set_default(CodingAgent::AcpServer(AcpServer {
-            registry_id: registry_id.to_string(),
-        }));
+        profile.set_default(CodingAgent::AcpServer(AcpServer::new(
+            registry_id.to_string(),
+        )));
         profiles
             .executors
             .insert(BaseCodingAgent::from(key.to_string()), profile);

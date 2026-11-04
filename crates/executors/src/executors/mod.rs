@@ -89,8 +89,14 @@ pub enum ExecutorError {
     SetupHelperNotSupported,
     #[error("Auth required: {0}")]
     AuthRequired(String),
-    #[error("ACP registry agents can't run yet")]
-    AcpServerNotRunnable,
+    #[error(
+        "ACP registry agent '{0}' not found. It may have been renamed or removed from the registry"
+    )]
+    AcpRegistryAgentNotFound(String),
+    #[error("ACP registry agent '{id}' has an invalid npx package '{package}'")]
+    InvalidAcpRegistryPackage { id: String, package: String },
+    #[error(transparent)]
+    AcpRegistry(#[from] acp::registry::RegistryError),
 }
 
 #[enum_dispatch]
