@@ -669,7 +669,7 @@ export type QwenCode = { append_prompt: AppendPrompt, model?: string | null, age
 
 export type Droid = { append_prompt: AppendPrompt, autonomy: Autonomy, model?: string | null, reasoning_effort?: DroidReasoningEffort | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
-export type AcpServer = { registry_id: string, };
+export type AcpServer = { registry_id: string, append_prompt: AppendPrompt, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
 export type Autonomy = "normal" | "low" | "medium" | "high" | "skip-permissions-unsafe";
 

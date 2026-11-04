@@ -917,10 +917,6 @@ pub trait ContainerService {
             };
 
             // Spawn normalizer on populated store and collect JoinHandles
-            // TODO(2b-C): the lookups below return None once an ACP registry agent
-            // is uninstalled, so its past sessions show empty logs. All registry
-            // agents share the ACP normalizer, which doesn't need the profile:
-            // fall back to it when the executor isn't in profiles.
             let handles = match executor_action.typ() {
                 ExecutorActionType::CodingAgentInitialRequest(request) => {
                     #[cfg(feature = "qa-mode")]
@@ -942,10 +938,13 @@ pub trait ContainerService {
                             )
                         } else {
                             tracing::warn!(
-                                "Failed to get executor for profile id: {}",
+                                "Profile ID {} not in profiles, falling back to the ACP normalizer",
                                 request.executor_config.profile_id()
                             );
-                            return None;
+                            executors::executors::acp::normalize_logs(
+                                temp_store.clone(),
+                                &request.effective_dir(&current_dir),
+                            )
                         }
                     }
                 }
@@ -969,10 +968,13 @@ pub trait ContainerService {
                             )
                         } else {
                             tracing::warn!(
-                                "No executor found for profile id: {}",
+                                "Profile ID {} not in profiles, falling back to the ACP normalizer",
                                 request.executor_config.profile_id()
                             );
-                            return None;
+                            executors::executors::acp::normalize_logs(
+                                temp_store.clone(),
+                                &request.effective_dir(&current_dir),
+                            )
                         }
                     }
                 }
@@ -989,10 +991,10 @@ pub trait ContainerService {
                         executor.normalize_logs(temp_store.clone(), &current_dir)
                     } else {
                         tracing::warn!(
-                            "No executor found for profile id: {}",
+                            "Profile ID {} not in profiles, falling back to the ACP normalizer",
                             request.executor_config.profile_id()
                         );
-                        return None;
+                        executors::executors::acp::normalize_logs(temp_store.clone(), &current_dir)
                     }
                 }
                 _ => {

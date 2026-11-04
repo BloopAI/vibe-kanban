@@ -569,9 +569,7 @@ mod tests {
             recently_used_models: None,
             configurations: HashMap::new(),
         };
-        profile.set_default(CodingAgent::AcpServer(AcpServer {
-            registry_id: "glm-acp-agent".to_string(),
-        }));
+        profile.set_default(CodingAgent::AcpServer(AcpServer::new("glm-acp-agent")));
         profiles
             .executors
             .insert(registry_key("glm-acp-agent"), profile);
@@ -588,9 +586,8 @@ mod tests {
             .get_variant("DEFAULT")
             .unwrap();
         assert_eq!(BaseCodingAgent::from(config), registry_key("kilo"));
-        assert_eq!(
-            serde_json::to_value(&profiles).unwrap(),
-            serde_json::from_str::<serde_json::Value>(json).unwrap()
-        );
+        let reparsed: ExecutorConfigs =
+            serde_json::from_value(serde_json::to_value(&profiles).unwrap()).unwrap();
+        assert_eq!(reparsed.executors, profiles.executors);
     }
 }
