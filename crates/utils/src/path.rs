@@ -113,7 +113,12 @@ pub fn get_vibe_kanban_temp_dir() -> std::path::PathBuf {
     };
 
     if cfg!(target_os = "macos") {
-        // macOS already uses /var/folders/... which is persistent storage
+        // Use ~/Library/Caches/ instead of the temp dir (/var/folders/.../T/)
+        // because macOS periodically purges small files from the temp dir,
+        // which destroys the .git symlink files inside worktrees.
+        if let Some(cache_dir) = dirs::cache_dir() {
+            return cache_dir.join(dir_name);
+        }
         std::env::temp_dir().join(dir_name)
     } else if cfg!(target_os = "linux") {
         // Linux: use /var/tmp instead of /tmp to avoid RAM usage
