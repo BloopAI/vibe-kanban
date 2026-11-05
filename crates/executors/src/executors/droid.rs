@@ -245,6 +245,7 @@ impl StandardCodingAgentExecutor for Droid {
                     ("gpt-5.3-codex", "GPT 5.3 Codex"),
                     ("claude-sonnet-4-6", "Claude Sonnet 4.6"),
                     ("kimi-k2.5", "Kimi K2.5"),
+                    ("minimax-m3.1-flash", "MiniMax M3.1 Flash"),
                     ("minimax-m3", "MiniMax M3"),
                     ("glm-4.7", "GLM-4.7"),
                     ("claude-opus-4-5-20251101", "Claude Opus 4.5"),
@@ -299,7 +300,7 @@ mod tests {
             .filter(|model| model.id.starts_with("minimax-"))
             .map(|model| model.id.as_str())
             .collect();
-        assert_eq!(minimax, ["minimax-m3"]);
+        assert_eq!(minimax, ["minimax-m3.1-flash", "minimax-m3"]);
         assert!(models.iter().any(|model| model.id == "gpt-5.3-codex"));
         assert!(options.model_selector.default_model.is_none());
         assert!(droid.get_preset_options().model_id.is_none());
@@ -314,6 +315,7 @@ mod tests {
         let env = ExecutionEnv::new(Default::default(), false, String::new());
         for model in [
             None,
+            Some("minimax-m3.1-flash"),
             Some("minimax-m3"),
             Some("minimax-m2.7"),
             Some("minimax-m2.7-highspeed"),
@@ -322,9 +324,9 @@ mod tests {
         ] {
             for follow_up in [false, true] {
                 // Deserialize a saved profile, then exercise the same override path as
-                // the model picker for M3. The recorder replaces only the executable.
+                // the model picker for M3.1 Flash. The recorder replaces only the executable.
                 let mut droid: Droid = serde_json::from_value(json!({"model": model})).unwrap();
-                if model == Some("minimax-m3") {
+                if model == Some("minimax-m3.1-flash") {
                     droid.model = Some("minimax-m2.7".to_string());
                     let mut selection = droid.get_preset_options();
                     selection.model_id = model.map(str::to_string);
