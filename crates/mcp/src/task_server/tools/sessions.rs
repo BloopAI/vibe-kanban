@@ -1,6 +1,10 @@
-use db::models::{
-    execution_process::{ExecutionProcess, ExecutionProcessStatus},
-    session::Session,
+use db::{
+    DBService,
+    models::{
+        coding_agent_turn::CodingAgentTurn,
+        execution_process::{ExecutionProcess, ExecutionProcessStatus},
+        session::Session,
+    },
 };
 use rmcp::{
     ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
@@ -9,7 +13,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::McpServer;
+use super::{McpServer, ToolError};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct CreateSessionRequest {
@@ -136,8 +140,52 @@ struct GetExecutionResponse {
     status: String,
     is_finished: bool,
     execution: serde_json::Value,
-    #[schemars(description = "Final assistant message/summary when execution has finished")]
+    #[schemars(description = "Final assistant message/summary when available")]
     final_message: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct GetSessionHistoryRequest {
+    #[schemars(description = "Session ID to inspect")]
+    session_id: Uuid,
+    #[schemars(
+        description = "Include soft-deleted (dropped) executions in the response (default: false)"
+    )]
+    include_soft_deleted: Option<bool>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct SessionHistoryTurn {
+    #[schemars(description = "Execution ID for this coding-agent turn")]
+    execution_id: String,
+    #[schemars(description = "Execution status")]
+    status: String,
+    #[schemars(description = "True when this execution is no longer running")]
+    is_finished: bool,
+    #[schemars(
+        description = "Whether this execution has been dropped from the active history view"
+    )]
+    dropped: bool,
+    #[schemars(description = "Execution creation timestamp")]
+    created_at: String,
+    #[schemars(description = "Execution completion timestamp")]
+    completed_at: Option<String>,
+    #[schemars(description = "Prompt sent to the coding agent for this turn")]
+    prompt: Option<String>,
+    #[schemars(description = "Final assistant message/summary for this turn when available")]
+    final_message: Option<String>,
+    #[schemars(description = "Upstream agent session ID when available")]
+    agent_session_id: Option<String>,
+    #[schemars(description = "Upstream agent message ID when available")]
+    agent_message_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct GetSessionHistoryResponse {
+    session: SessionSummary,
+    #[schemars(description = "Number of coding-agent turns returned")]
+    total_count: usize,
+    turns: Vec<SessionHistoryTurn>,
 }
 
 #[tool_router(router = session_tools_router, vis = "pub")]
@@ -345,13 +393,122 @@ impl McpServer {
             Err(error_result) => return Ok(Self::tool_error(error_result)),
         };
 
+        let pool = match DBService::new_migration_pool().await {
+            Ok(pool) => pool,
+            Err(error) => {
+                return Ok(Self::tool_error(ToolError::new(
+                    "Failed to open VK database",
+                    Some(error.to_string()),
+                )));
+            }
+        };
+        let final_message = match CodingAgentTurn::find_by_execution_process_id(
+            &pool,
+            execution_process.id,
+        )
+        .await
+        {
+            Ok(turn) => turn.and_then(|turn| turn.summary),
+            Err(error) => {
+                return Ok(Self::tool_error(ToolError::new(
+                    "Failed to load execution summary",
+                    Some(error.to_string()),
+                )));
+            }
+        };
+
         Self::success(&GetExecutionResponse {
             execution_id: execution_process.id.to_string(),
             session_id: execution_process.session_id.to_string(),
             status: Self::execution_process_status_label(&execution_process.status).to_string(),
             is_finished,
             execution: execution_process_value,
-            final_message: None,
+            final_message,
+        })
+    }
+
+    #[tool(
+        description = "Get coding-agent turn history for a session, including prompts and final summaries."
+    )]
+    async fn get_session_history(
+        &self,
+        Parameters(GetSessionHistoryRequest {
+            session_id,
+            include_soft_deleted,
+        }): Parameters<GetSessionHistoryRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let session_url = self.url(&format!("/api/sessions/{session_id}"));
+        let session: Session = match self.send_json(self.client.get(&session_url)).await {
+            Ok(value) => value,
+            Err(error_result) => return Ok(Self::tool_error(error_result)),
+        };
+        if let Err(error_result) = self.scope_allows_workspace(session.workspace_id) {
+            return Ok(Self::tool_error(error_result));
+        }
+
+        let pool = match DBService::new_migration_pool().await {
+            Ok(pool) => pool,
+            Err(error) => {
+                return Ok(Self::tool_error(ToolError::new(
+                    "Failed to open VK database",
+                    Some(error.to_string()),
+                )));
+            }
+        };
+
+        let execution_processes = match ExecutionProcess::find_by_session_id(
+            &pool,
+            session_id,
+            include_soft_deleted.unwrap_or(false),
+        )
+        .await
+        {
+            Ok(processes) => processes,
+            Err(error) => {
+                return Ok(Self::tool_error(ToolError::new(
+                    "Failed to load session execution history",
+                    Some(error.to_string()),
+                )));
+            }
+        };
+
+        let mut turns = Vec::new();
+        for execution_process in execution_processes {
+            let turn =
+                match CodingAgentTurn::find_by_execution_process_id(&pool, execution_process.id)
+                    .await
+                {
+                    Ok(turn) => turn,
+                    Err(error) => {
+                        return Ok(Self::tool_error(ToolError::new(
+                            "Failed to load session turn history",
+                            Some(error.to_string()),
+                        )));
+                    }
+                };
+
+            let Some(turn) = turn else {
+                continue;
+            };
+
+            turns.push(SessionHistoryTurn {
+                execution_id: execution_process.id.to_string(),
+                status: Self::execution_process_status_label(&execution_process.status).to_string(),
+                is_finished: execution_process.status != ExecutionProcessStatus::Running,
+                dropped: execution_process.dropped,
+                created_at: execution_process.created_at.to_rfc3339(),
+                completed_at: execution_process.completed_at.map(|time| time.to_rfc3339()),
+                prompt: turn.prompt,
+                final_message: turn.summary,
+                agent_session_id: turn.agent_session_id,
+                agent_message_id: turn.agent_message_id,
+            });
+        }
+
+        Self::success(&GetSessionHistoryResponse {
+            session: self.session_summary(session),
+            total_count: turns.len(),
+            turns,
         })
     }
 }
