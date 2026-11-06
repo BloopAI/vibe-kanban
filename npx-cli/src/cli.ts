@@ -241,7 +241,10 @@ async function runReview(args: string[]): Promise<void> {
   });
 }
 
-async function runMain(desktopMode: boolean): Promise<void> {
+async function runMain(
+  desktopMode: boolean,
+  args: string[],
+): Promise<void> {
   checkForUpdates();
 
   const modeLabel = LOCAL_DEV_MODE ? " (local dev)" : "";
@@ -274,7 +277,14 @@ async function runMain(desktopMode: boolean): Promise<void> {
   // Browser mode (default — headless server + opens browser)
   console.log(`Starting vibe-kanban v${CLI_VERSION}${modeLabel}...`);
   await extractAndRun("vibe-kanban", (bin) => {
-    execSync(`"${bin}"`, { stdio: "inherit" });
+    const proc = spawn(bin, args, { stdio: "inherit" });
+    proc.on("exit", (code) => process.exit(code ?? 1));
+    proc.on("error", (e) => {
+      console.error("vibe-kanban error:", e.message);
+      process.exit(1);
+    });
+    process.on("SIGINT", () => proc.kill("SIGINT"));
+    process.on("SIGTERM", () => proc.kill("SIGTERM"));
   });
 }
 
@@ -314,7 +324,10 @@ async function main(): Promise<void> {
     .option("--desktop", "Launch the desktop app instead of browser mode")
     .allowUnknownOptions()
     .action((_args: string[], options: RootOptions) => {
-      runOrExit(runMain(Boolean(options.desktop)));
+      const serverArgs = process.argv
+        .slice(2)
+        .filter((arg) => arg !== "--desktop");
+      runOrExit(runMain(Boolean(options.desktop), serverArgs));
     });
 
   cli
