@@ -1,6 +1,6 @@
 use api_types::{
-    AuthMethodsResponse, HandoffInitRequest, HandoffRedeemRequest, LocalLoginRequest,
-    ProfileResponse, StatusResponse,
+    AuthMethodsResponse, HandoffInitRequest, HandoffPollRequest, HandoffPollResponse,
+    HandoffRedeemRequest, LocalLoginRequest, ProfileResponse, StatusResponse,
 };
 use axum::{
     Router,
@@ -103,6 +103,8 @@ async fn auth_methods(
 struct HandoffInitPayload {
     provider: String,
     return_to: String,
+    #[serde(default)]
+    desktop: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -120,17 +122,42 @@ async fn handoff_init(
     let app_verifier = generate_secret();
     let app_challenge = hash_sha256_hex(&app_verifier);
 
+    // For desktop, redirect the browser to a remote-hosted success page
+    // instead of back to localhost.
+    let return_to = if payload.desktop {
+        let api_base = deployment
+            .remote_info()
+            .get_api_base()
+            .ok_or_else(|| ApiError::BadRequest("Remote API not configured".to_string()))?;
+        format!(
+            "{}/v1/oauth/web/callback-success",
+            api_base.trim_end_matches('/')
+        )
+    } else {
+        payload.return_to.clone()
+    };
+
     let request = HandoffInitRequest {
         provider: payload.provider.clone(),
-        return_to: payload.return_to.clone(),
+        return_to,
         app_challenge,
     };
 
     let response = client.handoff_init(&request).await?;
 
-    deployment
-        .store_oauth_handoff(response.handoff_id, payload.provider, app_verifier)
+    let cancelled = deployment
+        .store_oauth_handoff(response.handoff_id, payload.provider, app_verifier.clone())
         .await;
+
+    // For desktop, spawn a background task that polls the remote server
+    // until the OAuth flow completes, then finalizes login automatically.
+    if payload.desktop {
+        let handoff_id = response.handoff_id;
+        let deployment_clone = deployment.clone();
+        tokio::spawn(async move {
+            poll_for_login(deployment_clone, handoff_id, app_verifier, cancelled).await;
+        });
+    }
 
     Ok(ResponseJson(ApiResponse::success(
         HandoffInitResponseBody {
@@ -147,10 +174,6 @@ struct HandoffCompleteQuery {
     app_code: Option<String>,
     #[serde(default)]
     error: Option<String>,
-    /// When set to "desktop", the callback page will not auto-close so the user
-    /// can see the success message (e.g. when opened from the Tauri desktop app).
-    #[serde(default)]
-    source: Option<String>,
 }
 
 async fn handoff_complete(
@@ -205,11 +228,9 @@ async fn handoff_complete(
     )
     .await?;
 
-    let is_desktop = query.source.as_deref() == Some("desktop");
-    Ok(close_window_response(
-        format!("Signed in with {provider}. You can return to the app."),
-        is_desktop,
-    ))
+    Ok(close_window_response(format!(
+        "Signed in with {provider}. You can return to the app."
+    )))
 }
 
 async fn local_login(
@@ -422,6 +443,79 @@ async fn finalize_login(
     Ok(profile)
 }
 
+/// Background task that polls the remote server for OAuth completion (desktop flow).
+///
+/// Uses a cooperative `cancelled` flag instead of `JoinHandle::abort()` so that
+/// `finalize_login` is never interrupted mid-execution by a concurrent retry.
+async fn poll_for_login(
+    deployment: DeploymentImpl,
+    handoff_id: Uuid,
+    app_verifier: String,
+    cancelled: std::sync::Arc<std::sync::atomic::AtomicBool>,
+) {
+    use std::sync::atomic::Ordering;
+
+    let client = match deployment.remote_client() {
+        Ok(c) => c,
+        Err(_) => return,
+    };
+
+    let request = HandoffPollRequest {
+        handoff_id,
+        app_verifier,
+    };
+
+    // Poll every 2 seconds for up to 5 minutes.
+    for _ in 0..150 {
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+        if cancelled.load(Ordering::Relaxed) {
+            tracing::debug!(%handoff_id, "desktop login poll cancelled");
+            return;
+        }
+
+        match client.handoff_poll(&request).await {
+            Ok(HandoffPollResponse::Pending) => continue,
+            Ok(HandoffPollResponse::Complete {
+                access_token,
+                refresh_token,
+            }) => {
+                if let Err(e) = finalize_login(
+                    &deployment,
+                    Credentials {
+                        access_token: Some(access_token),
+                        refresh_token,
+                        expires_at: None,
+                    },
+                )
+                .await
+                {
+                    tracing::error!(?e, "failed to finalize login from desktop poll");
+                }
+                deployment.take_oauth_handoff(&handoff_id).await;
+                return;
+            }
+            Ok(HandoffPollResponse::Error { error }) => {
+                tracing::warn!(%error, "desktop handoff poll returned error");
+                deployment.take_oauth_handoff(&handoff_id).await;
+                return;
+            }
+            Err(e) if e.is_transient() => {
+                tracing::debug!(?e, "desktop handoff poll request failed, retrying");
+                continue;
+            }
+            Err(e) => {
+                tracing::warn!(?e, "desktop handoff poll hit permanent error");
+                deployment.take_oauth_handoff(&handoff_id).await;
+                return;
+            }
+        }
+    }
+
+    tracing::warn!("desktop handoff poll timed out");
+    deployment.take_oauth_handoff(&handoff_id).await;
+}
+
 fn hash_sha256_hex(input: &str) -> String {
     let mut output = String::with_capacity(64);
     let digest = Sha256::digest(input.as_bytes());
@@ -460,17 +554,7 @@ fn simple_html_response(status: StatusCode, message: String) -> Response<String>
         .unwrap()
 }
 
-fn close_window_response(message: String, skip_auto_close: bool) -> Response<String> {
-    let script = if skip_auto_close {
-        "" // Desktop app: leave the tab open so the user sees the message
-    } else {
-        "<script>\
-           window.addEventListener('load', () => {\
-             try { window.close(); } catch (err) {}\
-             setTimeout(() => { window.close(); }, 150);\
-           });\
-         </script>"
-    };
+fn close_window_response(message: String) -> Response<String> {
     let body = format!(
         r#"<!doctype html>
 <html>
@@ -478,7 +562,12 @@ fn close_window_response(message: String, skip_auto_close: bool) -> Response<Str
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Authentication Complete</title>
-    {script}
+    <script>
+      window.addEventListener('load', () => {{
+        try {{ window.close(); }} catch (err) {{}}
+        setTimeout(() => {{ window.close(); }}, 150);
+      }});
+    </script>
     {AUTH_PAGE_STYLES}
   </head>
   <body>
