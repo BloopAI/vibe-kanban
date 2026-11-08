@@ -1,0 +1,61 @@
+---
+title: "Muse CLI"
+description: "Set up Meta Muse CLI (muse) for use with Vibe Kanban"
+icon: https://dev.meta.ai/docs/muse-code
+---
+
+<Steps>
+<Step title="Install Muse CLI">
+  Install the `muse` binary with the official installer:
+
+  ```bash
+  curl -fsSL https://dev.meta.ai/install.sh | sh
+  ```
+
+  <Tabs>
+  <Tab title="macOS / Linux">
+    ```bash
+    curl -fsSL https://dev.meta.ai/install.sh | sh
+    ```
+  </Tab>
+
+  <Tab title="Windows PowerShell">
+    ```powershell
+    irm https://dev.meta.ai/install.ps1 | iex
+    ```
+  </Tab>
+  </Tabs>
+</Step>
+
+<Step title="Verify the installation">
+  ```bash
+  muse --version
+  ```
+</Step>
+
+<Step title="Authenticate">
+  Launch `muse` once and complete the browser sign-in (or set `META_API_KEY` for CI). Headless runs reuse your cached credentials, so you must authenticate before Vibe Kanban can spawn the agent.
+
+  ```bash
+  muse
+  ```
+
+  <Check>
+  Start a short session (for example, ask for help) then exit with `/exit` when setup completes.
+  </Check>
+
+  <Note>
+  For headless environments, export `META_API_KEY` from the Meta Model API dashboard instead of opening a browser.
+  </Note>
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+
+  ```bash
+  npx vibe-kanban
+  ```
+
+  You can now select Muse when creating task attempts.
+</Step>
+</Steps>

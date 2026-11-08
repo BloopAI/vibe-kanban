@@ -63,6 +63,13 @@
           "autonomy": "skip-permissions-unsafe"
         }
       }
+    },
+    "MUSE": {
+      "DEFAULT": {
+        "MUSE": {
+          "yolo": true
+        }
+      }
     }
   }
 }

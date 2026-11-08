@@ -205,6 +205,30 @@ Click the **Default** badge next to a configuration to make it the default for t
   [View full documentation →](https://qwenlm.github.io/qwen-code-docs/en/cli/index)
 </Tab>
 
+<Tab title="MUSE">
+  <ParamField path="yolo" type="boolean">
+  Run without confirmations (launches `muse exec --yolo`)
+  </ParamField>
+
+  <ParamField path="model" type="string">
+  Specify which model to use (passed to `muse exec --model`)
+  </ParamField>
+
+  <ParamField path="reasoning_effort" type="string">
+  Reasoning depth: `"minimal"`, `"low"`, `"medium"`, `"high"`, `"xhigh"`, `"max"`, or `"ultra"` (passed to `muse exec --reasoning-effort`)
+  </ParamField>
+
+  <ParamField path="max_model_steps" type="integer">
+  Cap the number of model steps for this run (passed to `muse exec --max-model-steps`)
+  </ParamField>
+
+  <ParamField path="disable_sandbox" type="boolean">
+  Disable the OS sandbox for this run (passed to `muse exec --disable-sandbox`)
+  </ParamField>
+
+  [View full documentation →](https://dev.meta.ai/docs/muse-code/configuration)
+</Tab>
+
 <Tab title="DROID">
   <ParamField path="autonomy" type="string">
   Permission level: `"normal"`, `"low"`, `"medium"`, `"high"`, or `"skip-permissions-unsafe"`

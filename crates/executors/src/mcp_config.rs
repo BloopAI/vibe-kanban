@@ -367,6 +367,36 @@ fn adapt_copilot(mut servers: ServerMap, meta: Option<Value>) -> Value {
     attach_meta(servers, meta)
 }
 
+fn adapt_muse(servers: ServerMap, meta: Option<Value>) -> Value {
+    let servers = transform_http_servers(servers, |mut s| {
+        let url = s
+            .remove("url")
+            .unwrap_or_else(|| Value::String(String::new()));
+        let headers = s
+            .remove("headers")
+            .unwrap_or_else(|| Value::Object(Default::default()));
+        Map::from_iter([
+            (
+                "transport".to_string(),
+                Value::String("streamable_http".to_string()),
+            ),
+            ("url".to_string(), url),
+            ("headers".to_string(), headers),
+        ])
+    });
+
+    let mut servers = servers;
+    for (_k, v) in servers.iter_mut() {
+        if let Value::Object(s) = v
+            && is_stdio(s)
+            && !s.contains_key("transport")
+        {
+            s.insert("transport".to_string(), Value::String("stdio".to_string()));
+        }
+    }
+    attach_meta(servers, meta)
+}
+
 enum Adapter {
     Passthrough,
     Gemini,
@@ -374,6 +404,7 @@ enum Adapter {
     Codex,
     Opencode,
     Copilot,
+    Muse,
 }
 
 fn apply_adapter(adapter: Adapter, canonical: Value) -> Value {
@@ -389,6 +420,7 @@ fn apply_adapter(adapter: Adapter, canonical: Value) -> Value {
         Adapter::Codex => adapt_codex(servers_only, meta),
         Adapter::Opencode => adapt_opencode(servers_only, meta),
         Adapter::Copilot => adapt_copilot(servers_only, meta),
+        Adapter::Muse => adapt_muse(servers_only, meta),
     }
 }
 
@@ -403,6 +435,7 @@ impl CodingAgent {
             CodingAgent::Codex(_) => Codex,
             CodingAgent::Opencode(_) => Opencode,
             CodingAgent::Copilot(..) => Copilot,
+            CodingAgent::Muse(_) => Muse,
             #[cfg(feature = "qa-mode")]
             CodingAgent::QaMock(_) => Passthrough, // QA mock doesn't need MCP
         };
