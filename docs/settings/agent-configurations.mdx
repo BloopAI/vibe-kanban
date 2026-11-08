@@ -205,6 +205,34 @@ Click the **Default** badge next to a configuration to make it the default for t
   [View full documentation →](https://qwenlm.github.io/qwen-code-docs/en/cli/index)
 </Tab>
 
+<Tab title="ANTIGRAVITY">
+  <ParamField path="dangerously_skip_permissions" type="boolean">
+  Auto-approve all tool permission requests (launches `agy acp --dangerously-skip-permissions`)
+  </ParamField>
+
+  <ParamField path="model" type="string">
+  Specify which model to use (passed to `agy acp --model`)
+  </ParamField>
+
+  <ParamField path="effort" type="string">
+  Reasoning effort: `"low"`, `"medium"`, or `"high"` (passed to `agy acp --effort`)
+  </ParamField>
+
+  <ParamField path="agent" type="string">
+  Specify which agent to use (passed to `agy acp --agent`)
+  </ParamField>
+
+  <ParamField path="mode" type="string">
+  Execution mode: `"default"`, `"accept-edits"`, `"plan"`, or `"auto"` (passed to `agy acp --mode`)
+  </ParamField>
+
+  <ParamField path="sandbox" type="boolean">
+  Run with terminal sandbox restrictions enabled (passed to `agy acp --sandbox`)
+  </ParamField>
+
+  [View full documentation →](https://antigravity.google/docs/cli/reference/)
+</Tab>
+
 <Tab title="DROID">
   <ParamField path="autonomy" type="string">
   Permission level: `"normal"`, `"low"`, `"medium"`, `"high"`, or `"skip-permissions-unsafe"`
