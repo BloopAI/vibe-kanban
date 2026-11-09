@@ -225,6 +225,7 @@ fn generate_types_content() -> String {
         executors::executors::opencode::Opencode::decl(),
         executors::executors::qwen::QwenCode::decl(),
         executors::executors::droid::Droid::decl(),
+        executors::executors::antigravity::Antigravity::decl(),
         executors::executors::droid::Autonomy::decl(),
         executors::executors::droid::ReasoningEffortLevel::decl(),
         executors::executors::AppendPrompt::decl(),
@@ -350,6 +351,10 @@ fn generate_schemas() -> Result<HashMap<&'static str, String>, serde_json::Error
         (
             "droid",
             generate_json_schema::<executors::executors::droid::Droid>()?,
+        ),
+        (
+            "antigravity",
+            generate_json_schema::<executors::executors::antigravity::Antigravity>()?,
         ),
     ]);
     println!(

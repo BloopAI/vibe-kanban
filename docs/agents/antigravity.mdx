@@ -1,0 +1,61 @@
+---
+title: "Antigravity CLI"
+description: "Set up Google Antigravity CLI (agy) for use with Vibe Kanban"
+icon: https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@latest/icons/antigravity-color.svg
+---
+
+<Steps>
+<Step title="Install Antigravity CLI">
+  Install the `agy` binary with the official installer:
+
+  ```bash
+  curl -fsSL https://antigravity.google/cli/install.sh | bash
+  ```
+
+  <Tabs>
+  <Tab title="macOS / Linux">
+    ```bash
+    curl -fsSL https://antigravity.google/cli/install.sh | bash
+    ```
+  </Tab>
+
+  <Tab title="Windows PowerShell">
+    ```powershell
+    irm https://antigravity.google/cli/install.ps1 | iex
+    ```
+  </Tab>
+  </Tabs>
+</Step>
+
+<Step title="Verify the installation">
+  ```bash
+  agy --version
+  ```
+</Step>
+
+<Step title="Authenticate">
+  Launch `agy` once and complete the interactive sign-in. Headless runs reuse your cached credentials, so you need to authenticate before Vibe Kanban can spawn the agent.
+
+  ```bash
+  agy
+  ```
+
+  <Check>
+  Exit the TUI with `/exit` when setup completes.
+  </Check>
+
+  <Note>
+  Alternatively, you can run Antigravity CLI with your own Gemini API key by setting `modelProvider` to `gemini` in `~/.gemini/antigravity-cli/settings.json` and exporting `GEMINI_API_KEY`.
+  </Note>
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+
+  ```bash
+  npx vibe-kanban
+  ```
+
+  You can now select Antigravity when creating task attempts.
+</Step>
+</Steps>

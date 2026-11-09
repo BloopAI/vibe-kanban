@@ -63,6 +63,13 @@
           "autonomy": "skip-permissions-unsafe"
         }
       }
+    },
+    "ANTIGRAVITY": {
+      "DEFAULT": {
+        "ANTIGRAVITY": {
+          "dangerously_skip_permissions": true
+        }
+      }
     }
   }
 }
