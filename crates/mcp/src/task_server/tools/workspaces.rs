@@ -136,7 +136,7 @@ impl McpServer {
         }
 
         // Keep ordering deterministic after filtering.
-        workspaces.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        workspaces.sort_by_key(|w| std::cmp::Reverse(w.created_at));
 
         let total_count = workspaces.len();
         let offset = offset.unwrap_or(0).max(0) as usize;

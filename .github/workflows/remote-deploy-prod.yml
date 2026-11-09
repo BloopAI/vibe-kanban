@@ -21,7 +21,7 @@ permissions:
   contents: write
 
 env:
-  RUST_TOOLCHAIN: nightly-2025-12-04
+  RUST_TOOLCHAIN: nightly-2026-08-01
 
 jobs:
   release-and-deploy:

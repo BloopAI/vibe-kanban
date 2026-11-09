@@ -18,6 +18,7 @@ use super::super::{
     state::RelayAppState,
 };
 
+#[allow(clippy::result_large_err)]
 pub async fn create_relay_session(
     State(state): State<RelayAppState>,
     Path(host_id): Path<Uuid>,

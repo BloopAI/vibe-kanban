@@ -349,7 +349,7 @@ impl GhCli {
             })?;
 
         open_prs.extend(closed_prs);
-        open_prs.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+        open_prs.sort_by_key(|pr| std::cmp::Reverse(pr.updated_at));
 
         Ok(open_prs
             .into_iter()

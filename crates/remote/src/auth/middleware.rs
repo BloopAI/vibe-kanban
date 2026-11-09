@@ -65,6 +65,7 @@ pub(crate) async fn require_session(
     db::TX_CONTEXT.scope(Some(tx_ctx), next.run(req)).await
 }
 
+#[allow(clippy::result_large_err)]
 pub(super) async fn request_context_from_access_token(
     state: &AppState,
     access_token: &str,
@@ -93,6 +94,7 @@ pub(super) async fn request_context_from_access_token(
     Ok(ctx)
 }
 
+#[allow(clippy::result_large_err)]
 pub(super) async fn request_context_from_auth_session_id(
     state: &AppState,
     session_id: Uuid,
