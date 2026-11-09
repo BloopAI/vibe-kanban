@@ -132,6 +132,7 @@ pub async fn require_session(
     next.run(req).await
 }
 
+#[allow(clippy::result_large_err)]
 async fn request_context_from_access_token(
     state: &RelayAppState,
     access_token: &str,
@@ -159,6 +160,7 @@ async fn request_context_from_access_token(
     Ok(ctx)
 }
 
+#[allow(clippy::result_large_err)]
 pub async fn request_context_from_auth_session_id(
     state: &RelayAppState,
     session_id: Uuid,

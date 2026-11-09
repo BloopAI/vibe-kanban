@@ -114,7 +114,7 @@ impl PlainTextBuffer {
 
     /// Empty the buffer, removing and returning all content,
     fn flush(&mut self) -> Vec<String> {
-        let result = self.lines.drain(..).collect();
+        let result = std::mem::take(&mut self.lines);
         self.total_len = 0;
         result
     }

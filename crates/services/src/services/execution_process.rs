@@ -137,11 +137,9 @@ pub async fn migrate_execution_logs_to_files() -> Result<()> {
                     let _ = writeln!(
                         std::io::stderr(),
                         "sqlite-migration:{}",
-                        if t > 0 {
-                            (c * 100 / t).to_string()
-                        } else {
-                            "?".to_string()
-                        }
+                        (c * 100)
+                            .checked_div(t)
+                            .map_or_else(|| "?".to_string(), |pct| pct.to_string())
                     );
                 }
 

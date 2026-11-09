@@ -49,6 +49,7 @@ pub(super) async fn relay_path_proxy_with_tail(
     do_relay_proxy_for_host(&state, host_id, browser_session_id, request).await
 }
 
+#[allow(clippy::result_large_err)]
 async fn validate_browser_session_for_host(
     state: &RelayAppState,
     relay_browser_session_id: Uuid,
