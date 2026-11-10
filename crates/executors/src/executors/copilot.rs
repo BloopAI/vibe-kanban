@@ -12,6 +12,7 @@ use workspace_utils::{command_ext::GroupSpawnNoWindowExt, msg_store::MsgStore};
 use super::acp::{
     AcpAgentHarnessV2,
     discovery::{self, DiscoverySpec},
+    registry::{self, NpxDistribution, npx_command},
     session_config::DesiredConfig,
 };
 use crate::{
@@ -27,9 +28,13 @@ use crate::{
     profile::ExecutorConfig,
 };
 
-/// The npm package is only a launcher: the Copilot CLI downloads newer versions of itself and
-/// runs the latest one, so this version doesn't pin what actually runs.
-const COPILOT_BASE: &str = "npx -y @github/copilot@1.0.83";
+/// Copilot's entry in the ACP registry, which gives the package and args to run.
+const REGISTRY_ID: &str = "github-copilot-cli";
+
+/// Used only when there's no registry copy in memory or on disk. Unversioned on purpose, so
+/// there's no pin to bump: npx then asks npm for the latest launcher on each run. The registry's
+/// exact version is what lets npx run from its cache with no request (the CLI then updates itself).
+const FALLBACK_PACKAGE: &str = "@github/copilot";
 
 /// Limit for `copilot mcp list --json` before a discovery.
 const MCP_LIST_TIMEOUT: Duration = Duration::from_secs(10);
@@ -80,10 +85,23 @@ impl Copilot {
         }
     }
 
-    fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
+    /// The registry command, or the fallback when an override replaces the base anyway.
+    async fn base_command(&self) -> CommandBuilder {
+        if self.cmd.base_command_override.is_some() {
+            command_from(None)
+        } else {
+            registry_command(REGISTRY_ID).await
+        }
+    }
+
+    /// `base` already carries the registry args (`--acp`).
+    fn build_command_builder(
+        &self,
+        base: CommandBuilder,
+    ) -> Result<CommandBuilder, CommandBuildError> {
         // Model and permissions are set over ACP after the session opens (`desired_config`),
         // so a model Copilot no longer offers is skipped with a warning instead of failing
-        let mut builder = CommandBuilder::new(COPILOT_BASE);
+        let mut builder = base;
 
         if let Some(tool) = &self.allow_tool {
             builder = builder.extend_params(["--allow-tool", tool]);
@@ -104,8 +122,6 @@ impl Copilot {
                 builder = builder.extend_params(["--disable-mcp-server", server]);
             }
         }
-
-        builder = builder.extend_params(["--acp"]);
 
         apply_overrides(builder, &self.cmd)
     }
@@ -130,23 +146,43 @@ impl Copilot {
         }
     }
 
-    /// Base command and user overrides only: no run flags, and no side effects, since it's also
-    /// the cache key.
-    fn discovery_spec(&self) -> Result<DiscoverySpec, ExecutorError> {
-        let command = apply_overrides(
-            CommandBuilder::new(COPILOT_BASE).extend_params(["--acp"]),
-            &self.cmd,
-        )?;
+    /// Built from the unversioned fallback, not `base_command()`: the key ignores the registry
+    /// version on purpose, so a new Copilot release still finds the cached list.
+    fn key_input(&self) -> Result<serde_json::Value, ExecutorError> {
+        let command = apply_overrides(command_from(None), &self.cmd)?;
+        let env = self.cmd.env.clone().unwrap_or_default();
+        Ok(discovery::command_key_input(&command, &env))
+    }
+
+    /// Base command and user overrides only: no run flags, and no side effects.
+    async fn discovery_spec(&self) -> Result<DiscoverySpec, ExecutorError> {
+        let command = apply_overrides(self.base_command().await, &self.cmd)?;
         let env = self.cmd.env.clone().unwrap_or_default();
         Ok(DiscoverySpec {
             base_executor: BaseCodingAgent::copilot(),
-            key_input: discovery::command_key_input(&command, &env),
+            key_input: self.key_input()?,
             command,
             env,
             prepare: Some(prepare_discovery),
             fallback: Some(fallback_options()),
         })
     }
+}
+
+/// The registry's package and args, else `npx -y @github/copilot --acp`.
+fn command_from(npx: Option<&NpxDistribution>) -> CommandBuilder {
+    if let Some(npx) = npx {
+        match npx_command(REGISTRY_ID, npx) {
+            Ok(command) => return command,
+            Err(e) => tracing::warn!("{e}; using {FALLBACK_PACKAGE}"),
+        }
+    }
+    CommandBuilder::new(format!("npx -y {FALLBACK_PACKAGE}")).extend_params(["--acp"])
+}
+
+/// The command for registry agent `id` from the cached registry (never fetched here).
+async fn registry_command(id: &str) -> CommandBuilder {
+    command_from(registry::find_npx(id).await.as_ref())
 }
 
 /// Stops the user's MCP servers from starting during discovery (Copilot starts them on
@@ -293,7 +329,9 @@ impl StandardCodingAgentExecutor for Copilot {
     ) -> Result<SpawnedChild, ExecutorError> {
         let harness = AcpAgentHarnessV2::new().with_config(self.desired_config());
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let copilot_command = self.build_command_builder()?.build_initial()?;
+        let copilot_command = self
+            .build_command_builder(self.base_command().await)?
+            .build_initial()?;
         harness
             .spawn_with_command(
                 current_dir,
@@ -318,7 +356,9 @@ impl StandardCodingAgentExecutor for Copilot {
             .with_legacy_sessions("copilot_sessions")
             .with_config(self.desired_config());
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let copilot_command = self.build_command_builder()?.build_follow_up(&[])?;
+        let copilot_command = self
+            .build_command_builder(self.base_command().await)?
+            .build_follow_up(&[])?;
         harness
             .spawn_follow_up_with_command(
                 current_dir,
@@ -377,12 +417,16 @@ impl StandardCodingAgentExecutor for Copilot {
         _workdir: Option<&std::path::Path>,
         _repo_path: Option<&std::path::Path>,
     ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
-        Ok(discovery::discover(self.discovery_spec()?))
+        Ok(discovery::discover(self.discovery_spec().await?))
     }
 
     async fn warm_options_cache(&self) {
-        if let Ok(spec) = self.discovery_spec() {
-            discovery::warm(spec.cache_key()).await;
+        if let Ok(key_input) = self.key_input() {
+            discovery::warm(discovery::cache_key(
+                &BaseCodingAgent::copilot(),
+                &key_input,
+            ))
+            .await;
         }
     }
 }
@@ -412,24 +456,66 @@ mod tests {
         assert!(!desired.auto_approve());
     }
 
+    fn registry_entry() -> NpxDistribution {
+        NpxDistribution {
+            package: "@github/copilot@1.0.108".into(),
+            args: vec!["--acp".into()],
+            env: Default::default(),
+        }
+    }
+
+    #[test]
+    fn command_from_registry_entry() {
+        let command = command_from(Some(&registry_entry()));
+        assert_eq!(command.base, "npx -y @github/copilot@1.0.108");
+        assert_eq!(command.params, Some(vec!["--acp".to_string()]));
+    }
+
+    #[test]
+    fn command_falls_back_without_registry() {
+        let command = command_from(None);
+        assert_eq!(command.base, "npx -y @github/copilot");
+        assert_eq!(command.params, Some(vec!["--acp".to_string()]));
+    }
+
+    #[test]
+    fn invalid_registry_package_falls_back() {
+        let npx = NpxDistribution {
+            package: "@github/copilot --evil".into(),
+            ..registry_entry()
+        };
+        assert_eq!(command_from(Some(&npx)).base, "npx -y @github/copilot");
+    }
+
     /// Model and permissions go over ACP only, never as CLI flags.
     #[test]
     fn run_command_has_no_model_or_allow_all_flags() {
         let mut c = copilot();
         c.model = Some("gpt-5.4".into());
         c.allow_all_tools = Some(true);
+        c.allow_tool = Some("shell".into());
         assert_eq!(c.permission_policy(), PermissionPolicy::Auto);
-        let params = c
-            .build_command_builder()
-            .unwrap()
-            .params
-            .unwrap_or_default();
+        let command = c
+            .build_command_builder(command_from(Some(&registry_entry())))
+            .unwrap();
+        assert_eq!(command.base, "npx -y @github/copilot@1.0.108");
+        let params = command.params.unwrap_or_default();
         assert!(
             !params
                 .iter()
                 .any(|p| p == "--model" || p == "--allow-all-tools")
         );
-        assert!(params.contains(&"--acp".to_string()));
+        assert_eq!(params.iter().filter(|p| *p == "--acp").count(), 1);
+        assert!(params.windows(2).any(|w| w == ["--allow-tool", "shell"]));
+    }
+
+    #[test]
+    fn base_command_override_keeps_acp() {
+        let mut c = copilot();
+        c.cmd.base_command_override = Some("my-copilot-wrapper".into());
+        let command = c.build_command_builder(command_from(None)).unwrap();
+        assert_eq!(command.base, "my-copilot-wrapper");
+        assert_eq!(command.params, Some(vec!["--acp".to_string()]));
     }
 
     #[test]
@@ -457,30 +543,32 @@ mod tests {
     }
 
     #[test]
-    fn discovery_command_has_no_run_flags() {
+    fn cache_key_ignores_run_settings_and_registry_version() {
         let mut c = copilot();
         c.model = Some("gpt-5.4".into());
         c.allow_all_tools = Some(true);
-        let spec = c.discovery_spec().unwrap();
-        assert_eq!(spec.command.base, COPILOT_BASE);
-        assert_eq!(spec.command.params, Some(vec!["--acp".to_string()]));
-        // The cache key doesn't depend on run settings either
+        // Built from the unversioned fallback, never from the registry entry
         assert_eq!(
-            spec.cache_key(),
-            copilot().discovery_spec().unwrap().cache_key()
+            c.key_input().unwrap(),
+            discovery::command_key_input(&command_from(None), &HashMap::new())
         );
+        assert_eq!(c.key_input().unwrap(), copilot().key_input().unwrap());
     }
 
     #[test]
-    fn discovery_command_keeps_base_override() {
+    fn cache_key_follows_base_override() {
         let mut c = copilot();
         c.cmd.base_command_override = Some("my-copilot-wrapper".into());
-        let spec = c.discovery_spec().unwrap();
+        assert_ne!(c.key_input().unwrap(), copilot().key_input().unwrap());
+    }
+
+    #[tokio::test]
+    async fn discovery_command_keeps_base_override() {
+        let mut c = copilot();
+        c.cmd.base_command_override = Some("my-copilot-wrapper".into());
+        let spec = c.discovery_spec().await.unwrap();
         assert_eq!(spec.command.base, "my-copilot-wrapper");
-        assert_ne!(
-            spec.cache_key(),
-            copilot().discovery_spec().unwrap().cache_key()
-        );
+        assert_eq!(spec.command.params, Some(vec!["--acp".to_string()]));
     }
 
     #[test]
@@ -489,7 +577,7 @@ mod tests {
             br#"{"mcpServers":{"computer-use":{"source":"builtin"},"mine":{"type":"stdio"}}}"#,
         )
         .unwrap();
-        let command = disable_mcp_servers(CommandBuilder::new(COPILOT_BASE), &names);
+        let command = disable_mcp_servers(CommandBuilder::new("copilot"), &names);
         let params = command.params.unwrap();
         assert_eq!(params[0], "--disable-builtin-mcps");
         assert!(
@@ -601,7 +689,7 @@ mod tests {
             permission_policy: Some(permission),
         });
         let desired = c.desired_config();
-        let spec = c.discovery_spec().unwrap();
+        let spec = c.discovery_spec().await.unwrap();
         let command = disable_mcp_servers(spec.command, &[]);
         let mut child = spawn_acp_process(dir.path(), command.build_initial().unwrap(), &spec.env)
             .await

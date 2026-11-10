@@ -18,7 +18,7 @@ use crate::{
             AcpAgentHarnessV2,
             discovery::{self, DiscoverySpec},
             registry,
-            registry::{NpxDistribution, registry_key},
+            registry::{npx_command, registry_key},
             session_config::DesiredConfig,
         },
     },
@@ -240,24 +240,10 @@ impl AcpServer {
     }
 }
 
-/// Puts the package in the base, like the built-in npx agents, so that a
-/// `base_command_override` (which replaces only the base) swaps out the whole
-/// `npx -y <package>` and keeps only the registry args.
-fn npx_command(registry_id: &str, npx: &NpxDistribution) -> Result<CommandBuilder, ExecutorError> {
-    // npm names can't contain whitespace; a broken registry entry must not
-    // split into extra arguments when the base is parsed
-    if npx.package.is_empty() || npx.package.chars().any(char::is_whitespace) {
-        return Err(ExecutorError::InvalidAcpRegistryPackage {
-            id: registry_id.to_string(),
-            package: npx.package.clone(),
-        });
-    }
-    Ok(CommandBuilder::new(format!("npx -y {}", npx.package)).extend_params(npx.args.clone()))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::executors::acp::registry::NpxDistribution;
 
     fn kilo() -> NpxDistribution {
         NpxDistribution {
@@ -265,13 +251,6 @@ mod tests {
             args: vec!["acp".to_string()],
             env: Default::default(),
         }
-    }
-
-    #[test]
-    fn package_is_part_of_the_base() {
-        let command = npx_command("kilo", &kilo()).unwrap();
-        assert_eq!(command.base, "npx -y @kilocode/cli@7.8.18");
-        assert_eq!(command.params, Some(vec!["acp".to_string()]));
     }
 
     #[test]
@@ -301,19 +280,5 @@ mod tests {
             key,
             discovery::cache_key(&registry_key("kilo"), &overridden.key_input())
         );
-    }
-
-    #[test]
-    fn rejects_package_with_whitespace() {
-        for package in ["@kilocode/cli acp", "", "pkg\t--evil"] {
-            let npx = NpxDistribution {
-                package: package.to_string(),
-                ..kilo()
-            };
-            assert!(matches!(
-                npx_command("kilo", &npx),
-                Err(ExecutorError::InvalidAcpRegistryPackage { .. })
-            ));
-        }
     }
 }

@@ -9,7 +9,10 @@ use serde::Deserialize;
 use thiserror::Error;
 use tokio::sync::RwLock;
 
-use crate::executors::BaseCodingAgent;
+use crate::{
+    command::CommandBuilder,
+    executors::{BaseCodingAgent, ExecutorError},
+};
 
 const REGISTRY_URL: &str = "https://cdn.agentclientprotocol.com/registry/v1/latest/registry.json";
 const FETCH_TIMEOUT: Duration = Duration::from_secs(5);
@@ -104,6 +107,39 @@ pub fn visible_agents(agents: &[RegistryAgent]) -> Vec<RegistryAgent> {
         .filter(|agent| !HIDDEN_IDS.contains(&agent.id.as_str()))
         .cloned()
         .collect()
+}
+
+/// The npx distribution of agent `id`, hidden ones included.
+pub fn npx_of(agents: &[RegistryAgent], id: &str) -> Option<NpxDistribution> {
+    agents
+        .iter()
+        .find(|agent| agent.id == id)
+        .and_then(|agent| agent.distribution.npx.clone())
+}
+
+/// The npx distribution of agent `id` (hidden ones included) from the memory or
+/// disk copy only. Never fetches: callers on the spawn path have a fallback, and
+/// startup refreshes the registry.
+pub async fn find_npx(id: &str) -> Option<NpxDistribution> {
+    npx_of(&load_cached().await?, id)
+}
+
+/// Puts the package in the base, like the built-in npx agents, so that a
+/// `base_command_override` (which replaces only the base) swaps out the whole
+/// `npx -y <package>` and keeps only the registry args.
+pub(crate) fn npx_command(
+    registry_id: &str,
+    npx: &NpxDistribution,
+) -> Result<CommandBuilder, ExecutorError> {
+    // npm names can't contain whitespace; a broken registry entry must not
+    // split into extra arguments when the base is parsed
+    if npx.package.is_empty() || npx.package.chars().any(char::is_whitespace) {
+        return Err(ExecutorError::InvalidAcpRegistryPackage {
+            id: registry_id.to_string(),
+            package: npx.package.clone(),
+        });
+    }
+    Ok(CommandBuilder::new(format!("npx -y {}", npx.package)).extend_params(npx.args.clone()))
 }
 
 /// Executor key for a registry agent, in the same SCREAMING_SNAKE form as the
@@ -257,6 +293,44 @@ mod tests {
             ids(&visible_agents(&agents)),
             ["auggie", "cline", "kilo", "qoder"]
         );
+    }
+
+    #[test]
+    fn npx_of_includes_hidden_agents() {
+        let agents = parse_registry(FIXTURE).unwrap();
+        assert!(HIDDEN_IDS.contains(&"claude-acp"));
+        assert!(npx_of(&agents, "claude-acp").is_some());
+        assert!(npx_of(&agents, "goose").is_none()); // no npx distribution
+        assert!(npx_of(&agents, "unknown").is_none());
+    }
+
+    fn kilo() -> NpxDistribution {
+        NpxDistribution {
+            package: "@kilocode/cli@7.8.18".to_string(),
+            args: vec!["acp".to_string()],
+            env: Default::default(),
+        }
+    }
+
+    #[test]
+    fn package_is_part_of_the_base() {
+        let command = npx_command("kilo", &kilo()).unwrap();
+        assert_eq!(command.base, "npx -y @kilocode/cli@7.8.18");
+        assert_eq!(command.params, Some(vec!["acp".to_string()]));
+    }
+
+    #[test]
+    fn rejects_package_with_whitespace() {
+        for package in ["@kilocode/cli acp", "", "pkg\t--evil"] {
+            let npx = NpxDistribution {
+                package: package.to_string(),
+                ..kilo()
+            };
+            assert!(matches!(
+                npx_command("kilo", &npx),
+                Err(ExecutorError::InvalidAcpRegistryPackage { .. })
+            ));
+        }
     }
 
     #[test]
