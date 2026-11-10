@@ -51,7 +51,7 @@ import {
   SettingsSaveBar,
   SettingsSelect,
   SettingsTextarea,
-} from './SettingsComponents';
+} from './shared/SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 
 export function GeneralSettingsSection() {

@@ -102,6 +102,7 @@ fn generate_types_content() -> String {
         server::routes::config::CheckEditorAvailabilityResponse::decl(),
         server::routes::config::CheckAgentAvailabilityQuery::decl(),
         server::routes::config::AgentPresetOptionsQuery::decl(),
+        server::routes::acp_registry::AcpRegistryAgent::decl(),
         server::routes::oauth::CurrentUserResponse::decl(),
         relay_types::StartSpake2EnrollmentRequest::decl(),
         relay_types::FinishSpake2EnrollmentRequest::decl(),
@@ -225,6 +226,7 @@ fn generate_types_content() -> String {
         executors::executors::opencode::Opencode::decl(),
         executors::executors::qwen::QwenCode::decl(),
         executors::executors::droid::Droid::decl(),
+        executors::executors::acp_server::AcpServer::decl(),
         executors::executors::droid::Autonomy::decl(),
         executors::executors::droid::ReasoningEffortLevel::decl(),
         executors::executors::AppendPrompt::decl(),
@@ -350,6 +352,10 @@ fn generate_schemas() -> Result<HashMap<&'static str, String>, serde_json::Error
         (
             "droid",
             generate_json_schema::<executors::executors::droid::Droid>()?,
+        ),
+        (
+            "acp_server",
+            generate_json_schema::<executors::executors::acp_server::AcpServer>()?,
         ),
     ]);
     println!(

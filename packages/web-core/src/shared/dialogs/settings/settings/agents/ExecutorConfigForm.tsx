@@ -4,12 +4,12 @@ import type { IChangeEvent } from '@rjsf/core';
 import { RJSFValidationError } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { useTranslation } from 'react-i18next';
-import { BaseCodingAgent } from 'shared/types';
 import { settingsRjsfTheme } from './rjsf/theme';
-import { SettingsSaveBar } from './SettingsComponents';
+import { SettingsSaveBar } from '../shared/SettingsComponents';
 
 interface ExecutorConfigFormProps {
-  executor: BaseCodingAgent;
+  /** Variant the config is stored under, e.g. CLAUDE_CODE or ACP_SERVER */
+  variant: string;
   value: unknown;
   onChange?: (formData: unknown) => void;
   onSave?: (formData: unknown) => Promise<void>;
@@ -22,7 +22,7 @@ interface ExecutorConfigFormProps {
 import schemas from 'virtual:executor-schemas';
 
 export function ExecutorConfigForm({
-  executor,
+  variant,
   value,
   onChange,
   onSave,
@@ -38,8 +38,8 @@ export function ExecutorConfigForm({
   >([]);
 
   const schema = useMemo(() => {
-    return schemas[executor];
-  }, [executor]);
+    return schemas[variant];
+  }, [variant]);
 
   // Custom handler for env field updates
   const handleEnvChange = useCallback(
@@ -76,7 +76,7 @@ export function ExecutorConfigForm({
   useEffect(() => {
     setFormData(value || {});
     setValidationErrors([]);
-  }, [value, executor]);
+  }, [value, variant]);
 
   const handleChange = (event: IChangeEvent<unknown>) => {
     const newFormData = event.formData;
@@ -99,7 +99,7 @@ export function ExecutorConfigForm({
   if (!schema) {
     return (
       <div className="bg-error/10 border border-error/50 rounded-sm p-4 text-error">
-        {t('settings.agents.errors.schemaNotFound', { executor })}
+        {t('settings.agents.errors.schemaNotFound', { executor: variant })}
       </div>
     );
   }

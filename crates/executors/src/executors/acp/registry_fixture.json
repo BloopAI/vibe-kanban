@@ -1,0 +1,162 @@
+{
+  "version": "1.0.0",
+  "agents": [
+    {
+      "id": "auggie",
+      "name": "Auggie CLI",
+      "version": "0.36.0",
+      "description": "Augment Code's powerful software agent, backed by industry-leading context engine",
+      "repository": "https://github.com/augmentcode/auggie",
+      "website": "https://www.augmentcode.com/",
+      "authors": [
+        "Augment Code <support@augmentcode.com>"
+      ],
+      "license": "proprietary",
+      "license_url": "https://github.com/augmentcode/auggie/blob/main/LICENSE.md",
+      "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/auggie.svg",
+      "distribution": {
+        "npx": {
+          "package": "@augmentcode/auggie@0.36.0",
+          "args": [
+            "--acp"
+          ],
+          "env": {
+            "AUGMENT_DISABLE_AUTO_UPDATE": "1"
+          }
+        }
+      }
+    },
+    {
+      "id": "claude-acp",
+      "name": "Claude Agent",
+      "version": "0.100.0",
+      "description": "ACP wrapper for Anthropic's Claude",
+      "repository": "https://github.com/agentclientprotocol/claude-agent-acp",
+      "authors": [
+        "Anthropic",
+        "Zed Industries",
+        "JetBrains"
+      ],
+      "license": "proprietary",
+      "license_url": "https://github.com/agentclientprotocol/claude-agent-acp/blob/main/LICENSE",
+      "distribution": {
+        "npx": {
+          "package": "@agentclientprotocol/claude-agent-acp@0.100.0"
+        }
+      },
+      "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/claude-acp.svg"
+    },
+    {
+      "id": "cline",
+      "name": "Cline",
+      "version": "3.0.74",
+      "description": "Autonomous coding agent CLI - capable of creating/editing files, running commands, using the browser, and more",
+      "repository": "https://github.com/cline/cline",
+      "website": "https://cline.bot/cli",
+      "authors": [
+        "Cline Bot Inc."
+      ],
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/cline/cline/blob/main/LICENSE",
+      "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/cline.svg",
+      "distribution": {
+        "npx": {
+          "package": "cline@3.0.74",
+          "args": [
+            "--acp"
+          ]
+        }
+      }
+    },
+    {
+      "id": "goose",
+      "name": "goose",
+      "version": "1.57.0",
+      "description": "A local, extensible, open source AI agent that automates engineering tasks",
+      "repository": "https://github.com/block/goose",
+      "website": "https://block.github.io/goose/",
+      "authors": [
+        "Block"
+      ],
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/block/goose/blob/main/LICENSE",
+      "distribution": {
+        "binary": {
+          "darwin-aarch64": {
+            "archive": "https://github.com/block/goose/releases/download/v1.57.0/goose-aarch64-apple-darwin.tar.bz2",
+            "cmd": "./goose",
+            "args": [
+              "acp"
+            ],
+            "sha256": "2fbafa227ab28654c47065f1c9ebcd12f527f017e30c08e618bc6fcf363d7935"
+          }
+        }
+      },
+      "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/goose.svg"
+    },
+    {
+      "id": "kilo",
+      "name": "Kilo",
+      "version": "7.8.18",
+      "description": "The open source coding agent",
+      "repository": "https://github.com/Kilo-Org/kilocode",
+      "website": "https://kilo.ai/",
+      "authors": [
+        "Kilo Code"
+      ],
+      "license": "MIT",
+      "license_url": "https://github.com/Kilo-Org/kilocode/blob/main/LICENSE",
+      "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/kilo.svg",
+      "distribution": {
+        "binary": {
+          "darwin-aarch64": {
+            "archive": "https://github.com/Kilo-Org/kilocode/releases/download/v7.8.18/kilo-darwin-arm64.zip",
+            "cmd": "./kilo",
+            "args": [
+              "acp"
+            ],
+            "sha256": "1ea2285a2f45ec27b7fa3b644f92700adf4a91fd671aaf18ba0cb8f26c795df5"
+          }
+        },
+        "npx": {
+          "package": "@kilocode/cli@7.8.18",
+          "args": [
+            "acp"
+          ]
+        }
+      }
+    },
+    {
+      "id": "qoder",
+      "name": "Qoder CLI",
+      "version": "0.2.14",
+      "description": "AI coding assistant with agentic capabilities",
+      "website": "https://qoder.com",
+      "authors": [
+        "Qoder AI"
+      ],
+      "license": "proprietary",
+      "license_url": "https://qoder.com/product-service?lang=en",
+      "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/qoder.svg",
+      "distribution": {
+        "npx": {
+          "package": "@qoder-ai/qodercli@0.2.14",
+          "args": [
+            "--acp"
+          ]
+        }
+      }
+    },
+    {
+      "id": "broken-agent",
+      "name": "Broken Agent",
+      "description": "Missing a version, so it must be skipped",
+      "distribution": {
+        "npx": {
+          "package": "broken-agent"
+        }
+      }
+    }
+  ],
+  "extensions": []
+}

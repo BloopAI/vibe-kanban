@@ -180,6 +180,12 @@ pub async fn initialize_deployment(
         executors::executors::utils::preload_global_executor_options_cache().await;
     });
 
+    // Refresh the ACP registry so the memory and disk caches are warm
+    tokio::spawn(async move {
+        // Failures are already logged inside refresh()
+        let _ = executors::executors::acp::registry::refresh().await;
+    });
+
     Ok(deployment)
 }
 

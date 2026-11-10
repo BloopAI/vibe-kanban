@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use api_types::{Issue, ListProjectStatusesResponse, ProjectStatus};
 use db::models::{execution_process::ExecutionProcessStatus, tag::Tag};
 use executors::executors::BaseCodingAgent;
@@ -354,8 +352,14 @@ impl McpServer {
 
     fn parse_executor_agent(executor: &str) -> Result<BaseCodingAgent, ToolError> {
         let normalized = executor.replace('-', "_").to_ascii_uppercase();
-        BaseCodingAgent::from_str(&normalized)
-            .map_err(|_| ToolError::message(format!("Unknown executor '{executor}'.")))
+        let base_coding_agent = BaseCodingAgent::from(normalized);
+        if !BaseCodingAgent::builtins().contains(&base_coding_agent) {
+            return Err(ToolError::message(format!(
+                "Unknown executor '{executor}'."
+            )));
+        }
+
+        Ok(base_coding_agent)
     }
 
     fn normalize_executor_name(executor: Option<&str>) -> Result<String, ToolError> {
@@ -387,6 +391,7 @@ impl McpServer {
 mod tests {
     use std::{collections::BTreeSet, sync::Once};
 
+    use executors::executors::BaseCodingAgent;
     use rmcp::handler::server::tool::ToolRouter;
     use uuid::Uuid;
 
@@ -497,5 +502,18 @@ mod tests {
         let serialized = serde_json::to_value(&context).expect("context should serialize");
 
         assert!(serialized.get("orchestrator_session_id").is_none());
+    }
+
+    #[test]
+    fn parse_executor_agent_accepts_builtins_and_rejects_unknown() {
+        assert_eq!(
+            McpServer::parse_executor_agent("claude-code").unwrap(),
+            BaseCodingAgent::claude_code()
+        );
+        assert_eq!(
+            McpServer::parse_executor_agent("CURSOR").unwrap(),
+            BaseCodingAgent::cursor_agent()
+        );
+        assert!(McpServer::parse_executor_agent("foo").is_err());
     }
 }

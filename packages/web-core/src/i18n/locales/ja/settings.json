@@ -330,6 +330,23 @@
         "jsonLoading": "読み込み中...",
         "pathLabel": "設定ファイルの場所："
       },
+      "available": {
+        "title": "利用可能なエージェント",
+        "description": "インストールして使用できる ACP レジストリのエージェントです。",
+        "show": "表示 ({{count}})",
+        "hide": "非表示",
+        "expand": "表示",
+        "loading": "利用可能なエージェントを読み込み中...",
+        "loadFailed": "利用可能なエージェントを読み込めませんでした。",
+        "empty": "利用可能なエージェントはありません。",
+        "install": "インストール",
+        "installed": "インストール済み",
+        "uninstall": "アンインストール",
+        "installFailed": "{{name}} をインストールできませんでした: {{message}}",
+        "uninstallFailed": "{{name}} をアンインストールできませんでした: {{message}}",
+        "unsavedChangesHint": "エージェントのインストールまたはアンインストールの前に、設定の変更を保存するか破棄してください。",
+        "defaultAgentHint": "これはデフォルトのエージェントです。アンインストールする前に別のデフォルトを選択してください。"
+      },
       "errors": {
         "deleteFailed": "設定の削除に失敗しました。もう一度お試しください。",
         "saveFailed": "エージェント設定の保存に失敗しました。もう一度お試しください。",

@@ -7,8 +7,7 @@ use futures::stream::BoxStream;
 use futures_io::Error as FuturesIoError;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::Type;
-use strum_macros::{Display, EnumDiscriminants, EnumString, VariantNames};
+use strum_macros::{Display, VariantNames};
 use thiserror::Error;
 use tokio::task::JoinHandle;
 use ts_rs::TS;
@@ -22,8 +21,8 @@ use crate::{
     command::CommandBuildError,
     env::ExecutionEnv,
     executors::{
-        amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
-        droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
+        acp_server::AcpServer, amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot,
+        cursor::CursorAgent, droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
     },
     logs::utils::patch,
     mcp_config::McpConfig,
@@ -31,6 +30,7 @@ use crate::{
 };
 
 pub mod acp;
+pub mod acp_server;
 pub mod amp;
 pub mod claude;
 pub mod codex;
@@ -89,23 +89,20 @@ pub enum ExecutorError {
     SetupHelperNotSupported,
     #[error("Auth required: {0}")]
     AuthRequired(String),
+    #[error(
+        "ACP registry agent '{0}' not found. It may have been renamed or removed from the registry"
+    )]
+    AcpRegistryAgentNotFound(String),
+    #[error("ACP registry agent '{id}' has an invalid npx package '{package}'")]
+    InvalidAcpRegistryPackage { id: String, package: String },
+    #[error(transparent)]
+    AcpRegistry(#[from] acp::registry::RegistryError),
 }
 
 #[enum_dispatch]
-#[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, TS, Display, EnumDiscriminants, VariantNames,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Display, VariantNames)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
-#[strum_discriminants(
-    name(BaseCodingAgent),
-    // Only add Hash; Eq/PartialEq are already provided by EnumDiscriminants.
-    derive(EnumString, Hash, strum_macros::Display, Serialize, Deserialize, TS, Type),
-    strum(serialize_all = "SCREAMING_SNAKE_CASE"),
-    ts(use_ts_enum),
-    serde(rename_all = "SCREAMING_SNAKE_CASE"),
-    sqlx(type_name = "TEXT", rename_all = "SCREAMING_SNAKE_CASE")
-)]
 pub enum CodingAgent {
     ClaudeCode,
     Amp,
@@ -113,14 +110,96 @@ pub enum CodingAgent {
     Codex,
     Opencode,
     #[serde(alias = "CURSOR")]
-    #[strum_discriminants(serde(alias = "CURSOR"))]
-    #[strum_discriminants(strum(serialize = "CURSOR", serialize = "CURSOR_AGENT"))]
     CursorAgent,
     QwenCode,
     Copilot,
     Droid,
+    AcpServer,
     #[cfg(feature = "qa-mode")]
     QaMock(QaMockExecutor),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, TS)]
+#[serde(from = "String")]
+pub struct BaseCodingAgent(String);
+
+impl From<&CodingAgent> for BaseCodingAgent {
+    fn from(agent: &CodingAgent) -> Self {
+        match agent {
+            // Registry agents share one variant, so the key comes from the id
+            CodingAgent::AcpServer(server) => acp::registry::registry_key(&server.registry_id),
+            _ => BaseCodingAgent(agent.to_string()),
+        }
+    }
+}
+
+impl From<String> for BaseCodingAgent {
+    fn from(s: String) -> Self {
+        if s == "CURSOR" {
+            return BaseCodingAgent("CURSOR_AGENT".to_string());
+        }
+        BaseCodingAgent(s)
+    }
+}
+
+impl std::fmt::Display for BaseCodingAgent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl BaseCodingAgent {
+    pub fn claude_code() -> Self {
+        Self("CLAUDE_CODE".into())
+    }
+    pub fn amp() -> Self {
+        Self("AMP".into())
+    }
+    pub fn gemini() -> Self {
+        Self("GEMINI".into())
+    }
+    pub fn codex() -> Self {
+        Self("CODEX".into())
+    }
+    pub fn opencode() -> Self {
+        Self("OPENCODE".into())
+    }
+    pub fn cursor_agent() -> Self {
+        Self("CURSOR_AGENT".into())
+    }
+    pub fn qwen_code() -> Self {
+        Self("QWEN_CODE".into())
+    }
+    pub fn copilot() -> Self {
+        Self("COPILOT".into())
+    }
+    pub fn droid() -> Self {
+        Self("DROID".into())
+    }
+    #[cfg(feature = "qa-mode")]
+    pub fn qa_mock() -> Self {
+        Self("QA_MOCK".into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    pub fn builtins() -> Vec<Self> {
+        vec![
+            Self::claude_code(),
+            Self::amp(),
+            Self::opencode(),
+            Self::gemini(),
+            Self::copilot(),
+            Self::codex(),
+            Self::cursor_agent(),
+            Self::droid(),
+            Self::qwen_code(),
+            #[cfg(feature = "qa-mode")]
+            Self::qa_mock(),
+        ]
+    }
 }
 
 impl CodingAgent {
@@ -152,6 +231,15 @@ impl CodingAgent {
                 false,
             ),
             Self::Droid(_) => McpConfig::new(
+                vec!["mcpServers".to_string()],
+                serde_json::json!({
+                    "mcpServers": {}
+                }),
+                self.preconfigured_mcp(),
+                false,
+            ),
+            // No MCP config file yet; ACP passes MCP servers in session/new
+            Self::AcpServer(_) => McpConfig::new(
                 vec!["mcpServers".to_string()],
                 serde_json::json!({
                     "mcpServers": {}
@@ -194,6 +282,7 @@ impl CodingAgent {
             }
             Self::CursorAgent(_) => vec![BaseAgentCapability::SetupHelper],
             Self::Amp(_) | Self::Copilot(_) | Self::Droid(_) => vec![],
+            Self::AcpServer(_) => vec![],
             #[cfg(feature = "qa-mode")]
             Self::QaMock(_) => vec![], // QA mock doesn't need special capabilities
         }
@@ -391,33 +480,49 @@ pub fn build_review_prompt(
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use super::*;
+    use crate::profile::ExecutorConfigs;
 
     #[test]
     fn test_cursor_agent_deserialization() {
-        // Test that CURSOR_AGENT is accepted
-        let result = BaseCodingAgent::from_str("CURSOR_AGENT");
-        assert!(result.is_ok(), "CURSOR_AGENT should be valid");
-        assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
-
         // Test that legacy CURSOR is still accepted for backwards compatibility
-        let result = BaseCodingAgent::from_str("CURSOR");
-        assert!(
-            result.is_ok(),
-            "CURSOR should be valid for backwards compatibility"
-        );
-        assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
+        let result = BaseCodingAgent::from("CURSOR".to_string());
+        assert_eq!(result, BaseCodingAgent::from("CURSOR_AGENT".to_string()));
 
         // Test serde deserialization for CURSOR_AGENT
         let result: Result<BaseCodingAgent, _> = serde_json::from_str(r#""CURSOR_AGENT""#);
         assert!(result.is_ok(), "CURSOR_AGENT should deserialize via serde");
-        assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
+        assert_eq!(
+            result.unwrap(),
+            BaseCodingAgent::from("CURSOR_AGENT".to_string())
+        );
 
         // Test serde deserialization for legacy CURSOR
         let result: Result<BaseCodingAgent, _> = serde_json::from_str(r#""CURSOR""#);
         assert!(result.is_ok(), "CURSOR should deserialize via serde");
-        assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
+        assert_eq!(
+            result.unwrap(),
+            BaseCodingAgent::from("CURSOR_AGENT".to_string())
+        );
+    }
+
+    #[test]
+    fn base_agent_names_match_coding_agents() {
+        let defaults = ExecutorConfigs::from_defaults();
+        for (key, profile) in &defaults.executors {
+            for agent in profile.configurations.values() {
+                assert_eq!(&BaseCodingAgent::from(agent), key);
+            }
+        }
+        // QA mock is selected by the qa-mode build, not through a default profile.
+        for name in BaseCodingAgent::builtins()
+            .into_iter()
+            .filter(|n| n.as_str() != "QA_MOCK")
+        {
+            assert!(
+                defaults.executors.contains_key(&name),
+                "{name} not in default profiles"
+            );
+        }
     }
 }
