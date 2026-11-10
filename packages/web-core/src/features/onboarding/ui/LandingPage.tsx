@@ -90,6 +90,7 @@ const AGENT_PRIORITY: BaseCodingAgent[] = [
   BaseCodingAgent.CODEX,
   BaseCodingAgent.OPENCODE,
   BaseCodingAgent.GEMINI,
+  BaseCodingAgent.OMP,
 ];
 
 const DiscordIcon: Icon = forwardRef<SVGSVGElement, IconProps>(

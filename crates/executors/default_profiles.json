@@ -63,6 +63,13 @@
           "autonomy": "skip-permissions-unsafe"
         }
       }
+    },
+    "OMP": {
+      "DEFAULT": {
+        "OMP": {
+          "yolo": true
+        }
+      }
     }
   }
 }
