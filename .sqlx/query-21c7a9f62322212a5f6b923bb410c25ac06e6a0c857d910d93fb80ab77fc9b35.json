@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COUNT(1) AS \"count!: i64\" FROM pull_requests WHERE workspace_id = ? AND pr_status = 'open'",
+  "describe": {
+    "columns": [
+      {
+        "name": "count!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "21c7a9f62322212a5f6b923bb410c25ac06e6a0c857d910d93fb80ab77fc9b35"
+}

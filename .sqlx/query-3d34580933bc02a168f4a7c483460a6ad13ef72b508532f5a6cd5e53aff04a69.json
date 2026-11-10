@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                workspace_id as \"workspace_id!: Uuid\",\n                execution_process_id as \"execution_process_id!: Uuid\",\n                session_id as \"session_id!: Uuid\",\n                status as \"status!: ExecutionProcessStatus\",\n                completed_at as \"completed_at?: DateTime<Utc>\"\n            FROM (\n                SELECT\n                    s.workspace_id,\n                    ep.id as execution_process_id,\n                    ep.session_id,\n                    ep.status,\n                    ep.completed_at,\n                    ROW_NUMBER() OVER (\n                        PARTITION BY s.workspace_id\n                        ORDER BY ep.created_at DESC\n                    ) as rn\n                FROM execution_processes ep\n                JOIN sessions s ON ep.session_id = s.id\n                JOIN workspaces w ON s.workspace_id = w.id\n                WHERE w.archived = $1\n                  AND ep.run_reason IN ('codingagent', 'setupscript', 'cleanupscript')\n                  AND ep.dropped = FALSE\n            )\n            WHERE rn = 1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "workspace_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "execution_process_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "session_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "status!: ExecutionProcessStatus",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "completed_at?: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "3d34580933bc02a168f4a7c483460a6ad13ef72b508532f5a6cd5e53aff04a69"
+}
