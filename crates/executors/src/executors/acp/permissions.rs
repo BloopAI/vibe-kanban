@@ -16,15 +16,22 @@ use crate::{
     },
 };
 
+/// Approves with "allow once". "Allow always" is used only when the agent offers no "allow once":
+/// the agent may save it in its own settings, where it would also apply outside Vibe Kanban.
+/// Never picks a reject option.
 pub(crate) fn auto_approve(req: &RequestPermissionRequest) -> RequestPermissionResponse {
-    for option in &req.options {
-        if option.kind == PermissionOptionKind::AllowOnce {
-            return RequestPermissionResponse::new(RequestPermissionOutcome::Selected(
-                SelectedPermissionOutcome::new(option.option_id.clone()),
-            ));
-        }
+    let chosen = [
+        PermissionOptionKind::AllowOnce,
+        PermissionOptionKind::AllowAlways,
+    ]
+    .iter()
+    .find_map(|kind| req.options.iter().find(|o| &o.kind == kind));
+    match chosen {
+        Some(option) => RequestPermissionResponse::new(RequestPermissionOutcome::Selected(
+            SelectedPermissionOutcome::new(option.option_id.clone()),
+        )),
+        None => RequestPermissionResponse::new(RequestPermissionOutcome::Cancelled),
     }
-    RequestPermissionResponse::new(RequestPermissionOutcome::Cancelled)
 }
 
 fn send_event(log_tx: &UnboundedSender<String>, event: AcpEvent) {
@@ -192,18 +199,60 @@ mod tests {
     }
 
     #[test]
-    fn no_allow_once_option_denies() {
+    fn allow_once_is_preferred_over_allow_always() {
         assert_eq!(
             auto_approve(&RequestPermissionRequest::new(
                 "session_id".to_string(),
                 ToolCallUpdate::new("tool_call_id", ToolCallUpdateFields::default()),
                 vec![
                     PermissionOption::new(
-                        "option_id",
-                        "allow_once",
+                        "always",
+                        "allow_always",
                         PermissionOptionKind::AllowAlways,
                     ),
-                    PermissionOption::new("option_id2", "deny", PermissionOptionKind::RejectOnce)
+                    PermissionOption::new("once", "allow_once", PermissionOptionKind::AllowOnce),
+                ],
+            )),
+            RequestPermissionResponse::new(RequestPermissionOutcome::Selected(
+                SelectedPermissionOutcome::new("once"),
+            ))
+        )
+    }
+
+    #[test]
+    fn allow_always_is_used_without_allow_once() {
+        assert_eq!(
+            auto_approve(&RequestPermissionRequest::new(
+                "session_id".to_string(),
+                ToolCallUpdate::new("tool_call_id", ToolCallUpdateFields::default()),
+                vec![
+                    PermissionOption::new("deny", "deny", PermissionOptionKind::RejectOnce),
+                    PermissionOption::new(
+                        "always",
+                        "allow_always",
+                        PermissionOptionKind::AllowAlways,
+                    ),
+                ],
+            )),
+            RequestPermissionResponse::new(RequestPermissionOutcome::Selected(
+                SelectedPermissionOutcome::new("always"),
+            ))
+        )
+    }
+
+    #[test]
+    fn only_reject_options_cancels() {
+        assert_eq!(
+            auto_approve(&RequestPermissionRequest::new(
+                "session_id".to_string(),
+                ToolCallUpdate::new("tool_call_id", ToolCallUpdateFields::default()),
+                vec![
+                    PermissionOption::new("deny", "deny", PermissionOptionKind::RejectOnce),
+                    PermissionOption::new(
+                        "deny_always",
+                        "deny_always",
+                        PermissionOptionKind::RejectAlways,
+                    ),
                 ],
             )),
             RequestPermissionResponse::new(RequestPermissionOutcome::Cancelled)

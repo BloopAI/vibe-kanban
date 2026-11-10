@@ -51,11 +51,8 @@ async fn main() -> Result<(), VibeKanbanError> {
 
     let shutdown_token = CancellationToken::new();
 
+    // Also preloads the executor options cache
     let deployment = startup::initialize_deployment(shutdown_token.clone()).await?;
-    // Preload global executor options cache for all executors with DEFAULT presets
-    tokio::spawn(async move {
-        executors::executors::utils::preload_global_executor_options_cache().await;
-    });
     let port = std::env::var("BACKEND_PORT")
         .or_else(|_| std::env::var("PORT"))
         .ok()

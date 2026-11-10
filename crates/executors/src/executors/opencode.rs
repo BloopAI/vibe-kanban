@@ -384,6 +384,7 @@ fn default_discovered_options() -> crate::executor_discovery::ExecutorDiscovered
         loading_agents: false,
         loading_slash_commands: false,
         error: None,
+        models_complete: false,
     }
 }
 

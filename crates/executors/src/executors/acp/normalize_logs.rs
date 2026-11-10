@@ -195,6 +195,16 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
                         };
                         msg_store.push_patch(ConversationPatch::add_normalized_entry(idx, entry));
                     }
+                    AcpEvent::SessionConfig(content) => {
+                        let idx = entry_index.next();
+                        let entry = NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::SystemMessage,
+                            content,
+                            metadata: None,
+                        };
+                        msg_store.push_patch(ConversationPatch::add_normalized_entry(idx, entry));
+                    }
                     AcpEvent::CurrentMode(mode_id) => {
                         let idx = entry_index.next();
                         let entry = NormalizedEntry {

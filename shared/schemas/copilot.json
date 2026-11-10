@@ -17,7 +17,20 @@
         "null"
       ]
     },
+    "reasoning_effort": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "allow_all_tools": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "plan": {
+      "description": "Start in plan mode. Takes precedence over `allow_all_tools`.",
       "type": [
         "boolean",
         "null"

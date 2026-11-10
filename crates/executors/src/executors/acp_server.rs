@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc};
+use std::{collections::HashMap, path::Path, sync::Arc};
 
 use async_trait::async_trait;
 use derivative::Derivative;
@@ -15,10 +15,14 @@ use crate::{
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
         acp::{
-            AcpAgentHarnessV2, registry,
+            AcpAgentHarnessV2,
+            discovery::{self, DiscoverySpec},
+            registry,
             registry::{NpxDistribution, registry_key},
+            session_config::DesiredConfig,
         },
     },
+    model_selector::PermissionPolicy,
     profile::ExecutorConfig,
 };
 
@@ -36,6 +40,11 @@ pub struct AcpServer {
     pub append_prompt: AppendPrompt,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
+    /// Model, reasoning, mode and permission selected for this run.
+    #[serde(skip)]
+    #[ts(skip)]
+    #[derivative(PartialEq = "ignore")]
+    pub config: DesiredConfig,
     #[serde(skip)]
     #[ts(skip)]
     #[derivative(Debug = "ignore", PartialEq = "ignore")]
@@ -44,6 +53,12 @@ pub struct AcpServer {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for AcpServer {
+    fn apply_overrides(&mut self, executor_config: &ExecutorConfig) {
+        let mut harness = AcpAgentHarnessV2::new().with_config(self.config.clone());
+        harness.apply_overrides(executor_config);
+        self.config = harness.config().clone();
+    }
+
     async fn spawn(
         &self,
         current_dir: &Path,
@@ -55,6 +70,7 @@ impl StandardCodingAgentExecutor for AcpServer {
         let command = command.build_initial()?;
 
         AcpAgentHarnessV2::new()
+            .with_config(self.desired_config())
             .spawn_with_command(
                 current_dir,
                 combined_prompt,
@@ -79,6 +95,7 @@ impl StandardCodingAgentExecutor for AcpServer {
         let command = command.build_follow_up(&[])?;
 
         AcpAgentHarnessV2::new()
+            .with_config(self.desired_config())
             .spawn_follow_up_with_command(
                 current_dir,
                 combined_prompt,
@@ -100,8 +117,29 @@ impl StandardCodingAgentExecutor for AcpServer {
         AvailabilityInfo::InstallationFound
     }
 
+    /// Ask by default: tool requests go to the user unless Auto is picked.
     fn get_preset_options(&self) -> ExecutorConfig {
-        ExecutorConfig::new(registry_key(&self.registry_id))
+        ExecutorConfig {
+            permission_policy: Some(PermissionPolicy::Supervised),
+            ..ExecutorConfig::new(registry_key(&self.registry_id))
+        }
+    }
+
+    async fn discover_options(
+        &self,
+        _workdir: Option<&Path>,
+        _repo_path: Option<&Path>,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        Ok(discovery::discover(self.discovery_spec().await?))
+    }
+
+    /// Needs only the cache key, so it reads neither the registry nor the network.
+    async fn warm_options_cache(&self) {
+        discovery::warm(discovery::cache_key(
+            &registry_key(&self.registry_id),
+            &self.key_input(),
+        ))
+        .await;
     }
 
     fn normalize_logs(
@@ -122,16 +160,29 @@ impl AcpServer {
         Self {
             registry_id: registry_id.into(),
             append_prompt: AppendPrompt::default(),
+            config: DesiredConfig::default(),
             approvals: None,
             cmd: CmdOverrides::default(),
         }
     }
 
-    async fn build_spawn_args(
+    /// Unset permission means Ask, matching the preset.
+    fn desired_config(&self) -> DesiredConfig {
+        DesiredConfig {
+            permission: Some(
+                self.config
+                    .permission
+                    .clone()
+                    .unwrap_or(PermissionPolicy::Supervised),
+            ),
+            ..self.config.clone()
+        }
+    }
+
+    /// The registry command with user overrides, and the agent's distribution env.
+    async fn command_and_env(
         &self,
-        prompt: &str,
-        env: &ExecutionEnv,
-    ) -> Result<(String, CommandBuilder, ExecutionEnv), ExecutorError> {
+    ) -> Result<(CommandBuilder, HashMap<String, String>), ExecutorError> {
         let agent = registry::cached()
             .await?
             .into_iter()
@@ -143,14 +194,49 @@ impl AcpServer {
             .ok_or(ExecutorError::AcpRegistryAgentNotFound(
                 self.registry_id.clone(),
             ))?;
-
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
-
         let command = apply_overrides(npx_command(&self.registry_id, &npx)?, &self.cmd)?;
+        Ok((command, npx.env))
+    }
+
+    async fn build_spawn_args(
+        &self,
+        prompt: &str,
+        env: &ExecutionEnv,
+    ) -> Result<(String, CommandBuilder, ExecutionEnv), ExecutorError> {
+        let (command, npx_env) = self.command_and_env().await?;
+        let combined_prompt = self.append_prompt.combine_prompt(prompt);
         tracing::info!(registry_id = %self.registry_id, base = %command.base, params = ?command.params, "Spawning ACP registry agent");
-        let env = env.clone().with_overrides(&npx.env);
+        let env = env.clone().with_overrides(&npx_env);
 
         Ok((combined_prompt, command, env))
+    }
+
+    /// Starts nothing, but reads the registry, which is fetched if there's no copy on disk.
+    async fn discovery_spec(&self) -> Result<DiscoverySpec, ExecutorError> {
+        let (command, mut env) = self.command_and_env().await?;
+        if let Some(profile_env) = &self.cmd.env {
+            env.extend(profile_env.clone());
+        }
+        Ok(DiscoverySpec {
+            base_executor: registry_key(&self.registry_id),
+            key_input: self.key_input(),
+            command,
+            env,
+            prepare: None,
+            fallback: None,
+        })
+    }
+
+    /// The registry id and the user's overrides, not the registry command: its package is
+    /// versioned, and a registry update must still find the older list.
+    fn key_input(&self) -> serde_json::Value {
+        let env: std::collections::BTreeMap<_, _> = self.cmd.env.iter().flatten().collect();
+        serde_json::json!({
+            "registry_id": self.registry_id,
+            "base_command_override": self.cmd.base_command_override,
+            "additional_params": self.cmd.additional_params,
+            "env": env,
+        })
     }
 }
 
@@ -198,6 +284,23 @@ mod tests {
         // `kilo acp`, not `kilo @kilocode/cli@7.8.18 acp`
         assert_eq!(command.base, "kilo");
         assert_eq!(command.params, Some(vec!["acp".to_string()]));
+    }
+
+    #[test]
+    fn cache_key_ignores_the_package_version() {
+        let agent = AcpServer::new("kilo");
+        // Built without the registry entry, so a new package version can't change it
+        let key = discovery::cache_key(&registry_key("kilo"), &agent.key_input());
+        assert_eq!(
+            key,
+            discovery::cache_key(&registry_key("kilo"), &AcpServer::new("kilo").key_input())
+        );
+        let mut overridden = AcpServer::new("kilo");
+        overridden.cmd.base_command_override = Some("kilo".to_string());
+        assert_ne!(
+            key,
+            discovery::cache_key(&registry_key("kilo"), &overridden.key_input())
+        );
     }
 
     #[test]

@@ -20,6 +20,7 @@ const defaultOptions: ExecutorDiscoveredOptions = {
   loading_agents: true,
   loading_slash_commands: true,
   error: null,
+  models_complete: false,
 };
 
 function useExecutorDiscovery(
@@ -86,6 +87,7 @@ export function useModelSelectorConfig(
   return {
     config: options?.model_selector ?? null,
     loadingModels: options?.loading_models ?? false,
+    modelsComplete: options?.models_complete ?? false,
     loadingAgents: options?.loading_agents ?? false,
     error,
     isConnected,

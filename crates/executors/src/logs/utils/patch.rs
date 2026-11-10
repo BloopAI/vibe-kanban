@@ -309,6 +309,20 @@ pub fn update_providers(providers: Vec<crate::model_selector::ModelProvider>) ->
     .unwrap_or_default()
 }
 
+pub fn update_permissions(permissions: Vec<crate::model_selector::PermissionPolicy>) -> Patch {
+    serde_json::from_value(json!([
+        {"op": "replace", "path": "/options/model_selector/permissions", "value": permissions},
+    ]))
+    .unwrap_or_default()
+}
+
+pub fn update_models_complete(complete: bool) -> Patch {
+    serde_json::from_value(json!([
+        {"op": "replace", "path": "/options/models_complete", "value": complete},
+    ]))
+    .unwrap_or_default()
+}
+
 pub fn update_default_model(default_model: Option<String>) -> Patch {
     serde_json::from_value(json!([
         {"op": "replace", "path": "/options/model_selector/default_model", "value": default_model},

@@ -498,6 +498,7 @@
     }
   },
   "modelSelector": {
+    "loadingModels": "モデルを読み込み中…",
     "preset": "プリセット",
     "custom": "カスタマイズ",
     "permissions": "権限",

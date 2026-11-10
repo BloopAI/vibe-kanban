@@ -1,6 +1,11 @@
 import type { Ref } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BrainIcon, CaretDownIcon, CheckIcon } from '@phosphor-icons/react';
+import {
+  BrainIcon,
+  CaretDownIcon,
+  CheckIcon,
+  SpinnerIcon,
+} from '@phosphor-icons/react';
 import { cn } from '../lib/cn';
 import {
   DropdownMenu,
@@ -117,6 +122,8 @@ export interface ModelListProps {
   showDefaultOption?: boolean;
   onSelectDefault?: () => void;
   scrollRef?: Ref<HTMLDivElement>;
+  /** Shows a "Loading models…" row while the list is still being fetched. */
+  loading?: boolean;
 }
 
 export function ModelList({
@@ -132,6 +139,7 @@ export function ModelList({
   showDefaultOption = false,
   onSelectDefault,
   scrollRef,
+  loading = false,
 }: ModelListProps) {
   const { t } = useTranslation('common');
   const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -144,7 +152,8 @@ export function ModelList({
       })
     : models;
 
-  const showEmptyState = filteredModels.length === 0 && !showDefaultOption;
+  const showEmptyState =
+    filteredModels.length === 0 && !showDefaultOption && !loading;
   const isDefaultSelected = selectedModelId === null;
   const normalizedSelectedId = selectedModelId?.toLowerCase() ?? null;
 
@@ -270,6 +279,12 @@ export function ModelList({
             );
           })}
           {defaultRow}
+          {loading && (
+            <div className="flex items-center gap-half mx-half py-half pl-base text-sm text-low">
+              <SpinnerIcon className="size-icon-xs animate-spin" />
+              <span>{t('modelSelector.loadingModels')}</span>
+            </div>
+          )}
         </div>
       )}
     </div>

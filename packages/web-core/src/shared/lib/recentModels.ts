@@ -37,6 +37,25 @@ export function getRecentReasoningByModel(
 }
 
 /**
+ * The reasoning last picked for this model, if the model still offers it.
+ */
+export function getRecentReasoning(
+  byModel: Record<string, string>,
+  model: ModelInfo
+): string | null {
+  const key = getModelKey(model).toLowerCase();
+  for (const [k, v] of Object.entries(byModel)) {
+    if (
+      k.toLowerCase() === key &&
+      model.reasoning_options.some((o) => o.id === v)
+    ) {
+      return v;
+    }
+  }
+  return null;
+}
+
+/**
  * Touch a model in the LRU list: move it to the end (most recent).
  * If the model doesn't exist, append it. Caps list at MAX_RECENT_MODELS.
  */

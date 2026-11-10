@@ -386,6 +386,14 @@ pub trait StandardCodingAgentExecutor {
         })))
     }
 
+    /// Fills the options cache at startup. By default this runs discovery. Agents whose
+    /// discovery starts a process (ACP agents) override it to only read their disk cache.
+    async fn warm_options_cache(&self) {
+        if let Ok(mut stream) = self.discover_options(None, None).await {
+            while futures::StreamExt::next(&mut stream).await.is_some() {}
+        }
+    }
+
     /// Returns the default overrides defined by this preset/variant.
     fn get_preset_options(&self) -> ExecutorConfig;
 }
