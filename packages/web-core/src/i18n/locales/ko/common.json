@@ -498,6 +498,7 @@
     }
   },
   "modelSelector": {
+    "loadingModels": "모델 불러오는 중…",
     "preset": "프리셋",
     "custom": "사용자 정의",
     "permissions": "권한",

@@ -1,10 +1,12 @@
 pub mod client;
+pub mod discovery;
 pub mod harness;
 pub mod harness_v2;
 pub mod normalize_logs;
 mod permissions;
 pub mod registry;
 pub mod session;
+pub mod session_config;
 
 use std::{fmt::Display, str::FromStr};
 
@@ -28,6 +30,9 @@ pub enum AcpEvent {
     Plan(agent_client_protocol::Plan),
     AvailableCommands(Vec<agent_client_protocol::AvailableCommand>),
     CurrentMode(agent_client_protocol::SessionModeId),
+    /// Config in effect, a skipped setting, or a change the agent made itself
+    /// ("Model: X · Mode: Agent · Permissions: Auto"). Shown as a system message.
+    SessionConfig(String),
     RequestPermission(agent_client_protocol::RequestPermissionRequest),
     ApprovalRequested {
         tool_call_id: String,

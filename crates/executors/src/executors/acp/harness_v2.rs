@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     path::{Path, PathBuf},
     process::Stdio,
     sync::{
@@ -9,17 +10,19 @@ use std::{
 };
 
 use acp::{
-    Agent, ByteStreams, ConnectionTo,
+    Agent, ByteStreams, ConnectionTo, UntypedMessage,
     schema::{
         ProtocolVersion,
         v1::{
             CancelNotification, ContentBlock, InitializeRequest, LoadSessionRequest,
             NewSessionRequest, PromptRequest, RequestPermissionRequest, SessionNotification,
-            TextContent,
+            SessionUpdate, TextContent,
         },
     },
 };
+use async_trait::async_trait;
 use command_group::AsyncGroupChild;
+use serde_json::Value;
 use tokio::{
     io::AsyncWriteExt,
     process::Command,
@@ -40,21 +43,28 @@ use crate::{
         acp::{
             AcpEvent, SessionManager,
             permissions::{ask_user, auto_approve},
+            session_config::{
+                ConfigSink, ConfigValue, DesiredConfig, SessionOptions, apply_config,
+                describe_changes, summary,
+            },
         },
     },
+    profile::ExecutorConfig,
 };
 
 /// Reusable harness for ACP-based conns (Gemini, Qwen, etc.)
 #[derive(Default)]
 pub struct AcpAgentHarnessV2 {
-    model: Option<String>,
-    mode: Option<String>,
+    config: DesiredConfig,
     legacy_namespace: Option<String>,
 }
 
 /// Time limit for an agent to initialize / load a session / create a new session.
 /// Not used for prompts, turns can legitimately run long
-const SETUP_TIMEOUT: Duration = Duration::from_secs(120);
+pub(crate) const SETUP_TIMEOUT: Duration = Duration::from_secs(120);
+
+/// Time limit for each config change (model, reasoning, mode, ...) after the session starts.
+pub(crate) const CONFIG_CHANGE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Per the ACP spec the agent wraps up and answers the prompt with stopReason=cancelled.
 /// Stay connected so it can persist that, but stay under the container's 5s grace period.
@@ -69,6 +79,34 @@ struct SessionShared {
     replaying: Arc<AtomicBool>,
     /// Reasons from "deny with feedback", sent to the agent after the turn ends.
     denial_feedback: Arc<Mutex<Vec<String>>>,
+    /// What the agent advertises for the session, kept current so changes the agent makes
+    /// itself (Copilot leaving plan mode, ...) can be shown.
+    options: Arc<Mutex<SessionOptions>>,
+    /// Set once our own config is applied. Before that, config notifications are echoes of our
+    /// own changes and are not shown.
+    tracking_config: Arc<AtomicBool>,
+}
+
+impl SessionShared {
+    fn send(&self, event: AcpEvent) {
+        let _ = self.log_tx.send(event.to_string()); // Display = JSON; the writer adds '\n'
+    }
+
+    /// Records a config or mode notification and shows what the agent changed.
+    fn on_config_notification(&self, update: impl FnOnce(&mut SessionOptions)) {
+        if !self.tracking_config.load(Ordering::SeqCst) {
+            return;
+        }
+        let lines = {
+            let mut options = self.options.lock().unwrap_or_else(|e| e.into_inner());
+            let before = options.clone();
+            update(&mut options);
+            describe_changes(&before, &options)
+        };
+        for line in lines {
+            self.send(AcpEvent::SessionConfig(line));
+        }
+    }
 }
 
 impl AcpAgentHarnessV2 {
@@ -81,23 +119,27 @@ impl AcpAgentHarnessV2 {
         self
     }
 
-    pub fn with_model(mut self, model: impl Into<String>) -> Self {
-        self.model = Some(model.into());
+    pub fn with_config(mut self, config: DesiredConfig) -> Self {
+        self.config = config;
         self
     }
 
-    pub fn with_mode(mut self, mode: impl Into<String>) -> Self {
-        self.mode = Some(mode.into());
-        self
+    pub fn config(&self) -> &DesiredConfig {
+        &self.config
     }
 
-    pub fn apply_overrides(&mut self, executor_config: &crate::profile::ExecutorConfig) {
+    pub fn apply_overrides(&mut self, executor_config: &ExecutorConfig) {
         if let Some(model_id) = &executor_config.model_id {
-            self.model = Some(model_id.clone());
+            self.config.model = Some(model_id.clone());
         }
-
+        if let Some(reasoning_id) = &executor_config.reasoning_id {
+            self.config.reasoning = Some(reasoning_id.clone());
+        }
         if let Some(agent_id) = &executor_config.agent_id {
-            self.mode = Some(agent_id.clone());
+            self.config.mode = Some(agent_id.clone());
+        }
+        if let Some(permission) = &executor_config.permission_policy {
+            self.config.permission = Some(permission.clone());
         }
     }
 
@@ -110,23 +152,8 @@ impl AcpAgentHarnessV2 {
         cmd_overrides: &CmdOverrides,
         approvals: Option<std::sync::Arc<dyn ExecutorApprovalService>>,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let (program_path, args) = command_parts.into_resolved().await?;
-        let mut command = Command::new(program_path);
-        command
-            .kill_on_drop(true)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(current_dir)
-            .env("NPM_CONFIG_LOGLEVEL", "error")
-            .env("NODE_NO_WARNINGS", "1")
-            .args(&args);
-
-        env.clone()
-            .with_profile(cmd_overrides)
-            .apply_to_command(&mut command);
-
-        let mut child = command.group_spawn_no_window()?;
+        let env_vars = env.clone().with_profile(cmd_overrides).vars;
+        let mut child = spawn_acp_process(current_dir, command_parts, &env_vars).await?;
 
         let (exit_tx, exit_rx) = tokio::sync::oneshot::channel::<ExecutorExitResult>();
         let cancel = CancellationToken::new();
@@ -137,8 +164,7 @@ impl AcpAgentHarnessV2 {
             None,
             prompt,
             Some(exit_tx),
-            self.model.clone(),
-            self.mode.clone(),
+            self.config.clone(),
             approvals,
             cancel.clone(),
         )
@@ -192,23 +218,8 @@ impl AcpAgentHarnessV2 {
             None => (Some(session_id.to_string()), prompt),
         };
 
-        let (program_path, args) = command_parts.into_resolved().await?;
-        let mut command = Command::new(program_path);
-        command
-            .kill_on_drop(true)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(current_dir)
-            .env("NPM_CONFIG_LOGLEVEL", "error")
-            .env("NODE_NO_WARNINGS", "1")
-            .args(&args);
-
-        env.clone()
-            .with_profile(cmd_overrides)
-            .apply_to_command(&mut command);
-
-        let mut child = command.group_spawn_no_window()?;
+        let env_vars = env.clone().with_profile(cmd_overrides).vars;
+        let mut child = spawn_acp_process(current_dir, command_parts, &env_vars).await?;
 
         let (exit_tx, exit_rx) = tokio::sync::oneshot::channel::<ExecutorExitResult>();
         let cancel = CancellationToken::new();
@@ -219,8 +230,7 @@ impl AcpAgentHarnessV2 {
             existing_session,
             prompt_to_send,
             Some(exit_tx),
-            self.model.clone(),
-            self.mode.clone(),
+            self.config.clone(),
             approvals,
             cancel.clone(),
         )
@@ -240,28 +250,11 @@ impl AcpAgentHarnessV2 {
         existing_session: Option<String>,
         prompt: String,
         exit_signal: Option<tokio::sync::oneshot::Sender<ExecutorExitResult>>,
-        // todo: implement model and mode config change
-        _model: Option<String>,
-        _mode: Option<String>,
+        config: DesiredConfig,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
         cancel: CancellationToken,
     ) -> Result<(), ExecutorError> {
-        // Take child's stdio for ACP wiring
-        let orig_stdout = child.inner().stdout.take().ok_or_else(|| {
-            ExecutorError::Io(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "Child process has no stdout",
-            ))
-        })?;
-        let orig_stdin = child.inner().stdin.take().ok_or_else(|| {
-            ExecutorError::Io(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "Child process has no stdin",
-            ))
-        })?;
-        // The agent's stdin is where WE write; its stdout is where WE read.
-        // .compat*() adapts tokio's I/O traits to the futures traits the ACP SDK expects.
-        let transport = ByteStreams::new(orig_stdin.compat_write(), orig_stdout.compat());
+        let transport = take_transport(child)?;
 
         // Create a fresh stdout pipe for logs
         let writer = crate::stdout_dup::create_stdout_pipe_writer(child)?;
@@ -283,9 +276,12 @@ impl AcpAgentHarnessV2 {
             cancel,
             replaying: Arc::new(AtomicBool::new(false)),
             denial_feedback: Arc::default(),
+            options: Arc::default(),
+            tracking_config: Arc::new(AtomicBool::new(false)),
         };
         let notification_shared = shared.clone();
         let permission_shared = shared.clone();
+        let auto_approve_requests = config.auto_approve();
 
         tokio::spawn(async move {
             let result = acp::Client
@@ -299,8 +295,23 @@ impl AcpAgentHarnessV2 {
                         if notification_shared.replaying.load(Ordering::SeqCst) {
                             return Ok(()); // history replay from session/load: already in our logs
                         }
-                        if let Ok(event) = AcpEvent::try_from(notification) {
-                            let _ = notification_shared.log_tx.send(event.to_string()); // Display = JSON; the writer adds '\n'
+                        match &notification.update {
+                            SessionUpdate::ConfigOptionUpdate(update) => {
+                                let value = serde_json::to_value(update).unwrap_or_default();
+                                notification_shared
+                                    .on_config_notification(|o| o.update_config(&value));
+                            }
+                            // Shown through SessionConfig with the mode's name, not its raw id
+                            SessionUpdate::CurrentModeUpdate(update) => {
+                                let mode_id = update.current_mode_id.0.to_string();
+                                notification_shared
+                                    .on_config_notification(|o| o.set_current_mode(&mode_id));
+                            }
+                            _ => {
+                                if let Ok(event) = AcpEvent::try_from(notification) {
+                                    notification_shared.send(event);
+                                }
+                            }
                         }
                         Ok(())
                     },
@@ -309,9 +320,12 @@ impl AcpAgentHarnessV2 {
                 .on_receive_request(
                     async move |request: RequestPermissionRequest, responder, connection| {
                         tracing::trace!("Received permission request: {:?}", request);
-                        let Some(approvals) = approvals.clone() else {
-                            let _ = responder.respond(auto_approve(&request));
-                            return Ok(());
+                        let approvals = match approvals.clone() {
+                            Some(approvals) if !auto_approve_requests => approvals,
+                            _ => {
+                                let _ = responder.respond(auto_approve(&request));
+                                return Ok(());
+                            }
                         };
 
                         // the closure runs once per request → clone again for each spawned task
@@ -332,8 +346,8 @@ impl AcpAgentHarnessV2 {
                     },
                     acp::on_receive_request!(),
                 )
-                .connect_with(transport, |connection: ConnectionTo<Agent>| {
-                    run_session(connection, existing_session, cwd, prompt, shared)
+                .connect_with(transport, async move |connection: ConnectionTo<Agent>| {
+                    run_session(connection, existing_session, cwd, prompt, config, shared).await
                 })
                 .await;
 
@@ -354,14 +368,62 @@ impl AcpAgentHarnessV2 {
     }
 }
 
-async fn run_session(
-    connection: ConnectionTo<Agent>,
-    existing_session: Option<String>,
-    cwd: PathBuf,
-    prompt: String,
-    shared: SessionShared,
-) -> Result<(), acp::Error> {
-    // Initialize the agent
+/// Spawns an ACP agent in its own process group, killed when dropped. Shared by runs and
+/// option discovery, so a discovery that times out doesn't leave the agent running.
+pub(crate) async fn spawn_acp_process(
+    current_dir: &Path,
+    command_parts: CommandParts,
+    env_vars: &HashMap<String, String>,
+) -> Result<AsyncGroupChild, ExecutorError> {
+    let (program_path, args) = command_parts.into_resolved().await?;
+    let mut command = Command::new(program_path);
+    command
+        .kill_on_drop(true)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .current_dir(current_dir)
+        .env("NPM_CONFIG_LOGLEVEL", "error")
+        .env("NODE_NO_WARNINGS", "1")
+        .args(&args)
+        .envs(env_vars);
+
+    Ok(command.group_spawn_no_window()?)
+}
+
+/// Takes the child's stdin/stdout as the ACP transport.
+pub(crate) fn take_transport(
+    child: &mut AsyncGroupChild,
+) -> Result<
+    ByteStreams<
+        tokio_util::compat::Compat<tokio::process::ChildStdin>,
+        tokio_util::compat::Compat<tokio::process::ChildStdout>,
+    >,
+    ExecutorError,
+> {
+    let orig_stdout = child.inner().stdout.take().ok_or_else(|| {
+        ExecutorError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "Child process has no stdout",
+        ))
+    })?;
+    let orig_stdin = child.inner().stdin.take().ok_or_else(|| {
+        ExecutorError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "Child process has no stdin",
+        ))
+    })?;
+    // The agent's stdin is where WE write; its stdout is where WE read.
+    // .compat*() adapts tokio's I/O traits to the futures traits the ACP SDK expects.
+    Ok(ByteStreams::new(
+        orig_stdin.compat_write(),
+        orig_stdout.compat(),
+    ))
+}
+
+pub(crate) async fn initialize(
+    connection: &ConnectionTo<Agent>,
+) -> Result<acp::schema::v1::InitializeResponse, acp::Error> {
     tracing::debug!("🤝 Initializing agent...");
     let init_response = with_timeout(
         "initialize",
@@ -370,47 +432,119 @@ async fn run_session(
             .block_task(),
     )
     .await?;
-
     tracing::debug!("✓ Agent initialized: {:?}", init_response.agent_info);
+    Ok(init_response)
+}
 
-    let session_id = if let Some(existing) = existing_session {
+/// Sends `session/new`, or `session/load` when `existing` is set, untyped so that both
+/// `configOptions` and the older `models` / `modes` objects can be read.
+/// Returns the session id and what the agent advertises for it.
+pub(crate) async fn open_session(
+    connection: &ConnectionTo<Agent>,
+    existing: Option<String>,
+    cwd: PathBuf,
+) -> Result<(String, SessionOptions), acp::Error> {
+    match existing {
+        Some(session_id) => {
+            tracing::debug!("📝 Loading session {session_id}...");
+            let request = UntypedMessage::new(
+                "session/load",
+                LoadSessionRequest::new(session_id.clone(), cwd),
+            )?;
+            let response = with_timeout(
+                "load the session",
+                connection.send_request(request).block_task(),
+            )
+            .await?;
+            tracing::debug!("✓ Session loaded {:?}", response);
+            Ok((session_id, SessionOptions::from_response(&response)))
+        }
+        None => {
+            tracing::debug!("📝 Creating new session...");
+            let request = UntypedMessage::new("session/new", NewSessionRequest::new(cwd))?;
+            let response = with_timeout(
+                "create a new session",
+                connection.send_request(request).block_task(),
+            )
+            .await?;
+            let session_id = response
+                .get("sessionId")
+                .and_then(Value::as_str)
+                .ok_or_else(|| acp::util::internal_error("session/new returned no sessionId"))?
+                .to_string();
+            tracing::debug!("✓ Session created");
+            Ok((session_id, SessionOptions::from_response(&response)))
+        }
+    }
+}
+
+/// Sends config changes over an ACP connection, each with its own time limit.
+pub(crate) struct ConnectionSink<'a> {
+    pub connection: &'a ConnectionTo<Agent>,
+    pub session_id: String,
+}
+
+impl ConnectionSink<'_> {
+    async fn request(&self, method: &str, params: Value) -> Result<Value, String> {
+        let request = UntypedMessage::new(method, params).map_err(|e| e.to_string())?;
+        match tokio::time::timeout(
+            CONFIG_CHANGE_TIMEOUT,
+            self.connection.send_request(request).block_task(),
+        )
+        .await
+        {
+            Ok(Ok(response)) => Ok(response),
+            Ok(Err(e)) => Err(e.message),
+            Err(_) => Err("the agent didn't answer in time".to_string()),
+        }
+    }
+}
+
+#[async_trait]
+impl ConfigSink for ConnectionSink<'_> {
+    async fn set_config_option(&mut self, id: &str, value: &ConfigValue) -> Result<Value, String> {
+        let mut params = value.to_params();
+        params["sessionId"] = Value::from(self.session_id.clone());
+        params["configId"] = Value::from(id);
+        self.request("session/set_config_option", params).await
+    }
+
+    async fn set_mode(&mut self, mode_id: &str) -> Result<(), String> {
+        let params = serde_json::json!({ "sessionId": self.session_id, "modeId": mode_id });
+        self.request("session/set_mode", params).await.map(|_| ())
+    }
+
+    async fn set_model(&mut self, model_id: &str) -> Result<(), String> {
+        let params = serde_json::json!({ "sessionId": self.session_id, "modelId": model_id });
+        self.request("session/set_model", params).await.map(|_| ())
+    }
+}
+
+async fn run_session(
+    connection: ConnectionTo<Agent>,
+    existing_session: Option<String>,
+    cwd: PathBuf,
+    prompt: String,
+    config: DesiredConfig,
+    shared: SessionShared,
+) -> Result<(), acp::Error> {
+    let init_response = initialize(&connection).await?;
+
+    if existing_session.is_some() {
         if !init_response.agent_capabilities.load_session {
             return Err(acp::util::internal_error(
                 "agent does not support session/load",
             ));
         }
         shared.replaying.store(true, Ordering::SeqCst);
+    }
+    let opened = open_session(&connection, existing_session, cwd).await;
+    shared.replaying.store(false, Ordering::SeqCst);
+    let (session_id, mut options) = opened?;
 
-        tracing::debug!("📝 Loading session {existing}...");
-        let load_session_response = with_timeout(
-            "load the session",
-            connection
-                .send_request(LoadSessionRequest::new(existing.clone(), cwd.clone()))
-                .block_task(),
-        )
-        .await;
-        shared.replaying.store(false, Ordering::SeqCst);
+    shared.send(AcpEvent::SessionStart(session_id.clone()));
 
-        let load_session_response = load_session_response?;
-        tracing::debug!("✓ Session loaded {:?}", load_session_response);
-        existing
-    } else {
-        // Create a new session
-        tracing::debug!("📝 Creating new session...");
-        let new_session_response = with_timeout(
-            "create a new session",
-            connection
-                .send_request(NewSessionRequest::new(cwd.clone()))
-                .block_task(),
-        )
-        .await?;
-
-        tracing::debug!("✓ Session created");
-        new_session_response.session_id.to_string()
-    };
-    let _ = shared
-        .log_tx
-        .send(AcpEvent::SessionStart(session_id.clone()).to_string());
+    apply_session_config(&connection, &session_id, &mut options, &config, &shared).await;
 
     // Denial feedback is delivered after the turn ends. Some agents (Copilot) end their turn on
     // rejection; others may keep working first, so for them the feedback can arrive late.
@@ -444,7 +578,7 @@ async fn run_session(
 
                 tracing::debug!("✅ Agent completed!");
                 tracing::debug!("Stop reason: {:?}", stop_reason);
-                let _ = shared.log_tx.send(AcpEvent::Done(stop_reason).to_string());
+                shared.send(AcpEvent::Done(stop_reason));
             }
             Err(e) => {
                 tracing::debug!("error {} {e} {:?}", e.code, e.data);
@@ -475,7 +609,36 @@ async fn run_session(
     Ok(())
 }
 
-async fn with_timeout<T>(
+/// Applies the selected config, then shows what is in effect and anything that was skipped.
+/// Never fails the run.
+async fn apply_session_config(
+    connection: &ConnectionTo<Agent>,
+    session_id: &str,
+    options: &mut SessionOptions,
+    config: &DesiredConfig,
+    shared: &SessionShared,
+) {
+    let mut sink = ConnectionSink {
+        connection,
+        session_id: session_id.to_string(),
+    };
+    let outcome = apply_config(options, config, &mut sink).await;
+    for warning in &outcome.warnings {
+        tracing::warn!("ACP session config: {warning}");
+    }
+
+    *shared.options.lock().unwrap_or_else(|e| e.into_inner()) = options.clone();
+    shared.tracking_config.store(true, Ordering::SeqCst);
+
+    if let Some(line) = summary(options, outcome.permission.as_ref()) {
+        shared.send(AcpEvent::SessionConfig(line));
+    }
+    for warning in outcome.warnings {
+        shared.send(AcpEvent::SessionConfig(warning));
+    }
+}
+
+pub(crate) async fn with_timeout<T>(
     step: &str,
     request: impl Future<Output = Result<T, acp::Error>>,
 ) -> Result<T, acp::Error> {

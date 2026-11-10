@@ -29,6 +29,9 @@ import {
   resolveDefaultModelId,
   isModelAvailable,
   resolveDefaultReasoningId,
+  dropUnavailableModel,
+  resolvePermissionPolicy,
+  staleSelections,
 } from '@/shared/lib/modelSelector';
 import { profilesApi } from '@/shared/lib/api';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
@@ -104,6 +107,7 @@ export function ModelSelectorContainer({
   const {
     config: streamConfig,
     loadingModels,
+    modelsComplete,
     error: streamError,
   } = useModelSelectorConfig(agent, {
     workspaceId: sessionId ? workspaceId : undefined,
@@ -117,7 +121,11 @@ export function ModelSelectorContainer({
   }, [streamError]);
 
   const baseConfig = streamConfig;
-  const config = appendPresetModel(baseConfig, presetOptions?.model_id);
+  const config = appendPresetModel(
+    baseConfig,
+    presetOptions?.model_id,
+    modelsComplete
+  );
 
   const availableProviderIds = useMemo(
     () => config?.providers.map((item) => item.id) ?? [],
@@ -175,7 +183,15 @@ export function ModelSelectorContainer({
 
   const selectedModelId = (() => {
     const candidate = configModelId ?? resolvedPresetModelId ?? defaultModelId;
-    if (!candidate || !config || !selectedProviderId) return candidate;
+    if (!candidate || !config) return candidate;
+    if (!selectedProviderId) {
+      return dropUnavailableModel(
+        config.models,
+        null,
+        candidate,
+        modelsComplete
+      );
+    }
     const hasMatch = isModelAvailable(config, selectedProviderId, candidate);
     return hasMatch
       ? candidate
@@ -228,12 +244,31 @@ export function ModelSelectorContainer({
 
   const supportsPermissions = (config?.permissions.length ?? 0) > 0;
 
-  const basePermissionPolicy = supportsPermissions
-    ? (presetOptions?.permission_policy ?? config?.permissions[0] ?? null)
-    : null;
-  const permissionPolicy = supportsPermissions
-    ? (executorConfig?.permission_policy ?? basePermissionPolicy)
-    : null;
+  const permissionPolicy = resolvePermissionPolicy(
+    config?.permissions ?? [],
+    executorConfig?.permission_policy ?? presetOptions?.permission_policy,
+    modelsComplete
+  );
+
+  // Once the live list is in, reset last-used selections it no longer offers,
+  // so the run doesn't send them and warn. Waits for the preset, whose values
+  // are kept.
+  useEffect(() => {
+    if (!streamConfig || !executorConfig || presetOptions === undefined) return;
+    const reset = staleSelections(
+      streamConfig,
+      executorConfig,
+      presetOptions,
+      modelsComplete
+    );
+    if (Object.keys(reset).length > 0) onOverrideChange(reset);
+  }, [
+    streamConfig,
+    executorConfig,
+    presetOptions,
+    modelsComplete,
+    onOverrideChange,
+  ]);
 
   // LRU persistence (on popover close)
 
@@ -403,7 +438,9 @@ export function ModelSelectorContainer({
   }
 
   const showModelSelector = loadingModels || config.models.length > 0;
-  const showDefaultOption = !config.default_model && config.models.length > 0;
+  // While the list loads, "Default" stays selectable so a run can start.
+  const showDefaultOption =
+    !config.default_model && (loadingModels || config.models.length > 0);
   const displaySelectedModel = showModelSelector
     ? getSelectedModel(config.models, selectedProviderId, selectedModelId)
     : null;
@@ -413,9 +450,8 @@ export function ModelSelectorContainer({
         selectedReasoningId
       )
     : null;
-  const modelLabelBase = loadingModels
-    ? loadingLabel
-    : (displaySelectedModel?.name ?? selectedModelId ?? defaultLabel);
+  const modelLabelBase =
+    displaySelectedModel?.name ?? selectedModelId ?? defaultLabel;
   const modelLabel = reasoningLabel
     ? `${modelLabelBase} · ${reasoningLabel}`
     : modelLabelBase;
@@ -469,13 +505,7 @@ export function ModelSelectorContainer({
         <ModelSelectorPopover
           isOpen={isOpen}
           onOpenChange={handleOpenChange}
-          trigger={
-            <DropdownMenuTriggerButton
-              size="sm"
-              label={modelLabel}
-              disabled={loadingModels}
-            />
-          }
+          trigger={<DropdownMenuTriggerButton size="sm" label={modelLabel} />}
           config={config}
           error={streamError}
           selectedProviderId={selectedProviderId}
@@ -487,6 +517,8 @@ export function ModelSelectorContainer({
           onReasoningSelect={handleReasoningSelect}
           recentModelEntries={recentModelEntries}
           showDefaultOption={showDefaultOption}
+          // The agent's own list, not the preset model appended to it
+          loading={loadingModels && (streamConfig?.models.length ?? 0) === 0}
           onSelectDefault={() => handleModelSelect(null)}
           scrollRef={scrollRef}
           expandedProviderId={expandedProviderId}

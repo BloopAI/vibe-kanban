@@ -653,7 +653,11 @@ export type ReasoningSummaryFormat = "none" | "experimental";
 
 export type CursorAgent = { append_prompt: AppendPrompt, force?: boolean | null, model?: string | null, reasoning?: string | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
-export type Copilot = { append_prompt: AppendPrompt, model?: string | null, allow_all_tools?: boolean | null, allow_tool?: string | null, deny_tool?: string | null, add_dir?: Array<string> | null, disable_mcp_server?: Array<string> | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
+export type Copilot = { append_prompt: AppendPrompt, model?: string | null, reasoning_effort?: string | null, allow_all_tools?: boolean | null, 
+/**
+ * Start in plan mode. Takes precedence over `allow_all_tools`.
+ */
+plan?: boolean | null, allow_tool?: string | null, deny_tool?: string | null, add_dir?: Array<string> | null, disable_mcp_server?: Array<string> | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
 export type Opencode = { append_prompt: AppendPrompt, model?: string | null, variant?: string | null, agent?: string | null, 
 /**
@@ -817,7 +821,13 @@ agents: Array<AgentInfo>,
  */
 permissions: Array<PermissionPolicy>, };
 
-export type ExecutorDiscoveredOptions = { model_selector: ModelSelectorConfig, slash_commands: Array<SlashCommandDescription>, loading_models: boolean, loading_agents: boolean, loading_slash_commands: boolean, error: string | null, };
+export type ExecutorDiscoveredOptions = { model_selector: ModelSelectorConfig, slash_commands: Array<SlashCommandDescription>, loading_models: boolean, loading_agents: boolean, loading_slash_commands: boolean, error: string | null, 
+/**
+ * True only for a model list read from the agent itself in the last few minutes. Then a
+ * saved model or permission that isn't offered is stale and can be dropped. Never set
+ * for lists from the disk cache or a built-in fallback.
+ */
+models_complete: boolean, };
 
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;
 

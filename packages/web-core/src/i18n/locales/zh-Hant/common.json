@@ -498,6 +498,7 @@
     }
   },
   "modelSelector": {
+    "loadingModels": "正在載入模型…",
     "preset": "預設配置",
     "custom": "自訂",
     "permissions": "權限",

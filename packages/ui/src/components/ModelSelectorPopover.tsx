@@ -43,6 +43,8 @@ export interface ModelSelectorPopoverProps {
   onReasoningSelect: (reasoningId: string | null) => void;
   recentModelEntries?: string[];
   showDefaultOption?: boolean;
+  /** Models are still loading: shown as a row in the list, not on the trigger. */
+  loading?: boolean;
   onSelectDefault?: () => void;
   scrollRef?: Ref<HTMLDivElement>;
   expandedProviderId?: string;
@@ -292,6 +294,7 @@ export function ModelSelectorPopover({
   onModelSelect,
   onReasoningSelect,
   showDefaultOption = false,
+  loading = false,
   onSelectDefault,
   scrollRef,
   expandedProviderId = '',
@@ -351,6 +354,7 @@ export function ModelSelectorPopover({
         showDefaultOption={showDefaultOption}
         onSelectDefault={onSelectDefault}
         scrollRef={scrollRef}
+        loading={loading}
       />
     );
   }

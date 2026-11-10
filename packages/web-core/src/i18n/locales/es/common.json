@@ -498,6 +498,7 @@
     }
   },
   "modelSelector": {
+    "loadingModels": "Cargando modelos…",
     "preset": "Preajuste",
     "custom": "Personalizar",
     "permissions": "Permisos",
