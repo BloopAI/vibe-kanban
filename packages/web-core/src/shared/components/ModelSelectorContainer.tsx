@@ -15,6 +15,7 @@ import { toPrettyCase } from '@/shared/lib/string';
 import {
   getModelKey,
   getRecentModelEntries,
+  getRecentReasoning,
   getRecentReasoningByModel,
   touchRecentModel,
   updateRecentModelEntries,
@@ -209,30 +210,12 @@ export function ModelSelectorContainer({
 
   const recentReasoningByModel = getRecentReasoningByModel(profiles, agent);
 
-  const presetReasoningId =
-    resolvedPresetModelId && selectedModelId === resolvedPresetModelId
-      ? (presetOptions?.reasoning_id ?? null)
-      : null;
-
-  const recentReasoningId = useMemo(() => {
-    if (!selectedModel || !recentReasoningByModel) return null;
-    const key = selectedModel.provider_id
-      ? `${selectedModel.provider_id}/${selectedModel.id}`
-      : selectedModel.id;
-    const keyLower = key.toLowerCase();
-    for (const [k, v] of Object.entries(recentReasoningByModel)) {
-      if (k.toLowerCase() === keyLower) {
-        if (selectedModel.reasoning_options.some((o) => o.id === v)) return v;
-      }
-    }
-    return null;
-  }, [selectedModel, recentReasoningByModel]);
-
+  // Shows only what the run sends: a remembered reasoning is applied when its
+  // model is picked (handleModelSelect), not just displayed.
   const selectedReasoningId =
-    executorConfig?.reasoning_id ??
-    presetReasoningId ??
-    recentReasoningId ??
-    resolveDefaultReasoningId(selectedModel?.reasoning_options ?? []);
+    executorConfig?.reasoning_id !== undefined
+      ? executorConfig.reasoning_id
+      : resolveDefaultReasoningId(selectedModel?.reasoning_options ?? []);
 
   const defaultAgentId =
     config?.agents.find((entry) => entry.is_default)?.id ?? null;
@@ -274,11 +257,13 @@ export function ModelSelectorContainer({
 
   const recentModelEntries = getRecentModelEntries(profiles, agent);
   const pendingModelRef = useRef<ModelInfo | null>(null);
-  const pendingReasoningRef = useRef<string | null>(null);
+  // undefined: nothing to save; null: "Default" was picked, so forget the model's reasoning
+  const pendingReasoningRef = useRef<string | null | undefined>(undefined);
 
   const persistPendingSelections = useCallback(() => {
     if (!profiles || !agent) return;
-    if (!pendingModelRef.current && !pendingReasoningRef.current) return;
+    if (!pendingModelRef.current && pendingReasoningRef.current === undefined)
+      return;
 
     let nextProfiles = profiles;
 
@@ -295,14 +280,14 @@ export function ModelSelectorContainer({
       (selectedModelId && config
         ? getSelectedModel(config.models, selectedProviderId, selectedModelId)
         : null);
-    if (pendingReasoningRef.current && reasoningModel) {
+    if (pendingReasoningRef.current !== undefined && reasoningModel) {
       nextProfiles = setRecentReasoning(
         nextProfiles,
         agent,
         reasoningModel,
         pendingReasoningRef.current
       );
-      pendingReasoningRef.current = null;
+      pendingReasoningRef.current = undefined;
     }
 
     if (nextProfiles !== profiles) {
@@ -330,9 +315,8 @@ export function ModelSelectorContainer({
       if (providerId) return `${providerId}/${modelId}`;
       return modelId;
     })();
-    onOverrideChange({ model_id: modelOverride });
 
-    pendingModelRef.current =
+    const model =
       modelId && config
         ? (() => {
             const selectedId = modelId.toLowerCase();
@@ -352,7 +336,20 @@ export function ModelSelectorContainer({
             );
           })()
         : null;
-    pendingReasoningRef.current = null;
+
+    // Restore the reasoning last picked for this model; otherwise the change
+    // clears it and the agent's default applies.
+    const recentReasoning = model
+      ? getRecentReasoning(recentReasoningByModel, model)
+      : null;
+    onOverrideChange(
+      recentReasoning
+        ? { model_id: modelOverride, reasoning_id: recentReasoning }
+        : { model_id: modelOverride }
+    );
+
+    pendingModelRef.current = model;
+    pendingReasoningRef.current = undefined;
   };
 
   const handleReasoningSelect = (reasoningId: string | null) => {

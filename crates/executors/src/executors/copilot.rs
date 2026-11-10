@@ -81,15 +81,9 @@ impl Copilot {
     }
 
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
+        // Model and permissions are set over ACP after the session opens (`desired_config`),
+        // so a model Copilot no longer offers is skipped with a warning instead of failing
         let mut builder = CommandBuilder::new(COPILOT_BASE);
-
-        if self.permission_policy() == PermissionPolicy::Auto {
-            builder = builder.extend_params(["--allow-all-tools"]);
-        }
-
-        if let Some(model) = &self.model {
-            builder = builder.extend_params(["--model", model]);
-        }
 
         if let Some(tool) = &self.allow_tool {
             builder = builder.extend_params(["--allow-tool", tool]);
@@ -416,8 +410,26 @@ mod tests {
         assert_eq!(desired.permission, Some(PermissionPolicy::Plan));
         assert_eq!(desired.extra, vec![("allow_all".into(), "off".into())]);
         assert!(!desired.auto_approve());
-        let params = c.build_command_builder().unwrap().params.unwrap();
-        assert!(!params.contains(&"--allow-all-tools".to_string()));
+    }
+
+    /// Model and permissions go over ACP only, never as CLI flags.
+    #[test]
+    fn run_command_has_no_model_or_allow_all_flags() {
+        let mut c = copilot();
+        c.model = Some("gpt-5.4".into());
+        c.allow_all_tools = Some(true);
+        assert_eq!(c.permission_policy(), PermissionPolicy::Auto);
+        let params = c
+            .build_command_builder()
+            .unwrap()
+            .params
+            .unwrap_or_default();
+        assert!(
+            !params
+                .iter()
+                .any(|p| p == "--model" || p == "--allow-all-tools")
+        );
+        assert!(params.contains(&"--acp".to_string()));
     }
 
     #[test]
@@ -544,6 +556,31 @@ mod tests {
     #[tokio::test]
     #[ignore = "starts the real Copilot CLI"]
     async fn live_copilot_config() {
+        let (line, warnings) = live_apply("kimi-k3", "max", PermissionPolicy::Plan).await;
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(
+            line.as_deref(),
+            Some("Model: Kimi K3 · Reasoning: Max · Mode: Plan · Permissions: Plan")
+        );
+    }
+
+    /// Auto sets `allow_all` after reasoning, which must not undo it
+    #[tokio::test]
+    #[ignore = "starts the real Copilot CLI"]
+    async fn live_copilot_config_auto() {
+        let (line, warnings) = live_apply("claude-haiku-5.5", "high", PermissionPolicy::Auto).await;
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(
+            line.as_deref(),
+            Some("Model: Claude Haiku 5.5 · Reasoning: High · Mode: Agent · Permissions: Auto")
+        );
+    }
+
+    async fn live_apply(
+        model: &str,
+        reasoning: &str,
+        permission: PermissionPolicy,
+    ) -> (Option<String>, Vec<String>) {
         use acp::{Agent, ConnectionTo};
 
         use crate::executors::acp::{
@@ -558,10 +595,10 @@ mod tests {
         c.apply_overrides(&ExecutorConfig {
             executor: BaseCodingAgent::copilot(),
             variant: None,
-            model_id: Some("kimi-k3".into()),
+            model_id: Some(model.into()),
             agent_id: None,
-            reasoning_id: Some("max".into()),
-            permission_policy: Some(PermissionPolicy::Plan),
+            reasoning_id: Some(reasoning.into()),
+            permission_policy: Some(permission),
         });
         let desired = c.desired_config();
         let spec = c.discovery_spec().unwrap();
@@ -590,10 +627,6 @@ mod tests {
             .unwrap();
         let _ = child.kill().await;
         println!("{line:?} {warnings:?}");
-        assert!(warnings.is_empty(), "{warnings:?}");
-        assert_eq!(
-            line.as_deref(),
-            Some("Model: Kimi K3 · Reasoning: Max · Mode: Plan · Permissions: Plan")
-        );
+        (line, warnings)
     }
 }
