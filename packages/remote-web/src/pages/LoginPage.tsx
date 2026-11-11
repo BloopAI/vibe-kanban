@@ -173,6 +173,17 @@ export default function LoginPage() {
                     loading={pending === "google"}
                   />
                 )}
+                {!isAuthMethodsError &&
+                hasOAuthProviders &&
+                oauthProviders.includes("entra_id") && (
+                  <OAuthButton
+                    provider="entra_id"
+                    label="Continue with Microsoft"
+                    onClick={() => void handleLogin("entra_id")}
+                    disabled={pending !== null}
+                    loading={pending === "entra_id"}
+                  />
+                )}
             </div>
           </section>
 
@@ -215,7 +226,9 @@ function OAuthButton({
       disabled={disabled || loading}
     >
       {loading
-        ? `Opening ${provider === "github" ? "GitHub" : "Google"}...`
+        ? `Opening ${
+            { github: "GitHub", google: "Google", entra_id: "Microsoft" }[provider]
+          }...`
         : label}
     </button>
   );
