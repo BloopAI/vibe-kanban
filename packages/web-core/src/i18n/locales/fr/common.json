@@ -37,6 +37,12 @@
     "output": "Sortie",
     "deniedByUser": "{{toolName}} refusé par l'utilisateur",
     "signInFailed": "Impossible de lancer la connexion : {{error}}",
+    "deviceCode": {
+      "title": "Saisissez ce code pour vous connecter",
+      "copyAndOpen": "Copier le code et ouvrir {{host}}",
+      "copied": "Code copié. Collez-le dans la page qui s'est ouverte.",
+      "copyFailed": "Impossible de copier le code. Saisissez-le dans la page qui s'est ouverte."
+    },
     "tool": "Outil",
     "thinking": "Réflexion",
     "toolSummary": {

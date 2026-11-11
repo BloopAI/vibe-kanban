@@ -37,6 +37,12 @@
     "output": "輸出",
     "deniedByUser": "使用者拒絕了 {{toolName}}",
     "signInFailed": "無法開始登入：{{error}}",
+    "deviceCode": {
+      "title": "輸入此代碼以登入",
+      "copyAndOpen": "複製代碼並開啟 {{host}}",
+      "copied": "代碼已複製。請貼到開啟的頁面中。",
+      "copyFailed": "無法複製代碼。請在開啟的頁面中手動輸入。"
+    },
     "tool": "工具",
     "thinking": "思考中",
     "toolSummary": {

@@ -26,6 +26,7 @@ import { useTheme } from '@/shared/hooks/useTheme';
 import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';
 import type { UseResetProcessResult } from '../model/hooks/useResetProcess';
+import { parseDeviceCode, type DeviceCode } from '../model/parseDeviceCode';
 import { useChangesViewActions } from '@/shared/hooks/useChangesView';
 import { useLogsPanelActions } from '@/shared/hooks/useLogsPanel';
 import { cn } from '@/shared/lib/utils';
@@ -252,18 +253,27 @@ function renderToolUseEntry(
       action_type.result?.exit_status?.type === 'exit_code'
         ? action_type.result.exit_status.code
         : null;
+    // A running login script may be waiting for a device code; show it here
+    // instead of only in the logs panel
+    const deviceCode =
+      status.status === 'created'
+        ? parseDeviceCode(action_type.result?.output ?? '')
+        : null;
 
     return (
-      <ScriptEntryWithFix
-        title={entryType.tool_name}
-        command={action_type.command}
-        processId={executionProcessId ?? ''}
-        exitCode={exitCode}
-        status={status}
-        workspaceId={workspaceWithSession?.id}
-        sessionId={sessionId}
-        repos={repos}
-      />
+      <>
+        <ScriptEntryWithFix
+          title={entryType.tool_name}
+          command={action_type.command}
+          processId={executionProcessId ?? ''}
+          exitCode={exitCode}
+          status={status}
+          workspaceId={workspaceWithSession?.id}
+          sessionId={sessionId}
+          repos={repos}
+        />
+        {deviceCode && <DeviceCodeCard deviceCode={deviceCode} />}
+      </>
     );
   }
 
@@ -1147,6 +1157,69 @@ function ErrorMessageEntry({
 
   return (
     <ChatErrorMessage content={content} expanded={expanded} onToggle={toggle} />
+  );
+}
+
+/**
+ * Device-flow sign-in prompt from a running login script. Copies the code in
+ * the browser (the CLI's own copy, if any, lands on the backend's machine)
+ * and opens the page to paste it into.
+ */
+function DeviceCodeCard({ deviceCode }: { deviceCode: DeviceCode }) {
+  const { t } = useTranslation('common');
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>(
+    'idle'
+  );
+  const host = useMemo(() => {
+    try {
+      return new URL(deviceCode.url).host;
+    } catch {
+      return deviceCode.url;
+    }
+  }, [deviceCode.url]);
+
+  const handleCopyAndOpen = useCallback(async () => {
+    // Start the copy before opening the tab: the browser refuses clipboard
+    // writes once this page has lost focus (navigator.clipboard is also
+    // missing on plain-http remote hosts, hence the try)
+    let copy: Promise<void>;
+    try {
+      copy = navigator.clipboard.writeText(deviceCode.code);
+    } catch (err) {
+      copy = Promise.reject(err);
+    }
+    window.open(deviceCode.url, '_blank', 'noopener,noreferrer');
+    try {
+      await copy;
+      setCopyState('copied');
+    } catch {
+      setCopyState('failed');
+    }
+  }, [deviceCode]);
+
+  return (
+    <div className="flex flex-col items-start gap-half rounded-sm border border-border p-base">
+      <span className="text-sm text-low">
+        {t('conversation.deviceCode.title')}
+      </span>
+      <code className="font-mono text-lg font-medium text-normal select-all">
+        {deviceCode.code}
+      </code>
+      <PrimaryButton
+        value={t('conversation.deviceCode.copyAndOpen', { host })}
+        onClick={handleCopyAndOpen}
+      />
+      {copyState === 'copied' && (
+        <span className="text-sm text-low">
+          {t('conversation.deviceCode.copied')}
+        </span>
+      )}
+      {copyState === 'failed' && (
+        <span className="text-sm text-error">
+          {t('conversation.deviceCode.copyFailed')}
+        </span>
+      )}
+    </div>
   );
 }
 
