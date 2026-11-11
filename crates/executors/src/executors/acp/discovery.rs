@@ -403,6 +403,10 @@ enum Progress {
     Reasoning(Vec<ModelInfo>),
 }
 
+/// Shown in the model selector when the agent rejects `session/new` with -32000. Agent-agnostic:
+/// the Sign in button on a failed run is where the user signs in.
+const NOT_SIGNED_IN: &str = "Not signed in. Start a task and click Sign in.";
+
 /// Starts the agent in a temp dir, reads what it advertises, then kills it. The whole run is
 /// limited to [`SETUP_TIMEOUT`] (long enough for a first npx download).
 async fn run_live(spec: DiscoverySpec, tx: mpsc::UnboundedSender<Progress>) -> Result<(), String> {
@@ -456,14 +460,22 @@ async fn run_live(spec: DiscoverySpec, tx: mpsc::UnboundedSender<Progress>) -> R
             probe(&connection, cwd, &tx).await
         });
 
+    let mut signed_out = false;
     let result = match tokio::time::timeout(SETUP_TIMEOUT, connection).await {
         Ok(Ok(())) => Ok(()),
-        Ok(Err(e)) => Err(e.message),
+        Ok(Err(e)) => {
+            signed_out = e.code == acp::ErrorCode::AuthRequired;
+            Err(e.message)
+        }
         Err(_) => Err("timed out waiting for the agent".to_string()),
     };
     let _ = child.kill().await;
     drop(temp_dir);
 
+    if signed_out {
+        // Shown as is: the agent's stderr tail would only bury it
+        return Err(NOT_SIGNED_IN.to_string());
+    }
     result.map_err(|error| {
         let tail = lock(&stderr_tail).trim().to_string();
         let last_line = tail.lines().rev().find(|l| !l.trim().is_empty());
@@ -609,5 +621,31 @@ mod tests {
         };
         assert!(parse_disk(&serde_json::to_string(&entry).unwrap()).is_none());
         assert!(parse_disk("{\"version\":1,\"saved_at\":1,\"opt").is_none());
+    }
+
+    /// A fake agent that accepts `initialize` and rejects `session/new` with -32000, as a
+    /// signed-out Copilot does.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn signed_out_agent_gives_sign_in_message() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let script = dir.path().join("agent.sh");
+        std::fs::write(
+            &script,
+            r#"while IFS= read -r line; do
+  id=$(printf '%s' "$line" | sed -n 's/.*"id":\([^,}]*\).*/\1/p')
+  case "$line" in
+    *'"initialize"'*) printf '{"jsonrpc":"2.0","id":%s,"result":{"protocolVersion":1,"agentCapabilities":{}}}\n' "$id" ;;
+    *'"session/new"'*) echo "auth noise on stderr" >&2
+      printf '{"jsonrpc":"2.0","id":%s,"error":{"code":-32000,"message":"Authentication required"}}\n' "$id" ;;
+  esac
+done
+"#,
+        )
+        .unwrap();
+        let mut spec = spec(&[]);
+        spec.command = CommandBuilder::new(format!("sh {}", script.display()));
+        let (tx, _rx) = mpsc::unbounded_channel();
+        assert_eq!(run_live(spec, tx).await, Err(NOT_SIGNED_IN.to_string()));
     }
 }
