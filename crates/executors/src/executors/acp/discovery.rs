@@ -355,13 +355,20 @@ fn parse_disk(json: &str) -> Option<ExecutorDiscoveredOptions> {
     if entry.version != DISK_CACHE_VERSION {
         return None;
     }
+    let mut options = entry.options;
+    // Lists saved before choices were de-duplicated can hold a model twice (Copilot's `auto`)
+    let mut seen = std::collections::HashSet::new();
+    options
+        .model_selector
+        .models
+        .retain(|m| seen.insert((m.provider_id.clone(), m.id.clone())));
     Some(ExecutorDiscoveredOptions {
         models_complete: false,
         loading_models: false,
         loading_agents: false,
         loading_slash_commands: false,
         error: None,
-        ..entry.options
+        ..options
     })
 }
 
@@ -621,6 +628,30 @@ mod tests {
         };
         assert!(parse_disk(&serde_json::to_string(&entry).unwrap()).is_none());
         assert!(parse_disk("{\"version\":1,\"saved_at\":1,\"opt").is_none());
+    }
+
+    #[test]
+    fn disk_entry_drops_repeated_models() {
+        let model = |id: &str| ModelInfo {
+            id: id.into(),
+            name: id.into(),
+            provider_id: None,
+            reasoning_options: vec![],
+        };
+        let entry = DiskEntry {
+            version: DISK_CACHE_VERSION,
+            saved_at: 1,
+            options: ExecutorDiscoveredOptions {
+                model_selector: ModelSelectorConfig {
+                    models: vec![model("auto"), model("auto"), model("kimi-k3")],
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        };
+        let parsed = parse_disk(&serde_json::to_string(&entry).unwrap()).unwrap();
+        let ids: Vec<_> = parsed.model_selector.models.iter().map(|m| &m.id).collect();
+        assert_eq!(ids, ["auto", "kimi-k3"]);
     }
 
     /// A fake agent that accepts `initialize` and rejects `session/new` with -32000, as a
