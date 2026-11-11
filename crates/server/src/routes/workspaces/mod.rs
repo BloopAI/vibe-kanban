@@ -1,3 +1,4 @@
+pub mod agent_setup;
 pub mod attachments;
 pub mod codex_setup;
 pub mod core;
