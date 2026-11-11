@@ -170,6 +170,15 @@ impl Copilot {
         Ok(discovery::command_key_input(&command, &env))
     }
 
+    fn harness(&self) -> AcpAgentHarnessV2 {
+        let harness = AcpAgentHarnessV2::new();
+        match self.key_input() {
+            Ok(input) => harness
+                .with_discovery_key(discovery::cache_key(&BaseCodingAgent::copilot(), &input)),
+            Err(_) => harness,
+        }
+    }
+
     /// Base command and user overrides only: no run flags, and no side effects.
     async fn discovery_spec(&self) -> Result<DiscoverySpec, ExecutorError> {
         let command = apply_overrides(self.base_command().await, &self.cmd)?;
@@ -343,7 +352,7 @@ impl StandardCodingAgentExecutor for Copilot {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let harness = AcpAgentHarnessV2::new().with_config(self.desired_config());
+        let harness = self.harness().with_config(self.desired_config());
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let copilot_command = self
             .build_command_builder(self.base_command().await)?
@@ -368,7 +377,8 @@ impl StandardCodingAgentExecutor for Copilot {
         _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let harness = AcpAgentHarnessV2::new()
+        let harness = self
+            .harness()
             .with_legacy_sessions("copilot_sessions")
             .with_config(self.desired_config());
         let combined_prompt = self.append_prompt.combine_prompt(prompt);

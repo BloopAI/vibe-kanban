@@ -307,6 +307,15 @@ fn recent_attempt(key: &ExecutorConfigCacheKey) -> Option<RecentAttempt> {
     }
 }
 
+/// Drops a failed attempt, so the next selector open tries again right away. Called when a run
+/// opens a session: the agent now works (the user just signed in), whatever discovery last saw.
+pub fn forget_failure(key: &ExecutorConfigCacheKey) {
+    let mut attempts = lock(&ATTEMPTS);
+    if attempts.get(key).is_some_and(|a| a.error.is_some()) {
+        attempts.remove(key);
+    }
+}
+
 fn record_attempt(key: &ExecutorConfigCacheKey, error: Option<String>) {
     lock(&ATTEMPTS).insert(
         key.clone(),
@@ -628,6 +637,22 @@ mod tests {
         };
         assert!(parse_disk(&serde_json::to_string(&entry).unwrap()).is_none());
         assert!(parse_disk("{\"version\":1,\"saved_at\":1,\"opt").is_none());
+    }
+
+    #[test]
+    fn forget_failure_clears_only_failures() {
+        let failed = cache_key(
+            &BaseCodingAgent::copilot(),
+            &serde_json::json!("forget-failed"),
+        );
+        record_attempt(&failed, Some("Not signed in".into()));
+        forget_failure(&failed);
+        assert!(recent_attempt(&failed).is_none());
+
+        let ok = cache_key(&BaseCodingAgent::copilot(), &serde_json::json!("forget-ok"));
+        record_attempt(&ok, None);
+        forget_failure(&ok);
+        assert!(matches!(recent_attempt(&ok), Some(RecentAttempt::Success)));
     }
 
     #[test]

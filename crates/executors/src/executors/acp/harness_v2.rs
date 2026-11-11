@@ -38,6 +38,7 @@ use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandParts},
     env::ExecutionEnv,
+    executor_discovery::ExecutorConfigCacheKey,
     executors::{
         ExecutorError, ExecutorExitResult, SpawnedChild,
         acp::{
@@ -57,6 +58,7 @@ use crate::{
 pub struct AcpAgentHarnessV2 {
     config: DesiredConfig,
     legacy_namespace: Option<String>,
+    discovery_key: Option<ExecutorConfigCacheKey>,
 }
 
 /// Time limit for an agent to initialize / load a session / create a new session.
@@ -82,6 +84,9 @@ struct SessionShared {
     /// What the agent advertises for the session, kept current so changes the agent makes
     /// itself (Copilot leaving plan mode, ...) can be shown.
     options: Arc<Mutex<SessionOptions>>,
+    /// The agent's option-discovery key. Once a session opens, a failed discovery for it is out
+    /// of date (the user signed in) and is forgotten.
+    discovery_key: Option<ExecutorConfigCacheKey>,
     /// Set once our own config is applied. Before that, config notifications are echoes of our
     /// own changes and are not shown.
     tracking_config: Arc<AtomicBool>,
@@ -116,6 +121,11 @@ impl AcpAgentHarnessV2 {
 
     pub fn with_legacy_sessions(mut self, legacy_namespace: impl Into<String>) -> Self {
         self.legacy_namespace = Some(legacy_namespace.into());
+        self
+    }
+
+    pub fn with_discovery_key(mut self, key: ExecutorConfigCacheKey) -> Self {
+        self.discovery_key = Some(key);
         self
     }
 
@@ -165,6 +175,7 @@ impl AcpAgentHarnessV2 {
             prompt,
             Some(exit_tx),
             self.config.clone(),
+            self.discovery_key.clone(),
             approvals,
             cancel.clone(),
         )
@@ -231,6 +242,7 @@ impl AcpAgentHarnessV2 {
             prompt_to_send,
             Some(exit_tx),
             self.config.clone(),
+            self.discovery_key.clone(),
             approvals,
             cancel.clone(),
         )
@@ -251,6 +263,7 @@ impl AcpAgentHarnessV2 {
         prompt: String,
         exit_signal: Option<tokio::sync::oneshot::Sender<ExecutorExitResult>>,
         config: DesiredConfig,
+        discovery_key: Option<ExecutorConfigCacheKey>,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
         cancel: CancellationToken,
     ) -> Result<(), ExecutorError> {
@@ -278,6 +291,7 @@ impl AcpAgentHarnessV2 {
             denial_feedback: Arc::default(),
             options: Arc::default(),
             tracking_config: Arc::new(AtomicBool::new(false)),
+            discovery_key,
         };
         let notification_shared = shared.clone();
         let permission_shared = shared.clone();
@@ -541,6 +555,9 @@ async fn run_session(
     let opened = open_session(&connection, existing_session, cwd).await;
     shared.replaying.store(false, Ordering::SeqCst);
     let (session_id, mut options) = opened?;
+    if let Some(key) = &shared.discovery_key {
+        super::discovery::forget_failure(key);
+    }
 
     shared.send(AcpEvent::SessionStart(session_id.clone()));
 
