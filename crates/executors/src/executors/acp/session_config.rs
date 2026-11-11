@@ -314,15 +314,24 @@ fn parse_select_choices(value: &Value) -> Vec<Choice> {
     let Some(items) = value.as_array() else {
         return vec![];
     };
-    items
-        .iter()
-        .flat_map(|item| match item.get("options").and_then(Value::as_array) {
+    dedup_choices(items.iter().flat_map(|item| {
+        match item.get("options").and_then(Value::as_array) {
             Some(grouped) => grouped
                 .iter()
                 .filter_map(|o| parse_choice(o, "value"))
                 .collect(),
             None => parse_choice(item, "value").into_iter().collect::<Vec<_>>(),
-        })
+        }
+    }))
+}
+
+/// Keeps the first choice for each value. Agents can list one twice (Copilot sends `auto`
+/// both as its own entry and in the model list), which would show twice in the selector.
+fn dedup_choices(choices: impl IntoIterator<Item = Choice>) -> Vec<Choice> {
+    let mut seen = std::collections::HashSet::new();
+    choices
+        .into_iter()
+        .filter(|c| seen.insert(c.value.clone()))
         .collect()
 }
 
@@ -342,12 +351,13 @@ fn parse_legacy(
     list_key: &str,
     id_key: &str,
 ) -> Option<LegacyState> {
-    let available: Vec<Choice> = value
-        .get(list_key)?
-        .as_array()?
-        .iter()
-        .filter_map(|c| parse_choice(c, id_key))
-        .collect();
+    let available = dedup_choices(
+        value
+            .get(list_key)?
+            .as_array()?
+            .iter()
+            .filter_map(|c| parse_choice(c, id_key)),
+    );
     Some(LegacyState {
         current: value
             .get(current_key)
@@ -1116,6 +1126,39 @@ mod tests {
         let slot = o.model_slot().unwrap();
         assert_eq!(slot.choices.len(), 2);
         assert_eq!(slot.current_name().as_deref(), Some("B"));
+    }
+
+    /// Copilot 1.0.108 lists `auto` twice: its own "Let Copilot pick" entry, then again in the
+    /// model list with usage `_meta`
+    #[test]
+    fn repeated_choices_are_dropped() {
+        let o = SessionOptions::from_response(&json!({"configOptions": [{
+            "type": "select", "id": "model", "name": "Model", "currentValue": "auto",
+            "options": [
+                {"value": "auto", "name": "Auto", "description": "Let Copilot pick the best model"},
+                {"value": "auto", "name": "Auto", "description": "Auto", "_meta": {"copilotUsage": "1x"}},
+                {"value": "kimi-k3", "name": "Kimi K3"}
+            ]
+        }]}));
+        let values: Vec<_> = o
+            .model_slot()
+            .unwrap()
+            .choices
+            .into_iter()
+            .map(|c| c.value)
+            .collect();
+        assert_eq!(values, ["auto", "kimi-k3"]);
+
+        let legacy = SessionOptions::from_response(&json!({"models": {
+            "currentModelId": "a",
+            "availableModels": [
+                {"modelId": "a", "name": "A"},
+                {"modelId": "a", "name": "A again"}
+            ]
+        }}));
+        let legacy_slot = legacy.model_slot().unwrap();
+        assert_eq!(legacy_slot.choices.len(), 1);
+        assert_eq!(legacy_slot.choices[0].name, "A");
     }
 
     #[test]

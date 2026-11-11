@@ -39,6 +39,9 @@ pub enum AcpEvent {
         approval_id: String,
     },
     ApprovalResponse(ApprovalResponse),
+    /// The agent rejected a request with -32000 (not signed in, or the token expired).
+    /// Shown as a setup-required error, which offers the Sign in button.
+    AuthRequired(String),
     Error(String),
     Done(String),
     Other(agent_client_protocol::SessionNotification),

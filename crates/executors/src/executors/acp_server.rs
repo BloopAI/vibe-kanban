@@ -70,6 +70,10 @@ impl StandardCodingAgentExecutor for AcpServer {
         let command = command.build_initial()?;
 
         AcpAgentHarnessV2::new()
+            .with_discovery_key(discovery::cache_key(
+                &registry_key(&self.registry_id),
+                &self.key_input(),
+            ))
             .with_config(self.desired_config())
             .spawn_with_command(
                 current_dir,
@@ -95,6 +99,10 @@ impl StandardCodingAgentExecutor for AcpServer {
         let command = command.build_follow_up(&[])?;
 
         AcpAgentHarnessV2::new()
+            .with_discovery_key(discovery::cache_key(
+                &registry_key(&self.registry_id),
+                &self.key_input(),
+            ))
             .with_config(self.desired_config())
             .spawn_follow_up_with_command(
                 current_dir,

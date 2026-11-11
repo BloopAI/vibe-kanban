@@ -110,6 +110,7 @@ export function ModelSelectorContainer({
     loadingModels,
     modelsComplete,
     error: streamError,
+    retry: retryDiscovery,
   } = useModelSelectorConfig(agent, {
     workspaceId: sessionId ? workspaceId : undefined,
     sessionId,
@@ -405,6 +406,8 @@ export function ModelSelectorContainer({
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (open) {
+      // The error may be out of date, e.g. the user has signed in since
+      if (streamError) retryDiscovery();
       const selected =
         selectedModelId && config
           ? getSelectedModel(config.models, selectedProviderId, selectedModelId)

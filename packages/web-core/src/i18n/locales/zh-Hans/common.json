@@ -36,6 +36,13 @@
     "plan": "计划",
     "output": "输出",
     "deniedByUser": "用户拒绝了 {{toolName}}",
+    "signInFailed": "无法开始登录：{{error}}",
+    "deviceCode": {
+      "title": "输入此代码以登录",
+      "copyAndOpen": "复制代码并打开 {{host}}",
+      "copied": "代码已复制。请粘贴到打开的页面中。",
+      "copyFailed": "无法复制代码。请在打开的页面中手动输入。"
+    },
     "tool": "工具",
     "thinking": "思考中",
     "toolSummary": {

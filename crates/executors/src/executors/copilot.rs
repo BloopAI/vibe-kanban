@@ -94,6 +94,22 @@ impl Copilot {
         }
     }
 
+    /// `copilot login --device-code` from the same package a run uses, for the Sign in button.
+    /// The device flow prints a code and link (no browser needed), and runs without a TTY.
+    pub async fn login_command(&self) -> CommandBuilder {
+        self.login_command_from(self.base_command().await)
+    }
+
+    /// Replaces the run args (`--acp`) and ignores `additional_params`, which are run flags
+    /// `login` would reject. Only the base override applies.
+    fn login_command_from(&self, base: CommandBuilder) -> CommandBuilder {
+        let base = match &self.cmd.base_command_override {
+            Some(override_base) => override_base.clone(),
+            None => base.base,
+        };
+        CommandBuilder::new(base).params(["login", "--device-code"])
+    }
+
     /// `base` already carries the registry args (`--acp`).
     fn build_command_builder(
         &self,
@@ -152,6 +168,15 @@ impl Copilot {
         let command = apply_overrides(command_from(None), &self.cmd)?;
         let env = self.cmd.env.clone().unwrap_or_default();
         Ok(discovery::command_key_input(&command, &env))
+    }
+
+    fn harness(&self) -> AcpAgentHarnessV2 {
+        let harness = AcpAgentHarnessV2::new();
+        match self.key_input() {
+            Ok(input) => harness
+                .with_discovery_key(discovery::cache_key(&BaseCodingAgent::copilot(), &input)),
+            Err(_) => harness,
+        }
     }
 
     /// Base command and user overrides only: no run flags, and no side effects.
@@ -327,7 +352,7 @@ impl StandardCodingAgentExecutor for Copilot {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let harness = AcpAgentHarnessV2::new().with_config(self.desired_config());
+        let harness = self.harness().with_config(self.desired_config());
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let copilot_command = self
             .build_command_builder(self.base_command().await)?
@@ -352,7 +377,8 @@ impl StandardCodingAgentExecutor for Copilot {
         _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let harness = AcpAgentHarnessV2::new()
+        let harness = self
+            .harness()
             .with_legacy_sessions("copilot_sessions")
             .with_config(self.desired_config());
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
@@ -516,6 +542,30 @@ mod tests {
         let command = c.build_command_builder(command_from(None)).unwrap();
         assert_eq!(command.base, "my-copilot-wrapper");
         assert_eq!(command.params, Some(vec!["--acp".to_string()]));
+    }
+
+    #[test]
+    fn login_command_uses_registry_package_without_run_args() {
+        let mut c = copilot();
+        c.cmd.additional_params = Some(vec!["--allow-all-tools".into()]);
+        let command = c.login_command_from(command_from(Some(&registry_entry())));
+        assert_eq!(command.base, "npx -y @github/copilot@1.0.108");
+        assert_eq!(
+            command.params,
+            Some(vec!["login".to_string(), "--device-code".to_string()])
+        );
+    }
+
+    #[test]
+    fn login_command_keeps_base_override() {
+        let mut c = copilot();
+        c.cmd.base_command_override = Some("my-copilot-wrapper".into());
+        let command = c.login_command_from(command_from(None));
+        assert_eq!(command.base, "my-copilot-wrapper");
+        assert_eq!(
+            command.params,
+            Some(vec!["login".to_string(), "--device-code".to_string()])
+        );
     }
 
     #[test]

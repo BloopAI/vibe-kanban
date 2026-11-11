@@ -292,9 +292,9 @@ export function estimationHintForFamily(family: RowFamily): SizeEstimationHint {
     case 'thinking':
       return 'dynamic';
 
-    // Hidden: filtered before reaching the list
+    // Only the setup-required row (Sign in button) reaches the list
     case 'next_action':
-      return 'hidden';
+      return 'compact';
   }
 }
 

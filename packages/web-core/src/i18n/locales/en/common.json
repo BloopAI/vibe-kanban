@@ -41,6 +41,13 @@
     "plan": "Plan",
     "output": "Output",
     "deniedByUser": "{{toolName}} denied by user",
+    "signInFailed": "Couldn't start sign-in: {{error}}",
+    "deviceCode": {
+      "title": "Enter this code to sign in",
+      "copyAndOpen": "Copy code and open {{host}}",
+      "copied": "Code copied. Paste it on the page that opened.",
+      "copyFailed": "Couldn't copy the code. Type it on the page that opened."
+    },
     "tool": "Tool",
     "thinking": "Thinking",
     "toolSummary": {

@@ -47,6 +47,13 @@
   },
   "conversation": {
     "deniedByUser": "{{toolName}} がユーザーによって拒否されました",
+    "signInFailed": "サインインを開始できませんでした: {{error}}",
+    "deviceCode": {
+      "title": "サインインするにはこのコードを入力してください",
+      "copyAndOpen": "コードをコピーして {{host}} を開く",
+      "copied": "コードをコピーしました。開いたページに貼り付けてください。",
+      "copyFailed": "コードをコピーできませんでした。開いたページに入力してください。"
+    },
     "output": "出力",
     "plan": "計画",
     "tool": "ツール",

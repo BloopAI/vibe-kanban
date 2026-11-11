@@ -47,6 +47,13 @@
   },
   "conversation": {
     "deniedByUser": "{{toolName}} denegado por el usuario",
+    "signInFailed": "No se pudo iniciar el inicio de sesión: {{error}}",
+    "deviceCode": {
+      "title": "Introduce este código para iniciar sesión",
+      "copyAndOpen": "Copiar el código y abrir {{host}}",
+      "copied": "Código copiado. Pégalo en la página que se abrió.",
+      "copyFailed": "No se pudo copiar el código. Escríbelo en la página que se abrió."
+    },
     "output": "Salida",
     "plan": "Plan",
     "tool": "Herramienta",

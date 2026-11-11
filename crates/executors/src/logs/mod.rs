@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use workspace_utils::approvals::{ApprovalStatus, QuestionStatus};
 
-use crate::logs::utils::shell_command_parsing::CommandCategory;
+use crate::{logs::utils::shell_command_parsing::CommandCategory, profile::ExecutorProfileId};
 
 pub mod plain_text_processor;
 pub mod stderr_processor;
@@ -91,6 +91,10 @@ pub enum NormalizedEntryType {
         failed: bool,
         execution_processes: usize,
         needs_setup: bool,
+        /// Profile of the agent that needs setup, for the Sign in button
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        executor_profile_id: Option<ExecutorProfileId>,
     },
     TokenUsageInfo(TokenUsageInfo),
     UserAnsweredQuestions {

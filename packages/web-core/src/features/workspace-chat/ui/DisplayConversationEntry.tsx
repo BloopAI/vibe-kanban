@@ -4,6 +4,7 @@ import type { TFunction } from 'i18next';
 import {
   ActionType,
   BaseAgentCapability,
+  type ExecutorProfileId,
   NormalizedEntry,
   ToolStatus,
   ToolResult,
@@ -19,10 +20,13 @@ import {
 import { getActualTheme } from '@/shared/lib/theme';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
+import { workspacesApi } from '@/shared/lib/api';
+import { getErrorMessage } from '@/shared/lib/modals';
 import { useTheme } from '@/shared/hooks/useTheme';
 import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';
 import type { UseResetProcessResult } from '../model/hooks/useResetProcess';
+import { parseDeviceCode, type DeviceCode } from '../model/parseDeviceCode';
 import { useChangesViewActions } from '@/shared/hooks/useChangesView';
 import { useLogsPanelActions } from '@/shared/hooks/useLogsPanel';
 import { cn } from '@/shared/lib/utils';
@@ -42,6 +46,7 @@ import { ChatAssistantMessage } from '@vibe/ui/components/ChatAssistantMessage';
 import { ChatSystemMessage } from '@vibe/ui/components/ChatSystemMessage';
 import { ChatThinkingMessage } from '@vibe/ui/components/ChatThinkingMessage';
 import { ChatErrorMessage } from '@vibe/ui/components/ChatErrorMessage';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { ChatScriptEntry } from '@vibe/ui/components/ChatScriptEntry';
 import { ChatSubagentEntry } from '@vibe/ui/components/ChatSubagentEntry';
 import { ChatAggregatedToolEntries } from '@vibe/ui/components/ChatAggregatedToolEntries';
@@ -248,18 +253,30 @@ function renderToolUseEntry(
       action_type.result?.exit_status?.type === 'exit_code'
         ? action_type.result.exit_status.code
         : null;
+    // A running login script may be waiting for a device code; show it here
+    // instead of only in the logs panel. Only the app's own install/login
+    // scripts (agent and gh setup) run as Tool Install Script, so the user's
+    // setup and cleanup scripts never show the card.
+    const deviceCode =
+      status.status === 'created' &&
+      entryType.tool_name === 'Tool Install Script'
+        ? parseDeviceCode(action_type.result?.output ?? '')
+        : null;
 
     return (
-      <ScriptEntryWithFix
-        title={entryType.tool_name}
-        command={action_type.command}
-        processId={executionProcessId ?? ''}
-        exitCode={exitCode}
-        status={status}
-        workspaceId={workspaceWithSession?.id}
-        sessionId={sessionId}
-        repos={repos}
-      />
+      <>
+        <ScriptEntryWithFix
+          title={entryType.tool_name}
+          command={action_type.command}
+          processId={executionProcessId ?? ''}
+          exitCode={exitCode}
+          status={status}
+          workspaceId={workspaceWithSession?.id}
+          sessionId={sessionId}
+          repos={repos}
+        />
+        {deviceCode && <DeviceCodeCard deviceCode={deviceCode} />}
+      </>
     );
   }
 
@@ -404,9 +421,23 @@ function DisplayConversationEntry(props: Props) {
         />
       );
 
-    case 'next_action':
-      // The new design doesn't need the next action bar
-      return null;
+    case 'next_action': {
+      // Only shown to offer sign-in for the agent that needs setup
+      const profile = entryType.executor_profile_id;
+      const canSignIn =
+        entryType.needs_setup &&
+        !!profile &&
+        !!capabilities?.[profile.executor]?.includes(
+          BaseAgentCapability.SETUP_HELPER
+        );
+      if (!canSignIn || !workspaceWithSession?.id) return null;
+      return (
+        <SetupRequiredActions
+          workspaceId={workspaceWithSession.id}
+          executorProfileId={profile}
+        />
+      );
+    }
 
     case 'token_usage_info':
       // Displayed in the chat header as the context-usage gauge
@@ -1129,6 +1160,116 @@ function ErrorMessageEntry({
 
   return (
     <ChatErrorMessage content={content} expanded={expanded} onToggle={toggle} />
+  );
+}
+
+/**
+ * Device-flow sign-in prompt from a running login script. Copies the code in
+ * the browser (the CLI's own copy, if any, lands on the backend's machine)
+ * and opens the page to paste it into.
+ */
+function DeviceCodeCard({ deviceCode }: { deviceCode: DeviceCode }) {
+  const { t } = useTranslation('common');
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>(
+    'idle'
+  );
+  const host = useMemo(() => {
+    try {
+      return new URL(deviceCode.url).host;
+    } catch {
+      return deviceCode.url;
+    }
+  }, [deviceCode.url]);
+
+  const handleCopyAndOpen = useCallback(async () => {
+    // Start the copy before opening the tab: the browser refuses clipboard
+    // writes once this page has lost focus (navigator.clipboard is also
+    // missing on plain-http remote hosts, hence the try)
+    let copy: Promise<void>;
+    try {
+      copy = navigator.clipboard.writeText(deviceCode.code);
+    } catch (err) {
+      copy = Promise.reject(err);
+    }
+    window.open(deviceCode.url, '_blank', 'noopener,noreferrer');
+    try {
+      await copy;
+      setCopyState('copied');
+    } catch {
+      setCopyState('failed');
+    }
+  }, [deviceCode]);
+
+  return (
+    <div className="flex flex-col items-start gap-half rounded-sm border border-border p-base">
+      <span className="text-sm text-low">
+        {t('conversation.deviceCode.title')}
+      </span>
+      <code className="font-mono text-lg font-medium text-normal select-all">
+        {deviceCode.code}
+      </code>
+      <PrimaryButton
+        value={t('conversation.deviceCode.copyAndOpen', { host })}
+        onClick={handleCopyAndOpen}
+      />
+      {copyState === 'copied' && (
+        <span className="text-sm text-low">
+          {t('conversation.deviceCode.copied')}
+        </span>
+      )}
+      {copyState === 'failed' && (
+        <span className="text-sm text-error">
+          {t('conversation.deviceCode.copyFailed')}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Sign in button for an agent that failed with "setup required".
+ * Runs the agent's login script, which then retries the failed prompt.
+ */
+function SetupRequiredActions({
+  workspaceId,
+  executorProfileId,
+}: {
+  workspaceId: string;
+  executorProfileId: ExecutorProfileId;
+}) {
+  const { t } = useTranslation('common');
+  const [isStarting, setIsStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSignIn = useCallback(async () => {
+    setIsStarting(true);
+    setError(null);
+    try {
+      await workspacesApi.runAgentSetup(workspaceId, {
+        executor_profile_id: executorProfileId,
+      });
+    } catch (err) {
+      setError(getErrorMessage(err));
+      setIsStarting(false);
+    }
+    // On success stay disabled: the row unmounts once the setup process shows up
+    // on the stream, and a second click before that would start a second login.
+  }, [workspaceId, executorProfileId]);
+
+  return (
+    <div className="flex flex-col items-start gap-half">
+      <PrimaryButton
+        value={t('signIn')}
+        onClick={handleSignIn}
+        disabled={isStarting}
+        actionIcon={isStarting ? 'spinner' : undefined}
+      />
+      {error && (
+        <span className="text-sm text-error">
+          {t('conversation.signInFailed', { error })}
+        </span>
+      )}
+    </div>
   );
 }
 

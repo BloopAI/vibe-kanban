@@ -307,6 +307,15 @@ fn recent_attempt(key: &ExecutorConfigCacheKey) -> Option<RecentAttempt> {
     }
 }
 
+/// Drops a failed attempt, so the next selector open tries again right away. Called when a run
+/// opens a session: the agent now works (the user just signed in), whatever discovery last saw.
+pub fn forget_failure(key: &ExecutorConfigCacheKey) {
+    let mut attempts = lock(&ATTEMPTS);
+    if attempts.get(key).is_some_and(|a| a.error.is_some()) {
+        attempts.remove(key);
+    }
+}
+
 fn record_attempt(key: &ExecutorConfigCacheKey, error: Option<String>) {
     lock(&ATTEMPTS).insert(
         key.clone(),
@@ -355,13 +364,20 @@ fn parse_disk(json: &str) -> Option<ExecutorDiscoveredOptions> {
     if entry.version != DISK_CACHE_VERSION {
         return None;
     }
+    let mut options = entry.options;
+    // Lists saved before choices were de-duplicated can hold a model twice (Copilot's `auto`)
+    let mut seen = std::collections::HashSet::new();
+    options
+        .model_selector
+        .models
+        .retain(|m| seen.insert((m.provider_id.clone(), m.id.clone())));
     Some(ExecutorDiscoveredOptions {
         models_complete: false,
         loading_models: false,
         loading_agents: false,
         loading_slash_commands: false,
         error: None,
-        ..entry.options
+        ..options
     })
 }
 
@@ -402,6 +418,10 @@ enum Progress {
     /// The same list with each model's reasoning options.
     Reasoning(Vec<ModelInfo>),
 }
+
+/// Shown in the model selector when the agent rejects `session/new` with -32000. Says nothing
+/// about a Sign in button: registry agents share this code and don't get one.
+const NOT_SIGNED_IN: &str = "Not signed in to this agent.";
 
 /// Starts the agent in a temp dir, reads what it advertises, then kills it. The whole run is
 /// limited to [`SETUP_TIMEOUT`] (long enough for a first npx download).
@@ -456,14 +476,22 @@ async fn run_live(spec: DiscoverySpec, tx: mpsc::UnboundedSender<Progress>) -> R
             probe(&connection, cwd, &tx).await
         });
 
+    let mut signed_out = false;
     let result = match tokio::time::timeout(SETUP_TIMEOUT, connection).await {
         Ok(Ok(())) => Ok(()),
-        Ok(Err(e)) => Err(e.message),
+        Ok(Err(e)) => {
+            signed_out = e.code == acp::ErrorCode::AuthRequired;
+            Err(e.message)
+        }
         Err(_) => Err("timed out waiting for the agent".to_string()),
     };
     let _ = child.kill().await;
     drop(temp_dir);
 
+    if signed_out {
+        // Shown as is: the agent's stderr tail would only bury it
+        return Err(NOT_SIGNED_IN.to_string());
+    }
     result.map_err(|error| {
         let tail = lock(&stderr_tail).trim().to_string();
         let last_line = tail.lines().rev().find(|l| !l.trim().is_empty());
@@ -609,5 +637,71 @@ mod tests {
         };
         assert!(parse_disk(&serde_json::to_string(&entry).unwrap()).is_none());
         assert!(parse_disk("{\"version\":1,\"saved_at\":1,\"opt").is_none());
+    }
+
+    #[test]
+    fn forget_failure_clears_only_failures() {
+        let failed = cache_key(
+            &BaseCodingAgent::copilot(),
+            &serde_json::json!("forget-failed"),
+        );
+        record_attempt(&failed, Some("Not signed in".into()));
+        forget_failure(&failed);
+        assert!(recent_attempt(&failed).is_none());
+
+        let ok = cache_key(&BaseCodingAgent::copilot(), &serde_json::json!("forget-ok"));
+        record_attempt(&ok, None);
+        forget_failure(&ok);
+        assert!(matches!(recent_attempt(&ok), Some(RecentAttempt::Success)));
+    }
+
+    #[test]
+    fn disk_entry_drops_repeated_models() {
+        let model = |id: &str| ModelInfo {
+            id: id.into(),
+            name: id.into(),
+            provider_id: None,
+            reasoning_options: vec![],
+        };
+        let entry = DiskEntry {
+            version: DISK_CACHE_VERSION,
+            saved_at: 1,
+            options: ExecutorDiscoveredOptions {
+                model_selector: ModelSelectorConfig {
+                    models: vec![model("auto"), model("auto"), model("kimi-k3")],
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        };
+        let parsed = parse_disk(&serde_json::to_string(&entry).unwrap()).unwrap();
+        let ids: Vec<_> = parsed.model_selector.models.iter().map(|m| &m.id).collect();
+        assert_eq!(ids, ["auto", "kimi-k3"]);
+    }
+
+    /// A fake agent that accepts `initialize` and rejects `session/new` with -32000, as a
+    /// signed-out Copilot does.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn signed_out_agent_gives_sign_in_message() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let script = dir.path().join("agent.sh");
+        std::fs::write(
+            &script,
+            r#"while IFS= read -r line; do
+  id=$(printf '%s' "$line" | sed -n 's/.*"id":\([^,}]*\).*/\1/p')
+  case "$line" in
+    *'"initialize"'*) printf '{"jsonrpc":"2.0","id":%s,"result":{"protocolVersion":1,"agentCapabilities":{}}}\n' "$id" ;;
+    *'"session/new"'*) echo "auth noise on stderr" >&2
+      printf '{"jsonrpc":"2.0","id":%s,"error":{"code":-32000,"message":"Authentication required"}}\n' "$id" ;;
+  esac
+done
+"#,
+        )
+        .unwrap();
+        let mut spec = spec(&[]);
+        spec.command = CommandBuilder::new(format!("sh {}", script.display()));
+        let (tx, _rx) = mpsc::unbounded_channel();
+        assert_eq!(run_live(spec, tx).await, Err(NOT_SIGNED_IN.to_string()));
     }
 }

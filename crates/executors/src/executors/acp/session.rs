@@ -75,6 +75,7 @@ impl SessionManager {
         match event {
             AcpEvent::SessionStart(..)
             | AcpEvent::Error(..)
+            | AcpEvent::AuthRequired(..)
             | AcpEvent::Done(..)
             | AcpEvent::SessionConfig(..)
             | AcpEvent::Other(..) => return None,
