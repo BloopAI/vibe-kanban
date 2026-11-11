@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key>
+  <string>com.vibekanban.app</string>
+  <key>CFBundleName</key>
+  <string>Vibe Kanban</string>
+  <key>CFBundleDisplayName</key>
+  <string>Vibe Kanban</string>
+  <key>CFBundleVersion</key>
+  <string>1.0</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleExecutable</key>
+  <string>vibe-kanban</string>
+  <key>LSUIElement</key>
+  <false/>
+</dict>
+</plist>
