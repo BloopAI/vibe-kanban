@@ -9,6 +9,10 @@ interface CloudShutdownExportBannerProps {
 export function CloudShutdownExportBanner({
   onClick,
 }: CloudShutdownExportBannerProps) {
+  if (import.meta.env.VITE_DISABLE_SHUTDOWN_NOTIFICATION) {
+    return null;
+  }
+
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
