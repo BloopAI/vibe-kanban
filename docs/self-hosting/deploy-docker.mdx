@@ -98,6 +98,10 @@ SELF_HOST_LOCAL_AUTH_PASSWORD=
 # Email (optional — leave empty to disable invitation emails)
 LOOPS_EMAIL_API_KEY=
 
+# User whitelist (optional — leave empty to allow all users)
+# Comma-separated list of allowed email addresses
+ALLOWED_USERS=admin@example.com,user@example.com
+
 # Loops transactional email template IDs (optional — defaults are the upstream templates).
 # Override these with your own Loops account template IDs if using a custom Loops account.
 LOOPS_INVITE_TEMPLATE_ID=cmhvy2wgs3s13z70i1pxakij9
@@ -111,6 +115,10 @@ AZURE_STORAGE_CONTAINER_NAME=issue-attachments
 AZURE_STORAGE_ENDPOINT_URL=
 AZURE_STORAGE_PUBLIC_ENDPOINT_URL=
 ```
+
+<Info>
+**User whitelist**: Set `ALLOWED_USERS` to restrict access to specific email addresses (e.g., `admin@company.com,user@company.com`). When configured, only users with matching emails can authenticate. Leave empty to allow all users.
+</Info>
 
 ## Step 4: Create Production Docker Compose
 
@@ -194,6 +202,7 @@ services:
       VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET}
       ELECTRIC_ROLE_PASSWORD: ${ELECTRIC_ROLE_PASSWORD}
       LOOPS_EMAIL_API_KEY: ${LOOPS_EMAIL_API_KEY:-}
+      ALLOWED_USERS: ${ALLOWED_USERS:-}
       LOOPS_INVITE_TEMPLATE_ID: ${LOOPS_INVITE_TEMPLATE_ID:-cmhvy2wgs3s13z70i1pxakij9}
       LOOPS_REVIEW_READY_TEMPLATE_ID: ${LOOPS_REVIEW_READY_TEMPLATE_ID:-cmj47k5ge16990iylued9by17}
       LOOPS_REVIEW_FAILED_TEMPLATE_ID: ${LOOPS_REVIEW_FAILED_TEMPLATE_ID:-cmj49ougk1c8s0iznavijdqpo}

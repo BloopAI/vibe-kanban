@@ -27,6 +27,10 @@ VITE_RELAY_API_BASE_URL=http://localhost:8082
 VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY=
 LOOPS_EMAIL_API_KEY=
 
+# Optional — comma-separated list of allowed user email addresses
+# If set, only these users can login. Leave empty to allow all users.
+ALLOWED_USERS=
+
 # Loops transactional email template IDs (optional — defaults are the upstream templates).
 # Override these with your own Loops account template IDs if using a custom Loops account.
 LOOPS_INVITE_TEMPLATE_ID=cmhvy2wgs3s13z70i1pxakij9
