@@ -17,7 +17,7 @@ use crate::{
     config::RemoteServerConfig,
     db, digest,
     github_app::GitHubAppService,
-    mail::{LoopsMailer, Mailer, NoopMailer},
+    mail::{LoopsMailer, Mailer, NoopMailer, SmtpMailer},
     r2::R2Service,
     routes,
 };
@@ -92,21 +92,33 @@ impl Server {
             jwt.clone(),
         ));
 
+        let smtp_host = std::env::var("SMTP_HOST").ok().filter(|v| !v.is_empty());
         let loops_email_api_key = std::env::var("LOOPS_EMAIL_API_KEY")
             .ok()
-            .filter(|api_key| !api_key.is_empty());
+            .filter(|v| !v.is_empty());
 
-        let mailer: Arc<dyn Mailer> = match loops_email_api_key.clone() {
-            Some(api_key) => {
-                tracing::info!("Email service (Loops) configured");
-                Arc::new(LoopsMailer::new(api_key))
-            }
-            _ => {
-                tracing::info!(
-                    "LOOPS_EMAIL_API_KEY not set. Email notifications (invitations, review updates) will be disabled."
-                );
-                Arc::new(NoopMailer)
-            }
+        let email_configured = smtp_host.is_some() || loops_email_api_key.is_some();
+
+        let mailer: Arc<dyn Mailer> = if let Some(host) = smtp_host {
+            let port: u16 = std::env::var("SMTP_PORT")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(587);
+            let username = std::env::var("SMTP_USERNAME").unwrap_or_default();
+            let password = std::env::var("SMTP_PASSWORD").unwrap_or_default();
+            let from =
+                std::env::var("SMTP_FROM").expect("SMTP_FROM is required when SMTP_HOST is set");
+
+            tracing::info!(host = %host, port, "Email service (SMTP) configured");
+            Arc::new(SmtpMailer::new(&host, port, &username, &password, &from))
+        } else if let Some(api_key) = loops_email_api_key {
+            tracing::info!("Email service (Loops) configured");
+            Arc::new(LoopsMailer::new(api_key))
+        } else {
+            tracing::info!(
+                "No email provider configured. Set SMTP_HOST or LOOPS_EMAIL_API_KEY to enable email notifications."
+            );
+            Arc::new(NoopMailer)
         };
 
         let server_public_base_url = config.server_public_base_url.clone().ok_or_else(|| {
@@ -189,7 +201,7 @@ impl Server {
             .map(|v| matches!(v.as_str(), "true" | "1"))
             .unwrap_or(false);
 
-        if loops_email_api_key.is_some() && digest_enabled {
+        if email_configured && digest_enabled {
             digest::task::spawn_digest_task(
                 pool.clone(),
                 mailer.clone(),

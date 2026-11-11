@@ -111,9 +111,15 @@ services:
       SELF_HOST_LOCAL_AUTH_EMAIL: ${SELF_HOST_LOCAL_AUTH_EMAIL:-}
       SELF_HOST_LOCAL_AUTH_PASSWORD: ${SELF_HOST_LOCAL_AUTH_PASSWORD:-}
 
-      # Email / notifications (optional)
+      # Email / notifications (optional — configure SMTP or Loops, not both)
+      # Option A: SMTP (any provider — Migadu, Postfix, SendGrid SMTP, etc.)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      # Option B: Loops (https://loops.so)
       LOOPS_EMAIL_API_KEY: ${LOOPS_EMAIL_API_KEY:-}
-      # Loops transactional email template IDs (override with your own Loops account templates)
       LOOPS_INVITE_TEMPLATE_ID: ${LOOPS_INVITE_TEMPLATE_ID:-cmhvy2wgs3s13z70i1pxakij9}
       LOOPS_REVIEW_READY_TEMPLATE_ID: ${LOOPS_REVIEW_READY_TEMPLATE_ID:-cmj47k5ge16990iylued9by17}
       LOOPS_REVIEW_FAILED_TEMPLATE_ID: ${LOOPS_REVIEW_FAILED_TEMPLATE_ID:-cmj49ougk1c8s0iznavijdqpo}
