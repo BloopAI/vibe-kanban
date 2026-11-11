@@ -16,6 +16,7 @@ import {
 } from '@/shared/lib/string';
 import type { BaseCodingAgent, Repo } from 'shared/types';
 import { CreateChatBox } from '@vibe/ui/components/CreateChatBox';
+import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CreateModeRepoPickerBar } from './CreateModeRepoPickerBar';
 import { ModelSelectorContainer } from '@/shared/components/ModelSelectorContainer';
@@ -253,6 +254,19 @@ export function CreateChatBoxContainer({
       data,
       linkToIssue,
     });
+
+    if (result.linkErrorMessage) {
+      await ConfirmDialog.show({
+        title: t('common:error'),
+        message: t('workspaces.linkAfterCreateError', {
+          defaultValue:
+            'The workspace was created and started, but linking it to the issue failed. It will not appear in the issue workspace list until you link it. Error: {{error}}',
+          error: result.linkErrorMessage,
+        }),
+        confirmText: t('common:ok'),
+        showCancelButton: false,
+      });
+    }
 
     if (result.workspace) {
       onWorkspaceCreated(result.workspace.id);
