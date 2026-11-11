@@ -254,9 +254,12 @@ function renderToolUseEntry(
         ? action_type.result.exit_status.code
         : null;
     // A running login script may be waiting for a device code; show it here
-    // instead of only in the logs panel
+    // instead of only in the logs panel. Only the app's own install/login
+    // scripts (agent and gh setup) run as Tool Install Script, so the user's
+    // setup and cleanup scripts never show the card.
     const deviceCode =
-      status.status === 'created'
+      status.status === 'created' &&
+      entryType.tool_name === 'Tool Install Script'
         ? parseDeviceCode(action_type.result?.output ?? '')
         : null;
 
