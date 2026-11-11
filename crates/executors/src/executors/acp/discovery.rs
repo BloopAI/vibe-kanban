@@ -403,9 +403,9 @@ enum Progress {
     Reasoning(Vec<ModelInfo>),
 }
 
-/// Shown in the model selector when the agent rejects `session/new` with -32000. Agent-agnostic:
-/// the Sign in button on a failed run is where the user signs in.
-const NOT_SIGNED_IN: &str = "Not signed in. Start a task and click Sign in.";
+/// Shown in the model selector when the agent rejects `session/new` with -32000. Says nothing
+/// about a Sign in button: registry agents share this code and don't get one.
+const NOT_SIGNED_IN: &str = "Not signed in to this agent.";
 
 /// Starts the agent in a temp dir, reads what it advertises, then kills it. The whole run is
 /// limited to [`SETUP_TIMEOUT`] (long enough for a first npx download).
