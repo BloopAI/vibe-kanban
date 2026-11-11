@@ -31,6 +31,24 @@ pub fn normalize_logs(
     normalize_logs_with_suppressed_stderr_patterns(msg_store, worktree_path, &[])
 }
 
+fn push_error(
+    msg_store: &MsgStore,
+    entry_index: &EntryIndexProvider,
+    error_type: NormalizedEntryError,
+    content: String,
+) {
+    let entry = NormalizedEntry {
+        timestamp: None,
+        entry_type: NormalizedEntryType::ErrorMessage { error_type },
+        content,
+        metadata: None,
+    };
+    msg_store.push_patch(ConversationPatch::add_normalized_entry(
+        entry_index.next(),
+        entry,
+    ));
+}
+
 pub fn normalize_logs_with_suppressed_stderr_patterns(
     msg_store: Arc<MsgStore>,
     worktree_path: &Path,
@@ -73,16 +91,16 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
                         }
                     }
                     AcpEvent::Error(msg) => {
-                        let idx = entry_index.next();
-                        let entry = NormalizedEntry {
-                            timestamp: None,
-                            entry_type: NormalizedEntryType::ErrorMessage {
-                                error_type: NormalizedEntryError::Other,
-                            },
-                            content: msg,
-                            metadata: None,
-                        };
-                        msg_store.push_patch(ConversationPatch::add_normalized_entry(idx, entry));
+                        push_error(&msg_store, &entry_index, NormalizedEntryError::Other, msg);
+                    }
+                    // Setup-required is what offers the Sign in button
+                    AcpEvent::AuthRequired(msg) => {
+                        push_error(
+                            &msg_store,
+                            &entry_index,
+                            NormalizedEntryError::SetupRequired,
+                            msg,
+                        );
                     }
                     AcpEvent::Done(_) => {
                         streaming.assistant_text = None;
@@ -875,4 +893,50 @@ struct EditInput {
     old_string: Option<String>,
     #[serde(default)]
     new_string: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use workspace_utils::log_msg::LogMsg;
+
+    use super::*;
+
+    /// Error entries normalized from one logged event, as JSON
+    async fn errors_for(event: AcpEvent) -> Vec<serde_json::Value> {
+        let msg_store = Arc::new(MsgStore::new());
+        msg_store.push_stdout(format!("{event}\n"));
+        msg_store.push_finished();
+        for handle in normalize_logs(msg_store.clone(), Path::new("/tmp")) {
+            handle.await.unwrap();
+        }
+        msg_store
+            .get_history()
+            .into_iter()
+            .filter_map(|m| match m {
+                LogMsg::JsonPatch(patch) => Some(serde_json::to_value(patch).unwrap()),
+                _ => None,
+            })
+            .flat_map(|patch| patch.as_array().cloned().unwrap_or_default())
+            .map(|op| op["value"]["content"].clone())
+            .filter(|entry| entry["entry_type"]["type"] == "error_message")
+            .collect()
+    }
+
+    #[tokio::test]
+    async fn auth_required_is_a_setup_required_error() {
+        let errors = errors_for(AcpEvent::AuthRequired("Not signed in".into())).await;
+        assert_eq!(errors.len(), 1);
+        assert_eq!(
+            errors[0]["entry_type"]["error_type"]["type"],
+            "setup_required"
+        );
+        assert_eq!(errors[0]["content"], "Not signed in");
+    }
+
+    #[tokio::test]
+    async fn plain_error_stays_other() {
+        let errors = errors_for(AcpEvent::Error("boom".into())).await;
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0]["entry_type"]["error_type"]["type"], "other");
+    }
 }

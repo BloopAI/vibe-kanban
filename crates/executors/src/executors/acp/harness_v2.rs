@@ -355,7 +355,7 @@ impl AcpAgentHarnessV2 {
             let exit = match result {
                 Ok(()) => ExecutorExitResult::Success,
                 Err(err) => {
-                    let _ = log_tx.send(AcpEvent::Error(err.to_string()).to_string());
+                    let _ = log_tx.send(exit_event(&err).to_string());
                     ExecutorExitResult::Failure
                 }
             };
@@ -638,6 +638,21 @@ async fn apply_session_config(
     }
 }
 
+/// The event logged when a run ends with `err`. -32000 on `session/new` (signed out) or
+/// `session/prompt` (token expired mid-session) becomes `AuthRequired`, not a plain error.
+fn exit_event(err: &acp::Error) -> AcpEvent {
+    if err.code == acp::ErrorCode::AuthRequired {
+        let message = if err.message.is_empty() {
+            err.code.to_string()
+        } else {
+            err.message.clone()
+        };
+        AcpEvent::AuthRequired(message)
+    } else {
+        AcpEvent::Error(err.to_string())
+    }
+}
+
 pub(crate) async fn with_timeout<T>(
     step: &str,
     request: impl Future<Output = Result<T, acp::Error>>,
@@ -645,4 +660,40 @@ pub(crate) async fn with_timeout<T>(
     tokio::time::timeout(SETUP_TIMEOUT, request)
         .await
         .map_err(|_| acp::util::internal_error(format!("Timed out waiting for agent to {step}")))?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The code must survive the request path; it's only turned into text by `exit_event`.
+    #[tokio::test]
+    async fn auth_error_keeps_its_code_through_with_timeout() {
+        let err = with_timeout("create a new session", async {
+            Err::<(), _>(acp::Error::new(-32000, "Authentication required"))
+        })
+        .await
+        .unwrap_err();
+        assert_eq!(err.code, acp::ErrorCode::AuthRequired);
+        assert_eq!(err.message, "Authentication required");
+    }
+
+    #[test]
+    fn auth_required_becomes_its_own_event() {
+        let event = exit_event(&acp::Error::new(-32000, "Not signed in"));
+        assert!(matches!(event, AcpEvent::AuthRequired(m) if m == "Not signed in"));
+
+        // No message from the agent: fall back to the code's name
+        let event = exit_event(&acp::Error::new(-32000, ""));
+        let AcpEvent::AuthRequired(message) = event else {
+            panic!("expected AuthRequired, got {event:?}");
+        };
+        assert_eq!(message, "Authentication required");
+    }
+
+    #[test]
+    fn other_errors_stay_plain() {
+        let event = exit_event(&acp::util::internal_error("boom"));
+        assert!(matches!(event, AcpEvent::Error(_)));
+    }
 }
