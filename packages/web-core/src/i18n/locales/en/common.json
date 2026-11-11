@@ -41,6 +41,7 @@
     "plan": "Plan",
     "output": "Output",
     "deniedByUser": "{{toolName}} denied by user",
+    "signInFailed": "Couldn't start sign-in: {{error}}",
     "tool": "Tool",
     "thinking": "Thinking",
     "toolSummary": {

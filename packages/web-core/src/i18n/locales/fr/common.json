@@ -36,6 +36,7 @@
     "plan": "Plan",
     "output": "Sortie",
     "deniedByUser": "{{toolName}} refusé par l'utilisateur",
+    "signInFailed": "Impossible de lancer la connexion : {{error}}",
     "tool": "Outil",
     "thinking": "Réflexion",
     "toolSummary": {

@@ -36,6 +36,7 @@
     "plan": "計畫",
     "output": "輸出",
     "deniedByUser": "使用者拒絕了 {{toolName}}",
+    "signInFailed": "無法開始登入：{{error}}",
     "tool": "工具",
     "thinking": "思考中",
     "toolSummary": {

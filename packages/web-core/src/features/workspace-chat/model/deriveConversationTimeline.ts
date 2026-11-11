@@ -20,8 +20,10 @@ function isRenderableConversationEntry(entry: DisplayEntry): boolean {
     typeof entry.content !== 'string' &&
     'entry_type' in entry.content
   ) {
-    const entryType = entry.content.entry_type.type;
-    return entryType !== 'next_action' && entryType !== 'token_usage_info';
+    const entryType = entry.content.entry_type;
+    // The next-action row is shown only to offer sign-in
+    if (entryType.type === 'next_action') return entryType.needs_setup;
+    return entryType.type !== 'token_usage_info';
   }
 
   return (

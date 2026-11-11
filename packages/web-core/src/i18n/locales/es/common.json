@@ -47,6 +47,7 @@
   },
   "conversation": {
     "deniedByUser": "{{toolName}} denegado por el usuario",
+    "signInFailed": "No se pudo iniciar el inicio de sesión: {{error}}",
     "output": "Salida",
     "plan": "Plan",
     "tool": "Herramienta",

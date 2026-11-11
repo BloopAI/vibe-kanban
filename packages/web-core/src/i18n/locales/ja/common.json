@@ -47,6 +47,7 @@
   },
   "conversation": {
     "deniedByUser": "{{toolName}} がユーザーによって拒否されました",
+    "signInFailed": "サインインを開始できませんでした: {{error}}",
     "output": "出力",
     "plan": "計画",
     "tool": "ツール",
