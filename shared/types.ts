@@ -270,7 +270,17 @@ export type UserSystemInfo = { version: string, config: Config, machine_id: stri
 /**
  * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
  */
-capabilities: { [key in string]?: Array<BaseAgentCapability> }, shared_api_base: string | null, preview_proxy_port: number | null, executors: { [key in BaseCodingAgent]?: ExecutorProfile }, };
+capabilities: { [key in string]?: Array<BaseAgentCapability> }, shared_api_base: string | null, preview_proxy_port: number | null, telemetry: TelemetryStatus, executors: { [key in BaseCodingAgent]?: ExecutorProfile }, };
+
+export type TelemetryStatus = { 
+/**
+ * PostHog keys are configured, so usage analytics can be sent.
+ */
+analytics: boolean, 
+/**
+ * Sentry is initialized, so crash reports can be sent.
+ */
+crash_reports: boolean, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 

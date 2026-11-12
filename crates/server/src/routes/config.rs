@@ -99,6 +99,17 @@ pub struct UserSystemInfo {
     pub capabilities: HashMap<String, Vec<BaseAgentCapability>>,
     pub shared_api_base: Option<String>,
     pub preview_proxy_port: Option<u16>,
+    pub telemetry: TelemetryStatus,
+}
+
+/// What this server can send. Settings uses it to show either the telemetry
+/// toggle or a notice that nothing is collected.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
+pub struct TelemetryStatus {
+    /// PostHog keys are configured, so usage analytics can be sent.
+    pub analytics: bool,
+    /// Sentry is initialized, so crash reports can be sent.
+    pub crash_reports: bool,
 }
 
 // TODO: update frontend, BE schema has changed, this replaces GET /config and /config/constants
@@ -172,6 +183,10 @@ async fn get_user_system_info(
         },
         shared_api_base: deployment.remote_info().get_api_base(),
         preview_proxy_port: deployment.client_info().get_preview_proxy_port(),
+        telemetry: TelemetryStatus {
+            analytics: deployment.analytics().is_some(),
+            crash_reports: utils::sentry::is_initialized(),
+        },
     };
 
     ResponseJson(ApiResponse::success(user_system_info))

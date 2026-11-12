@@ -64,6 +64,11 @@ pub fn init_once(source: SentrySource) {
     });
 }
 
+/// Whether `init_once` set up Sentry in this process.
+pub fn is_initialized() -> bool {
+    INIT_GUARD.get().is_some()
+}
+
 pub fn configure_user_scope(user_id: &str, username: Option<&str>, email: Option<&str>) {
     let mut sentry_user = sentry::User {
         id: Some(user_id.to_string()),
