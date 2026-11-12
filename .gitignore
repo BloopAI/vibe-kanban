@@ -95,3 +95,7 @@ vibe-kanban-cloud/
 *.ts.net.key
 Caddyfile
 Caddyfile.dev
+
+# Local npx release (scripts/release-local.sh)
+.env.release
+release-out/

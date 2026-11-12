@@ -10,7 +10,6 @@ import {
   DESKTOP_CACHE_DIR,
   LOCAL_DEV_MODE,
   LOCAL_DIST_DIR,
-  R2_BASE_URL,
   getLatestVersion,
 } from "./download";
 import {
@@ -195,15 +194,32 @@ async function extractAndRun(
   return launch(binPath);
 }
 
+// Compares dotted numeric versions ("0.1.46" > "0.1.45"); a pre-release
+// suffix is ignored, so "0.1.46-rc.1" counts as 0.1.46.
+function isNewerVersion(candidate: string, current: string): boolean {
+  const parse = (v: string) =>
+    v
+      .split("-")[0]
+      .split(".")
+      .map((n) => parseInt(n, 10) || 0);
+  const a = parse(candidate);
+  const b = parse(current);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const diff = (a[i] ?? 0) - (b[i] ?? 0);
+    if (diff !== 0) return diff > 0;
+  }
+  return false;
+}
+
 function checkForUpdates(): void {
-  const hasValidR2Url = !R2_BASE_URL.startsWith("__");
-  if (LOCAL_DEV_MODE || !hasValidR2Url) {
+  const isPackagedRelease = !BINARY_TAG.startsWith("__");
+  if (LOCAL_DEV_MODE || !isPackagedRelease) {
     return;
   }
 
   getLatestVersion()
     .then((latest) => {
-      if (latest && latest !== CLI_VERSION) {
+      if (latest && isNewerVersion(latest, CLI_VERSION)) {
         setTimeout(() => {
           console.log(`\nUpdate available: ${CLI_VERSION} -> ${latest}`);
           console.log(`Run: npx vibe-kanban@latest`);
