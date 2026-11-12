@@ -217,6 +217,7 @@
       },
       "privacy": {
         "title": "隐私",
+        "noAnalytics": "此版本的 Vibe Kanban 不收集使用分析数据或崩溃报告。",
         "description": "通过共享匿名使用数据帮助改进 Vibe-Kanban。",
         "telemetry": {
           "label": "启用遥测",

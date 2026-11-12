@@ -217,6 +217,7 @@
       },
       "privacy": {
         "title": "プライバシー",
+        "noAnalytics": "このバージョンの Vibe Kanban は、使用状況の分析データやクラッシュレポートを収集しません。",
         "description": "匿名の使用データを共有してVibe-Kanbanの改善にご協力ください。",
         "telemetry": {
           "label": "テレメトリを有効化",

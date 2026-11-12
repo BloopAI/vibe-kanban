@@ -23,16 +23,10 @@ impl SentrySource {
         }
     }
 
+    /// Crash reporting is turned off: this version of Vibe Kanban never
+    /// initializes Sentry, whatever DSN is set at build or run time.
     fn dsn(self) -> Option<String> {
-        let value = match self {
-            SentrySource::Remote => option_env!("SENTRY_DSN_REMOTE")
-                .map(|s| s.to_string())
-                .or_else(|| std::env::var("SENTRY_DSN_REMOTE").ok()),
-            _ => option_env!("SENTRY_DSN")
-                .map(|s| s.to_string())
-                .or_else(|| std::env::var("SENTRY_DSN").ok()),
-        };
-        value.filter(|s| !s.is_empty())
+        None
     }
 }
 

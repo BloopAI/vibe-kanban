@@ -217,6 +217,7 @@
       },
       "privacy": {
         "title": "Privacidad",
+        "noAnalytics": "Esta versión de Vibe Kanban no recopila análisis de uso ni informes de errores.",
         "description": "Ayuda a mejorar Vibe-Kanban compartiendo datos de uso anónimos.",
         "telemetry": {
           "label": "Habilitar Telemetría",

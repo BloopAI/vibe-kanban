@@ -217,6 +217,7 @@
       },
       "privacy": {
         "title": "개인정보 보호",
+        "noAnalytics": "이 버전의 Vibe Kanban은 사용 분석 데이터나 충돌 보고서를 수집하지 않습니다.",
         "description": "익명 사용 데이터를 공유하여 Vibe-Kanban 개선에 도움을 주세요.",
         "telemetry": {
           "label": "원격 분석 활성화",

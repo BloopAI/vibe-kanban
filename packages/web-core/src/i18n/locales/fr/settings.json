@@ -217,6 +217,7 @@
       },
       "privacy": {
         "title": "Confidentialité",
+        "noAnalytics": "Cette version de Vibe Kanban ne collecte ni statistiques d'utilisation ni rapports de plantage.",
         "description": "Aidez à améliorer Vibe-Kanban en partageant des données d'utilisation anonymes.",
         "telemetry": {
           "label": "Activer la télémétrie",

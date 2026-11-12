@@ -20,18 +20,10 @@ pub struct AnalyticsConfig {
 }
 
 impl AnalyticsConfig {
+    /// Usage analytics are turned off: this version of Vibe Kanban sends no
+    /// PostHog events, whatever keys are set at build or run time.
     pub fn new() -> Option<Self> {
-        let api_key = option_env!("POSTHOG_API_KEY")
-            .map(|s| s.to_string())
-            .or_else(|| std::env::var("POSTHOG_API_KEY").ok())?;
-        let api_endpoint = option_env!("POSTHOG_API_ENDPOINT")
-            .map(|s| s.to_string())
-            .or_else(|| std::env::var("POSTHOG_API_ENDPOINT").ok())?;
-
-        Some(Self {
-            posthog_api_key: api_key,
-            posthog_api_endpoint: api_endpoint,
-        })
+        None
     }
 }
 
