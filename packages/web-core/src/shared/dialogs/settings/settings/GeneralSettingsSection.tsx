@@ -54,6 +54,10 @@ import {
 } from './shared/SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 
+// Builds without a PostHog key (all current releases) collect no usage
+// analytics or crash reports, so there is nothing to toggle.
+const hasAnalytics = Boolean(import.meta.env.VITE_POSTHOG_API_KEY);
+
 export function GeneralSettingsSection() {
   const { t } = useTranslation(['settings', 'common']);
   const { setDirty: setContextDirty } = useSettingsDirty();
@@ -795,15 +799,23 @@ export function GeneralSettingsSection() {
       {/* Privacy */}
       <SettingsCard
         title={t('settings.general.privacy.title')}
-        description={t('settings.general.privacy.description')}
+        description={
+          hasAnalytics ? t('settings.general.privacy.description') : undefined
+        }
       >
-        <SettingsCheckbox
-          id="analytics-enabled"
-          label={t('settings.general.privacy.telemetry.label')}
-          description={t('settings.general.privacy.telemetry.helper')}
-          checked={draft?.analytics_enabled ?? false}
-          onChange={(checked) => updateDraft({ analytics_enabled: checked })}
-        />
+        {hasAnalytics ? (
+          <SettingsCheckbox
+            id="analytics-enabled"
+            label={t('settings.general.privacy.telemetry.label')}
+            description={t('settings.general.privacy.telemetry.helper')}
+            checked={draft?.analytics_enabled ?? false}
+            onChange={(checked) => updateDraft({ analytics_enabled: checked })}
+          />
+        ) : (
+          <p className="text-sm text-low">
+            {t('settings.general.privacy.noAnalytics')}
+          </p>
+        )}
       </SettingsCard>
 
       {/* Task Templates */}

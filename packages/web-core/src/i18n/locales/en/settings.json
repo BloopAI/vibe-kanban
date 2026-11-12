@@ -225,6 +225,7 @@
       },
       "privacy": {
         "title": "Privacy",
+        "noAnalytics": "This version of Vibe Kanban doesn't collect usage analytics or crash reports.",
         "description": "Help improve Vibe-Kanban by sharing anonymous usage data.",
         "telemetry": {
           "label": "Enable Telemetry",

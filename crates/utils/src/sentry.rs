@@ -3,6 +3,8 @@ use std::sync::OnceLock;
 use sentry_tracing::{EventFilter, SentryLayer};
 use tracing::Level;
 
+use crate::telemetry_env::compiled_or_dev_env;
+
 static INIT_GUARD: OnceLock<sentry::ClientInitGuard> = OnceLock::new();
 
 #[derive(Clone, Copy, Debug)]
@@ -24,15 +26,12 @@ impl SentrySource {
     }
 
     fn dsn(self) -> Option<String> {
-        let value = match self {
-            SentrySource::Remote => option_env!("SENTRY_DSN_REMOTE")
-                .map(|s| s.to_string())
-                .or_else(|| std::env::var("SENTRY_DSN_REMOTE").ok()),
-            _ => option_env!("SENTRY_DSN")
-                .map(|s| s.to_string())
-                .or_else(|| std::env::var("SENTRY_DSN").ok()),
-        };
-        value.filter(|s| !s.is_empty())
+        match self {
+            SentrySource::Remote => {
+                compiled_or_dev_env(option_env!("SENTRY_DSN_REMOTE"), "SENTRY_DSN_REMOTE")
+            }
+            _ => compiled_or_dev_env(option_env!("SENTRY_DSN"), "SENTRY_DSN"),
+        }
     }
 }
 

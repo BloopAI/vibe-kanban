@@ -6,6 +6,7 @@ use std::{
 
 use os_info;
 use serde_json::{Value, json};
+use utils::telemetry_env::compiled_or_dev_env;
 
 #[derive(Debug, Clone)]
 pub struct AnalyticsContext {
@@ -21,12 +22,9 @@ pub struct AnalyticsConfig {
 
 impl AnalyticsConfig {
     pub fn new() -> Option<Self> {
-        let api_key = option_env!("POSTHOG_API_KEY")
-            .map(|s| s.to_string())
-            .or_else(|| std::env::var("POSTHOG_API_KEY").ok())?;
-        let api_endpoint = option_env!("POSTHOG_API_ENDPOINT")
-            .map(|s| s.to_string())
-            .or_else(|| std::env::var("POSTHOG_API_ENDPOINT").ok())?;
+        let api_key = compiled_or_dev_env(option_env!("POSTHOG_API_KEY"), "POSTHOG_API_KEY")?;
+        let api_endpoint =
+            compiled_or_dev_env(option_env!("POSTHOG_API_ENDPOINT"), "POSTHOG_API_ENDPOINT")?;
 
         Some(Self {
             posthog_api_key: api_key,
