@@ -36,6 +36,7 @@ Do not manually edit shared/remote-types.ts, instead edit crates/remote/src/bin/
 - Prepare SQLx (offline): `pnpm run prepare-db`
 - Prepare SQLx (remote package, postgres): `pnpm run remote:prepare-db`
 - Local NPX build: `pnpm run build:npx` then `pnpm pack` in `npx-cli/`
+- Release (npx, without CI): `scripts/release-local.sh`; see [`RELEASING.md`](RELEASING.md)
 - Format code: `pnpm run format` (runs `cargo fmt` for all backend Rust workspaces + web-core/web Prettier)
 - Lint: `pnpm run lint` (runs web/ui ESLint + `cargo clippy` for all backend Rust workspaces)
 
