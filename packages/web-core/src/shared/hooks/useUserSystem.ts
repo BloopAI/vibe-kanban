@@ -5,7 +5,6 @@ import type {
   Environment,
   BaseAgentCapability,
   LoginStatus,
-  TelemetryStatus,
 } from 'shared/types';
 import type { ExecutorProfile } from 'shared/types';
 
@@ -19,8 +18,6 @@ export interface UserSystemState {
   machineId: string | null;
   loginStatus: LoginStatus | null;
   remoteAuthDegraded: string | null;
-  // null while loading, or when the server is too old to report it
-  telemetry: TelemetryStatus | null;
 }
 
 export interface UserSystemContextType {

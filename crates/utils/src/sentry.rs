@@ -3,8 +3,6 @@ use std::sync::OnceLock;
 use sentry_tracing::{EventFilter, SentryLayer};
 use tracing::Level;
 
-use crate::telemetry_env::compiled_or_dev_env;
-
 static INIT_GUARD: OnceLock<sentry::ClientInitGuard> = OnceLock::new();
 
 #[derive(Clone, Copy, Debug)]
@@ -25,13 +23,10 @@ impl SentrySource {
         }
     }
 
+    /// Crash reporting is turned off: this version of Vibe Kanban never
+    /// initializes Sentry, whatever DSN is set at build or run time.
     fn dsn(self) -> Option<String> {
-        match self {
-            SentrySource::Remote => {
-                compiled_or_dev_env(option_env!("SENTRY_DSN_REMOTE"), "SENTRY_DSN_REMOTE")
-            }
-            _ => compiled_or_dev_env(option_env!("SENTRY_DSN"), "SENTRY_DSN"),
-        }
+        None
     }
 }
 
@@ -62,11 +57,6 @@ pub fn init_once(source: SentrySource) {
     sentry::configure_scope(|scope| {
         scope.set_tag("source", source.tag());
     });
-}
-
-/// Whether `init_once` set up Sentry in this process.
-pub fn is_initialized() -> bool {
-    INIT_GUARD.get().is_some()
 }
 
 pub fn configure_user_scope(user_id: &str, username: Option<&str>, email: Option<&str>) {

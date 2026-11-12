@@ -6,7 +6,6 @@ use std::{
 
 use os_info;
 use serde_json::{Value, json};
-use utils::telemetry_env::compiled_or_dev_env;
 
 #[derive(Debug, Clone)]
 pub struct AnalyticsContext {
@@ -21,15 +20,10 @@ pub struct AnalyticsConfig {
 }
 
 impl AnalyticsConfig {
+    /// Usage analytics are turned off: this version of Vibe Kanban sends no
+    /// PostHog events, whatever keys are set at build or run time.
     pub fn new() -> Option<Self> {
-        let api_key = compiled_or_dev_env(option_env!("POSTHOG_API_KEY"), "POSTHOG_API_KEY")?;
-        let api_endpoint =
-            compiled_or_dev_env(option_env!("POSTHOG_API_ENDPOINT"), "POSTHOG_API_ENDPOINT")?;
-
-        Some(Self {
-            posthog_api_key: api_key,
-            posthog_api_endpoint: api_endpoint,
-        })
+        None
     }
 }
 

@@ -53,7 +53,6 @@ import {
   SettingsTextarea,
 } from './shared/SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
-import { collectsTelemetry } from '@/shared/lib/telemetry';
 
 export function GeneralSettingsSection() {
   const { t } = useTranslation(['settings', 'common']);
@@ -67,15 +66,7 @@ export function GeneralSettingsSection() {
       defaultValue: 'Browser Default',
     })
   );
-  const { config, loading, updateAndSaveConfig, profiles, system } =
-    useUserSystem();
-  // Release builds ship without PostHog or Sentry keys, so there is nothing
-  // to toggle there.
-  const hasAnalytics = collectsTelemetry(system.telemetry, {
-    VITE_POSTHOG_API_KEY: import.meta.env.VITE_POSTHOG_API_KEY,
-    VITE_POSTHOG_API_ENDPOINT: import.meta.env.VITE_POSTHOG_API_ENDPOINT,
-    VITE_SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN,
-  });
+  const { config, loading, updateAndSaveConfig, profiles } = useUserSystem();
 
   const [draft, setDraft] = useState(() => (config ? cloneDeep(config) : null));
   const [dirty, setDirty] = useState(false);
@@ -802,25 +793,10 @@ export function GeneralSettingsSection() {
       </SettingsCard>
 
       {/* Privacy */}
-      <SettingsCard
-        title={t('settings.general.privacy.title')}
-        description={
-          hasAnalytics ? t('settings.general.privacy.description') : undefined
-        }
-      >
-        {hasAnalytics ? (
-          <SettingsCheckbox
-            id="analytics-enabled"
-            label={t('settings.general.privacy.telemetry.label')}
-            description={t('settings.general.privacy.telemetry.helper')}
-            checked={draft?.analytics_enabled ?? false}
-            onChange={(checked) => updateDraft({ analytics_enabled: checked })}
-          />
-        ) : (
-          <p className="text-sm text-low">
-            {t('settings.general.privacy.noAnalytics')}
-          </p>
-        )}
+      <SettingsCard title={t('settings.general.privacy.title')}>
+        <p className="text-sm text-low">
+          {t('settings.general.privacy.noAnalytics')}
+        </p>
       </SettingsCard>
 
       {/* Task Templates */}
