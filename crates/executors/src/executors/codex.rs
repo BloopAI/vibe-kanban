@@ -445,7 +445,7 @@ impl StandardCodingAgentExecutor for Codex {
 
 impl Codex {
     pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.124.0"
+        "npx -y @openai/codex@0.132.0"
     }
 
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
@@ -509,7 +509,7 @@ impl Codex {
 
         let (model, is_fast) = resolve_model(self.model.as_deref());
         let service_tier = if is_fast {
-            Some(Some(ServiceTier::Fast))
+            Some(Some(ServiceTier::Fast.request_value().to_string()))
         } else {
             None
         };
@@ -763,7 +763,26 @@ impl Codex {
 
 #[cfg(test)]
 mod tests {
-    use super::resolve_model;
+    use super::{Codex, resolve_model};
+
+    #[test]
+    fn npm_pin_matches_protocol_crate_tags() {
+        let npm_version = Codex::base_command()
+            .rsplit_once('@')
+            .map(|(_, version)| version)
+            .expect("base command pins an npm version");
+        let manifest = include_str!("../../Cargo.toml");
+        for package in ["codex-protocol", "codex-app-server-protocol"] {
+            let line = manifest
+                .lines()
+                .find(|line| line.starts_with(&format!("{package} = ")))
+                .unwrap_or_else(|| panic!("{package} is missing from Cargo.toml"));
+            assert!(
+                line.contains(&format!("tag = \"rust-v{npm_version}\"")),
+                "{package} must use tag rust-v{npm_version} to match the npm pin: {line}"
+            );
+        }
+    }
 
     #[test]
     fn resolve_model_detects_fast_suffix() {

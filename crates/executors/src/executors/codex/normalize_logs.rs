@@ -22,14 +22,15 @@ use codex_protocol::{
     openai_models::ReasoningEffort,
     plan_tool::{StepStatus, UpdatePlanArgs},
     protocol::{
-        AgentMessageDeltaEvent, AgentMessageEvent, AgentReasoningDeltaEvent, AgentReasoningEvent,
-        AgentReasoningSectionBreakEvent, ApplyPatchApprovalRequestEvent, BackgroundEventEvent,
-        ErrorEvent, EventMsg, ExecApprovalRequestEvent, ExecCommandBeginEvent, ExecCommandEndEvent,
+        AgentMessageContentDeltaEvent, AgentMessageEvent, AgentReasoningEvent,
+        AgentReasoningSectionBreakEvent, ApplyPatchApprovalRequestEvent, ErrorEvent, EventMsg,
+        ExecApprovalRequestEvent, ExecCommandBeginEvent, ExecCommandEndEvent,
         ExecCommandOutputDeltaEvent, ExecOutputStream, ExitedReviewModeEvent,
         FileChange as CodexProtoFileChange, ItemCompletedEvent, ItemStartedEvent, McpInvocation,
         McpToolCallBeginEvent, McpToolCallEndEvent, ModelRerouteEvent, PatchApplyBeginEvent,
-        PatchApplyEndEvent, PlanDeltaEvent, RequestUserInputEvent, StreamErrorEvent,
-        ViewImageToolCallEvent, WarningEvent, WebSearchBeginEvent, WebSearchEndEvent,
+        PatchApplyEndEvent, PlanDeltaEvent, ReasoningContentDeltaEvent, RequestUserInputEvent,
+        StreamErrorEvent, ViewImageToolCallEvent, WarningEvent, WebSearchBeginEvent,
+        WebSearchEndEvent,
     },
 };
 use futures::StreamExt;
@@ -1485,6 +1486,66 @@ fn normalize_codex_stderr_logs(
     })
 }
 
+/// Codex 0.132 made these fields required. Logs written by earlier Codex versions lack
+/// them, so they are filled in before parsing to keep older sessions replayable.
+fn backfill_pre_0_132_fields(line: &str) -> Option<String> {
+    const MARKERS: [&str; 5] = [
+        "\"item/started\"",
+        "\"item/completed\"",
+        "requestApproval\"",
+        "\"thread\":{",
+        "\"codex/event\"",
+    ];
+    if !MARKERS.iter().any(|marker| line.contains(marker)) {
+        return None;
+    }
+
+    let mut value: Value = serde_json::from_str(line).ok()?;
+    let method = value
+        .get("method")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let changed = match method.as_str() {
+        "item/started"
+        | "item/commandExecution/requestApproval"
+        | "item/fileChange/requestApproval" => {
+            insert_if_missing(&mut value, "/params", "startedAtMs", Value::from(0))
+        }
+        "item/completed" => {
+            insert_if_missing(&mut value, "/params", "completedAtMs", Value::from(0))
+        }
+        "thread/started" => backfill_session_id(&mut value, "/params/thread"),
+        "codex/event" => {
+            let msg_type = value.pointer("/params/msg/type").and_then(Value::as_str);
+            matches!(
+                msg_type,
+                Some("exec_approval_request" | "apply_patch_approval_request" | "item_started")
+            ) && insert_if_missing(&mut value, "/params/msg", "started_at_ms", Value::from(0))
+        }
+        "" => backfill_session_id(&mut value, "/result/thread"),
+        _ => false,
+    };
+    changed.then(|| value.to_string())
+}
+
+fn backfill_session_id(value: &mut Value, thread_pointer: &str) -> bool {
+    let Some(thread_id) = value.pointer(&format!("{thread_pointer}/id")).cloned() else {
+        return false;
+    };
+    insert_if_missing(value, thread_pointer, "sessionId", thread_id)
+}
+
+fn insert_if_missing(value: &mut Value, pointer: &str, field: &str, default: Value) -> bool {
+    match value.pointer_mut(pointer).and_then(Value::as_object_mut) {
+        Some(object) if !object.contains_key(field) => {
+            object.insert(field.to_string(), default);
+            true
+        }
+        _ => false,
+    }
+}
+
 pub fn normalize_logs(
     msg_store: Arc<MsgStore>,
     worktree_path: &Path,
@@ -1498,6 +1559,7 @@ pub fn normalize_logs(
         let mut stdout_lines = msg_store.stdout_lines_stream();
 
         while let Some(Ok(line)) = stdout_lines.next().await {
+            let line = backfill_pre_0_132_fields(&line).unwrap_or(line);
             if let Ok(error) = serde_json::from_str::<Error>(&line) {
                 add_normalized_entry(&msg_store, &entry_index, error.to_normalized_entry());
                 continue;
@@ -1608,12 +1670,14 @@ pub fn normalize_logs(
                         &mut state.model_params,
                     );
                 }
-                EventMsg::AgentMessageDelta(AgentMessageDeltaEvent { delta }) => {
+                EventMsg::AgentMessageContentDelta(AgentMessageContentDeltaEvent {
+                    delta, ..
+                }) => {
                     state.thinking = None;
                     let (entry, index, is_new) = state.assistant_message_append(delta);
                     upsert_normalized_entry(&msg_store, index, entry, is_new);
                 }
-                EventMsg::AgentReasoningDelta(AgentReasoningDeltaEvent { delta }) => {
+                EventMsg::ReasoningContentDelta(ReasoningContentDeltaEvent { delta, .. }) => {
                     state.assistant = None;
                     let (entry, index, is_new) = state.thinking_append(delta);
                     upsert_normalized_entry(&msg_store, index, entry, is_new);
@@ -1684,6 +1748,7 @@ pub fn normalize_logs(
                     changes,
                     reason: _,
                     grant_root: _,
+                    started_at_ms: _,
                 }) => {
                     state.assistant = None;
                     state.thinking = None;
@@ -1753,6 +1818,7 @@ pub fn normalize_logs(
                     source: _,
                     interaction_input: _,
                     process_id: _,
+                    started_at_ms: _,
                 }) => {
                     state.assistant = None;
                     state.thinking = None;
@@ -1842,18 +1908,6 @@ pub fn normalize_logs(
                             command_state.to_normalized_entry(),
                         );
                     }
-                }
-                EventMsg::BackgroundEvent(BackgroundEventEvent { message }) => {
-                    add_normalized_entry(
-                        &msg_store,
-                        &entry_index,
-                        NormalizedEntry {
-                            timestamp: None,
-                            entry_type: NormalizedEntryType::SystemMessage,
-                            content: format!("Background event: {message}"),
-                            metadata: None,
-                        },
-                    );
                 }
                 EventMsg::StreamError(StreamErrorEvent {
                     message,
@@ -2374,26 +2428,17 @@ pub fn normalize_logs(
                     }
                 }
                 EventMsg::AgentReasoningRawContent(..)
-                | EventMsg::AgentReasoningRawContentDelta(..)
                 | EventMsg::ThreadRolledBack(..)
                 | EventMsg::TurnStarted(..)
                 | EventMsg::UserMessage(..)
                 | EventMsg::TurnDiff(..)
-                | EventMsg::GetHistoryEntryResponse(..)
-                | EventMsg::McpListToolsResponse(..)
                 | EventMsg::McpStartupComplete(..)
                 | EventMsg::McpStartupUpdate(..)
                 | EventMsg::DeprecationNotice(..)
-                | EventMsg::UndoCompleted(..)
-                | EventMsg::UndoStarted(..)
                 | EventMsg::RawResponseItem(..)
                 | EventMsg::ItemStarted(..)
                 | EventMsg::ItemCompleted(..)
-                | EventMsg::AgentMessageContentDelta(..)
-                | EventMsg::ReasoningContentDelta(..)
                 | EventMsg::ReasoningRawContentDelta(..)
-                | EventMsg::ListSkillsResponse(..)
-                | EventMsg::SkillsUpdateAvailable
                 | EventMsg::TurnAborted(..)
                 | EventMsg::ShutdownComplete
                 | EventMsg::TerminalInteraction(..)
@@ -2409,7 +2454,7 @@ pub fn normalize_logs(
                 | EventMsg::CollabCloseEnd(..)
                 | EventMsg::CollabResumeBegin(..)
                 | EventMsg::CollabResumeEnd(..)
-                | EventMsg::ThreadNameUpdated(..)
+                | EventMsg::ThreadGoalUpdated(..)
                 | EventMsg::RealtimeConversationStarted(..)
                 | EventMsg::RealtimeConversationSdp(..)
                 | EventMsg::RealtimeConversationRealtime(..)
@@ -2921,5 +2966,33 @@ mod tests {
             }
             other => panic!("unexpected dynamic tool entry: {other:?}"),
         }
+    }
+
+    #[test]
+    fn backfills_fields_missing_from_pre_0_132_logs() {
+        let old_response = json!({
+            "id": 1,
+            "result": {"thread": {"id": "thread-1"}, "model": "gpt-5"}
+        })
+        .to_string();
+        let backfilled: Value =
+            serde_json::from_str(&backfill_pre_0_132_fields(&old_response).unwrap()).unwrap();
+        assert_eq!(backfilled["result"]["thread"]["sessionId"], "thread-1");
+
+        let old_completed = json!({
+            "method": "item/completed",
+            "params": {"threadId": "thread-1", "turnId": "turn-1", "item": {}}
+        })
+        .to_string();
+        let backfilled: Value =
+            serde_json::from_str(&backfill_pre_0_132_fields(&old_completed).unwrap()).unwrap();
+        assert_eq!(backfilled["params"]["completedAtMs"], 0);
+
+        let current_completed = json!({
+            "method": "item/completed",
+            "params": {"threadId": "thread-1", "turnId": "turn-1", "item": {}, "completedAtMs": 5}
+        })
+        .to_string();
+        assert!(backfill_pre_0_132_fields(&current_completed).is_none());
     }
 }
