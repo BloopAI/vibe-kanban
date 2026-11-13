@@ -92,6 +92,27 @@ const AGENT_PRIORITY: BaseCodingAgent[] = [
   'GEMINI',
 ];
 
+/** OpenCode ships as a V1 and a V2 executor; they share one card. */
+const OPENCODE_VERSIONS: AgentVersion[] = [
+  { agent: 'OPENCODE', label: 'V1' },
+  { agent: 'OPENCODE_V2', label: 'V2' },
+];
+
+type AgentVersion = {
+  agent: BaseCodingAgent;
+  label: string;
+};
+
+type AgentOption = {
+  /** Stable React key: the grouped OpenCode card uses `OPENCODE`. */
+  id: string;
+  /** Agent whose icon and name represent the option. */
+  agent: BaseCodingAgent;
+  name: string;
+  /** Versions selectable inside the card, when the option groups several. */
+  versions?: AgentVersion[];
+};
+
 const DiscordIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
   ({ className, color = 'currentColor' }, ref) => (
     <svg
@@ -209,14 +230,62 @@ export function LandingPage() {
     appNavigation.goToRoot({ replace: true });
   }, [appNavigation, config?.remote_onboarding_acknowledged]);
 
-  const executorOptions = useMemo(() => {
+  const executorOptions = useMemo<AgentOption[]>(() => {
     const available = Object.keys(profiles ?? {});
-    const prioritized = AGENT_PRIORITY.filter((a) => available.includes(a));
-    const rest = available
-      .filter((a) => !AGENT_PRIORITY.includes(a))
+    const opencodeVersions = OPENCODE_VERSIONS.filter((version) =>
+      available.includes(version.agent)
+    );
+
+    // Collapse OPENCODE_V2 into OPENCODE, so the card list has one entry and the
+    // versions live inside it.
+    const availableKeys = [
+      ...new Set(
+        available.map((agent) =>
+          OPENCODE_VERSIONS.some((version) => version.agent === agent)
+            ? 'OPENCODE'
+            : agent
+        )
+      ),
+    ];
+    const prioritized = AGENT_PRIORITY.filter((agent) =>
+      availableKeys.includes(agent)
+    );
+    const rest = availableKeys
+      .filter((agent) => !AGENT_PRIORITY.includes(agent))
       .sort((a, b) => getAgentName(a).localeCompare(getAgentName(b)));
-    return [...prioritized, ...rest];
+
+    return [...prioritized, ...rest].map((agent) =>
+      agent === 'OPENCODE'
+        ? {
+            id: 'OPENCODE',
+            agent: 'OPENCODE' as BaseCodingAgent,
+            name: 'OpenCode',
+            versions: opencodeVersions,
+          }
+        : {
+            id: agent,
+            agent: agent as BaseCodingAgent,
+            name: getAgentName(agent),
+          }
+    );
   }, [profiles]);
+
+  const isOptionSelected = (option: AgentOption) =>
+    option.versions && option.versions.length > 0
+      ? option.versions.some((version) => version.agent === selectedAgent)
+      : selectedAgent === option.agent;
+
+  const selectAgentOption = (option: AgentOption) => {
+    if (option.versions && option.versions.length > 0) {
+      // Keep the version the user already picked, otherwise prefer the first.
+      const current = option.versions.find(
+        (version) => version.agent === selectedAgent
+      );
+      setSelectedAgent(current?.agent ?? option.versions[0].agent);
+      return;
+    }
+    setSelectedAgent(option.agent);
+  };
 
   const editorOptions = useMemo(() => Object.values(EditorType), []);
 
@@ -368,35 +437,76 @@ export function LandingPage() {
             <section className="space-y-half">
               <h2 className="text-sm font-medium text-high">Coding Agent</h2>
               <div className="grid gap-1.5">
-                {executorOptions.map((agent) => {
-                  const selected = selectedAgent === agent;
+                {executorOptions.map((option) => {
+                  const selected = isOptionSelected(option);
 
                   return (
-                    <button
-                      key={agent}
-                      type="button"
-                      onClick={() => setSelectedAgent(agent)}
+                    <div
+                      key={option.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => selectAgentOption(option)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          selectAgentOption(option);
+                        }
+                      }}
                       className={cn(
-                        'flex items-center gap-base rounded-sm border px-base py-half text-left',
+                        'flex items-center gap-base rounded-sm border px-base py-half text-left cursor-pointer',
                         selected
                           ? 'border-brand bg-brand/10'
                           : 'border-border bg-panel hover:bg-primary'
                       )}
                     >
                       <AgentIcon
-                        agent={agent}
+                        agent={option.agent}
                         className="size-icon-xl shrink-0"
                       />
                       <span className="text-sm text-normal flex-1 truncate">
-                        {getAgentName(agent)}
+                        {option.name}
                       </span>
-                      {selected && (
+                      {selected &&
+                      option.versions &&
+                      option.versions.length > 1 ? (
+                        <div
+                          role="group"
+                          aria-label="OpenCode version"
+                          className="flex shrink-0 items-center gap-[1px] rounded-sm border border-border bg-primary p-[1px]"
+                          onClick={(event) => event.stopPropagation()}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          {option.versions.map((version) => {
+                            const active = selectedAgent === version.agent;
+
+                            return (
+                              <button
+                                key={version.agent}
+                                type="button"
+                                aria-pressed={active}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setSelectedAgent(version.agent);
+                                }}
+                                className={cn(
+                                  'rounded-[2px] px-1.5 py-[1px] text-[11px] font-medium leading-4 transition-colors',
+                                  active
+                                    ? 'bg-brand text-on-brand'
+                                    : 'text-low hover:text-normal'
+                                )}
+                              >
+                                {version.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : selected ? (
                         <CheckIcon
                           className="size-icon-xs text-brand shrink-0"
                           weight="bold"
                         />
-                      )}
-                    </button>
+                      ) : null}
+                    </div>
                   );
                 })}
               </div>
