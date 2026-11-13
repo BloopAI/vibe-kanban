@@ -1,0 +1,8 @@
+# Remove upstream build-time SSH agent forwarding for the local self-host build.
+# The private `billing` crate is stripped when FEATURES is empty, so the
+# default starter path does not need a host SSH agent. Disabling this also
+# avoids failures on machines that don't have an SSH agent running.
+services:
+  remote-server:
+    build:
+      ssh: !reset []
