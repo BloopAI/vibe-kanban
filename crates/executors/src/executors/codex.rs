@@ -445,7 +445,7 @@ impl StandardCodingAgentExecutor for Codex {
 
 impl Codex {
     pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.124.0"
+        "npx -y @openai/codex@0.132.0"
     }
 
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
@@ -509,7 +509,7 @@ impl Codex {
 
         let (model, is_fast) = resolve_model(self.model.as_deref());
         let service_tier = if is_fast {
-            Some(Some(ServiceTier::Fast))
+            Some(Some(ServiceTier::Fast.request_value().to_string()))
         } else {
             None
         };
