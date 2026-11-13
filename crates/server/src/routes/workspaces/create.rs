@@ -228,12 +228,6 @@ pub async fn create_and_start_workspace(
         )
     })?;
 
-    if repos.is_empty() {
-        return Err(ApiError::BadRequest(
-            "At least one repository is required".to_string(),
-        ));
-    }
-
     let mut managed_workspace = deployment
         .workspace_manager()
         .load_managed_workspace(create_workspace_record(&deployment, name).await?)
