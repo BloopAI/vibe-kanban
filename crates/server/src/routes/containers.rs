@@ -6,7 +6,7 @@ use axum::{
 };
 use db::models::{
     requests::ContainerQuery,
-    workspace::{Workspace, WorkspaceContext},
+    workspace::{Workspace, WorkspaceContext, WorkspaceError},
 };
 use deployment::Deployment;
 use serde::Serialize;
@@ -27,7 +27,12 @@ async fn get_container_info(
     let info =
         Workspace::resolve_container_ref_by_prefix(&deployment.db().pool, &query.container_ref)
             .await
-            .map_err(ApiError::Database)?;
+            .map_err(|e| match e {
+                sqlx::Error::RowNotFound => {
+                    ApiError::Workspace(WorkspaceError::WorkspaceNotFound)
+                }
+                e => ApiError::Database(e),
+            })?;
 
     Ok(ResponseJson(ApiResponse::success(ContainerInfo {
         attempt_id: info.workspace_id,
@@ -41,7 +46,12 @@ async fn get_context(
     let info =
         Workspace::resolve_container_ref_by_prefix(&deployment.db().pool, &payload.container_ref)
             .await
-            .map_err(ApiError::Database)?;
+            .map_err(|e| match e {
+                sqlx::Error::RowNotFound => {
+                    ApiError::Workspace(WorkspaceError::WorkspaceNotFound)
+                }
+                e => ApiError::Database(e),
+            })?;
 
     let ctx = Workspace::load_context(&deployment.db().pool, info.workspace_id).await?;
     Ok(ResponseJson(ApiResponse::success(ctx)))
