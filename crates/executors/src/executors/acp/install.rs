@@ -14,10 +14,12 @@ use std::{
     collections::HashMap,
     io::{Cursor, Read},
     path::{Component, Path, PathBuf},
-    sync::LazyLock,
+    sync::{Arc, LazyLock, Mutex as StdMutex},
     time::Duration,
 };
 
+use futures::StreamExt;
+use serde::Serialize;
 use sha2::{Digest, Sha256};
 use thiserror::Error;
 
@@ -37,6 +39,52 @@ static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .build()
         .expect("failed to build ACP archive download client")
 });
+
+/// Download progress for an agent, for the settings UI.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct InstallProgress {
+    pub downloaded: u64,
+    pub total: Option<u64>,
+    pub done: bool,
+    pub error: Option<String>,
+}
+
+static PROGRESS: LazyLock<StdMutex<HashMap<String, InstallProgress>>> =
+    LazyLock::new(|| StdMutex::new(HashMap::new()));
+
+/// Serialises installs of the same agent, so a second spawn or install waits for
+/// the first instead of downloading the archive again.
+static INSTALL_LOCKS: LazyLock<StdMutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>> =
+    LazyLock::new(|| StdMutex::new(HashMap::new()));
+
+/// Latest known progress for `agent_id`, if an install was started this session.
+pub fn progress(agent_id: &str) -> Option<InstallProgress> {
+    PROGRESS.lock().ok()?.get(agent_id).cloned()
+}
+
+fn set_progress(agent_id: &str, value: InstallProgress) {
+    if let Ok(mut map) = PROGRESS.lock() {
+        map.insert(agent_id.to_string(), value);
+    }
+}
+
+fn update_downloaded(agent_id: &str, downloaded: u64) {
+    if let Ok(mut map) = PROGRESS.lock()
+        && let Some(progress) = map.get_mut(agent_id)
+    {
+        progress.downloaded = downloaded;
+    }
+}
+
+fn install_lock(agent_id: &str) -> Arc<tokio::sync::Mutex<()>> {
+    let mut locks = INSTALL_LOCKS
+        .lock()
+        .expect("ACP install lock registry poisoned");
+    locks
+        .entry(agent_id.to_string())
+        .or_insert_with(|| Arc::new(tokio::sync::Mutex::new(())))
+        .clone()
+}
 
 #[derive(Debug, Error)]
 pub enum InstallError {
@@ -102,12 +150,34 @@ pub async fn ensure_installed(
     platform: &str,
     target: &BinaryTarget,
 ) -> Result<InstalledAgent, InstallError> {
+    let lock = install_lock(agent_id);
+    let _guard = lock.lock().await;
+
+    let result = install_locked(agent_id, version, platform, target).await;
+
+    let mut snapshot = progress(agent_id).unwrap_or_default();
+    snapshot.done = true;
+    match &result {
+        Ok(_) => snapshot.error = None,
+        Err(err) => snapshot.error = Some(err.to_string()),
+    }
+    set_progress(agent_id, snapshot);
+
+    result
+}
+
+async fn install_locked(
+    agent_id: &str,
+    version: &str,
+    platform: &str,
+    target: &BinaryTarget,
+) -> Result<InstalledAgent, InstallError> {
     let dir = install_dir(agent_id, version, platform);
     if dir.join(MARKER_FILE).is_file() && command_path(&dir, &target.cmd)?.is_file() {
         return installed(target, &dir);
     }
 
-    let bytes = download(&target.archive).await?;
+    let bytes = download(&target.archive, agent_id).await?;
     verify_checksum(&target.archive, &bytes, target.sha256.as_deref())?;
 
     let parent = dir
@@ -217,7 +287,7 @@ fn command_path(dir: &Path, cmd: &str) -> Result<PathBuf, InstallError> {
     Ok(dir.join(relative))
 }
 
-async fn download(url: &str) -> Result<Vec<u8>, InstallError> {
+async fn download(url: &str, agent_id: &str) -> Result<Vec<u8>, InstallError> {
     let response = HTTP_CLIENT
         .get(url)
         .send()
@@ -233,28 +303,40 @@ async fn download(url: &str) -> Result<Vec<u8>, InstallError> {
             source,
         })?;
 
-    if let Some(length) = response.content_length()
+    let total = response.content_length();
+    if let Some(length) = total
         && length > MAX_ARCHIVE_BYTES
     {
         return Err(InstallError::TooLarge {
             url: url.to_string(),
         });
     }
+    set_progress(
+        agent_id,
+        InstallProgress {
+            total,
+            ..Default::default()
+        },
+    );
 
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|source| InstallError::Download {
+    let mut bytes = Vec::with_capacity(total.unwrap_or_default().min(MAX_ARCHIVE_BYTES) as usize);
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|source| InstallError::Download {
             url: url.to_string(),
             source,
         })?;
-    if bytes.len() as u64 > MAX_ARCHIVE_BYTES {
-        return Err(InstallError::TooLarge {
-            url: url.to_string(),
-        });
+        bytes.extend_from_slice(&chunk);
+
+        if bytes.len() as u64 > MAX_ARCHIVE_BYTES {
+            return Err(InstallError::TooLarge {
+                url: url.to_string(),
+            });
+        }
+        update_downloaded(agent_id, bytes.len() as u64);
     }
 
-    Ok(bytes.to_vec())
+    Ok(bytes)
 }
 
 fn verify_checksum(url: &str, bytes: &[u8], expected: Option<&str>) -> Result<(), InstallError> {

@@ -1,5 +1,6 @@
 import type {
   AcpRegistryAgent,
+  AcpRegistryInstallProgress,
   Config,
   GetMcpServerResponse,
   GitBranch,
@@ -52,6 +53,9 @@ export interface MachineClient {
   ) => Promise<void>;
   listAcpRegistryAgents: () => Promise<AcpRegistryAgent[]>;
   installAcpRegistryAgent: (id: string) => Promise<AcpRegistryAgent>;
+  getAcpRegistryInstallProgress: (
+    id: string
+  ) => Promise<AcpRegistryInstallProgress | null>;
   uninstallAcpRegistryAgent: (id: string) => Promise<void>;
 }
 
@@ -199,6 +203,14 @@ export function createMachineClient(
           target,
           `/api/acp-registry/agents/${encodeURIComponent(id)}`,
           { method: 'POST' }
+        )
+      ),
+    getAcpRegistryInstallProgress: async (id) =>
+      handleApiResponse<AcpRegistryInstallProgress | null>(
+        await makeMachineRequest(
+          runtime,
+          target,
+          `/api/acp-registry/agents/${encodeURIComponent(id)}/install-progress`
         )
       ),
     uninstallAcpRegistryAgent: async (id) => {

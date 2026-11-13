@@ -298,6 +298,8 @@ executor: BaseCodingAgent,
  */
 installed: boolean, };
 
+export type AcpRegistryInstallProgress = { downloaded: bigint, total: bigint | null, done: boolean, error: string | null, };
+
 export type CurrentUserResponse = { user_id: string, };
 
 export type StartSpake2EnrollmentRequest = { enrollment_code: string, client_message_b64: string, };
