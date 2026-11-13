@@ -2,6 +2,7 @@ pub mod client;
 pub mod discovery;
 pub mod harness;
 pub mod harness_v2;
+pub mod install;
 pub mod normalize_logs;
 mod permissions;
 pub mod registry;

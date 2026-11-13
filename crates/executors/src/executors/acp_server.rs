@@ -10,7 +10,7 @@ use workspace_utils::msg_store::MsgStore;
 
 use crate::{
     approvals::ExecutorApprovalService,
-    command::{CmdOverrides, CommandBuilder, apply_overrides},
+    command::{CmdOverrides, CommandBuilder},
     env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
@@ -18,7 +18,7 @@ use crate::{
             AcpAgentHarnessV2,
             discovery::{self, DiscoverySpec},
             registry,
-            registry::{npx_command, registry_key},
+            registry::registry_key,
             session_config::DesiredConfig,
         },
     },
@@ -196,14 +196,7 @@ impl AcpServer {
             .into_iter()
             .find(|a| a.id == self.registry_id)
             .ok_or_else(|| ExecutorError::AcpRegistryAgentNotFound(self.registry_id.clone()))?;
-        let npx = agent
-            .distribution
-            .npx
-            .ok_or(ExecutorError::AcpRegistryAgentNotFound(
-                self.registry_id.clone(),
-            ))?;
-        let command = apply_overrides(npx_command(&self.registry_id, &npx)?, &self.cmd)?;
-        Ok((command, npx.env))
+        registry::command_for(&agent, &self.cmd).await
     }
 
     async fn build_spawn_args(
@@ -267,7 +260,11 @@ mod tests {
             base_command_override: Some("kilo".to_string()),
             ..Default::default()
         };
-        let command = apply_overrides(npx_command("kilo", &kilo()).unwrap(), &overrides).unwrap();
+        let command = crate::command::apply_overrides(
+            registry::npx_command("kilo", &kilo()).unwrap(),
+            &overrides,
+        )
+        .unwrap();
         // `kilo acp`, not `kilo @kilocode/cli@7.8.18 acp`
         assert_eq!(command.base, "kilo");
         assert_eq!(command.params, Some(vec!["acp".to_string()]));
