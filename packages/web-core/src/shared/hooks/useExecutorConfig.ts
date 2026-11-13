@@ -7,6 +7,8 @@ import type {
 } from 'shared/types';
 import { getVariantOptions } from '@/shared/lib/executor';
 import { usePresetOptions } from '@/shared/hooks/usePresetOptions';
+import { useQuery } from '@tanstack/react-query';
+import { configApi } from '@/shared/lib/api';
 
 function getProfileKey(
   executor: BaseCodingAgent | null,
@@ -32,29 +34,75 @@ function useEffectiveExecutor(
   profiles: Record<string, ExecutorProfile> | null,
   scratchConfig: ExecutorConfig | null | undefined,
   lastUsedConfig: ExecutorConfig | null,
-  configExecutorProfile: ExecutorProfileId | null | undefined
+  configExecutorProfile: ExecutorProfileId | null | undefined,
+  autoOpencodeVersion: boolean
 ) {
-  const options = useMemo(
-    () => Object.keys(profiles ?? {}) as BaseCodingAgent[],
-    [profiles]
+  // The create screen offers one OpenCode entry, picked from the installed CLI.
+  // Sessions keep both: their executor is part of the session they continue.
+  const { data: opencodeVersion, isFetched: opencodeVersionFetched } = useQuery(
+    {
+      queryKey: ['opencode-version'],
+      queryFn: configApi.getOpencodeVersion,
+      staleTime: 5 * 60 * 1000,
+      enabled: autoOpencodeVersion,
+    }
   );
 
-  const effective = useMemo(
-    () =>
+  const { options, preferredOpencode } = useMemo<{
+    options: BaseCodingAgent[];
+    preferredOpencode: BaseCodingAgent | null;
+  }>(() => {
+    const all = Object.keys(profiles ?? {}) as BaseCodingAgent[];
+    const hasV1 = all.includes('OPENCODE');
+    const hasV2 = all.includes('OPENCODE_V2');
+
+    if (!autoOpencodeVersion || !hasV1 || !hasV2) {
+      return { options: all, preferredOpencode: null };
+    }
+    // Wait for detection so the list does not swap after it resolves.
+    if (!opencodeVersionFetched) {
+      return { options: all, preferredOpencode: null };
+    }
+
+    const preferred: BaseCodingAgent =
+      opencodeVersion?.major != null && opencodeVersion.major >= 2
+        ? 'OPENCODE_V2'
+        : 'OPENCODE';
+
+    return {
+      options: all.filter((executor) =>
+        executor === 'OPENCODE' || executor === 'OPENCODE_V2'
+          ? executor === preferred
+          : true
+      ),
+      preferredOpencode: preferred,
+    };
+  }, [profiles, autoOpencodeVersion, opencodeVersion, opencodeVersionFetched]);
+
+  const effective = useMemo(() => {
+    const selected =
       userSelections.executor ??
       scratchConfig?.executor ??
       lastUsedConfig?.executor ??
       configExecutorProfile?.executor ??
       options[0] ??
-      null,
-    [
-      userSelections.executor,
-      scratchConfig,
-      lastUsedConfig,
-      configExecutorProfile,
-      options,
-    ]
-  );
+      null;
+
+    if (
+      preferredOpencode &&
+      (selected === 'OPENCODE' || selected === 'OPENCODE_V2')
+    ) {
+      return preferredOpencode;
+    }
+    return selected;
+  }, [
+    userSelections.executor,
+    scratchConfig,
+    lastUsedConfig,
+    configExecutorProfile,
+    options,
+    preferredOpencode,
+  ]);
 
   return { effective, options };
 }
@@ -188,6 +236,11 @@ interface UseExecutorConfigOptions {
   scratchConfig?: ExecutorConfig | null;
   configExecutorProfile?: ExecutorProfileId | null;
   onPersist?: (config: ExecutorConfig) => void;
+  /**
+   * Offer a single OpenCode entry, picked from the installed CLI. Only the
+   * create screen opts in: a session keeps the executor it was started with.
+   */
+  autoOpencodeVersion?: boolean;
 }
 
 interface UseExecutorConfigResult {
@@ -209,6 +262,7 @@ export function useExecutorConfig({
   scratchConfig,
   configExecutorProfile,
   onPersist,
+  autoOpencodeVersion = false,
 }: UseExecutorConfigOptions): UseExecutorConfigResult {
   const [userSelections, setUserSelections] = useState<Partial<ExecutorConfig>>(
     {}
@@ -219,7 +273,8 @@ export function useExecutorConfig({
     profiles,
     scratchConfig,
     lastUsedConfig,
-    configExecutorProfile
+    configExecutorProfile,
+    autoOpencodeVersion
   );
 
   const variant = useEffectiveVariant(
