@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use db::models::{requests::UpdateWorkspace, workspace::Workspace};
 use rmcp::{
     ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
@@ -7,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::McpServer;
+
+const DEFAULT_TIMEOUT_SECONDS: u64 = 1800;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListWorkspacesRequest {
@@ -94,6 +98,36 @@ struct McpDeleteWorkspaceResponse {
     workspace_id: String,
     delete_remote: bool,
     delete_branches: bool,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct McpWaitExecutionRequest {
+    #[schemars(
+        description = "One or more execution IDs to wait on. When multiple IDs are provided, returns as soon as any one reaches a terminal state."
+    )]
+    execution_ids: Vec<Uuid>,
+    #[schemars(
+        description = "Maximum time to wait in seconds before returning a timeout response (default: 1800)"
+    )]
+    timeout_seconds: Option<u64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, schemars::JsonSchema)]
+struct McpWaitExecutionResponse {
+    #[schemars(
+        description = "The execution ID that reached a terminal state (or first ID on timeout)"
+    )]
+    completed_execution_id: String,
+    #[schemars(description = "The session ID that owns the completed execution")]
+    session_id: String,
+    #[schemars(description = "Terminal status: 'completed', 'failed', 'killed', or 'timeout'")]
+    status: String,
+    #[schemars(description = "Timestamp when the execution completed (if available)")]
+    completed_at: Option<String>,
+    #[schemars(
+        description = "Final assistant message/summary from the completed execution (if available)"
+    )]
+    output: Option<String>,
 }
 
 #[tool_router(router = workspaces_tools_router, vis = "pub")]
@@ -246,5 +280,41 @@ impl McpServer {
             delete_remote,
             delete_branches,
         })
+    }
+
+    #[tool(
+        description = "Block until an execution reaches a terminal state (completed, failed, or killed) or timeout elapses. When multiple execution IDs are provided, returns as soon as any one reaches a terminal state — call again with the remaining IDs to wait for the next completion."
+    )]
+    async fn wait_execution(
+        &self,
+        Parameters(McpWaitExecutionRequest {
+            execution_ids,
+            timeout_seconds,
+        }): Parameters<McpWaitExecutionRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        if execution_ids.is_empty() {
+            return Self::err("At least one execution_id must be provided", None::<&str>);
+        }
+
+        let timeout_secs = timeout_seconds.unwrap_or(DEFAULT_TIMEOUT_SECONDS);
+        let url = self.url("/api/execution-processes/wait");
+        let payload = serde_json::json!({
+            "execution_ids": execution_ids,
+            "timeout_seconds": timeout_secs,
+        });
+
+        // Use a per-request timeout slightly longer than the server-side timeout
+        // to allow the server to return its own timeout response cleanly.
+        let http_timeout = Duration::from_secs(timeout_secs.saturating_add(30));
+
+        let response: McpWaitExecutionResponse = match self
+            .send_json(self.client.post(&url).json(&payload).timeout(http_timeout))
+            .await
+        {
+            Ok(r) => r,
+            Err(e) => return Ok(Self::tool_error(e)),
+        };
+
+        McpServer::success(&response)
     }
 }
