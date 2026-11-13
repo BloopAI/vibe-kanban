@@ -277,11 +277,9 @@ impl CodingAgent {
                 BaseAgentCapability::SetupHelper,
                 BaseAgentCapability::ContextUsage,
             ],
-            Self::Gemini(_) | Self::QwenCode(_) => {
-                vec![BaseAgentCapability::SessionFork]
-            }
+            Self::QwenCode(_) => vec![BaseAgentCapability::SessionFork],
             Self::CursorAgent(_) | Self::Copilot(_) => vec![BaseAgentCapability::SetupHelper],
-            Self::Amp(_) | Self::Droid(_) => vec![],
+            Self::Amp(_) | Self::Droid(_) | Self::Gemini(_) => vec![],
             Self::AcpServer(_) => vec![],
             #[cfg(feature = "qa-mode")]
             Self::QaMock(_) => vec![], // QA mock doesn't need special capabilities
