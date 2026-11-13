@@ -103,6 +103,8 @@ fn generate_types_content() -> String {
         server::routes::config::CheckAgentAvailabilityQuery::decl(),
         server::routes::config::AgentPresetOptionsQuery::decl(),
         server::routes::acp_registry::AcpRegistryAgent::decl(),
+        server::routes::acp_registry::AcpRegistryInstallProgress::decl(),
+        executors::executors::opencode::detect::OpencodeVersion::decl(),
         server::routes::oauth::CurrentUserResponse::decl(),
         relay_types::StartSpake2EnrollmentRequest::decl(),
         relay_types::FinishSpake2EnrollmentRequest::decl(),
