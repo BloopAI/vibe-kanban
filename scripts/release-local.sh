@@ -146,10 +146,49 @@ load_env() {
 
 # --- build -------------------------------------------------------------------
 
+# The server embeds packages/local-web/dist at compile time, so every fresh
+# Vite build makes cargo recompile and relink the server for every target.
+# Skip Vite when its inputs and its last output are unchanged; the cargo
+# builds are then no-ops too.
+FRONTEND_INPUTS=(packages shared package.json pnpm-lock.yaml)
+FRONTEND_STAMP="$OUT_ROOT/.frontend-stamp"
+
+# Prints nothing when the inputs have uncommitted changes (always rebuild).
+frontend_inputs_hash() {
+  [[ -z "$(git status --porcelain -- "${FRONTEND_INPUTS[@]}")" ]] || return 0
+  {
+    local path
+    for path in "${FRONTEND_INPUTS[@]}"; do git rev-parse "HEAD:$path"; done
+    # Values Vite builds in; hashed, never printed.
+    env | grep '^VITE_' | LC_ALL=C sort
+    cat packages/local-web/.env* 2>/dev/null || true
+  } | shasum -a 256 | cut -d' ' -f1
+}
+
+frontend_dist_hash() {
+  [[ -d packages/local-web/dist ]] || return 0
+  (cd packages/local-web/dist && find . -type f -print0 | LC_ALL=C sort -z \
+    | xargs -0 shasum -a 256) | shasum -a 256 | cut -d' ' -f1
+}
+
 build_frontend() {
+  local inputs dist
+  inputs="$(frontend_inputs_hash)"
+  dist="$(frontend_dist_hash)"
+  if [[ -n "$inputs" && -n "$dist" && -f "$FRONTEND_STAMP" \
+    && "$(cat "$FRONTEND_STAMP")" == "$inputs $dist" ]]; then
+    step "Frontend unchanged since the last build; reusing packages/local-web/dist"
+    return
+  fi
   step "Building frontend"
   pnpm install --frozen-lockfile
   (cd packages/local-web && npm run build)
+  mkdir -p "$OUT_ROOT"
+  if [[ -n "$inputs" ]]; then
+    echo "$inputs $(frontend_dist_hash)" >"$FRONTEND_STAMP"
+  else
+    rm -f "$FRONTEND_STAMP"
+  fi
 }
 
 build_macos() {
