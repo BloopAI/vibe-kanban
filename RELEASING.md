@@ -136,10 +136,18 @@ unpublished; the bad version stays reachable by its exact number.
 
 ## Partial builds
 
-`scripts/release-local.sh build macos-arm64` builds one platform, which is
-handy for testing the pipeline. `publish` refuses to run until all six
-platforms are built. `ALLOW_DIRTY=1` builds from a dirty tree; don't publish
-those.
+`build` takes platforms, or the groups `macos`, `linux` and `windows`:
+
+```bash
+scripts/release-local.sh build macos-arm64   # just this Mac: no Docker, a few minutes
+scripts/release-local.sh smoke               # tests this Mac's platform
+```
+
+Each run adds its platforms to `release-out/<tag>/` and rewrites the manifest
+and npm package, so the six can also be built in separate runs. `publish`
+refuses until every platform has been built from the current commit on a
+clean tree. `ALLOW_DIRTY=1` builds from a dirty tree; those builds never
+count for `publish`.
 
 ## If the Docker build breaks
 

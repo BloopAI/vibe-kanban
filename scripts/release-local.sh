@@ -6,6 +6,7 @@
 #
 # Usage:
 #   scripts/release-local.sh build [platform...]  build binaries + npm package
+#                                                 (default all; or e.g. macos)
 #   scripts/release-local.sh smoke                test the package on this Mac
 #   scripts/release-local.sh publish              GitHub pre-release, smoke test
 #                                                 against it, then npm @next
@@ -90,6 +91,10 @@ require_all_assets() {
       [[ -f "$ASSETS/$platform-$bin.zip" ]] \
         || die "missing $platform-$bin.zip; run build for all platforms"
     done
+    # Platforms can be built in separate runs; all of them must come from
+    # this exact, clean commit.
+    [[ "$(cat "$OUT/built-from/$platform" 2>/dev/null)" == "$(git rev-parse HEAD)" ]] \
+      || die "$platform was not built from HEAD ($(git rev-parse --short HEAD)) on a clean tree; run: scripts/release-local.sh build $platform"
   done
 }
 
@@ -275,6 +280,13 @@ package_binaries() {
       zip -q -j -X "$ASSETS/$platform-$bin.zip" "$file"
       printf '  %-34s %s\n' "$platform-$bin.zip" "$(file -b "$file" | cut -c1-70)"
     done
+    # Which commit this platform's zips came from; "dirty" never matches HEAD.
+    mkdir -p "$OUT/built-from"
+    if [[ -n "$(git status --porcelain)" ]]; then
+      echo dirty >"$OUT/built-from/$platform"
+    else
+      git rev-parse HEAD >"$OUT/built-from/$platform"
+    fi
   done
 }
 
@@ -323,12 +335,19 @@ pack_npm() {
 
 cmd_build() {
   load_release --allow-dry-run
-  local selected=("$@")
-  [[ ${#selected[@]} -gt 0 ]] || selected=("${PLATFORMS[@]}")
-  local platform
-  for platform in "${selected[@]}"; do
-    contains "$platform" "${PLATFORMS[@]}" || die "unknown platform: $platform"
+  # Platform names, or the groups macos, linux and windows.
+  local selected=() arg platform
+  for arg in "$@"; do
+    case "$arg" in
+      macos | linux | windows) selected+=("$arg-arm64" "$arg-x64") ;;
+      *)
+        contains "$arg" "${PLATFORMS[@]}" \
+          || die "unknown platform: $arg (one of: ${PLATFORMS[*]} macos linux windows)"
+        selected+=("$arg")
+        ;;
+    esac
   done
+  [[ ${#selected[@]} -gt 0 ]] || selected=("${PLATFORMS[@]}")
   if [[ -n "$(git status --porcelain)" && "${ALLOW_DIRTY:-}" != "1" ]]; then
     die "working tree is not clean (set ALLOW_DIRTY=1 to build anyway)"
   fi
@@ -566,7 +585,7 @@ main() {
     promote) cmd_promote ;;
     rollback) shift; cmd_rollback "$@" ;;
     reset-cache) cmd_reset_cache ;;
-    *) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+    *) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
   esac
 }
 
