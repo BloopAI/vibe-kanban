@@ -5,7 +5,7 @@ edition = "2024"
 default-run = "server"
 
 [lints.clippy]
-uninlined-format-args = "allow"
+uninlined_format_args = "allow"
 
 [dependencies]
 api-types = { path = "../api-types" , version = "0.1.45" }

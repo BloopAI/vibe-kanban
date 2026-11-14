@@ -120,10 +120,8 @@ impl EventService {
                                         RecordTypes::DeletedExecutionProcess {
                                             session_id: Some(deleted_session_id),
                                             ..
-                                        } => {
-                                            if *deleted_session_id == session_id {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
+                                        } if *deleted_session_id == session_id => {
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
                                         }
                                         _ => {}
                                     }

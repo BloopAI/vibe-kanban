@@ -9,11 +9,7 @@ import {
 } from '@phosphor-icons/react';
 
 export type RelationshipDisplayType =
-  | 'blocks'
-  | 'blocked_by'
-  | 'related'
-  | 'duplicate_of'
-  | 'duplicated_by';
+  'blocks' | 'blocked_by' | 'related' | 'duplicate_of' | 'duplicated_by';
 
 export interface RelationshipBadgeProps {
   displayType: RelationshipDisplayType;

@@ -217,6 +217,7 @@
       },
       "privacy": {
         "title": "Privacidad",
+        "noAnalytics": "Esta versión de Vibe Kanban no recopila análisis de uso ni informes de errores.",
         "description": "Ayuda a mejorar Vibe-Kanban compartiendo datos de uso anónimos.",
         "telemetry": {
           "label": "Habilitar Telemetría",
@@ -329,6 +330,23 @@
         "jsonPlaceholder": "Cargando perfiles...",
         "jsonLoading": "Cargando...",
         "pathLabel": "Ubicación del archivo de configuración:"
+      },
+      "available": {
+        "title": "Agentes disponibles",
+        "description": "Agentes del registro ACP que puedes instalar y usar.",
+        "show": "Mostrar ({{count}})",
+        "hide": "Ocultar",
+        "expand": "Mostrar",
+        "loading": "Cargando agentes disponibles...",
+        "loadFailed": "No se pudieron cargar los agentes disponibles.",
+        "empty": "No hay agentes disponibles.",
+        "install": "Instalar",
+        "installed": "Instalado",
+        "uninstall": "Desinstalar",
+        "installFailed": "No se pudo instalar {{name}}: {{message}}",
+        "uninstallFailed": "No se pudo desinstalar {{name}}: {{message}}",
+        "unsavedChangesHint": "Guarda o descarta los cambios de configuración antes de instalar o desinstalar agentes.",
+        "defaultAgentHint": "Este es el agente predeterminado. Elige otro predeterminado antes de desinstalarlo."
       },
       "errors": {
         "deleteFailed": "Error al eliminar la configuración. Por favor, inténtalo de nuevo.",

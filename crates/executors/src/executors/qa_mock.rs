@@ -111,7 +111,7 @@ impl StandardCodingAgentExecutor for QaMockExecutor {
 
     fn get_preset_options(&self) -> ExecutorConfig {
         ExecutorConfig {
-            executor: BaseCodingAgent::QaMock,
+            executor: BaseCodingAgent::qa_mock(),
             variant: None,
             model_id: Some("qa-mock".to_string()),
             agent_id: None,

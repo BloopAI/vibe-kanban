@@ -1,7 +1,5 @@
 export type HostRequestScope =
-  | { kind: 'current' }
-  | { kind: 'local' }
-  | { kind: 'host'; hostId: string };
+  { kind: 'current' } | { kind: 'local' } | { kind: 'host'; hostId: string };
 
 export function resolveHostRequestScope(
   hostId?: string | null

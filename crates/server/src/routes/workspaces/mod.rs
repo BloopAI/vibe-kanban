@@ -1,5 +1,7 @@
+pub mod agent_setup;
 pub mod attachments;
 pub mod codex_setup;
+pub mod copilot_setup;
 pub mod core;
 pub mod create;
 pub mod cursor_setup;

@@ -9,12 +9,7 @@ import { cn } from '../lib/cn';
 
 export type FileTreeNodeType = 'file' | 'folder';
 export type FileTreeNodeChangeKind =
-  | 'added'
-  | 'deleted'
-  | 'modified'
-  | 'renamed'
-  | 'copied'
-  | 'permissionChange';
+  'added' | 'deleted' | 'modified' | 'renamed' | 'copied' | 'permissionChange';
 
 export interface FileTreeNodeItem {
   id: string;

@@ -40,8 +40,7 @@ export interface ResolveConflictsDialogProps {
 }
 
 export type ResolveConflictsDialogResult =
-  | { action: 'resolved'; sessionId?: string }
-  | { action: 'cancelled' };
+  { action: 'resolved'; sessionId?: string } | { action: 'cancelled' };
 
 const ResolveConflictsDialogImpl = create<ResolveConflictsDialogProps>(
   ({

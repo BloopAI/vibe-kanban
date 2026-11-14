@@ -32,8 +32,7 @@ export type SettingsSectionInitialState = {
   repos: { repoId?: string } | undefined;
   organizations: { organizationId?: string } | undefined;
   'remote-projects':
-    | { organizationId?: string; projectId?: string }
-    | undefined;
+    { organizationId?: string; projectId?: string } | undefined;
   agents: { executor?: string; variant?: string } | undefined;
   mcp: undefined;
   relay: { hostId?: string } | undefined;

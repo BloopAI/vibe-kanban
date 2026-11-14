@@ -17,7 +17,7 @@ use services::services::container::ContainerService;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 
-use super::{codex_setup, cursor_setup, gh_cli_setup::GhCliSetupError};
+use super::{codex_setup, copilot_setup, cursor_setup, gh_cli_setup::GhCliSetupError};
 use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -67,11 +67,14 @@ pub async fn run_agent_setup(
     let config = ExecutorConfigs::get_cached();
     let coding_agent = config.get_coding_agent_or_default(&executor_profile_id);
     match coding_agent {
-        CodingAgent::CursorAgent(_) => {
+        Some(CodingAgent::CursorAgent(_)) => {
             cursor_setup::run_cursor_setup(&deployment, &workspace).await?;
         }
-        CodingAgent::Codex(codex) => {
+        Some(CodingAgent::Codex(codex)) => {
             codex_setup::run_codex_setup(&deployment, &workspace, &codex).await?;
+        }
+        Some(CodingAgent::Copilot(copilot)) => {
+            copilot_setup::run_copilot_setup(&deployment, &workspace, &copilot).await?;
         }
         _ => return Err(ApiError::Executor(ExecutorError::SetupHelperNotSupported)),
     }

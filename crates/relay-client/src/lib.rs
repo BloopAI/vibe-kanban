@@ -32,10 +32,17 @@ pub const RELAY_HEADER: &str = "x-vk-relayed";
 pub enum RelayApiError {
     #[error("{0}")]
     Request(#[from] reqwest::Error),
+    /// Boxed: the tungstenite error is large and would bloat every `Result`
     #[error("{0}")]
-    WebSocket(#[from] tungstenite::Error),
+    WebSocket(Box<tungstenite::Error>),
     #[error("{0}")]
     Other(String),
+}
+
+impl From<tungstenite::Error> for RelayApiError {
+    fn from(err: tungstenite::Error) -> Self {
+        Self::WebSocket(Box::new(err))
+    }
 }
 
 const SPAKE2_CLIENT_ID: &[u8] = b"vibe-kanban-browser";
@@ -573,7 +580,9 @@ fn is_auth_failure_status(status_code: u16) -> bool {
 }
 
 fn is_ws_auth_failure(error: &RelayApiError) -> bool {
-    if let RelayApiError::WebSocket(tungstenite::Error::Http(response)) = error {
+    if let RelayApiError::WebSocket(err) = error
+        && let tungstenite::Error::Http(response) = err.as_ref()
+    {
         is_auth_failure_status(response.status().as_u16())
     } else {
         false

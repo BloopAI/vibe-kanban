@@ -288,6 +288,16 @@ export type CheckAgentAvailabilityQuery = { executor: BaseCodingAgent, };
 
 export type AgentPresetOptionsQuery = { executor: BaseCodingAgent, variant: string | null, };
 
+export type AcpRegistryAgent = { id: string, name: string, version: string, description: string, icon: string | null, 
+/**
+ * Key the agent is (or would be) installed under in profiles
+ */
+executor: BaseCodingAgent, 
+/**
+ * Whether the agent's executor key already exists in profiles
+ */
+installed: boolean, };
+
 export type CurrentUserResponse = { user_id: string, };
 
 export type StartSpake2EnrollmentRequest = { enrollment_code: string, client_message_b64: string, };
@@ -573,9 +583,9 @@ working_dir: string | null, };
 
 export type ScriptRequestLanguage = "Bash";
 
-export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI", CODEX = "CODEX", OPENCODE = "OPENCODE", CURSOR_AGENT = "CURSOR_AGENT", QWEN_CODE = "QWEN_CODE", COPILOT = "COPILOT", DROID = "DROID" }
+export type BaseCodingAgent = string;
 
-export type CodingAgent = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid };
+export type CodingAgent = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } | { "ACP_SERVER": AcpServer };
 
 export type SlashCommandDescription = { 
 /**
@@ -615,7 +625,7 @@ models?: Array<string>,
  */
 reasoning_by_model?: { [key in string]?: string }, };
 
-export type ExecutorProfile = { recently_used_models?: ExecutorRecentModels | null, } & ({ [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } });
+export type ExecutorProfile = { recently_used_models?: ExecutorRecentModels | null, } & ({ [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } | { "ACP_SERVER": AcpServer } });
 
 export type ExecutorConfigs = { executors: { [key in BaseCodingAgent]?: ExecutorProfile }, };
 
@@ -643,7 +653,11 @@ export type ReasoningSummaryFormat = "none" | "experimental";
 
 export type CursorAgent = { append_prompt: AppendPrompt, force?: boolean | null, model?: string | null, reasoning?: string | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
-export type Copilot = { append_prompt: AppendPrompt, model?: string | null, allow_all_tools?: boolean | null, allow_tool?: string | null, deny_tool?: string | null, add_dir?: Array<string> | null, disable_mcp_server?: Array<string> | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
+export type Copilot = { append_prompt: AppendPrompt, model?: string | null, reasoning_effort?: string | null, allow_all_tools?: boolean | null, 
+/**
+ * Start in plan mode. Takes precedence over `allow_all_tools`.
+ */
+plan?: boolean | null, allow_tool?: string | null, deny_tool?: string | null, add_dir?: Array<string> | null, disable_mcp_server?: Array<string> | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
 export type Opencode = { append_prompt: AppendPrompt, model?: string | null, variant?: string | null, agent?: string | null, 
 /**
@@ -658,6 +672,8 @@ auto_compact: boolean, base_command_override?: string | null, additional_params?
 export type QwenCode = { append_prompt: AppendPrompt, model?: string | null, agent?: string | null, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
 export type Droid = { append_prompt: AppendPrompt, autonomy: Autonomy, model?: string | null, reasoning_effort?: DroidReasoningEffort | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
+
+export type AcpServer = { registry_id: string, append_prompt: AppendPrompt, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
 export type Autonomy = "normal" | "low" | "medium" | "high" | "skip-permissions-unsafe";
 
@@ -711,7 +727,11 @@ export type CommandCategory = "read" | "search" | "edit" | "fetch" | "other";
 
 export type NormalizedEntry = { timestamp: string | null, entry_type: NormalizedEntryType, content: string, };
 
-export type NormalizedEntryType = { "type": "user_message" } | { "type": "user_feedback", denied_tool: string, } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, status: ToolStatus, } | { "type": "system_message" } | { "type": "error_message", error_type: NormalizedEntryError, } | { "type": "thinking" } | { "type": "loading" } | { "type": "next_action", failed: boolean, execution_processes: number, needs_setup: boolean, } | { "type": "token_usage_info" } & TokenUsageInfo | { "type": "user_answered_questions", answers: Array<AnsweredQuestion>, };
+export type NormalizedEntryType = { "type": "user_message" } | { "type": "user_feedback", denied_tool: string, } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, status: ToolStatus, } | { "type": "system_message" } | { "type": "error_message", error_type: NormalizedEntryError, } | { "type": "thinking" } | { "type": "loading" } | { "type": "next_action", failed: boolean, execution_processes: number, needs_setup: boolean, 
+/**
+ * Profile of the agent that needs setup, for the Sign in button
+ */
+executor_profile_id?: ExecutorProfileId, } | { "type": "token_usage_info" } & TokenUsageInfo | { "type": "user_answered_questions", answers: Array<AnsweredQuestion>, };
 
 export type TokenUsageInfo = { total_tokens: number, model_context_window: number, };
 
@@ -805,7 +825,13 @@ agents: Array<AgentInfo>,
  */
 permissions: Array<PermissionPolicy>, };
 
-export type ExecutorDiscoveredOptions = { model_selector: ModelSelectorConfig, slash_commands: Array<SlashCommandDescription>, loading_models: boolean, loading_agents: boolean, loading_slash_commands: boolean, error: string | null, };
+export type ExecutorDiscoveredOptions = { model_selector: ModelSelectorConfig, slash_commands: Array<SlashCommandDescription>, loading_models: boolean, loading_agents: boolean, loading_slash_commands: boolean, error: string | null, 
+/**
+ * True only for a model list read from the agent itself in the last few minutes. Then a
+ * saved model or permission that isn't offered is stale and can be dropped. Never set
+ * for lists from the disk cache or a built-in fallback.
+ */
+models_complete: boolean, };
 
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;
 

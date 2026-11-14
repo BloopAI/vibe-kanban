@@ -15,12 +15,7 @@ export type RightMainPanelMode =
 export type LayoutMode = 'workspaces' | 'kanban';
 
 export type MobileTab =
-  | 'workspaces'
-  | 'chat'
-  | 'changes'
-  | 'logs'
-  | 'preview'
-  | 'git';
+  'workspaces' | 'chat' | 'changes' | 'logs' | 'preview' | 'git';
 
 export type MobileFontScale = 'default' | 'small' | 'smaller';
 export const DEFAULT_CREATE_DRAFT_WORKSPACE_BY_DEFAULT = false;
@@ -60,11 +55,7 @@ const DEFAULT_WORKSPACE_PANEL_STATE: WorkspacePanelState = {
 
 // Kanban filter state
 export type KanbanSortField =
-  | 'sort_order'
-  | 'priority'
-  | 'created_at'
-  | 'updated_at'
-  | 'title';
+  'sort_order' | 'priority' | 'created_at' | 'updated_at' | 'title';
 
 export type KanbanFilterState = {
   searchQuery: string;

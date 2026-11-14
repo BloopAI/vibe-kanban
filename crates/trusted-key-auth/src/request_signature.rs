@@ -142,7 +142,7 @@ fn verify_signature(message: &str, signature: &Signature, trusted_keys: &[Verify
 mod tests {
     use std::path::PathBuf;
 
-    use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+    use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
     use ed25519_dalek::{Signer, SigningKey};
     use http::{HeaderMap, HeaderValue, Method};
     use tokio::fs;

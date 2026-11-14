@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { BaseCodingAgent, ExecutorDiscoveredOptions } from 'shared/types';
 import { useJsonPatchWsStream } from '@/shared/hooks/useJsonPatchWsStream';
 import { agentsApi } from '@/shared/lib/api';
@@ -20,6 +20,7 @@ const defaultOptions: ExecutorDiscoveredOptions = {
   loading_agents: true,
   loading_slash_commands: true,
   error: null,
+  models_complete: false,
 };
 
 function useExecutorDiscovery(
@@ -27,14 +28,18 @@ function useExecutorDiscovery(
   opts?: { workspaceId?: string; sessionId?: string; repoId?: string }
 ) {
   const { workspaceId, sessionId, repoId } = opts ?? {};
+  // Discovery runs once per connection, so retrying means connecting again
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
   const endpoint = useMemo(() => {
     if (!agent) return undefined;
     return agentsApi.getDiscoveredOptionsStreamUrl(agent, {
       workspaceId,
       sessionId,
       repoId,
+      attempt,
     });
-  }, [agent, workspaceId, sessionId, repoId]);
+  }, [agent, workspaceId, sessionId, repoId, attempt]);
 
   const initialData = useCallback(
     (): ExecutorDiscoveryStreamState => ({
@@ -71,6 +76,7 @@ function useExecutorDiscovery(
     error: combinedError,
     isConnected,
     isInitialized,
+    retry,
   };
 }
 
@@ -78,18 +84,18 @@ export function useModelSelectorConfig(
   agent: BaseCodingAgent | null | undefined,
   opts?: { workspaceId?: string; sessionId?: string; repoId?: string }
 ) {
-  const { options, error, isConnected, isInitialized } = useExecutorDiscovery(
-    agent,
-    opts
-  );
+  const { options, error, isConnected, isInitialized, retry } =
+    useExecutorDiscovery(agent, opts);
 
   return {
     config: options?.model_selector ?? null,
     loadingModels: options?.loading_models ?? false,
+    modelsComplete: options?.models_complete ?? false,
     loadingAgents: options?.loading_agents ?? false,
     error,
     isConnected,
     isInitialized,
+    retry,
   };
 }
 

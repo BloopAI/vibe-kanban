@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  SpinnerIcon,
-  PlusIcon,
-  TrashIcon,
   DotsThreeIcon,
+  PlusIcon,
+  SpinnerIcon,
   StarIcon,
+  TrashIcon,
 } from '@phosphor-icons/react';
 import {
   DropdownMenu,
@@ -13,26 +13,39 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@vibe/ui/components/Dropdown';
-import { ExecutorConfigForm } from './ExecutorConfigForm';
+import { AvailableAgentsCard } from './agents/AvailableAgentsCard';
+import { ExecutorConfigForm } from './agents/ExecutorConfigForm';
+import { RegistryAgentIcon } from './agents/RegistryAgentIcon';
+import { useMachineAcpRegistryAgents } from '@/shared/hooks/useAcpRegistryAgents';
 import { useMachineProfiles } from '@/shared/hooks/useProfiles';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { CreateConfigurationDialog } from '../CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '../DeleteConfigurationDialog';
-import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
+import type {
+  AcpRegistryAgent,
+  AcpServer,
+  BaseCodingAgent,
+  CodingAgent,
+  ExecutorConfigs,
+} from 'shared/types';
 import { cn } from '@/shared/lib/utils';
 import { toPrettyCase } from '@/shared/lib/string';
 import {
+  SettingsCard,
   SettingsSaveBar,
   TwoColumnPicker,
-  TwoColumnPickerColumn,
-  TwoColumnPickerItem,
   TwoColumnPickerBadge,
+  TwoColumnPickerColumn,
   TwoColumnPickerEmpty,
-} from './SettingsComponents';
+  TwoColumnPickerItem,
+} from './shared/SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 import { useSettingsMachineClient } from './SettingsHostContext';
 import { AgentIcon } from '@/shared/components/AgentIcon';
-import { getExecutorVariantKeys } from '@/shared/lib/executor';
+import {
+  getConfigVariant,
+  getExecutorVariantKeys,
+} from '@/shared/lib/executor';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 
@@ -49,6 +62,16 @@ export function AgentsSettingsSection() {
     error: profilesError,
     save: saveProfiles,
   } = useMachineProfiles(machineClient);
+
+  // Installed registry agents show their registry icon and name
+  const { data: registryAgents } = useMachineAcpRegistryAgents(machineClient);
+  const registryAgentsByExecutor = useMemo(
+    () =>
+      new Map<string, AcpRegistryAgent>(
+        (registryAgents ?? []).map((agent) => [agent.executor, agent])
+      ),
+    [registryAgents]
+  );
 
   const { config, updateAndSaveConfig, reloadSystem } = useUserSystem();
 
@@ -124,10 +147,15 @@ export function AgentsSettingsSection() {
 
     const executorsMap =
       localParsedProfiles.executors as unknown as ExecutorsMap;
+    const defaultConfig = executorsMap[executorType]?.DEFAULT;
+    const variant = getConfigVariant(defaultConfig, executorType);
     const base =
-      baseConfig && executorsMap[executorType]?.[baseConfig]?.[executorType]
-        ? executorsMap[executorType][baseConfig][executorType]
-        : {};
+      baseConfig && executorsMap[executorType]?.[baseConfig]?.[variant]
+        ? executorsMap[executorType][baseConfig][variant]
+        : variant === 'ACP_SERVER'
+          ? // registry_id is the agent's identity, so a fresh config keeps it
+            { registry_id: (defaultConfig?.[variant] as AcpServer).registry_id }
+          : {};
 
     const updatedProfiles = {
       ...localParsedProfiles,
@@ -136,7 +164,7 @@ export function AgentsSettingsSection() {
         [executorType]: {
           ...executorsMap[executorType],
           [configName]: {
-            [executorType]: base,
+            [variant]: base,
           },
         },
       },
@@ -182,6 +210,10 @@ export function AgentsSettingsSection() {
         return;
       }
 
+      const variant = getConfigVariant(
+        executorConfigs[configToDelete],
+        executorType
+      );
       const remainingConfigs = { ...executorConfigs };
       delete remainingConfigs[configToDelete];
 
@@ -196,7 +228,7 @@ export function AgentsSettingsSection() {
       const executorsMap = updatedProfiles.executors as unknown as ExecutorsMap;
       if (getExecutorVariantKeys(remainingConfigs).length === 0) {
         executorsMap[executorType] = {
-          DEFAULT: { [executorType]: {} },
+          DEFAULT: { [variant]: {} },
         };
       }
 
@@ -251,15 +283,20 @@ export function AgentsSettingsSection() {
 
     const executorsMap =
       localParsedProfiles.executors as unknown as ExecutorsMap;
+
+    const variant = getConfigVariant(
+      executorsMap[executorType]?.[configuration],
+      executorType
+    );
+    const agentConfig = { [variant]: formData } as CodingAgent;
+
     const updatedProfiles = {
       ...localParsedProfiles,
       executors: {
         ...localParsedProfiles.executors,
         [executorType]: {
           ...executorsMap[executorType],
-          [configuration]: {
-            [executorType]: formData,
-          },
+          [configuration]: agentConfig,
         },
       },
     };
@@ -278,15 +315,21 @@ export function AgentsSettingsSection() {
 
     setSaveError(null);
 
+    const variant = getConfigVariant(
+      localParsedProfiles.executors[selectedExecutorType]?.[
+        selectedConfiguration
+      ],
+      selectedExecutorType
+    );
+    const agentConfig = { [variant]: formData } as CodingAgent;
+
     const updatedProfiles = {
       ...localParsedProfiles,
       executors: {
         ...localParsedProfiles.executors,
         [selectedExecutorType]: {
           ...localParsedProfiles.executors[selectedExecutorType],
-          [selectedConfiguration]: {
-            [selectedExecutorType]: formData,
-          },
+          [selectedConfiguration]: agentConfig,
         },
       },
     };
@@ -315,10 +358,9 @@ export function AgentsSettingsSection() {
     ) {
       const executorsMap =
         localParsedProfiles.executors as unknown as ExecutorsMap;
-      const formData =
-        executorsMap[selectedExecutorType]?.[selectedConfiguration]?.[
-          selectedExecutorType
-        ];
+      const config =
+        executorsMap[selectedExecutorType]?.[selectedConfiguration];
+      const formData = config?.[getConfigVariant(config, selectedExecutorType)];
       if (formData) {
         await handleExecutorConfigSave(formData);
       }
@@ -352,9 +394,22 @@ export function AgentsSettingsSection() {
 
   const executorsMap =
     localParsedProfiles?.executors as unknown as ExecutorsMap;
+  const selectedConfig =
+    selectedExecutorType && selectedConfiguration
+      ? executorsMap?.[selectedExecutorType]?.[selectedConfiguration]
+      : undefined;
+  const selectedVariant = getConfigVariant(
+    selectedConfig,
+    selectedExecutorType ?? ''
+  );
 
   return (
     <>
+      <AvailableAgentsCard
+        machineClient={machineClient}
+        hasUnsavedChanges={isDirty}
+      />
+
       {/* Status messages */}
       {!!profilesError && (
         <div className="bg-error/10 border border-error/50 rounded-sm p-4 text-error mb-4">
@@ -376,141 +431,163 @@ export function AgentsSettingsSection() {
         </div>
       )}
 
-      {localParsedProfiles?.executors ? (
-        /* Two-column layout: agents and variants on top, config form below */
-        <div className="space-y-4">
-          {/* Two-column selector - Finder-like style, stacked on mobile */}
-          <TwoColumnPicker>
-            {/* Agents column */}
-            <TwoColumnPickerColumn
-              label={t('settings.agents.editor.agentLabel')}
-              isFirst
-            >
-              {Object.keys(localParsedProfiles.executors).map((executor) => {
-                const isDefault =
-                  config?.executor_profile?.executor === executor;
-                return (
-                  <TwoColumnPickerItem
-                    key={executor}
-                    selected={selectedExecutorType === executor}
-                    onClick={() => {
-                      setSelectedExecutorType(executor as BaseCodingAgent);
-                      const configs = getExecutorVariantKeys(
-                        localParsedProfiles.executors[
-                          executor as BaseCodingAgent
-                        ]
-                      );
-                      if (configs.length > 0) {
-                        setSelectedConfiguration(configs[0]);
-                      }
-                    }}
-                    leading={
-                      <AgentIcon
-                        agent={executor as BaseCodingAgent}
-                        className="size-icon-sm shrink-0"
-                      />
-                    }
-                    trailing={
-                      isDefault && (
-                        <TwoColumnPickerBadge variant="brand">
-                          {t('settings.agents.editor.isDefault')}
-                        </TwoColumnPickerBadge>
-                      )
-                    }
-                  >
-                    {toPrettyCase(executor)}
-                  </TwoColumnPickerItem>
-                );
-              })}
-            </TwoColumnPickerColumn>
-
-            {/* Variants column */}
-            <TwoColumnPickerColumn
-              label={t('settings.agents.editor.configLabel')}
-              headerAction={
-                selectedExecutorType && (
-                  <button
-                    className="p-half rounded-sm hover:bg-secondary text-low hover:text-normal"
-                    onClick={() => handleCreateConfig(selectedExecutorType)}
-                    disabled={profilesSaving}
-                    title={t('settings.agents.editor.createNew')}
-                  >
-                    <PlusIcon className="size-icon-2xs" weight="bold" />
-                  </button>
-                )
-              }
-            >
-              {selectedExecutorType &&
-              localParsedProfiles.executors[selectedExecutorType] ? (
-                getExecutorVariantKeys(
-                  localParsedProfiles.executors[selectedExecutorType]
-                ).map((configName) => {
+      <SettingsCard
+        title={t('settings.agents.title')}
+        description={t('settings.agents.description')}
+      >
+        {localParsedProfiles?.executors ? (
+          /* Two-column layout: agents and variants on top, config form below */
+          <div className="space-y-4">
+            {/* Two-column selector - Finder-like style, stacked on mobile */}
+            <TwoColumnPicker>
+              {/* Agents column */}
+              <TwoColumnPickerColumn
+                label={t('settings.agents.editor.agentLabel')}
+                isFirst
+              >
+                {Object.keys(localParsedProfiles.executors).map((executor) => {
                   const isDefault =
-                    config?.executor_profile?.executor ===
-                      selectedExecutorType &&
-                    config?.executor_profile?.variant === configName;
-                  const configCount = getExecutorVariantKeys(
-                    localParsedProfiles.executors[selectedExecutorType]
-                  ).length;
+                    config?.executor_profile?.executor === executor;
+                  // Only for ACP_SERVER executors, so a registry id that maps
+                  // onto a built-in key never replaces the built-in's icon
+                  const registryAgent =
+                    getConfigVariant(
+                      executorsMap?.[executor]?.DEFAULT,
+                      executor
+                    ) === 'ACP_SERVER'
+                      ? registryAgentsByExecutor.get(executor)
+                      : undefined;
                   return (
                     <TwoColumnPickerItem
-                      key={configName}
-                      selected={selectedConfiguration === configName}
-                      onClick={() => setSelectedConfiguration(configName)}
-                      trailing={
-                        <>
-                          {isDefault && (
-                            <TwoColumnPickerBadge variant="brand">
-                              {t('settings.agents.editor.isDefault')}
-                            </TwoColumnPickerBadge>
-                          )}
-                          <ConfigActionsDropdown
-                            executorType={selectedExecutorType}
-                            configName={configName}
-                            isDefault={isDefault}
-                            configCount={configCount}
-                            onMakeDefault={handleMakeDefault}
-                            onDelete={handleDeleteConfig}
+                      key={executor}
+                      selected={selectedExecutorType === executor}
+                      onClick={() => {
+                        setSelectedExecutorType(executor as BaseCodingAgent);
+                        const configs = getExecutorVariantKeys(
+                          localParsedProfiles.executors[
+                            executor as BaseCodingAgent
+                          ]
+                        );
+                        if (configs.length > 0) {
+                          setSelectedConfiguration(configs[0]);
+                        }
+                      }}
+                      leading={
+                        registryAgent ? (
+                          <RegistryAgentIcon
+                            agent={registryAgent}
+                            className="size-icon-sm text-sm"
                           />
-                        </>
+                        ) : (
+                          <AgentIcon
+                            agent={executor as BaseCodingAgent}
+                            className="size-icon-sm shrink-0"
+                          />
+                        )
+                      }
+                      trailing={
+                        isDefault && (
+                          <TwoColumnPickerBadge variant="brand">
+                            {t('settings.agents.editor.isDefault')}
+                          </TwoColumnPickerBadge>
+                        )
                       }
                     >
-                      {toPrettyCase(configName)}
+                      {registryAgent?.name ?? toPrettyCase(executor)}
                     </TwoColumnPickerItem>
                   );
-                })
-              ) : (
-                <TwoColumnPickerEmpty>
-                  {t('settings.agents.selectAgent')}
-                </TwoColumnPickerEmpty>
-              )}
-            </TwoColumnPickerColumn>
-          </TwoColumnPicker>
+                })}
+              </TwoColumnPickerColumn>
 
-          {/* Config form */}
-          {selectedExecutorType && selectedConfiguration && (
-            <div className="bg-secondary/50 border border-border rounded-sm p-4">
-              <ExecutorConfigForm
-                key={`${selectedExecutorType}-${selectedConfiguration}`}
-                executor={selectedExecutorType}
-                value={
-                  (executorsMap?.[selectedExecutorType]?.[
-                    selectedConfiguration
-                  ]?.[selectedExecutorType] as Record<string, unknown>) || {}
-                }
-                onChange={(formData) =>
-                  handleExecutorConfigChange(
-                    selectedExecutorType,
-                    selectedConfiguration,
-                    formData
+              {/* Variants column */}
+              <TwoColumnPickerColumn
+                label={t('settings.agents.editor.configLabel')}
+                headerAction={
+                  selectedExecutorType && (
+                    <button
+                      className="p-half rounded-sm hover:bg-secondary text-low hover:text-normal"
+                      onClick={() => handleCreateConfig(selectedExecutorType)}
+                      disabled={profilesSaving}
+                      title={t('settings.agents.editor.createNew')}
+                    >
+                      <PlusIcon className="size-icon-2xs" weight="bold" />
+                    </button>
                   )
                 }
-                disabled={profilesSaving}
-              />
-            </div>
-          )}
-        </div>
-      ) : null}
+              >
+                {selectedExecutorType &&
+                localParsedProfiles.executors[selectedExecutorType] ? (
+                  getExecutorVariantKeys(
+                    localParsedProfiles.executors[selectedExecutorType]
+                  ).map((configName) => {
+                    const isDefault =
+                      config?.executor_profile?.executor ===
+                        selectedExecutorType &&
+                      config?.executor_profile?.variant === configName;
+                    const configCount = getExecutorVariantKeys(
+                      localParsedProfiles.executors[selectedExecutorType]
+                    ).length;
+                    return (
+                      <TwoColumnPickerItem
+                        key={configName}
+                        selected={selectedConfiguration === configName}
+                        onClick={() => setSelectedConfiguration(configName)}
+                        trailing={
+                          <>
+                            {isDefault && (
+                              <TwoColumnPickerBadge variant="brand">
+                                {t('settings.agents.editor.isDefault')}
+                              </TwoColumnPickerBadge>
+                            )}
+                            <ConfigActionsDropdown
+                              executorType={selectedExecutorType}
+                              configName={configName}
+                              isDefault={isDefault}
+                              configCount={configCount}
+                              onMakeDefault={handleMakeDefault}
+                              onDelete={handleDeleteConfig}
+                            />
+                          </>
+                        }
+                      >
+                        {toPrettyCase(configName)}
+                      </TwoColumnPickerItem>
+                    );
+                  })
+                ) : (
+                  <TwoColumnPickerEmpty>
+                    {t('settings.agents.selectAgent')}
+                  </TwoColumnPickerEmpty>
+                )}
+              </TwoColumnPickerColumn>
+            </TwoColumnPicker>
+
+            {/* Config form */}
+            {selectedExecutorType && selectedConfiguration && (
+              <div className="bg-secondary/50 border border-border rounded-sm p-4">
+                <ExecutorConfigForm
+                  key={`${selectedExecutorType}-${selectedConfiguration}`}
+                  variant={selectedVariant}
+                  value={
+                    (selectedConfig?.[selectedVariant] as Record<
+                      string,
+                      unknown
+                    >) || {}
+                  }
+                  onChange={(formData) =>
+                    handleExecutorConfigChange(
+                      selectedExecutorType,
+                      selectedConfiguration,
+                      formData
+                    )
+                  }
+                  disabled={profilesSaving}
+                />
+              </div>
+            )}
+          </div>
+        ) : null}
+      </SettingsCard>
 
       <SettingsSaveBar
         show={isDirty}

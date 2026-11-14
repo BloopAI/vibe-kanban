@@ -84,10 +84,7 @@ type ProjectDestinationKind =
   | 'project-workspace-create';
 
 type WorkspaceDestinationKind =
-  | 'workspaces'
-  | 'workspaces-create'
-  | 'workspace'
-  | 'workspace-vscode';
+  'workspaces' | 'workspaces-create' | 'workspace' | 'workspace-vscode';
 
 export type ProjectDestination = Extract<
   AppDestination,
@@ -100,10 +97,7 @@ export type WorkspaceDestination = Extract<
 >;
 
 export type KanbanSidebarMode =
-  | 'closed'
-  | 'issue'
-  | 'issue-workspace'
-  | 'workspace-create';
+  'closed' | 'issue' | 'issue-workspace' | 'workspace-create';
 
 export interface KanbanRouteState {
   hostId: string | null;

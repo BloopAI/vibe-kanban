@@ -184,11 +184,7 @@ type ListRemoteProjectsResponse = {
 };
 
 export type OrganizationBillingStatus =
-  | 'free'
-  | 'active'
-  | 'past_due'
-  | 'cancelled'
-  | 'requires_subscription';
+  'free' | 'active' | 'past_due' | 'cancelled' | 'requires_subscription';
 
 export interface OrganizationBillingStatusResponse {
   status: OrganizationBillingStatus;
@@ -1532,13 +1528,20 @@ export const scratchApi = {
 export const agentsApi = {
   getDiscoveredOptionsStreamUrl: (
     agent: BaseCodingAgent,
-    opts?: { workspaceId?: string; sessionId?: string; repoId?: string }
+    opts?: {
+      workspaceId?: string;
+      sessionId?: string;
+      repoId?: string;
+      /** Changes the URL so the stream reconnects and discovery runs again */
+      attempt?: number;
+    }
   ): string => {
     const params = new URLSearchParams();
     params.set('executor', agent);
     if (opts?.workspaceId) params.set('workspace_id', opts.workspaceId);
     if (opts?.sessionId) params.set('session_id', opts.sessionId);
     if (opts?.repoId) params.set('repo_id', opts.repoId);
+    if (opts?.attempt) params.set('attempt', String(opts.attempt));
 
     return `/api/agents/discovered-options/ws?${params.toString()}`;
   },

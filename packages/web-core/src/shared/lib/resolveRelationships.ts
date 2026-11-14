@@ -1,11 +1,7 @@
 import type { IssueRelationship, Issue } from 'shared/remote-types';
 
 export type RelationshipDisplayType =
-  | 'blocks'
-  | 'blocked_by'
-  | 'related'
-  | 'duplicate_of'
-  | 'duplicated_by';
+  'blocks' | 'blocked_by' | 'related' | 'duplicate_of' | 'duplicated_by';
 
 export interface ResolvedRelationship {
   relationshipId: string;

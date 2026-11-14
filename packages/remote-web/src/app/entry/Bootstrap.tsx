@@ -20,11 +20,8 @@ import {
   openLocalApiWebSocketViaWebRtc,
 } from "@remote/shared/lib/webrtc";
 
-if (import.meta.env.VITE_PUBLIC_POSTHOG_KEY) {
-  posthog.init(import.meta.env.VITE_PUBLIC_POSTHOG_KEY, {
-    api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
-  });
-}
+// Usage analytics (PostHog) are turned off: this version of Vibe Kanban never
+// initializes the client, so nothing is sent.
 
 setRemoteApiBase(import.meta.env.VITE_API_BASE_URL || window.location.origin);
 setRelayApiBase(

@@ -47,6 +47,13 @@
   },
   "conversation": {
     "deniedByUser": "{{toolName}} 사용자에 의해 거부됨",
+    "signInFailed": "로그인을 시작할 수 없습니다: {{error}}",
+    "deviceCode": {
+      "title": "로그인하려면 이 코드를 입력하세요",
+      "copyAndOpen": "코드 복사 후 {{host}} 열기",
+      "copied": "코드를 복사했습니다. 열린 페이지에 붙여넣으세요.",
+      "copyFailed": "코드를 복사할 수 없습니다. 열린 페이지에 직접 입력하세요."
+    },
     "output": "출력",
     "plan": "계획",
     "tool": "도구",
@@ -498,6 +505,7 @@
     }
   },
   "modelSelector": {
+    "loadingModels": "모델 불러오는 중…",
     "preset": "프리셋",
     "custom": "사용자 정의",
     "permissions": "권한",

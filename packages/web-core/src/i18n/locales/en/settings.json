@@ -225,6 +225,7 @@
       },
       "privacy": {
         "title": "Privacy",
+        "noAnalytics": "This version of Vibe Kanban doesn't collect usage analytics or crash reports.",
         "description": "Help improve Vibe-Kanban by sharing anonymous usage data.",
         "telemetry": {
           "label": "Enable Telemetry",
@@ -337,6 +338,23 @@
         "jsonPlaceholder": "Loading profiles...",
         "jsonLoading": "Loading...",
         "pathLabel": "Configuration file location:"
+      },
+      "available": {
+        "title": "Available agents",
+        "description": "Agents from the ACP registry that you can install and use.",
+        "show": "Show ({{count}})",
+        "hide": "Hide",
+        "expand": "Show",
+        "loading": "Loading available agents...",
+        "loadFailed": "Failed to load available agents.",
+        "empty": "No agents available.",
+        "install": "Install",
+        "installed": "Installed",
+        "uninstall": "Uninstall",
+        "installFailed": "Couldn't install {{name}}: {{message}}",
+        "uninstallFailed": "Couldn't uninstall {{name}}: {{message}}",
+        "unsavedChangesHint": "Save or discard your configuration changes before installing or uninstalling agents.",
+        "defaultAgentHint": "This is the default agent. Choose another default before uninstalling it."
       },
       "errors": {
         "deleteFailed": "Failed to delete configuration. Please try again.",

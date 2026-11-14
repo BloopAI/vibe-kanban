@@ -1,8 +1,10 @@
 import type {
+  ExecutorConfig,
   ModelInfo,
   ModelSelectorConfig,
   ReasoningOption,
 } from 'shared/types';
+import { PermissionPolicy } from 'shared/types';
 
 function toPrettyCase(value: string): string {
   return value
@@ -66,11 +68,16 @@ export function parseModelId(
   };
 }
 
+/**
+ * Adds a preset model missing from the list, so it can still be shown.
+ * Skipped once the list is complete (live): a missing model is unavailable.
+ */
 export function appendPresetModel(
   config: ModelSelectorConfig | null,
-  presetModel: string | null | undefined
+  presetModel: string | null | undefined,
+  modelsComplete = false
 ): ModelSelectorConfig | null {
-  if (!config || !presetModel) return config;
+  if (!config || !presetModel || modelsComplete) return config;
   const hasProviders = config.providers.length > 0;
   const { providerId, modelId } = parseModelId(presetModel, hasProviders);
   if (!modelId) return config;
@@ -145,4 +152,73 @@ export function resolveDefaultReasoningId(
   return (
     options.find((option) => option.is_default)?.id ?? options[0]?.id ?? null
   );
+}
+
+/**
+ * Once the list is complete, a model that isn't in it is unavailable, so the
+ * agent's default is shown instead (null means "Default").
+ */
+export function dropUnavailableModel(
+  models: ModelInfo[],
+  providerId: string | null,
+  modelId: string | null,
+  modelsComplete: boolean
+): string | null {
+  if (!modelId || !modelsComplete) return modelId;
+  return getSelectedModel(models, providerId, modelId) ? modelId : null;
+}
+
+/**
+ * The permission to show. Once the list is complete, one that isn't offered
+ * shows as Ask (or the first option without Ask), never as Auto, matching the
+ * server, which runs an unavailable Plan as Ask.
+ */
+export function resolvePermissionPolicy(
+  permissions: PermissionPolicy[],
+  selected: PermissionPolicy | null | undefined,
+  modelsComplete: boolean
+): PermissionPolicy | null {
+  if (permissions.length === 0) return null;
+  if (!selected) return permissions[0];
+  if (!modelsComplete || permissions.includes(selected)) return selected;
+  if (permissions.includes(PermissionPolicy.SUPERVISED)) {
+    return PermissionPolicy.SUPERVISED;
+  }
+  return permissions.find((p) => p !== PermissionPolicy.AUTO) ?? null;
+}
+
+/**
+ * Saved selections the live list no longer offers, with what to reset them to.
+ * Profile values are kept, so the run still warns and points to Settings.
+ */
+export function staleSelections(
+  config: ModelSelectorConfig,
+  selected: ExecutorConfig,
+  preset: ExecutorConfig | null | undefined,
+  modelsComplete: boolean
+): Partial<ExecutorConfig> {
+  if (!modelsComplete) return {};
+  const reset: Partial<ExecutorConfig> = {};
+
+  if (selected.model_id && selected.model_id !== preset?.model_id) {
+    const { providerId, modelId } = parseModelId(
+      selected.model_id,
+      config.providers.length > 0
+    );
+    if (!getSelectedModel(config.models, providerId, modelId)) {
+      reset.model_id = null;
+    }
+  }
+
+  const policy = selected.permission_policy;
+  if (
+    policy &&
+    policy !== preset?.permission_policy &&
+    !config.permissions.includes(policy)
+  ) {
+    const fallback = resolvePermissionPolicy(config.permissions, policy, true);
+    if (fallback) reset.permission_policy = fallback;
+  }
+
+  return reset;
 }

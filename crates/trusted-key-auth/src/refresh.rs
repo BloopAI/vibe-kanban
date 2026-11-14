@@ -47,7 +47,7 @@ fn current_unix_timestamp() -> Result<i64, TrustedKeyAuthError> {
 
 #[cfg(test)]
 mod tests {
-    use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+    use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
     use ed25519_dalek::{Signer, SigningKey};
 
     use super::*;

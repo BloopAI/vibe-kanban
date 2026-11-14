@@ -24,12 +24,7 @@ import {
 import { SplitButton, type SplitButtonOption } from './SplitButton';
 
 export type RepoAction =
-  | 'pull-request'
-  | 'link-pr'
-  | 'merge'
-  | 'change-target'
-  | 'rebase'
-  | 'push';
+  'pull-request' | 'link-pr' | 'merge' | 'change-target' | 'rebase' | 'push';
 
 const repoActionOptions: SplitButtonOption<RepoAction>[] = [
   {

@@ -38,7 +38,7 @@ import {
   SettingsTextarea,
   SettingsCheckbox,
   SettingsSaveBar,
-} from './SettingsComponents';
+} from './shared/SettingsComponents';
 import { useSettingsMachineClient } from './SettingsHostContext';
 
 interface RepoScriptsFormState {

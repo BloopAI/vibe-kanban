@@ -36,7 +36,11 @@ use crate::{
 };
 
 mod mcp;
-const CURSOR_AUTH_REQUIRED_MSG: &str = "Authentication required. Please run 'cursor-agent login' first, or set CURSOR_API_KEY environment variable.";
+/// Matched loosely: the CLI's wording changes between releases (the binary was renamed from
+/// `cursor-agent` to `agent`, and the message with it).
+fn is_auth_required(stderr: &str) -> bool {
+    stderr.contains("Authentication required") && stderr.contains("login")
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct CursorAgent {
@@ -293,7 +297,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
 
             while let Some(Ok(chunk)) = stderr.next().await {
                 let content = strip_ansi_escapes::strip_str(&chunk);
-                if content.contains(CURSOR_AUTH_REQUIRED_MSG) {
+                if is_auth_required(&content) {
                     let error_message = NormalizedEntry {
                         timestamp: None,
                         entry_type: NormalizedEntryType::ErrorMessage {
@@ -632,7 +636,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
 
     fn get_preset_options(&self) -> ExecutorConfig {
         ExecutorConfig {
-            executor: BaseCodingAgent::CursorAgent,
+            executor: BaseCodingAgent::cursor_agent(),
             variant: None,
             model_id: self.model.clone(),
             agent_id: None,
@@ -1399,6 +1403,18 @@ Tests
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn auth_required_matches_old_and_new_cli_messages() {
+        use super::is_auth_required;
+        assert!(is_auth_required(
+            "Authentication required. Please run 'cursor-agent login' first, or set CURSOR_API_KEY environment variable."
+        ));
+        assert!(is_auth_required(
+            "Error: Authentication required. Please run 'agent login' first, or set CURSOR_API_KEY environment variable.\n"
+        ));
+        assert!(!is_auth_required("Error: rate limit exceeded"));
+    }
+
     use std::sync::Arc;
 
     use workspace_utils::msg_store::MsgStore;

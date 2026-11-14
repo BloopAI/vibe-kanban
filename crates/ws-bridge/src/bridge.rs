@@ -20,10 +20,17 @@ pub enum WsBridgeError {
 
 #[derive(Debug, thiserror::Error)]
 pub enum UpstreamWsConnectError {
+    /// Boxed: the tungstenite error is large and would bloat every `Result`
     #[error(transparent)]
-    Tungstenite(#[from] tokio_tungstenite::tungstenite::Error),
+    Tungstenite(Box<tokio_tungstenite::tungstenite::Error>),
     #[error(transparent)]
     InvalidProtocolHeader(#[from] http::header::InvalidHeaderValue),
+}
+
+impl From<tokio_tungstenite::tungstenite::Error> for UpstreamWsConnectError {
+    fn from(err: tokio_tungstenite::tungstenite::Error) -> Self {
+        Self::Tungstenite(Box::new(err))
+    }
 }
 
 type UpstreamWebSocket =

@@ -28,9 +28,9 @@ import {
   SettingsField,
   SettingsInput,
   SettingsSaveBar,
-} from './SettingsComponents';
+} from './shared/SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
-import { RemoteCloudHostsSettingsCardContent } from './RemoteCloudHostsSettingsCard';
+import { RemoteCloudHostsSettingsCardContent } from './relay/RemoteCloudHostsSettingsCard';
 
 const RELAY_PAIRED_CLIENTS_QUERY_KEY = ['relay', 'paired-clients'] as const;
 const RELAY_REMOTE_CONTROL_DOCS_URL =

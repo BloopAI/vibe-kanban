@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT DISTINCT cat.agent_session_id as \"agent_session_id!\"\n               FROM coding_agent_turns cat\n               JOIN execution_processes ep ON ep.id = cat.execution_process_id\n               JOIN sessions s ON s.id = ep.session_id\n               WHERE s.executor = $1\n                 AND cat.agent_session_id IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "name": "agent_session_id!",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "f30f59c925545a3e2ae4682dd158cfdc9717e69e276a7e4810d50032bf444dd2"
+}

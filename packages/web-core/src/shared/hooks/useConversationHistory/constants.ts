@@ -1,3 +1,4 @@
+import type { ExecutorProfileId } from 'shared/types';
 import type { PatchTypeWithKey } from './types';
 
 export const MIN_INITIAL_ENTRIES = 10;
@@ -22,12 +23,14 @@ export const nextActionPatch: (
   failed: boolean,
   execution_processes: number,
   needs_setup: boolean,
-  setup_help_text?: string
+  setup_help_text?: string,
+  executor_profile_id?: ExecutorProfileId | null
 ) => PatchTypeWithKey = (
   failed,
   execution_processes,
   needs_setup,
-  setup_help_text
+  setup_help_text,
+  executor_profile_id
 ) => ({
   type: 'NORMALIZED_ENTRY',
   content: {
@@ -37,6 +40,7 @@ export const nextActionPatch: (
       execution_processes: execution_processes,
       needs_setup: needs_setup,
       setup_help_text: setup_help_text ?? null,
+      executor_profile_id: executor_profile_id ?? undefined,
     },
     content: '',
     timestamp: null,

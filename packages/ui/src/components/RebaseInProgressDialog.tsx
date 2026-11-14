@@ -19,9 +19,7 @@ export interface RebaseInProgressDialogProps {
 }
 
 export type RebaseInProgressDialogResult =
-  | { action: 'continued' }
-  | { action: 'aborted' }
-  | { action: 'cancelled' };
+  { action: 'continued' } | { action: 'aborted' } | { action: 'cancelled' };
 
 const RebaseInProgressDialogImpl =
   NiceModal.create<RebaseInProgressDialogProps>(

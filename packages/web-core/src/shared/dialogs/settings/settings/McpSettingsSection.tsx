@@ -19,7 +19,7 @@ import {
   SettingsField,
   SettingsSaveBar,
   SettingsTextarea,
-} from './SettingsComponents';
+} from './shared/SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 import { useSettingsMachineClient } from './SettingsHostContext';
 

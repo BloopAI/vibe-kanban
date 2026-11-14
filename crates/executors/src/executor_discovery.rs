@@ -16,6 +16,11 @@ pub struct ExecutorDiscoveredOptions {
     pub loading_agents: bool,
     pub loading_slash_commands: bool,
     pub error: Option<String>,
+    /// True only for a model list read from the agent itself in the last few minutes. Then a
+    /// saved model or permission that isn't offered is stale and can be dropped. Never set
+    /// for lists from the disk cache or a built-in fallback.
+    #[serde(default)]
+    pub models_complete: bool,
 }
 
 impl ExecutorDiscoveredOptions {

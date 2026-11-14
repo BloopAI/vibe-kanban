@@ -37,8 +37,7 @@ export type FencedSerialization<T> = {
 };
 
 export type SerializationConfig<T> =
-  | InlineSerialization<T>
-  | FencedSerialization<T>;
+  InlineSerialization<T> | FencedSerialization<T>;
 
 /** Interface for the generated node instance */
 export interface GeneratedDecoratorNode<T> extends DecoratorNode<JSX.Element> {

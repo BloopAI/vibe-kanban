@@ -35,25 +35,9 @@ pub struct AcpAgentHarness {
     mode: Option<String>,
 }
 
-impl Default for AcpAgentHarness {
-    fn default() -> Self {
-        // Keep existing behavior for Gemini
-        Self::new()
-    }
-}
-
 impl AcpAgentHarness {
-    /// Create a harness with the default Gemini namespace
-    pub fn new() -> Self {
-        Self {
-            session_namespace: "gemini_sessions".to_string(),
-            model: None,
-            mode: None,
-        }
-    }
-
-    /// Create a harness with a custom session namespace (e.g. for Qwen)
-    pub fn with_session_namespace(namespace: impl Into<String>) -> Self {
+    /// Create a harness with a session namespace (e.g. for Qwen)
+    pub fn new(namespace: impl Into<String>) -> Self {
         Self {
             session_namespace: namespace.into(),
             model: None,

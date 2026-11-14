@@ -1,4 +1,9 @@
-import { NormalizedEntry, PatchType, TokenUsageInfo } from 'shared/types';
+import {
+  ExecutorProfileId,
+  NormalizedEntry,
+  PatchType,
+  TokenUsageInfo,
+} from 'shared/types';
 
 import {
   makeLoadingPatch,
@@ -159,6 +164,7 @@ export function deriveConversationEntries({
   let lastProcessFailedOrKilled = false;
   let needsSetup = false;
   let setupHelpText: string | undefined;
+  let setupExecutorProfile: ExecutorProfileId | null = null;
   let latestTokenUsageInfo: TokenUsageInfo | null = null;
   let hasSetupScriptRun = false;
   let hasCleanupScriptRun = false;
@@ -187,6 +193,7 @@ export function deriveConversationEntries({
         if (turn.needsSetup) {
           needsSetup = true;
           setupHelpText = turn.setupHelpText;
+          setupExecutorProfile = turn.setupExecutorProfile;
         }
       }
 
@@ -221,7 +228,8 @@ export function deriveConversationEntries({
         lastProcessFailedOrKilled,
         conversationTurns.turns.length,
         needsSetup,
-        setupHelpText
+        setupHelpText,
+        setupExecutorProfile
       )
     );
   }

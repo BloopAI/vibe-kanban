@@ -1,6 +1,7 @@
 import {
   type CommandExitStatus,
   type ExecutorAction,
+  type ExecutorProfileId,
   type TokenUsageInfo,
   type ToolStatus,
 } from 'shared/types';
@@ -10,18 +11,12 @@ import { deriveConversationSemanticTimeline } from './deriveConversationSemantic
 import type { ConversationTimelineSource } from '@/shared/hooks/useConversationHistory/types';
 
 type ScriptTurnKind =
-  | 'setup_script'
-  | 'cleanup_script'
-  | 'archive_script'
-  | 'tool_install_script';
+  'setup_script' | 'cleanup_script' | 'archive_script' | 'tool_install_script';
 
 export interface ConversationAgentTurn {
   readonly key: string;
   readonly kind:
-    | 'agent_idle'
-    | 'agent_running'
-    | 'agent_pending_approval'
-    | 'agent_failed';
+    'agent_idle' | 'agent_running' | 'agent_pending_approval' | 'agent_failed';
   readonly process: ConversationSemanticProcessItem;
   readonly prompt: string | null;
   readonly shouldEmitUserMessage: boolean;
@@ -31,6 +26,8 @@ export interface ConversationAgentTurn {
   readonly failedOrKilled: boolean;
   readonly needsSetup: boolean;
   readonly setupHelpText?: string;
+  /** Profile to sign in with, set only when `needsSetup` is. */
+  readonly setupExecutorProfile: ExecutorProfileId | null;
 }
 
 export interface ConversationScriptTurnProcess {
@@ -86,6 +83,26 @@ function getPromptFromActionChain(
   return null;
 }
 
+export function getExecutorProfileFromActionChain(
+  action: ExecutorAction | null
+): ExecutorProfileId | null {
+  let current = action;
+  while (current) {
+    const typ = current.typ;
+    if (
+      typ.type === 'CodingAgentInitialRequest' ||
+      typ.type === 'CodingAgentFollowUpRequest'
+    ) {
+      return {
+        executor: typ.executor_config.executor,
+        variant: typ.executor_config.variant ?? null,
+      };
+    }
+    current = current.next_action;
+  }
+  return null;
+}
+
 function getLatestTokenUsageInfo(
   process: ConversationSemanticProcessItem
 ): TokenUsageInfo | null {
@@ -125,6 +142,11 @@ function deriveAgentTurn(
     ? getSetupRequiredHelp(process)
     : undefined;
   const needsSetup = Boolean(setupHelpText);
+  const setupExecutorProfile = needsSetup
+    ? getExecutorProfileFromActionChain(
+        process.executionProcess.executor_action
+      )
+    : null;
   const shouldEmitUserMessage = !(
     executorActionType.type === 'CodingAgentInitialRequest' &&
     hasSetupScriptWithPrompt
@@ -143,6 +165,7 @@ function deriveAgentTurn(
       failedOrKilled: process.failedOrKilled && isLastTurn,
       needsSetup: isLastTurn ? needsSetup : false,
       setupHelpText: isLastTurn ? setupHelpText : undefined,
+      setupExecutorProfile: isLastTurn ? setupExecutorProfile : null,
     };
   }
 
@@ -158,6 +181,7 @@ function deriveAgentTurn(
       shouldEmitLoading: true,
       failedOrKilled: false,
       needsSetup: false,
+      setupExecutorProfile: null,
     };
   }
 
@@ -174,6 +198,7 @@ function deriveAgentTurn(
       failedOrKilled: true,
       needsSetup,
       setupHelpText,
+      setupExecutorProfile,
     };
   }
 
@@ -188,6 +213,7 @@ function deriveAgentTurn(
     shouldEmitLoading: false,
     failedOrKilled: false,
     needsSetup: false,
+    setupExecutorProfile: null,
   };
 }
 

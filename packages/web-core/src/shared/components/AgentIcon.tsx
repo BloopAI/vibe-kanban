@@ -1,5 +1,5 @@
 import { BaseCodingAgent } from 'shared/types';
-import { useTheme, getResolvedTheme } from '@/shared/hooks/useTheme';
+import { getResolvedTheme, useTheme } from '@/shared/hooks/useTheme';
 
 type AgentIconProps = {
   agent: BaseCodingAgent | null | undefined;
@@ -11,24 +11,26 @@ export function getAgentName(
 ): string {
   if (!agent) return 'Agent';
   switch (agent) {
-    case BaseCodingAgent.CLAUDE_CODE:
+    case 'CLAUDE_CODE':
       return 'Claude Code';
-    case BaseCodingAgent.AMP:
+    case 'AMP':
       return 'AMP';
-    case BaseCodingAgent.GEMINI:
+    case 'GEMINI':
       return 'Gemini';
-    case BaseCodingAgent.CODEX:
+    case 'CODEX':
       return 'Codex';
-    case BaseCodingAgent.OPENCODE:
+    case 'OPENCODE':
       return 'OpenCode';
-    case BaseCodingAgent.CURSOR_AGENT:
+    case 'CURSOR_AGENT':
       return 'Cursor';
-    case BaseCodingAgent.QWEN_CODE:
+    case 'QWEN_CODE':
       return 'Qwen';
-    case BaseCodingAgent.COPILOT:
+    case 'COPILOT':
       return 'Copilot';
-    case BaseCodingAgent.DROID:
+    case 'DROID':
       return 'Droid';
+    default:
+      return agent;
   }
 }
 
@@ -46,31 +48,31 @@ export function AgentIcon({ agent, className = 'h-4 w-4' }: AgentIconProps) {
   let iconPath = '';
 
   switch (agent) {
-    case BaseCodingAgent.CLAUDE_CODE:
+    case 'CLAUDE_CODE':
       iconPath = `/agents/claude${suffix}.svg`;
       break;
-    case BaseCodingAgent.AMP:
+    case 'AMP':
       iconPath = `/agents/amp${suffix}.svg`;
       break;
-    case BaseCodingAgent.GEMINI:
+    case 'GEMINI':
       iconPath = `/agents/gemini${suffix}.svg`;
       break;
-    case BaseCodingAgent.CODEX:
+    case 'CODEX':
       iconPath = `/agents/codex${suffix}.svg`;
       break;
-    case BaseCodingAgent.OPENCODE:
+    case 'OPENCODE':
       iconPath = `/agents/opencode${suffix}.svg`;
       break;
-    case BaseCodingAgent.CURSOR_AGENT:
+    case 'CURSOR_AGENT':
       iconPath = `/agents/cursor${suffix}.svg`;
       break;
-    case BaseCodingAgent.QWEN_CODE:
+    case 'QWEN_CODE':
       iconPath = `/agents/qwen${suffix}.svg`;
       break;
-    case BaseCodingAgent.COPILOT:
+    case 'COPILOT':
       iconPath = `/agents/copilot${suffix}.svg`;
       break;
-    case BaseCodingAgent.DROID:
+    case 'DROID':
       iconPath = `/agents/droid${suffix}.svg`;
       break;
     default:
