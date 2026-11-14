@@ -6,7 +6,9 @@ FROM ubuntu:24.04
 
 ARG RUST_TOOLCHAIN
 ARG ZIG_VERSION=0.15.2
-ARG CARGO_ZIGBUILD_VERSION=0.20.1
+# 0.23+ drops --fix-cortex-a53-843419, which newer rustc passes for aarch64
+# Linux and zig rejects.
+ARG CARGO_ZIGBUILD_VERSION=0.23.4
 ARG CARGO_XWIN_VERSION=0.20.2
 
 ENV DEBIAN_FRONTEND=noninteractive
