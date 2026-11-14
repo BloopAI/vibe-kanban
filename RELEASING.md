@@ -20,11 +20,18 @@ is read-only now but still serving. Leave it alone so they keep working.
 1. Tools: `brew install colima docker gh` and `gh auth login`.
 2. npm: `npm login` with an account that owns `vibe-kanban`. CI used OIDC
    trusted publishing; a local publish asks for your 2FA code instead.
-3. Docker VM for the Linux/Windows cross builds, with enough memory for rustc:
+3. Docker VM for the Linux/Windows cross builds. Give it at most half the
+   Mac's RAM, or macOS starts swapping and the whole machine freezes. On a
+   16 GB Mac:
 
    ```bash
-   colima start --cpu 8 --memory 16 --disk 100
+   colima start --cpu 4 --memory 6 --disk 100
    ```
+
+   `build` refuses a VM bigger than half the RAM, and runs about one rustc job
+   per 2 GB of VM memory. Quit Docker Desktop while building if it is
+   installed too: it runs a second VM. Stop colima afterwards with
+   `colima stop`.
 
 4. Build-time values come from the environment, then `.env.release`, then
    `.env`. Only the lines the script needs are read, so other secrets in `.env`

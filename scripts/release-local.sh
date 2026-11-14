@@ -171,7 +171,23 @@ build_macos() {
 build_cross() {
   step "Building ${*} in Docker"
   docker info >/dev/null 2>&1 \
-    || die "Docker is not running (try: colima start --cpu 8 --memory 16)"
+    || die "Docker is not running (try: colima start --cpu 4 --memory 6 --disk 100)"
+  # A Docker VM that takes most of the Mac's RAM pushes macOS into swap and
+  # freezes the whole machine, so refuse that, and keep rustc's parallel jobs
+  # to about one per 2 GB of VM memory so the build fails inside the VM
+  # (if at all) instead of starving the host.
+  local vm_mem vm_cpus host_mem jobs
+  vm_mem="$(docker info --format '{{.MemTotal}}')"
+  vm_cpus="$(docker info --format '{{.NCPU}}')"
+  host_mem="$(sysctl -n hw.memsize)"
+  if (( vm_mem > host_mem / 2 + 512 * 1024 * 1024 )); then
+    die "the Docker VM has $((vm_mem / 1073741824)) GB of this Mac's $((host_mem / 1073741824)) GB; give it at most half.
+  colima stop && colima start --cpu 4 --memory $((host_mem / 1073741824 / 2 - 2)) --disk 100"
+  fi
+  jobs=$((vm_mem / 2147483648))
+  (( jobs > vm_cpus )) && jobs=$vm_cpus
+  (( jobs < 1 )) && jobs=1
+  echo "  Docker VM: $vm_cpus CPUs, $((vm_mem / 1073741824)) GB; $jobs parallel jobs"
   local toolchain
   toolchain="$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml)"
   docker build -t "$IMAGE" --build-arg RUST_TOOLCHAIN="$toolchain" scripts/release
@@ -187,6 +203,7 @@ build_cross() {
     -v vibe-kanban-release-cargo-registry:/opt/cargo/registry \
     -v vibe-kanban-release-cargo-git:/opt/cargo/git \
     -v vibe-kanban-release-xwin:/xwin-cache \
+    -e CARGO_BUILD_JOBS="$jobs" \
     "${env_args[@]}" \
     "$IMAGE" bash /src/scripts/release/build-cross.sh "$@"
 }
