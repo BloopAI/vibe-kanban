@@ -20,6 +20,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/local-web/package.json packages/local-web/package.json
 COPY packages/ui/package.json packages/ui/package.json
 COPY packages/web-core/package.json packages/web-core/package.json
+COPY packages/remote-web/package.json packages/remote-web/package.json
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile
@@ -28,6 +29,7 @@ COPY packages/local-web/ packages/local-web/
 COPY packages/public/ packages/public/
 COPY packages/ui/ packages/ui/
 COPY packages/web-core/ packages/web-core/
+COPY packages/remote-web/ packages/remote-web/
 COPY shared/ shared/
 
 RUN pnpm -C packages/local-web build
