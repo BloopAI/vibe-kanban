@@ -11,6 +11,7 @@
 #                                                 against it, then npm @next
 #   scripts/release-local.sh promote              make it @latest
 #   scripts/release-local.sh rollback <version>   point @latest at <version>
+#   scripts/release-local.sh reset-cache          delete the Docker build caches
 #
 # Commands work on the v* tag at HEAD (created by ./bump-version.sh). Without
 # one, build and smoke do a dry run as v<version>-dryrun.
@@ -507,6 +508,17 @@ cmd_rollback() {
   npm dist-tag add "$NPM_PACKAGE@$version" latest
 }
 
+# The cargo registry, target dir and Windows SDK live in Docker volumes so
+# rebuilds are quick. If a crashed VM left them broken, start over.
+cmd_reset_cache() {
+  local volumes=(vibe-kanban-release-target vibe-kanban-release-cargo-registry
+    vibe-kanban-release-cargo-git vibe-kanban-release-xwin)
+  docker info >/dev/null 2>&1 || die "Docker is not running"
+  confirm "Delete Docker volumes ${volumes[*]}?" || exit 1
+  docker volume rm "${volumes[@]}" 2>/dev/null || true
+  step "Build caches deleted; the next build downloads and compiles everything again"
+}
+
 main() {
   case "${1:-}" in
     build) shift; cmd_build "$@" ;;
@@ -514,7 +526,8 @@ main() {
     publish) cmd_publish ;;
     promote) cmd_promote ;;
     rollback) shift; cmd_rollback "$@" ;;
-    *) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+    reset-cache) cmd_reset_cache ;;
+    *) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
   esac
 }
 

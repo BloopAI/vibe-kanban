@@ -141,6 +141,17 @@ handy for testing the pipeline. `publish` refuses to run until all six
 platforms are built. `ALLOW_DIRTY=1` builds from a dirty tree; don't publish
 those.
 
+## If the Docker build breaks
+
+Cargo's caches for the cross builds live in Docker volumes. A VM that crashes
+mid-build can leave broken files in them, for example `failed to unpack
+package ... invalid gzip header`. Empty downloads are dropped automatically
+at the start of each build; for anything else, start over:
+
+```bash
+scripts/release-local.sh reset-cache
+```
+
 ## Testing against a mirror
 
 `VIBE_KANBAN_DOWNLOAD_BASE_URL` makes the CLI download from another server with

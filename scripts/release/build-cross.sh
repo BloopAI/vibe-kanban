@@ -13,6 +13,22 @@ export CARGO_INCREMENTAL=0
 
 BINS=(-p server -p mcp -p review --bin server --bin vibe-kanban-mcp --bin review)
 
+# A VM that dies mid-download leaves empty .crate files, which cargo then fails
+# to unpack ("invalid gzip header"). Drop them, and their unpacked sources, so
+# cargo downloads them again.
+drop_empty_crates() {
+  local registry="${CARGO_HOME:-/opt/cargo}/registry" file name dir
+  [[ -d "$registry/cache" ]] || return 0
+  while IFS= read -r -d '' file; do
+    name="$(basename "$file" .crate)"
+    dir="$(basename "$(dirname "$file")")"
+    echo "dropping empty cached crate $name"
+    rm -f "$file"
+    rm -rf "$registry/src/$dir/$name"
+  done < <(find "$registry/cache" -name '*.crate' -size 0 -print0)
+}
+drop_empty_crates
+
 copy_out() {
   local platform="$1" target="$2" ext="$3"
   local src="$CARGO_TARGET_DIR/$target/release" dest="/out/$platform"
