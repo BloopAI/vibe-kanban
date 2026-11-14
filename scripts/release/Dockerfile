@@ -9,7 +9,9 @@ ARG ZIG_VERSION=0.15.2
 # 0.23+ drops --fix-cortex-a53-843419, which newer rustc passes for aarch64
 # Linux and zig rejects.
 ARG CARGO_ZIGBUILD_VERSION=0.23.4
-ARG CARGO_XWIN_VERSION=0.20.2
+# 0.20 cannot find the SDK headers in the current MSVC manifest
+# (Win11SDK_10.0.26100).
+ARG CARGO_XWIN_VERSION=0.23.1
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
