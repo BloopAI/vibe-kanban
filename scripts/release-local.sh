@@ -468,7 +468,21 @@ run_smoke() {
     tail -20 "$tmp/app.log" >&2
     die "app did not answer on /api/health within 120s"
   fi
+  # The frontend is embedded in the binary; check it and its images are served.
+  local url="http://127.0.0.1:$app_port"
+  curl -fs "$url/" | grep -q '<title>Vibe Kanban</title>' || die "app did not serve the frontend"
+  local asset
+  for asset in vibe-kanban-logo.svg agents/claude-light.svg ide/vscode-light.svg; do
+    curl -fs -o /dev/null "$url/$asset" || die "app did not serve /$asset"
+  done
   step "Smoke test passed for $platform"
+
+  # The app opens a browser tab on start. Keep it running so that tab (and a
+  # manual look around) works; the scratch HOME keeps real data untouched.
+  if [[ -t 0 ]]; then
+    echo "The app is running at $url/ with a scratch home folder."
+    read -r -p "Press Enter to stop it. " _ || echo
+  fi
 }
 
 SMOKE_TMP=""
