@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE sessions SET executor = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "2cb5a269045f23da9f4ee0ee679ccb7fffc39d4b37b1b58357b11a7abfdba125"
+}

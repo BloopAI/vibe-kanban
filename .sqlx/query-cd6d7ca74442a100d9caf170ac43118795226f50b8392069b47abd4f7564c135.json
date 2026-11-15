@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as \"pending!: i64\",\n                COALESCE(SUM(CASE WHEN status = 'migrated' THEN 1 ELSE 0 END), 0) as \"migrated!: i64\",\n                COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) as \"failed!: i64\",\n                COALESCE(SUM(CASE WHEN status = 'skipped' THEN 1 ELSE 0 END), 0) as \"skipped!: i64\",\n                COUNT(*) as \"total!: i64\"\n            FROM migration_state",
+  "describe": {
+    "columns": [
+      {
+        "name": "pending!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "migrated!: i64",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "failed!: i64",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "skipped!: i64",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "total!: i64",
+        "ordinal": 4,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "cd6d7ca74442a100d9caf170ac43118795226f50b8392069b47abd4f7564c135"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE migration_state\n            SET status = 'failed',\n                error_message = $3,\n                attempt_count = attempt_count + 1,\n                updated_at = datetime('now', 'subsec')\n            WHERE entity_type = $1 AND local_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "a915c22f5ed0bb86c3a242ca38cbc1bfca40ebfe9096058c27e94479b67c7c02"
+}

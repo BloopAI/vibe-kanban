@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE execution_process_repo_states\n               SET before_head_commit = $1, updated_at = $2\n             WHERE execution_process_id = $3\n               AND repo_id = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "48c556a5317e6ea77595a8fdc410d30df50c8405adf38b371fdf0a1bde8c0083"
+}

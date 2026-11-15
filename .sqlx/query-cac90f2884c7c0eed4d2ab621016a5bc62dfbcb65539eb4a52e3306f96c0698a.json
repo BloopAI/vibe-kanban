@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO sessions (id, workspace_id, name, executor, agent_working_dir)\n               VALUES ($1, $2, $3, $4, $5)\n               RETURNING id AS \"id!: Uuid\",\n                         workspace_id AS \"workspace_id!: Uuid\",\n                         name,\n                         executor,\n                         agent_working_dir,\n                         created_at AS \"created_at!: DateTime<Utc>\",\n                         updated_at AS \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "workspace_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "executor",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "agent_working_dir",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "cac90f2884c7c0eed4d2ab621016a5bc62dfbcb65539eb4a52e3306f96c0698a"
+}

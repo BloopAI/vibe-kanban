@@ -30,6 +30,7 @@ use services::services::{
     queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
     repo::RepoService,
+    webhook_dispatcher::WebhookDispatcher,
 };
 use tokio::sync::{Notify, RwLock};
 use tokio_util::sync::CancellationToken;
@@ -235,6 +236,9 @@ impl Deployment for LocalDeployment {
         .await;
 
         let events = EventService::new(db.clone(), events_msg_store, events_entry_count);
+
+        // Spawn outbound webhook dispatcher
+        WebhookDispatcher::new(db.pool.clone(), events.msg_store().clone()).spawn();
 
         let file_search_cache = Arc::new(FileSearchCache::new());
 

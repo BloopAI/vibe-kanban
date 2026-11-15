@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT remote_id as \"remote_id: Uuid\"\n            FROM migration_state\n            WHERE entity_type = $1 AND local_id = $2 AND status = 'migrated'",
+  "describe": {
+    "columns": [
+      {
+        "name": "remote_id: Uuid",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "c793ee8493c54ea295a62a51650d00894fdad2f2cadc5665ae1e16a605626cb2"
+}
