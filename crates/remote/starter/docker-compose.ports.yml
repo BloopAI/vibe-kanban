@@ -1,0 +1,11 @@
+# Keep host-facing ports local and outside common Windows reserved ranges.
+# Windows / Hyper-V / WSL2 can dynamically reserve low ports like 3000-3009 and
+# 5432-5433 at boot, which conflicts with the upstream defaults.
+services:
+  remote-db:
+    ports: !override
+      - "127.0.0.1:${REMOTE_DB_PORT:-15433}:5432"
+
+  remote-server:
+    ports: !override
+      - "127.0.0.1:${REMOTE_SERVER_PORT:-13000}:8081"
