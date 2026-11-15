@@ -1,0 +1,537 @@
+{
+  "dropzone": {
+    "dropImagesHere": "גרור תמונות לכאן",
+    "supportedFormats": "PNG, JPG, GIF, WebP, SVG נתמכים"
+  },
+  "gitPanel": {
+    "advanced": {
+      "placeholder": "לדוגמה: Acme Corp"
+    }
+  },
+  "loading": "טוען משימות...",
+  "actions": {
+    "addTask": "הוסף משימה"
+  },
+  "rebase": {
+    "common": {
+      "action": "Rebase",
+      "inProgress": "מבצע rebase..."
+    },
+    "dialog": {
+      "title": "ניסיון Rebase למשימה",
+      "description": "בחר ענף בסיס חדש לביצוע rebase של סביבת עבודה זו.",
+      "upstreamLabel": "ענף מקור",
+      "upstreamPlaceholder": "בחר ענף מקור",
+      "targetLabel": "ענף יעד",
+      "targetPlaceholder": "בחר ענף יעד",
+      "advanced": "מתקדם"
+    }
+  },
+  "branches": {
+    "changeTarget": {
+      "dialog": {
+        "title": "שנה ענף יעד",
+        "description": "בחר ענף יעד חדש עבור סביבת העבודה.",
+        "placeholder": "בחר ענף יעד",
+        "action": "שנה ענף",
+        "inProgress": "משנה..."
+      }
+    }
+  },
+  "repos": {
+    "selector": {
+      "placeholder": "בחר מאגר",
+      "empty": "אין מאגרים זמינים"
+    }
+  },
+  "preview": {
+    "noServer": {
+      "title": "אין שרת פיתוח פעיל",
+      "setupTitle": "יש להגדיר סקריפט שרת פיתוח לשימוש בתכונת התצוגה המקדימה",
+      "setupPrompt": "כדי להשתמש בתצוגה המקדימה החיה ובעריכה בלחיצה, אנא הוסף סקריפט שרת פיתוח לפרויקט זה.",
+      "editDevScript": "ערוך סקריפט שרת פיתוח",
+      "learnMore": "למד עוד על בדיקת אפליקציות"
+    },
+    "logs": {
+      "label": "לוגים",
+      "viewFull": "הצג לוגים מלאים"
+    },
+    "toolbar": {
+      "refresh": "רענן תצוגה מקדימה",
+      "copyUrl": "העתק URL",
+      "openInTab": "פתח בכרטיסייה חדשה",
+      "stopDevServer": "עצור שרת פיתוח",
+      "resetUrl": "אפס ל-URL שזוהה",
+      "clearUrlOverride": "נקה דריסת URL",
+      "desktopView": "תצוגת שולחן עבודה",
+      "mobileView": "תצוגת מובייל (390x844)",
+      "responsiveView": "תצוגה רספונסיבית (ניתן לשינוי גודל)",
+      "startDevServer": "הפעל שרת פיתוח",
+      "submitUrl": "שלח URL",
+      "toggleDevTools": "הפעל/כבה DevTools"
+    },
+    "loading": {
+      "startingServer": "מפעיל שרת פיתוח...",
+      "waitingForServer": "ממתין לשרת...",
+      "loadingPreview": "טוען תצוגה מקדימה...",
+      "manualUrlHint": "טרם זוהה URL. ניתן להזין URL ידנית בסרגל הכלים שלמעלה."
+    },
+    "browser": {
+      "title": "תצוגה מקדימה של שרת הפיתוח",
+      "devServerFallback": "שרת פיתוח"
+    }
+  },
+  "diff": {
+    "filesChanged_one": "קובץ אחד השתנה",
+    "filesChanged_other": "{{count}} קבצים השתנו"
+  },
+  "processes": {
+    "noLogsAvailable": "אין לוגים זמינים",
+    "selectAttempt": "בחר ניסיון כדי לצפות בתהליכי הרצה.",
+    "errorLoadingUpdates": "טעינת עדכונים חיים לתהליכים נכשלה.",
+    "reconnecting": "מתחבר מחדש...",
+    "loading": "טוען תהליכי הרצה...",
+    "noProcesses": "לא נמצאו תהליכי הרצה עבור ניסיון זה.",
+    "processId": "מזהה תהליך: {{id}}",
+    "deleted": "נמחק",
+    "deletedTooltip": "נמחק על ידי שחזור: הציר הזמני שוחזר לנקודת ביקורת והרצות מאוחרות יותר הוסרו",
+    "agent": "סוכן:",
+    "exit": "יציאה: {{code}}",
+    "started": "התחיל: {{date}}",
+    "completed": "הסתיים: {{date}}",
+    "detailsTitle": "פרטי תהליך",
+    "backToList": "חזרה לרשימה",
+    "loadingDetails": "טוען פרטי תהליך...",
+    "errorLoadingDetails": "טעינת פרטי התהליך נכשלה. אנא נסה שוב.",
+    "copyLogs": "העתק לוגים",
+    "logsCopied": "הועתק!"
+  },
+  "followUp": {
+    "queuedMessage": "ההודעה נוספה לתור - תתבצע כשההרצה הנוכחית תסתיים"
+  },
+  "todoPopup": {
+    "title": "משימות",
+    "progress": "{{completed}}/{{total}} הושלמו",
+    "noTasks": "אין משימות"
+  },
+  "conversation": {
+    "executors": "מבצעים",
+    "saveAsDefault": "שמור כברירת מחדל",
+    "you": "אתה",
+    "thinking": "חושב",
+    "todo": "לביצוע",
+    "todos": "פריטים לביצוע",
+    "completed": "הושלם",
+    "incomplete": "לא הושלם",
+    "pending": "ממתין",
+    "inProgress": "בתהליך",
+    "skipped": "דולג",
+    "error": "שגיאה",
+    "retry": "נסה שוב",
+    "showMore": "הצג עוד",
+    "showLess": "הצג פחות",
+    "actions": {
+      "cancel": "ביטול",
+      "submitFeedback": "שלח משוב",
+      "stop": "עצור",
+      "stopping": "עוצר",
+      "loading": "טוען",
+      "send": "שלח",
+      "sending": "שולח",
+      "queue": "הוסף לתור",
+      "cancelQueue": "בטל תור",
+      "requestChanges": "בקש שינויים",
+      "approve": "אשר",
+      "clearReviewComments": "נקה הערות סקירה",
+      "edit": "ערוך הודעה",
+      "scrollToPreviousMessage": "עבור להודעה הקודמת",
+      "reset": "אפס",
+      "resetTooltip": "אפס לנקודה זו"
+    },
+    "approval": {
+      "conflictWarning": "קבצים עם קונפליקטים דורשים פתרון ידני",
+      "conflicts_one": "קונפליקט אחד",
+      "conflicts_other": "{{count}} קונפליקטים"
+    },
+    "sessions": {
+      "newSession": "סשן חדש",
+      "latest": "אחרון",
+      "previous": "קודם",
+      "label": "סשנים",
+      "noPreviousSessions": "אין סשנים קודמים",
+      "rename": "שנה שם",
+      "renameTitle": "שנה שם לסשן",
+      "renameDescription": "הזן שם חדש עבור סשן זה.",
+      "renamePlaceholder": "הזן שם לסשן",
+      "renaming": "משנה שם..."
+    },
+    "reviewComments": {
+      "count_one": "הערת סקירה אחת תיכלל",
+      "count_other": "{{count}} הערות סקירה ייכללו"
+    },
+    "workspace": {
+      "create": "צור",
+      "creating": "יוצר..."
+    },
+    "fileEntry": {
+      "created": "נוצר",
+      "modified": "שונה",
+      "deleted": "נמחק",
+      "renamed": "שונה שם"
+    },
+    "script": {
+      "running": "מריץ...",
+      "exitCode": "קוד יציאה: {{code}}",
+      "completedSuccessfully": "הושלם בהצלחה",
+      "clickToViewLogs": "לחץ לצפייה בלוגים"
+    },
+    "scriptPlaceholder": {
+      "setupTitle": "סקריפט הגדרה",
+      "setupDescription": "לא הוגדר סקריפט הגדרה. סקריפטי הגדרה רצים לפני שסוכן הקידוד מתחיל.",
+      "cleanupTitle": "סקריפט ניקוי",
+      "cleanupDescription": "לא הוגדר סקריפט ניקוי. סקריפטי ניקוי רצים לאחר שסוכן הקידוד מסיים.",
+      "configure": "הגדר"
+    },
+    "updatedTodos": "עדכן פריטים לביצוע",
+    "viewInChangesPanel": "הצג בלוח השינויים",
+    "unableToRenderDiff": "לא ניתן להציג את ה-diff."
+  },
+  "attempt": {
+    "actions": {
+      "startDevServer": "הפעל שרת פיתוח"
+    }
+  },
+  "git": {
+    "labels": {
+      "taskBranch": "ענף משימה"
+    },
+    "branch": {
+      "current": "נוכחי"
+    },
+    "forcePushDialog": {
+      "title": "נדרש Force Push",
+      "description": "הענף המרוחק{{branchLabel}} סטה מהענף המקומי שלך. דחיפה רגילה נדחתה.",
+      "warning": "Force push יחליף את השינויים המרוחקים בשינויים המקומיים שלך. פעולה זו אינה ניתנת לביטול.",
+      "note": "המשך רק אם אתה בטוח שברצונך להחליף את היסטוריית הענף המרוחק.",
+      "error": "Force push נכשל"
+    },
+    "status": {
+      "commits_one": "commit",
+      "commits_other": "commits",
+      "conflicts": "קונפליקטים",
+      "upToDate": "מעודכן",
+      "ahead": "לפני",
+      "behind": "אחרי"
+    },
+    "states": {
+      "merged": "מוזג!",
+      "merging": "ממזג...",
+      "merge": "מזג",
+      "rebasing": "מבצע rebase...",
+      "rebase": "Rebase",
+      "pushed": "נדחף!",
+      "pushing": "דוחף...",
+      "push": "דחף",
+      "pushFailed": "נכשל",
+      "forcePush": "Force Push",
+      "forcePushing": "מבצע Force Push...",
+      "creating": "יוצר...",
+      "createPr": "צור PR"
+    },
+    "errors": {
+      "changeTargetBranch": "שינוי ענף היעד נכשל",
+      "pushChanges": "דחיפת השינויים נכשלה",
+      "mergeChanges": "מיזוג השינויים נכשל",
+      "rebaseBranch": "ה-rebase של הענף נכשל",
+      "branchStatusUnavailable": "לא ניתן לאחזר את סטטוס הענף. עדיין ניתן לשנות את ענף היעד."
+    },
+    "pr": {
+      "open": "פתח PR #{{number}}",
+      "number": "PR #{{number}}",
+      "merged": "מוזג PR #{{prNumber}}"
+    },
+    "actions": {
+      "title": "פעולות Git",
+      "changeTarget": "שנה יעד",
+      "prMerged": "PR #{{number}} כבר מוזג",
+      "loginRequired": {
+        "title": "היכנס כדי לנהל פעולות git",
+        "description": "היכנס ל-Vibe Kanban כדי לדחוף ענפים, למזג שינויים, או לפתוח pull requests עבור משימה זו.",
+        "action": "היכנס"
+      }
+    },
+    "mergeDialog": {
+      "title": "מזג שינויים",
+      "description": "פעולה זו תמזג את השינויים שלך לענף היעד. האם אתה בטוח שברצונך להמשיך?"
+    },
+    "createRepo": {
+      "dialog": {
+        "title": "צור מאגר חדש",
+        "description": "אתחל מאגר git חדש"
+      },
+      "form": {
+        "nameLabel": "שם",
+        "namePlaceholder": "my-project",
+        "locationLabel": "מיקום",
+        "locationPlaceholder": "ספרייה נוכחית"
+      },
+      "browseDialog": {
+        "title": "בחר ספרייה הורה",
+        "description": "בחר היכן ליצור את המאגר החדש"
+      },
+      "errors": {
+        "nameRequired": "שם המאגר נדרש",
+        "createFailed": "יצירת המאגר נכשלה"
+      },
+      "buttons": {
+        "createRepository": "צור מאגר"
+      },
+      "states": {
+        "creating": "יוצר..."
+      }
+    }
+  },
+  "repoBranchSelector": {
+    "label": "ענף בסיס"
+  },
+  "viewProcessesDialog": {
+    "title": "תהליכי הרצה"
+  },
+  "editBranchName": {
+    "dialog": {
+      "title": "ערוך שם ענף",
+      "description": "הזן שם חדש לענף. לא ניתן לשנות שם אם קיים PR פתוח.",
+      "branchNameLabel": "שם ענף",
+      "placeholder": "לדוגמה: feature/my-branch",
+      "renaming": "משנה שם...",
+      "action": "שנה שם לענף"
+    }
+  },
+  "startReviewDialog": {
+    "title": "התחל סקירה",
+    "description": "בקש מסוכן הקידוד לסקור את השינויים שלך ולספק משוב.",
+    "additionalInstructions": "הוראות נוספות (אופציונלי)",
+    "reviewComments": "הערות סקירה ({{count}})",
+    "includeGitContext": "כלול הקשר git",
+    "includeGitContextDescription": "מורה לסוכן כיצד לצפות בכל השינויים שבוצעו בענף זה",
+    "newSession": "סשן חדש",
+    "sessionName": "סקירה"
+  },
+  "actionsMenu": {
+    "startReview": "התחל סקירה",
+    "startingReview": "מתחיל סקירה..."
+  },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "פתור קונפליקטים",
+      "description": "זוהו קונפליקטים. בחר כיצד ברצונך שהסוכן יפתור אותם.",
+      "newSession": "התחל סשן חדש",
+      "resolve": "פתור קונפליקטים",
+      "resolving": "מתחיל...",
+      "filesWithConflicts_one": "קובץ אחד עם קונפליקטים",
+      "filesWithConflicts_other": "{{count}} קבצים עם קונפליקטים",
+      "andMore": "...ועוד {{count}}",
+      "sessionName": "פתור קונפליקטים"
+    }
+  },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "Rebase בתהליך",
+      "description": "Rebase על {{targetBranch}} מתבצע ללא קונפליקטים. בחר כיצד להמשיך.",
+      "hint": "ניתן להמשיך את ה-rebase להשלמתו, או לבטל כדי לחזור למצב הקודם.",
+      "continue": "המשך Rebase",
+      "continuing": "ממשיך...",
+      "abort": "בטל Rebase",
+      "aborting": "מבטל...",
+      "continueError": "המשך ה-rebase נכשל. ייתכן שיש קונפליקטים שלא נפתרו.",
+      "abortError": "ביטול ה-rebase נכשל. אנא נסה שוב."
+    }
+  },
+  "createPrDialog": {
+    "title": "צור Pull Request",
+    "description": "צור pull request עבור סביבת עבודה זו.",
+    "titleLabel": "כותרת",
+    "titlePlaceholder": "הזן כותרת PR",
+    "descriptionLabel": "תיאור (אופציונלי)",
+    "descriptionPlaceholder": "הזן תיאור PR",
+    "baseBranchLabel": "ענף בסיס",
+    "loadingBranches": "טוען ענפים...",
+    "selectBaseBranch": "בחר ענף בסיס",
+    "draftLabel": "צור כטיוטה",
+    "autoGenerateLabel": "יצור תיאור PR אוטומטי עם AI",
+    "creating": "יוצר...",
+    "createButton": "צור PR",
+    "errors": {
+      "failedToCreate": "יצירת ה-PR נכשלה",
+      "gitCliNotLoggedIn": "Git לא מאומת. הרץ \"gh auth login\" (או הגדר אישורי Git) ונסה שוב.",
+      "gitCliNotInstalled": "Git CLI אינו מותקן. התקן את Git ליצירת PR.",
+      "targetBranchNotFound": "ענף היעד '{{branch}}' אינו קיים ב-remote. אנא ודא שהענף קיים לפני יצירת pull request."
+    }
+  },
+  "prComments": {
+    "dialog": {
+      "title": "בחר הערות PR",
+      "noComments": "לא נמצאו הערות ב-PR זה",
+      "selectAll": "בחר הכול",
+      "deselectAll": "בטל בחירת הכול",
+      "add": "הוסף",
+      "selectedCount": "{{selected}} מתוך {{total}} נבחרו"
+    },
+    "card": {
+      "review": "סקירה",
+      "tooltip": "לחץ לצפייה, לחץ פעמיים לעריכה"
+    }
+  },
+  "taskFormDialog": {
+    "createTitle": "צור משימה חדשה",
+    "editTitle": "ערוך משימה",
+    "titlePlaceholder": "כותרת משימה...",
+    "descriptionPlaceholder": "הוסף פרטים נוספים (אופציונלי). הקלד @ לחיפוש קבצים.",
+    "statusLabel": "סטטוס",
+    "statusOptions": {
+      "todo": "לביצוע",
+      "inprogress": "בתהליך",
+      "inreview": "בסקירה",
+      "done": "הושלם",
+      "cancelled": "בוטל"
+    },
+    "startLabel": "התחל",
+    "attachFile": "צרף קובץ",
+    "dropImagesHere": "גרור תמונות לכאן",
+    "updating": "מעדכן...",
+    "updateTask": "עדכן משימה",
+    "starting": "מתחיל...",
+    "creating": "יוצר...",
+    "create": "צור",
+    "discardDialog": {
+      "title": "לבטל שינויים שלא נשמרו?",
+      "description": "יש לך שינויים שלא נשמרו. האם אתה בטוח שברצונך לבטל אותם?",
+      "continueEditing": "המשך עריכה",
+      "discardChanges": "בטל שינויים"
+    }
+  },
+  "restoreLogsDialog": {
+    "title": "אשר ניסיון חוזר",
+    "titleReset": "אשר איפוס",
+    "historyChange": {
+      "title": "שינוי היסטוריה",
+      "willDelete": "ימחק תהליך זה",
+      "willDeleteProcesses_one": "ימחק {{count}} תהליך",
+      "willDeleteProcesses_other": "ימחק {{count}} תהליכים",
+      "andLaterProcesses_one": "ו-{{count}} תהליך מאוחר יותר",
+      "andLaterProcesses_other": "ו-{{count}} תהליכים מאוחרים יותר",
+      "fromHistory": "מההיסטוריה.",
+      "codingAgentRuns_one": "הרצת סוכן קידוד אחת",
+      "codingAgentRuns_other": "{{count}} הרצות סוכן קידוד",
+      "scriptProcesses_one": "תהליך סקריפט אחד",
+      "scriptProcesses_other": "{{count}} תהליכי סקריפט",
+      "setupCleanupBreakdown": "({{setup}} הגדרה, {{cleanup}} ניקוי)",
+      "permanentWarning": "פעולה זו משנה את ההיסטוריה לצמיתות ואינה ניתנת לביטול."
+    },
+    "uncommittedChanges": {
+      "title": "זוהו שינויים שלא הועלו",
+      "description_one": "יש לך {{count}} שינוי שלא הועלה",
+      "description_other": "יש לך {{count}} שינויים שלא הועלו",
+      "andUntracked_one": " ו-{{count}} קובץ לא מעוקב",
+      "andUntracked_other": " ו-{{count}} קבצים לא מעוקבים",
+      "acknowledgeLabel": "אני מבין שהשינויים עשויים להיות מושפעים"
+    },
+    "resetWorktree": {
+      "title": "אפס עץ עבודה",
+      "enabled": "מופעל",
+      "disabled": "מושבת",
+      "disabledUncommitted": "מושבת (זוהו שינויים שלא הועלו)",
+      "restoreDescription": "עץ העבודה שלך ישוחזר ל-commit זה.",
+      "discardChanges_one": "בטל {{count}} שינוי שלא הועלה.",
+      "discardChanges_other": "בטל {{count}} שינויים שלא הועלו.",
+      "untrackedPresent_one": "קובץ לא מעוקב אחד קיים (אינו מושפע מהאיפוס).",
+      "untrackedPresent_other": "{{count}} קבצים לא מעוקבים קיימים (אינם מושפעים מהאיפוס).",
+      "forceReset": "איפוס כפוי (בטל שינויים שלא הועלו)",
+      "uncommittedWillDiscard": "שינויים שלא הועלו יבוטלו.",
+      "uncommittedPresentHint": "קיימים שינויים שלא הועלו. הפעל איפוס כפוי או בצע commit/stash כדי להמשיך."
+    },
+    "buttons": {
+      "retry": "נסה שוב",
+      "reset": "אפס"
+    }
+  },
+  "scriptFixer": {
+    "setupScriptTitle": "תקן סקריפט הגדרה",
+    "cleanupScriptTitle": "תקן סקריפט ניקוי",
+    "archiveScriptTitle": "תקן סקריפט ארכיון",
+    "devServerTitle": "תקן סקריפט שרת פיתוח",
+    "scriptLabel": "סקריפט (עריכה)",
+    "logsLabel": "לוגי הרצה אחרונים",
+    "saveButton": "שמור",
+    "saveAndTestButton": "שמור ובדוק",
+    "noLogs": "אין לוגי הרצה זמינים",
+    "selectRepo": "מאגר",
+    "fixScript": "תקן סקריפט",
+    "statusRunning": "מריץ...",
+    "statusSuccess": "הושלם בהצלחה",
+    "statusFailed": "נכשל עם קוד יציאה {{exitCode}}",
+    "statusKilled": "התהליך הופסק"
+  },
+  "shareDialog": {
+    "loginRequired": {
+      "title": "נדרשת כניסה",
+      "description": "היכנס כדי לגשת לתכונה זו.",
+      "action": "היכנס"
+    }
+  },
+  "createWorkspaceFromPr": {
+    "title": "צור סביבת עבודה מ-PR",
+    "description": "בחר pull request פתוח ליצירת סביבת עבודה ממנו. משימה תיווצר אוטומטית תוך שימוש בכותרת ה-PR.",
+    "repositoryLabel": "מאגר",
+    "remoteLabel": "Remote",
+    "pullRequestLabel": "Pull Request",
+    "loadingRepositories": "טוען מאגרים...",
+    "loadingRemotes": "טוען remotes...",
+    "noRepositoriesFound": "לא נמצאו מאגרים",
+    "loadingPullRequests": "טוען pull requests...",
+    "selectRepositoryFirst": "בחר מאגר תחילה",
+    "noPullRequestsFound": "לא נמצאו pull requests פתוחים",
+    "runSetupScript": "הרץ סקריפט הגדרה",
+    "creating": "יוצר...",
+    "createWorkspace": "צור סביבת עבודה",
+    "selectRepository": "בחר מאגר",
+    "selectRemote": "בחר remote",
+    "selectPullRequest": "בחר pull request",
+    "searchPrsPlaceholder": "חפש PRs לפי מספר או כותרת...",
+    "noMatchingPrs": "לא נמצאו pull requests תואמים",
+    "default": "ברירת מחדל",
+    "openPrInBrowser": "פתח PR בדפדפן",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLI אינו מותקן",
+      "unsupportedProvider": "ספק Git אינו נתמך",
+      "failedToLoadPrs": "טעינת pull requests נכשלה",
+      "prNotFound": "Pull request לא נמצא",
+      "failedToCreateWorkspace": "יצירת סביבת העבודה נכשלה"
+    }
+  },
+  "linkPrToIssue": {
+    "title": "קשר Pull Request",
+    "description": "קשר pull request קיים לפריט זה.",
+    "urlTab": "מ-URL",
+    "browseTab": "עיין",
+    "urlLabel": "כתובת Pull Request",
+    "urlPlaceholder": "https://github.com/owner/repo/pull/123",
+    "repositoryLabel": "מאגר",
+    "remoteLabel": "Remote",
+    "pullRequestLabel": "Pull Request",
+    "loadingPrInfo": "טוען מידע PR...",
+    "invalidUrl": "לא ניתן לטעון מידע PR מ-URL זה",
+    "baseBranch": "בסיס:",
+    "linkPr": "קשר PR",
+    "linking": "מקשר...",
+    "status": {
+      "open": "פתוח",
+      "merged": "מוזג",
+      "closed": "סגור",
+      "unknown": "לא ידוע"
+    },
+    "errors": {
+      "failed": "קישור ה-PR נכשל. אנא נסה שוב."
+    }
+  }
+}
