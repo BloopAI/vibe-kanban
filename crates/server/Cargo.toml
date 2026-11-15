@@ -67,6 +67,9 @@ sha2 = "0.10"
 ed25519-dalek = "2.2.0"
 tokio-tungstenite = { version = "0.26", features = ["rustls-tls-native-roots"] }
 
+[dev-dependencies]
+tower = "0.5"
+
 [build-dependencies]
 dotenv = "0.15"
 
