@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                CASE WHEN EXISTS (\n                    SELECT 1\n                    FROM sessions s\n                    JOIN execution_processes ep ON ep.session_id = s.id\n                    WHERE s.workspace_id = w.id\n                      AND ep.status = 'running'\n                      AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')\n                    LIMIT 1\n                ) THEN 1 ELSE 0 END AS \"is_running!: i64\",\n\n                CASE WHEN (\n                    SELECT ep.status\n                    FROM sessions s\n                    JOIN execution_processes ep ON ep.session_id = s.id\n                    WHERE s.workspace_id = w.id\n                      AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')\n                    ORDER BY ep.created_at DESC\n                    LIMIT 1\n                ) IN ('failed','killed') THEN 1 ELSE 0 END AS \"is_errored!: i64\"\n\n            FROM workspaces w\n            WHERE w.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "is_running!: i64",
+        "ordinal": 0,
+        "type_info": "Null"
+      },
+      {
+        "name": "is_errored!: i64",
+        "ordinal": 1,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "abfaa2287381a0e920414e1864fcdcaf90142ae33f6c5ead73da9d5612073643"
+}
