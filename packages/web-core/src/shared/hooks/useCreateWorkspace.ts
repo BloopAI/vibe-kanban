@@ -1,6 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { workspacesApi } from '@/shared/lib/api';
-import type { CreateAndStartWorkspaceRequest } from 'shared/types';
+import type {
+  CreateAndStartWorkspaceRequest,
+  CreateAndStartWorkspaceResponse,
+} from 'shared/types';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 
 interface CreateWorkspaceParams {
@@ -11,12 +14,21 @@ interface CreateWorkspaceParams {
   };
 }
 
+interface CreateWorkspaceResult {
+  workspace: CreateAndStartWorkspaceResponse['workspace'];
+  linkErrorMessage?: string;
+}
+
 export function useCreateWorkspace() {
   const queryClient = useQueryClient();
 
   const createWorkspace = useMutation({
-    mutationFn: async ({ data, linkToIssue }: CreateWorkspaceParams) => {
+    mutationFn: async ({
+      data,
+      linkToIssue,
+    }: CreateWorkspaceParams): Promise<CreateWorkspaceResult> => {
       const { workspace } = await workspacesApi.createAndStart(data);
+      let linkErrorMessage: string | undefined;
 
       if (linkToIssue && workspace) {
         try {
@@ -26,11 +38,20 @@ export function useCreateWorkspace() {
             linkToIssue.issueId
           );
         } catch (linkError) {
-          console.error('Failed to link workspace to issue:', linkError);
+          linkErrorMessage =
+            linkError instanceof Error
+              ? linkError.message
+              : 'Unknown error while linking workspace to issue';
+          console.error('Failed to link workspace to issue:', {
+            workspaceId: workspace.id,
+            projectId: linkToIssue.remoteProjectId,
+            issueId: linkToIssue.issueId,
+            error: linkError,
+          });
         }
       }
 
-      return { workspace };
+      return { workspace, linkErrorMessage };
     },
     onSuccess: () => {
       // Invalidate workspace summaries so they refresh with the new workspace included
