@@ -1,6 +1,9 @@
 use std::{
     collections::HashMap,
-    sync::{Arc, OnceLock},
+    sync::{
+        Arc, OnceLock,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use api_types::LoginStatus;
@@ -81,10 +84,13 @@ pub struct LocalDeployment {
     pr_sync_notify: Arc<Notify>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct PendingHandoff {
     provider: String,
     app_verifier: String,
+    /// Cooperative cancellation flag for the background poll task.
+    /// Set to `true` to signal the task to stop at the next loop iteration.
+    cancelled: Arc<AtomicBool>,
 }
 
 #[async_trait]
@@ -456,14 +462,23 @@ impl LocalDeployment {
         handoff_id: Uuid,
         provider: String,
         app_verifier: String,
-    ) {
-        self.oauth_handoffs.write().await.insert(
+    ) -> Arc<AtomicBool> {
+        let mut handoffs = self.oauth_handoffs.write().await;
+        // Signal all existing poll tasks to stop — a new handoff_init means
+        // the user retried, and each retry generates a fresh handoff_id.
+        for (_, old) in handoffs.drain() {
+            old.cancelled.store(true, Ordering::Relaxed);
+        }
+        let cancelled = Arc::new(AtomicBool::new(false));
+        handoffs.insert(
             handoff_id,
             PendingHandoff {
                 provider,
                 app_verifier,
+                cancelled: cancelled.clone(),
             },
         );
+        cancelled
     }
 
     pub async fn take_oauth_handoff(&self, handoff_id: &Uuid) -> Option<(String, String)> {
@@ -471,7 +486,10 @@ impl LocalDeployment {
             .write()
             .await
             .remove(handoff_id)
-            .map(|state| (state.provider, state.app_verifier))
+            .map(|state| {
+                state.cancelled.store(true, Ordering::Relaxed);
+                (state.provider, state.app_verifier)
+            })
     }
 
     pub fn pty(&self) -> &PtyService {
