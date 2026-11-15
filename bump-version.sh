@@ -28,6 +28,14 @@ echo "NEW_TAG: $NEW_TAG"
 
 cargo set-version "$NEW_VERSION"
 
+# set-version leaves the lock files at the old version of our own crates.
+# Resolving offline rewrites just those entries.
+for manifest in Cargo.toml crates/remote/Cargo.toml crates/relay-tunnel/Cargo.toml; do
+  [ -f "$manifest" ] || continue
+  cargo metadata --manifest-path "$manifest" --format-version 1 --offline >/dev/null \
+    || echo "warning: could not update the lock file for $manifest"
+done
+
 node -e "
   const fs = require('fs');
   const path = 'crates/tauri-app/tauri.conf.json';
