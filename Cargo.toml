@@ -51,8 +51,10 @@ ts-rs = { git = "https://github.com/xazukx/ts-rs.git", branch = "use-ts-enum", f
 schemars = { version = "1.0.4", features = ["derive", "chrono04", "uuid1", "preserve_order"] }
 serde_with = "3"
 async-trait = "0.1"
-aws-lc-sys = "=0.37.0"
-aws-lc-rs = "=1.16.0"
+# Pinned to patched releases: aws-lc-sys >=0.38.0 fixes RUSTSEC-2026-0044/0045/0046/0047/0048
+# (PKCS7_verify bypass, CRL scope, X.509 name-constraint bypass, AES-CCM timing side-channel).
+aws-lc-sys = "=0.41.0"
+aws-lc-rs = "=1.17.0"
 
 [profile.release]
 debug = 1

@@ -5,13 +5,12 @@
 
 use std::{collections::HashMap, process::Stdio};
 
-use async_trait::async_trait;
 use relay_control::signing::RelaySigningService;
 use russh::{
-    Channel, ChannelId, CryptoVec, Pty,
+    Channel, ChannelId, Pty,
+    keys::PublicKey,
     server::{Auth, Msg, Session},
 };
-use russh_keys::PublicKey;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     process::Command,
@@ -126,8 +125,7 @@ impl SshSessionHandler {
                 match stdout.read(&mut buf).await {
                     Ok(0) => break,
                     Ok(n) => {
-                        let data = CryptoVec::from_slice(&buf[..n]);
-                        if handle.data(channel_id, data).await.is_err() {
+                        if handle.data(channel_id, buf[..n].to_vec()).await.is_err() {
                             break;
                         }
                     }
@@ -147,8 +145,11 @@ impl SshSessionHandler {
                 match stderr.read(&mut buf).await {
                     Ok(0) => break,
                     Ok(n) => {
-                        let data = CryptoVec::from_slice(&buf[..n]);
-                        if handle.extended_data(channel_id, 1, data).await.is_err() {
+                        if handle
+                            .extended_data(channel_id, 1, buf[..n].to_vec())
+                            .await
+                            .is_err()
+                        {
                             break;
                         }
                     }
@@ -207,7 +208,6 @@ impl Drop for SshSessionHandler {
     }
 }
 
-#[async_trait]
 impl russh::server::Handler for SshSessionHandler {
     type Error = anyhow::Error;
 
@@ -222,6 +222,7 @@ impl russh::server::Handler for SshSessionHandler {
             None => {
                 return Ok(Auth::Reject {
                     proceed_with_methods: None,
+                    partial_success: false,
                 });
             }
         };
@@ -239,6 +240,7 @@ impl russh::server::Handler for SshSessionHandler {
             tracing::debug!("SSH auth rejected: no matching signing session");
             Ok(Auth::Reject {
                 proceed_with_methods: None,
+                partial_success: false,
             })
         }
     }
