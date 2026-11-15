@@ -1,15 +1,20 @@
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use api_types::{PullRequestStatus, UpdatePullRequestApiRequest, UpsertPullRequestRequest};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use db::{
     DBService,
     models::{
-        merge::MergeStatus,
+        merge::{ActiveWorkspaceRepo, Merge, MergeStatus},
         pull_request::PullRequest,
+        repo::Repo,
         workspace::{Workspace, WorkspaceError},
     },
 };
+use git::GitServiceError;
 use git_host::{GitHostError, GitHostProvider, GitHostService};
 use serde_json::json;
 use sqlx::error::Error as SqlxError;
@@ -29,6 +34,8 @@ enum PrMonitorError {
     #[error(transparent)]
     GitHostError(#[from] GitHostError),
     #[error(transparent)]
+    GitServiceError(#[from] GitServiceError),
+    #[error(transparent)]
     WorkspaceError(#[from] WorkspaceError),
     #[error(transparent)]
     Sqlx(#[from] SqlxError),
@@ -40,7 +47,7 @@ impl PrMonitorError {
             self,
             PrMonitorError::GitHostError(
                 GitHostError::CliNotInstalled { .. } | GitHostError::NotAGitRepository(_)
-            )
+            ) | PrMonitorError::GitServiceError(_)
         )
     }
 }
@@ -53,6 +60,10 @@ pub struct PrMonitorService<C: ContainerService> {
     container: C,
     remote_client: Option<RemoteClient>,
     sync_notify: Arc<Notify>,
+    /// Tracks when we last ran PR discovery so we only poll workspaces
+    /// that have been updated since then, avoiding unnecessary GitHub API calls
+    /// that could exhaust rate limits for users with many active workspaces.
+    last_discovery_at: Mutex<Option<DateTime<Utc>>>,
 }
 
 impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
@@ -70,6 +81,7 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
             container,
             remote_client,
             sync_notify,
+            last_discovery_at: Mutex::new(None),
         };
         tokio::spawn(async move {
             service.start().await;
@@ -87,6 +99,11 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
         loop {
             tokio::select! {
                 _ = interval.tick() => {
+                    // Discover new PRs first so check_all_open_prs can handle
+                    // their status updates in the same cycle.
+                    if let Err(e) = self.discover_new_prs().await {
+                        error!("Error discovering new PRs: {}", e);
+                    }
                     if let Err(e) = self.check_all_open_prs().await {
                         error!("Error checking open PRs: {}", e);
                     }
@@ -120,6 +137,121 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
                     error!("Error checking PR #{}: {}", pr.pr_number, e);
                 }
             }
+        }
+
+        Ok(())
+    }
+
+    /// Discover PRs created outside of VK on workspace branches.
+    /// On the first run, scans all active workspaces; on subsequent runs,
+    /// only checks workspaces updated since the last discovery cycle.
+    /// Links any PRs not already known. Runs before check_all_open_prs so
+    /// newly discovered PRs get their status checked in the same cycle.
+    async fn discover_new_prs(&self) -> Result<(), PrMonitorError> {
+        let updated_since = *self.last_discovery_at.lock().unwrap();
+
+        // Capture the timestamp before the DB query to prevent a race condition:
+        // a workspace updated between the query and this timestamp would be missed
+        // by both the current and future discovery cycles. Capturing early may
+        // re-query some workspaces, but that is safe since discovery is idempotent.
+        let discovery_started_at = Utc::now();
+        let candidates = Merge::get_active_workspace_repos(&self.db.pool, updated_since).await?;
+
+        if candidates.is_empty() {
+            debug!("No active workspace repos to check for PRs");
+            *self.last_discovery_at.lock().unwrap() = Some(discovery_started_at);
+            return Ok(());
+        }
+
+        debug!(
+            "Checking {} workspace-repo pairs for new PRs (since {:?})",
+            candidates.len(),
+            updated_since,
+        );
+
+        let mut had_failures = false;
+        for candidate in &candidates {
+            if let Err(e) = self.discover_prs_for_workspace_repo(candidate).await {
+                if e.is_environmental() {
+                    debug!(
+                        "Skipping PR discovery for workspace {} repo {} due to environmental error: {}",
+                        candidate.workspace_id, candidate.repo_id, e
+                    );
+                } else {
+                    warn!(
+                        "Error discovering PR for workspace {} repo {}: {}",
+                        candidate.workspace_id, candidate.repo_id, e
+                    );
+                    had_failures = true;
+                }
+            }
+        }
+
+        // Only advance the watermark if all candidates were successfully processed,
+        // so that failed candidates are retried in the next discovery cycle.
+        if !had_failures {
+            *self.last_discovery_at.lock().unwrap() = Some(discovery_started_at);
+        }
+        Ok(())
+    }
+
+    /// Query GitHub for PRs on a workspace branch and link any we don't already know about.
+    /// Only creates pull request records; status updates and archival are handled by
+    /// check_all_open_prs later in the same cycle.
+    async fn discover_prs_for_workspace_repo(
+        &self,
+        candidate: &ActiveWorkspaceRepo,
+    ) -> Result<(), PrMonitorError> {
+        let repo = Repo::find_by_id(&self.db.pool, candidate.repo_id)
+            .await?
+            .ok_or_else(|| {
+                PrMonitorError::GitHostError(GitHostError::PullRequest(format!(
+                    "Repo {} not found",
+                    candidate.repo_id
+                )))
+            })?;
+
+        let git = self.container.git();
+        let remote = git.resolve_remote_for_branch(&repo.path, &candidate.target_branch)?;
+
+        let git_host = GitHostService::from_url(&remote.url)?;
+        let prs = git_host
+            .list_prs_for_branch(&repo.path, &remote.url, &candidate.workspace_branch)
+            .await?;
+
+        if prs.is_empty() {
+            return Ok(());
+        }
+
+        let known_pr_numbers = PullRequest::get_known_pr_numbers(
+            &self.db.pool,
+            candidate.workspace_id,
+            candidate.repo_id,
+        )
+        .await?;
+
+        for pr_info in prs {
+            if known_pr_numbers.contains(&pr_info.number) {
+                continue;
+            }
+
+            info!(
+                "Auto-discovered PR #{} ({:?}) for workspace {} repo {}",
+                pr_info.number, pr_info.status, candidate.workspace_id, candidate.repo_id
+            );
+
+            // Created as 'open' — check_all_open_prs will pick it up on the
+            // next cycle, detect the actual status, and run the full lifecycle
+            // (archival, remote sync, analytics) if already merged/closed.
+            PullRequest::create_for_workspace(
+                &self.db.pool,
+                candidate.workspace_id,
+                candidate.repo_id,
+                &candidate.target_branch,
+                pr_info.number,
+                &pr_info.url,
+            )
+            .await?;
         }
 
         Ok(())
