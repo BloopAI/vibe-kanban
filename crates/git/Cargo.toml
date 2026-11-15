@@ -1,6 +1,6 @@
 [package]
 name = "git"
-version = "0.1.45"
+version = "0.1.46"
 edition = "2024"
 
 [features]
@@ -16,7 +16,7 @@ tempfile = "3.21"
 thiserror = { workspace = true }
 tracing = { workspace = true }
 ts-rs = { workspace = true }
-utils = { path = "../utils" , version = "0.1.45" }
+utils = { path = "../utils" , version = "0.1.46" }
 
 [dev-dependencies]
 tempfile = "3.21"

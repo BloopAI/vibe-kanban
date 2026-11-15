@@ -1,11 +1,11 @@
 [package]
 name = "worktree-manager"
-version = "0.1.45"
+version = "0.1.46"
 edition = "2024"
 
 [dependencies]
-git = { path = "../git" , version = "0.1.45" }
-utils = { path = "../utils" , version = "0.1.45" }
+git = { path = "../git" , version = "0.1.46" }
+utils = { path = "../utils" , version = "0.1.46" }
 tokio = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
