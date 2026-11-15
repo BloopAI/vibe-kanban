@@ -77,8 +77,8 @@ export function CreateChatBoxContainer({
     hasResolvedInitialRepoDefaults,
   ]);
 
-  const showRepoPickerStep = !hasSelectedRepos || isSelectingRepos;
-  const showChatStep = hasSelectedRepos && !isSelectingRepos;
+  const showRepoPickerStep = isSelectingRepos;
+  const showChatStep = !isSelectingRepos;
 
   // Attachment handling - insert markdown and track attachment IDs
   const handleInsertMarkdown = useCallback(
@@ -109,7 +109,7 @@ export function CreateChatBoxContainer({
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    disabled: createWorkspace.isPending || !hasSelectedRepos,
+    disabled: createWorkspace.isPending,
     noClick: true,
     noKeyboard: true,
   });
@@ -137,9 +137,10 @@ export function CreateChatBoxContainer({
 
   const repoId = repos.length === 1 ? repos[0]?.id : undefined;
   const repoSummaryLabel = useMemo(() => {
+    if (repos.length === 0) return 'No repositories';
     if (repos.length === 1) {
       const repo = repos[0];
-      if (!repo) return '0 repositories selected';
+      if (!repo) return 'No repositories';
       const selectedBranch = targetBranches[repo.id];
       const branch = selectedBranch
         ? truncateBranchLabel(selectedBranch)
@@ -167,7 +168,6 @@ export function CreateChatBoxContainer({
 
   // Determine if we can submit
   const canSubmit =
-    hasSelectedRepos &&
     hasSelectedBranchesForAllRepos &&
     message.trim().length > 0 &&
     effectiveExecutor !== null;
@@ -282,15 +282,13 @@ export function CreateChatBoxContainer({
 
   // Determine error to display
   const displayError =
-    hasAttemptedSubmit && repos.length === 0
-      ? 'Add at least one repository to create a workspace'
-      : hasAttemptedSubmit && !hasSelectedBranchesForAllRepos
-        ? 'Select a branch for every repository before creating a workspace'
-        : createWorkspace.error
-          ? createWorkspace.error instanceof Error
-            ? createWorkspace.error.message
-            : 'Failed to create workspace'
-          : null;
+    hasAttemptedSubmit && !hasSelectedBranchesForAllRepos
+      ? 'Select a branch for every repository before creating a workspace'
+      : createWorkspace.error
+        ? createWorkspace.error instanceof Error
+          ? createWorkspace.error.message
+          : 'Failed to create workspace'
+        : null;
 
   // Wait for initial value to be applied before rendering
   // This ensures the editor mounts with content ready, so autoFocus works correctly
@@ -308,7 +306,10 @@ export function CreateChatBoxContainer({
                 {t('createMode.headings.repoStep')}
               </h2>
               <CreateModeRepoPickerBar
-                onContinueToPrompt={() => setIsSelectingRepos(false)}
+                onContinueToPrompt={() => {
+                  setIsSelectingRepos(false);
+                  setHasInitializedStep(true);
+                }}
               />
             </>
           )}
@@ -360,7 +361,7 @@ export function CreateChatBoxContainer({
                   }
                   onSend={handleSubmit}
                   isSending={createWorkspace.isPending}
-                  disabled={!hasSelectedRepos}
+                  disabled={false}
                   executor={{
                     selected: effectiveExecutor,
                     options: executorOptions,

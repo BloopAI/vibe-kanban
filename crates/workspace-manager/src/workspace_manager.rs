@@ -294,10 +294,6 @@ impl WorkspaceManager {
         repos: &[RepoWorkspaceInput],
         branch_name: &str,
     ) -> Result<WorktreeContainer, WorkspaceError> {
-        if repos.is_empty() {
-            return Err(WorkspaceError::NoRepositories);
-        }
-
         info!(
             "Creating workspace at {} with {} repositories",
             workspace_dir.display(),
@@ -377,7 +373,10 @@ impl WorkspaceManager {
         branch_name: &str,
     ) -> Result<(), WorkspaceError> {
         if repos.is_empty() {
-            return Err(WorkspaceError::NoRepositories);
+            if !workspace_dir.exists() {
+                tokio::fs::create_dir_all(workspace_dir).await?;
+            }
+            return Ok(());
         }
 
         // Try legacy migration first (single repo projects only)
