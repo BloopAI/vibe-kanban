@@ -29,6 +29,11 @@ import koSettings from './locales/ko/settings.json';
 import koProjects from './locales/ko/projects.json';
 import koTasks from './locales/ko/tasks.json';
 import koOrganization from './locales/ko/organization.json';
+import ruCommon from './locales/ru/common.json';
+import ruSettings from './locales/ru/settings.json';
+import ruProjects from './locales/ru/projects.json';
+import ruTasks from './locales/ru/tasks.json';
+import ruOrganization from './locales/ru/organization.json';
 import zhHansCommon from './locales/zh-Hans/common.json';
 import zhHansSettings from './locales/zh-Hans/settings.json';
 import zhHansProjects from './locales/zh-Hans/projects.json';
@@ -75,6 +80,13 @@ const resources = {
     projects: koProjects,
     tasks: koTasks,
     organization: koOrganization,
+  },
+  ru: {
+    common: ruCommon,
+    settings: ruSettings,
+    projects: ruProjects,
+    tasks: ruTasks,
+    organization: ruOrganization,
   },
   'zh-Hans': {
     common: zhHansCommon,
