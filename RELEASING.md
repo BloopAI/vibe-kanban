@@ -87,9 +87,11 @@ scripts/release-local.sh publish
 
 This runs in three stages and asks before each:
 
-1. Pushes the tag and creates a GitHub **pre-release** with the assets. This
-   can still be undone with `gh release delete <tag> -R BloopAI/vibe-kanban
-   --cleanup-tag`.
+1. Pushes the tag and creates a GitHub **pre-release** with the assets. It
+   stays a hidden draft until every asset is uploaded, so if an upload fails
+   (for example `stream error ... CANCEL`), rerun `publish` and it uploads
+   only what is missing. This can still be undone with `gh release delete
+   <tag> -R BloopAI/vibe-kanban --cleanup-tag`.
 2. Runs the smoke test again, this time downloading from the real GitHub
    release with no override, exactly as users will.
 3. Publishes to npm under `next`. This is the only step that cannot be

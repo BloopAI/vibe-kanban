@@ -497,6 +497,30 @@ smoke_cleanup() {
 
 # --- publish ---------------------------------------------------------------------
 
+# One gh call for all assets fails as a whole when GitHub drops a single
+# upload stream. Upload one file at a time with retries, and skip files the
+# release already has with the same sha256, so a rerun resumes.
+upload_release_assets() {
+  local uploaded file name sum attempt
+  uploaded="$(gh release view "$TAG" -R "$REPO" --json assets \
+    --jq '.assets[] | select(.state == "uploaded") | "\(.name) \(.digest)"')"
+  for file in "$ASSETS"/*; do
+    name="$(basename "$file")"
+    sum="$(shasum -a 256 "$file" | cut -d' ' -f1)"
+    if grep -qxF "$name sha256:$sum" <<<"$uploaded"; then
+      echo "  $name: already uploaded"
+      continue
+    fi
+    for attempt in 1 2 3 4 5; do
+      echo "  $name"
+      gh release upload "$TAG" -R "$REPO" --clobber "$file" && continue 2
+      echo "  upload failed (attempt $attempt of 5)"
+      sleep $((attempt * 5))
+    done
+    die "could not upload $name; rerun publish to resume"
+  done
+}
+
 cmd_publish() {
   load_release
   require_all_assets
@@ -504,8 +528,14 @@ cmd_publish() {
   gh auth status >/dev/null 2>&1 || die "run: gh auth login"
   npm whoami >/dev/null 2>&1 || die "run: npm login"
 
-  if npm view "$NPM_PACKAGE@$VERSION" version >/dev/null 2>&1; then
-    die "$NPM_PACKAGE@$VERSION is already on npm; bump the version"
+  # npm never reuses a version, even an unpublished one. Unpublished
+  # versions are gone from `npm view pkg@version` but stay in `time`.
+  local times
+  times="$(npm view "$NPM_PACKAGE" time --json 2>/dev/null)" \
+    || die "could not read $NPM_PACKAGE from npm"
+  if node -e 'process.exit(process.argv[2] in JSON.parse(process.argv[1]) ? 0 : 1)' \
+    "$times" "$VERSION"; then
+    die "$NPM_PACKAGE@$VERSION was already published to npm (maybe since unpublished) and cannot be reused; run ./bump-version.sh"
   fi
 
   git fetch --quiet origin main
@@ -514,25 +544,39 @@ cmd_publish() {
     confirm "Release it anyway?" || exit 1
   fi
 
-  # Stage 1: GitHub pre-release. Rerunning publish after an interrupted run
-  # reuses the release if its manifest matches this build.
+  # Stage 1: GitHub pre-release. It stays a hidden draft until every asset
+  # is uploaded, so an interrupted upload resumes on rerun. A release that
+  # is already public is reused if its manifest matches this build.
   local manifest_url="https://github.com/$REPO/releases/download/$TAG/manifest.json"
-  if gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then
-    echo "GitHub release $TAG already exists; checking it matches this build"
-    curl -fsSL "$manifest_url" | cmp -s - "$ASSETS/manifest.json" \
-      || die "release $TAG has different assets. Delete it (gh release delete $TAG -R $REPO) or bump the version"
+  local is_draft=""
+  if is_draft="$(gh release view "$TAG" -R "$REPO" --json isDraft --jq .isDraft 2>/dev/null)"; then
+    if [[ "$is_draft" != true ]]; then
+      echo "GitHub release $TAG already exists; checking it matches this build"
+      curl -fsSL "$manifest_url" | cmp -s - "$ASSETS/manifest.json" \
+        || die "release $TAG has different assets. Delete it (gh release delete $TAG -R $REPO) or bump the version"
+    fi
   else
     if ! git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
       confirm "Push tag $TAG to origin?" || exit 1
       git push origin "refs/tags/$TAG"
     fi
+  fi
+  if [[ "$is_draft" != false ]]; then
     echo
-    echo "About to create GitHub pre-release $TAG on $REPO with $(find "$ASSETS" -type f | wc -l | tr -d ' ') assets."
+    [[ "$is_draft" == true ]] \
+      && echo "Draft release $TAG is left from an earlier run; resuming it."
+    echo "About to upload $(find "$ASSETS" -type f | wc -l | tr -d ' ') assets to GitHub pre-release $TAG on $REPO and make it public."
     echo "Nothing reaches npm yet."
     confirm "Continue?" || exit 1
-    step "Creating GitHub pre-release"
-    gh release create "$TAG" -R "$REPO" --verify-tag --prerelease \
-      --title "Pre-release $TAG" --generate-notes "$ASSETS"/*
+    if [[ "$is_draft" != true ]]; then
+      step "Creating draft release"
+      gh release create "$TAG" -R "$REPO" --verify-tag --prerelease --draft \
+        --title "Pre-release $TAG" --generate-notes
+    fi
+    step "Uploading assets"
+    upload_release_assets
+    step "Making the pre-release public"
+    gh release edit "$TAG" -R "$REPO" --draft=false
   fi
 
   step "Checking the public download URL"
