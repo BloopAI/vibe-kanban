@@ -9,8 +9,8 @@ use crate::{
     analytics::{AnalyticsConfig, AnalyticsService},
     attachments::cleanup::spawn_cleanup_task,
     auth::{
-        GitHubOAuthProvider, GoogleOAuthProvider, JwtService, OAuthHandoffService,
-        OAuthTokenValidator, ProviderRegistry,
+        EntraIdOAuthProvider, GitHubOAuthProvider, GoogleOAuthProvider, JwtService,
+        OAuthHandoffService, OAuthTokenValidator, ProviderRegistry,
     },
     azure_blob::AzureBlobService,
     billing::BillingService,
@@ -70,6 +70,14 @@ impl Server {
             registry.register(GoogleOAuthProvider::new(
                 google.client_id().to_string(),
                 google.client_secret().clone(),
+            )?);
+        }
+
+        if let Some(entra_id) = auth_config.entra_id() {
+            registry.register(EntraIdOAuthProvider::new(
+                entra_id.client_id().to_string(),
+                entra_id.client_secret().clone(),
+                entra_id.tenant_id().to_string(),
             )?);
         }
 
