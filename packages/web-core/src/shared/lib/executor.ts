@@ -7,8 +7,16 @@ import type {
   ExecutorProfileId,
   ExecutionProcess,
 } from 'shared/types';
+import { getAgentName } from '@/shared/components/AgentIcon';
+import { toPrettyCase } from '@/shared/lib/string';
 
 const RESERVED_KEYS = new Set(['recently_used_models']);
+
+/** Brand name for a built-in executor, pretty-cased key otherwise. */
+export function formatExecutorLabel(executor: BaseCodingAgent): string {
+  const name = getAgentName(executor);
+  return name === executor ? toPrettyCase(executor) : name;
+}
 
 export function getExecutorVariantKeys(
   executorProfile: ExecutorProfile | Record<string, unknown> | null | undefined

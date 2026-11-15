@@ -4,6 +4,8 @@ import { CheckIcon } from '@phosphor-icons/react';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { Tooltip } from '@vibe/ui/components/Tooltip';
 import type { AcpRegistryAgent } from 'shared/types';
+import type { MachineClient } from '@/shared/lib/machineClient';
+import { useMachineAcpRegistryInstallProgress } from '@/shared/hooks/useAcpRegistryAgents';
 import { RegistryAgentIcon } from './RegistryAgentIcon';
 
 export function AvailableAgentsList({
@@ -11,6 +13,7 @@ export function AvailableAgentsList({
   pendingIds,
   defaultExecutor,
   locked,
+  machineClient,
   onToggleInstall,
 }: {
   agents: AcpRegistryAgent[];
@@ -19,6 +22,7 @@ export function AvailableAgentsList({
   defaultExecutor: string | null;
   /** Install and uninstall are unavailable, e.g. while there are unsaved edits */
   locked: boolean;
+  machineClient: MachineClient | null;
   onToggleInstall: (agent: AcpRegistryAgent) => void;
 }) {
   const { t } = useTranslation(['settings']);
@@ -79,6 +83,12 @@ export function AvailableAgentsList({
                 </p>
               </div>
               <div className="shrink-0 self-center flex items-center gap-base">
+                {pendingIds.has(agent.id) && (
+                  <InstallProgressLabel
+                    machineClient={machineClient}
+                    id={agent.id}
+                  />
+                )}
                 {agent.installed && (
                   <span className="flex items-center gap-1 text-sm text-success">
                     <CheckIcon className="size-icon-xs" weight="bold" />
@@ -107,4 +117,45 @@ export function AvailableAgentsList({
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-secondary to-transparent" />
     </div>
   );
+}
+
+/** Percentage and bytes downloaded while a binary agent installs. */
+function InstallProgressLabel({
+  machineClient,
+  id,
+}: {
+  machineClient: MachineClient | null;
+  id: string;
+}) {
+  const { data } = useMachineAcpRegistryInstallProgress(
+    machineClient,
+    id,
+    true
+  );
+  if (!data || data.done) {
+    return null;
+  }
+
+  const downloaded = Number(data.downloaded);
+  const total = data.total === null ? null : Number(data.total);
+  const mb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(1);
+
+  if (total !== null && total > 0) {
+    const percent = Math.min(100, Math.floor((downloaded / total) * 100));
+    return (
+      <span className="text-sm text-low tabular-nums whitespace-nowrap">
+        {percent}% · {mb(downloaded)}/{mb(total)} MB
+      </span>
+    );
+  }
+
+  if (downloaded > 0) {
+    return (
+      <span className="text-sm text-low tabular-nums whitespace-nowrap">
+        {mb(downloaded)} MB
+      </span>
+    );
+  }
+
+  return null;
 }

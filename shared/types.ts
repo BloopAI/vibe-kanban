@@ -298,6 +298,18 @@ executor: BaseCodingAgent,
  */
 installed: boolean, };
 
+export type AcpRegistryInstallProgress = { downloaded: bigint, total: bigint | null, done: boolean, error: string | null, };
+
+export type OpencodeVersion = { 
+/**
+ * Full version, e.g. `2.2.7`, when it could be parsed.
+ */
+version: string | null, 
+/**
+ * Major version, used to pick the executor.
+ */
+major: number | null, };
+
 export type CurrentUserResponse = { user_id: string, };
 
 export type StartSpake2EnrollmentRequest = { enrollment_code: string, client_message_b64: string, };

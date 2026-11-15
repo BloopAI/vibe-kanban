@@ -37,6 +37,7 @@ import {
   CheckEditorAvailabilityResponse,
   AvailabilityInfo,
   BaseCodingAgent,
+  OpencodeVersion,
   ExecutorConfig,
   DraftFollowUpData,
   AgentPresetOptionsQuery,
@@ -1015,6 +1016,10 @@ export const configApi = {
       `/api/agents/check-availability?executor=${encodeURIComponent(agent)}`
     );
     return handleApiResponse<AvailabilityInfo>(response);
+  },
+  getOpencodeVersion: async (): Promise<OpencodeVersion> => {
+    const response = await makeRequest('/api/agents/opencode-version');
+    return handleApiResponse<OpencodeVersion>(response);
   },
 };
 

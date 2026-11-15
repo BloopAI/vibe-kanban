@@ -95,6 +95,10 @@ pub enum ExecutorError {
     AcpRegistryAgentNotFound(String),
     #[error("ACP registry agent '{id}' has an invalid npx package '{package}'")]
     InvalidAcpRegistryPackage { id: String, package: String },
+    #[error("ACP registry agent '{id}' has no distribution for '{platform}'")]
+    AcpRegistryNoPlatform { id: String, platform: String },
+    #[error(transparent)]
+    AcpInstall(#[from] acp::install::InstallError),
     #[error(transparent)]
     AcpRegistry(#[from] acp::registry::RegistryError),
 }

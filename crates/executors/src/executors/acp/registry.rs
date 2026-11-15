@@ -10,8 +10,8 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 
 use crate::{
-    command::CommandBuilder,
-    executors::{BaseCodingAgent, ExecutorError},
+    command::{CmdOverrides, CommandBuilder, apply_overrides},
+    executors::{BaseCodingAgent, ExecutorError, acp::install},
 };
 
 const REGISTRY_URL: &str = "https://cdn.agentclientprotocol.com/registry/v1/latest/registry.json";
@@ -53,11 +53,28 @@ pub struct RegistryAgent {
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct Distribution {
     pub npx: Option<NpxDistribution>,
-} // binary/uvx are ignored for now
+    /// Platform key (`windows-x86_64`, `darwin-aarch64`, ...) to archive.
+    #[serde(default)]
+    pub binary: HashMap<String, BinaryTarget>,
+} // uvx is ignored for now
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct NpxDistribution {
     pub package: String,
+    #[serde(default)]
+    pub args: Vec<String>,
+    #[serde(default)]
+    pub env: HashMap<String, String>,
+}
+
+/// A platform archive from the registry: download `archive`, verify `sha256`,
+/// unpack it and run `cmd` (relative to the archive root) with `args`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct BinaryTarget {
+    pub archive: String,
+    #[serde(default)]
+    pub sha256: Option<String>,
+    pub cmd: String,
     #[serde(default)]
     pub args: Vec<String>,
     #[serde(default)]
@@ -99,14 +116,26 @@ pub fn parse_registry(json: &str) -> Result<Vec<RegistryAgent>, serde_json::Erro
         .collect())
 }
 
-/// Agents users can install: npx-distributed and without a built-in executor.
+/// Agents users can install: distributed as an npx package or as an archive for
+/// this platform, and without a built-in executor.
 pub fn visible_agents(agents: &[RegistryAgent]) -> Vec<RegistryAgent> {
+    let platform = install::platform_key();
     agents
         .iter()
-        .filter(|agent| agent.distribution.npx.is_some())
+        .filter(|agent| available_on(agent, platform))
         .filter(|agent| !HIDDEN_IDS.contains(&agent.id.as_str()))
         .cloned()
         .collect()
+}
+
+/// npx works everywhere; an archive only where the registry ships one for the
+/// host platform, so agents that only ship e.g. `darwin-aarch64` are not offered
+/// on Windows or Linux.
+fn available_on(agent: &RegistryAgent, platform: Option<&str>) -> bool {
+    agent.distribution.npx.is_some()
+        || platform
+            .and_then(|platform| agent.distribution.binary.get(platform))
+            .is_some()
 }
 
 /// The npx distribution of agent `id`, hidden ones included.
@@ -140,6 +169,63 @@ pub(crate) fn npx_command(
         });
     }
     Ok(CommandBuilder::new(format!("npx -y {}", npx.package)).extend_params(npx.args.clone()))
+}
+
+impl RegistryAgent {
+    /// Archive for the machine this build runs on, if the registry ships one.
+    pub fn binary_target(&self) -> Option<&BinaryTarget> {
+        self.distribution.binary.get(install::platform_key()?)
+    }
+}
+
+/// The command for a registry agent and the env its distribution sets.
+///
+/// Prefers the npx package, then the platform archive (downloaded into the cache
+/// dir on first use). A `base_command_override` replaces the base of either and
+/// skips the download, which lets users point an agent at a binary they installed
+/// themselves.
+pub async fn command_for(
+    agent: &RegistryAgent,
+    overrides: &CmdOverrides,
+) -> Result<(CommandBuilder, HashMap<String, String>), ExecutorError> {
+    let has_override = overrides.base_command_override.is_some();
+
+    if let Some(npx) = &agent.distribution.npx {
+        let command = if has_override {
+            CommandBuilder::new(agent.id.clone())
+        } else {
+            npx_command(&agent.id, npx)?
+        };
+        return Ok((apply_overrides(command, overrides)?, npx.env.clone()));
+    }
+
+    if has_override {
+        let env = agent
+            .binary_target()
+            .map(|target| target.env.clone())
+            .unwrap_or_default();
+        return Ok((
+            apply_overrides(CommandBuilder::new(agent.id.clone()), overrides)?,
+            env,
+        ));
+    }
+
+    let host = install::platform_key().ok_or_else(|| ExecutorError::AcpRegistryNoPlatform {
+        id: agent.id.clone(),
+        platform: format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH),
+    })?;
+    let target = agent.distribution.binary.get(host).ok_or_else(|| {
+        ExecutorError::AcpRegistryNoPlatform {
+            id: agent.id.clone(),
+            platform: host.to_string(),
+        }
+    })?;
+
+    let installed = install::ensure_installed(&agent.id, &agent.version, host, target).await?;
+    let command = CommandBuilder::new(install::command_line(&installed.command))
+        .extend_params(installed.args.clone());
+
+    Ok((apply_overrides(command, overrides)?, installed.env))
 }
 
 /// Executor key for a registry agent, in the same SCREAMING_SNAKE form as the
@@ -281,17 +367,113 @@ mod tests {
     }
 
     #[test]
+    fn parse_registry_reads_binary_distribution() {
+        let agents = parse_registry(FIXTURE).unwrap();
+        let goose = agents.iter().find(|a| a.id == "goose").unwrap();
+        let target = goose.distribution.binary.get("darwin-aarch64").unwrap();
+        assert_eq!(target.cmd, "./goose");
+        assert_eq!(target.args, ["acp"]);
+        assert!(target.sha256.is_some());
+    }
+
+    #[test]
     fn parse_registry_rejects_malformed_document() {
         assert!(parse_registry("not json").is_err());
         assert!(parse_registry(r#"{"agents": {}}"#).is_err());
     }
 
     #[test]
-    fn visible_agents_keeps_npx_and_drops_hidden() {
+    fn visible_agents_keeps_npx_and_supported_binary_and_drops_hidden() {
         let agents = parse_registry(FIXTURE).unwrap();
-        assert_eq!(
-            ids(&visible_agents(&agents)),
-            ["auggie", "cline", "kilo", "qoder"]
+        let mut expected = vec!["auggie", "cline", "kilo", "qoder"];
+        // goose only ships a darwin-aarch64 archive in the fixture
+        if install::platform_key() == Some("darwin-aarch64") {
+            expected.insert(2, "goose");
+        }
+        assert_eq!(ids(&visible_agents(&agents)), expected);
+    }
+
+    #[test]
+    fn binary_agents_are_only_offered_on_shipped_platforms() {
+        let agents = parse_registry(FIXTURE).unwrap();
+        let goose = agents.iter().find(|a| a.id == "goose").unwrap();
+        let auggie = agents.iter().find(|a| a.id == "auggie").unwrap();
+
+        assert!(available_on(goose, Some("darwin-aarch64")));
+        assert!(!available_on(goose, Some("windows-x86_64")));
+        assert!(!available_on(goose, None));
+        // npx agents need no archive, so they show on every platform
+        assert!(available_on(auggie, None));
+    }
+
+    #[tokio::test]
+    async fn base_command_override_skips_the_binary_download() {
+        let agents = parse_registry(FIXTURE).unwrap();
+        let goose = agents.iter().find(|a| a.id == "goose").unwrap();
+        let overrides = CmdOverrides {
+            base_command_override: Some("/opt/goose".to_string()),
+            ..Default::default()
+        };
+
+        let (command, env) = command_for(goose, &overrides).await.unwrap();
+        assert_eq!(command.base, "/opt/goose");
+        assert_eq!(command.params, None);
+        assert!(env.is_empty());
+    }
+
+    #[tokio::test]
+    async fn npx_preferred_over_binary_and_keeps_its_env() {
+        let agents = parse_registry(FIXTURE).unwrap();
+        let kilo = agents.iter().find(|a| a.id == "kilo").unwrap();
+
+        let (command, env) = command_for(kilo, &CmdOverrides::default()).await.unwrap();
+        assert_eq!(command.base, "npx -y @kilocode/cli@7.8.18");
+        assert!(env.is_empty());
+    }
+
+    /// Downloads and runs a real release archive from the registry. Run with
+    /// `cargo test -p executors --lib installs_a_binary_agent -- --ignored`.
+    #[tokio::test]
+    #[ignore = "downloads a release archive over the network"]
+    async fn installs_a_binary_agent() {
+        // `cached` reads the disk copy first, so this also works offline after
+        // one successful registry fetch.
+        let agents = cached().await.unwrap();
+        let mut agent = agents
+            .iter()
+            .find(|agent| agent.id == "opencode-v2")
+            .expect("opencode-v2 is in the registry")
+            .clone();
+        // Exercise the archive path even if the entry also gains an npx package.
+        agent.distribution.npx = None;
+        let platform = install::platform_key().expect("a supported platform");
+        let target = agent
+            .binary_target()
+            .expect("a binary archive for this platform");
+        assert!(
+            install::ensure_installed(&agent.id, &agent.version, platform, target)
+                .await
+                .unwrap()
+                .command
+                .is_file()
+        );
+
+        // The whole spawn path, not just the installer.
+        let (command, _) = command_for(&agent, &CmdOverrides::default()).await.unwrap();
+        assert_eq!(command.params, Some(vec!["acp".to_string()]));
+
+        let binary = std::path::PathBuf::from(command.base.trim_matches('"'));
+        assert!(binary.is_file(), "{} is not a file", binary.display());
+
+        let output = std::process::Command::new(&binary)
+            .arg("--version")
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{} --version failed: {}",
+            binary.display(),
+            String::from_utf8_lossy(&output.stderr)
         );
     }
 

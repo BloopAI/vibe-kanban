@@ -25,3 +25,13 @@ icon: https://www.vibekanban.com/images/logos/opencode-light.svg
   You can now select OpenCode when creating task attempts.
 </Step>
 </Steps>
+
+## OpenCode V2
+
+OpenCode V2 is listed in the [ACP registry](https://agentclientprotocol.com/registry) and is distributed as a platform
+binary rather than an npm package. Install it from **Settings → Agents → Available agents**: Vibe Kanban downloads the
+archive for your OS, verifies its SHA-256 and unpacks it into the cache directory on first use, then runs `opencode acp`
+over the Agent Client Protocol.
+
+It reuses your existing OpenCode login and configuration, so no separate sign-in is needed. To use a binary you manage
+yourself instead, set **Base Command Override** to its path in the agent's configuration.

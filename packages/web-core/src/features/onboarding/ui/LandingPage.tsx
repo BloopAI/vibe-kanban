@@ -24,6 +24,7 @@ import {
 } from '@phosphor-icons/react';
 import { usePostHog } from 'posthog-js/react';
 import { siDiscord } from 'simple-icons';
+import { useQuery } from '@tanstack/react-query';
 import {
   BaseCodingAgent,
   type EditorConfig,
@@ -36,6 +37,7 @@ import { useTheme } from '@/shared/hooks/useTheme';
 import { AgentIcon, getAgentName } from '@/shared/components/AgentIcon';
 import { IdeIcon } from '@/shared/components/IdeIcon';
 import { getIdeName } from '@/shared/lib/ideName';
+import { configApi } from '@/shared/lib/api';
 import { cn, playSound } from '@/shared/lib/utils';
 import { isTauriApp } from '@/shared/lib/platform';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
@@ -91,6 +93,17 @@ const AGENT_PRIORITY: BaseCodingAgent[] = [
   'OPENCODE',
   'GEMINI',
 ];
+
+/** OpenCode ships as a V1 and a V2 executor; one card picks the installed one. */
+type AgentOption = {
+  /** Stable React key: the grouped OpenCode card uses `OPENCODE`. */
+  id: string;
+  /** Agent whose icon, name and executor represent the option. */
+  agent: BaseCodingAgent;
+  name: string;
+  /** Shown next to the name once the installed version is known. */
+  versionLabel?: string;
+};
 
 const DiscordIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
   ({ className, color = 'currentColor' }, ref) => (
@@ -209,14 +222,88 @@ export function LandingPage() {
     appNavigation.goToRoot({ replace: true });
   }, [appNavigation, config?.remote_onboarding_acknowledged]);
 
-  const executorOptions = useMemo(() => {
+  // Which OpenCode CLI is installed decides whether the V2 executor is offered
+  // automatically. Other agents are unaffected.
+  const { data: opencodeVersion, isFetched: opencodeVersionFetched } = useQuery(
+    {
+      queryKey: ['opencode-version'],
+      queryFn: configApi.getOpencodeVersion,
+      staleTime: 5 * 60 * 1000,
+    }
+  );
+
+  const opencodePreference = useMemo<BaseCodingAgent | null>(() => {
+    const available = new Set(Object.keys(profiles ?? {}));
+    const hasV1 = available.has('OPENCODE');
+    const hasV2 = available.has('OPENCODE_V2');
+
+    if (hasV1 && hasV2) {
+      // Wait for detection instead of flickering V1 -> V2.
+      if (!opencodeVersionFetched) return null;
+      return opencodeVersion?.major != null && opencodeVersion.major >= 2
+        ? 'OPENCODE_V2'
+        : 'OPENCODE';
+    }
+    if (hasV2) return 'OPENCODE_V2';
+    if (hasV1) return 'OPENCODE';
+    return null;
+  }, [profiles, opencodeVersion, opencodeVersionFetched]);
+
+  const executorOptions = useMemo<AgentOption[]>(() => {
     const available = Object.keys(profiles ?? {});
-    const prioritized = AGENT_PRIORITY.filter((a) => available.includes(a));
-    const rest = available
-      .filter((a) => !AGENT_PRIORITY.includes(a))
+
+    // Collapse OPENCODE_V2 into OPENCODE: one card, executor picked by detection.
+    const availableKeys = [
+      ...new Set(
+        available.map((agent) =>
+          agent === 'OPENCODE' || agent === 'OPENCODE_V2' ? 'OPENCODE' : agent
+        )
+      ),
+    ];
+    const prioritized = AGENT_PRIORITY.filter((agent) =>
+      availableKeys.includes(agent)
+    );
+    const rest = availableKeys
+      .filter((agent) => !AGENT_PRIORITY.includes(agent))
       .sort((a, b) => getAgentName(a).localeCompare(getAgentName(b)));
-    return [...prioritized, ...rest];
-  }, [profiles]);
+
+    return [...prioritized, ...rest].map((agent) =>
+      agent === 'OPENCODE'
+        ? {
+            id: 'OPENCODE',
+            agent: opencodePreference ?? ('OPENCODE' as BaseCodingAgent),
+            name: 'OpenCode',
+            versionLabel:
+              opencodePreference === null
+                ? undefined
+                : opencodePreference === 'OPENCODE_V2'
+                  ? 'V2'
+                  : 'V1',
+          }
+        : {
+            id: agent,
+            agent: agent as BaseCodingAgent,
+            name: getAgentName(agent),
+          }
+    );
+  }, [profiles, opencodePreference]);
+
+  // Follow the detected version while OpenCode is selected, without overriding
+  // an explicit choice of another agent.
+  useEffect(() => {
+    if (!initialized || opencodePreference === null) return;
+
+    setSelectedAgent((current) =>
+      current === 'OPENCODE' || current === 'OPENCODE_V2'
+        ? opencodePreference
+        : current
+    );
+  }, [initialized, opencodePreference]);
+
+  const isOptionSelected = (option: AgentOption) =>
+    selectedAgent === option.agent ||
+    (option.id === 'OPENCODE' &&
+      (selectedAgent === 'OPENCODE' || selectedAgent === 'OPENCODE_V2'));
 
   const editorOptions = useMemo(() => Object.values(EditorType), []);
 
@@ -368,14 +455,14 @@ export function LandingPage() {
             <section className="space-y-half">
               <h2 className="text-sm font-medium text-high">Coding Agent</h2>
               <div className="grid gap-1.5">
-                {executorOptions.map((agent) => {
-                  const selected = selectedAgent === agent;
+                {executorOptions.map((option) => {
+                  const selected = isOptionSelected(option);
 
                   return (
                     <button
-                      key={agent}
+                      key={option.id}
                       type="button"
-                      onClick={() => setSelectedAgent(agent)}
+                      onClick={() => setSelectedAgent(option.agent)}
                       className={cn(
                         'flex items-center gap-base rounded-sm border px-base py-half text-left',
                         selected
@@ -384,12 +471,17 @@ export function LandingPage() {
                       )}
                     >
                       <AgentIcon
-                        agent={agent}
+                        agent={option.agent}
                         className="size-icon-xl shrink-0"
                       />
                       <span className="text-sm text-normal flex-1 truncate">
-                        {getAgentName(agent)}
+                        {option.name}
                       </span>
+                      {option.versionLabel && (
+                        <span className="shrink-0 text-sm text-low">
+                          {option.versionLabel}
+                        </span>
+                      )}
                       {selected && (
                         <CheckIcon
                           className="size-icon-xs text-brand shrink-0"
