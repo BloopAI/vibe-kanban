@@ -15,8 +15,9 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    routes::workspaces::attachments::{
-        ImportedIssueAttachment, import_issue_attachments_from_remote,
+    routes::workspaces::{
+        attachments::{ImportedIssueAttachment, import_issue_attachments_from_remote},
+        links::sync_workspace_to_issue,
     },
 };
 
@@ -238,6 +239,10 @@ pub async fn create_and_start_workspace(
         .workspace_manager()
         .load_managed_workspace(create_workspace_record(&deployment, name).await?)
         .await?;
+    let remote_client = match linked_issue.as_ref() {
+        Some(_) => Some(deployment.remote_client()?),
+        None => None,
+    };
 
     for repo in &repos {
         managed_workspace
@@ -250,9 +255,7 @@ pub async fn create_and_start_workspace(
         managed_workspace.associate_attachments(ids).await?;
     }
 
-    if let Some(linked_issue) = &linked_issue
-        && let Ok(client) = deployment.remote_client()
-    {
+    if let (Some(linked_issue), Some(client)) = (linked_issue.as_ref(), remote_client.as_ref()) {
         match import_issue_attachments_from_remote(
             &client,
             deployment.file(),
@@ -294,6 +297,17 @@ pub async fn create_and_start_workspace(
 
     let workspace = managed_workspace.workspace.clone();
     tracing::info!("Created workspace {}", workspace.id);
+
+    if let (Some(linked_issue), Some(client)) = (linked_issue.as_ref(), remote_client.as_ref()) {
+        sync_workspace_to_issue(
+            &deployment,
+            client,
+            &workspace,
+            linked_issue.remote_project_id,
+            linked_issue.issue_id,
+        )
+        .await?;
+    }
 
     let execution_process = deployment
         .container()
