@@ -56,6 +56,33 @@ run_step() {
   fi
 }
 
+# The SQLx checks need the sqlx-cli release that matches the sqlx library in
+# the given Cargo.lock: sqlx-cli 0.9 refuses `prepare --check` without a live
+# database, while 0.8 checks the .sqlx cache offline. When the installed
+# `cargo sqlx` differs, install the matching one under target/ (git-ignored)
+# once and put it first on PATH. The version follows Cargo.lock, so upgrading
+# sqlx needs no change here.
+use_matching_sqlx_cli() {
+  local lockfile="$1" version installed tool_dir
+  version=$(awk '/^name = "sqlx"$/ { getline; gsub(/version = |"/, ""); print; exit }' "$lockfile")
+  if [[ -z "$version" ]]; then
+    echo -e "${RED}  could not read the sqlx version from $lockfile${RESET}"
+    return 1
+  fi
+  installed=$(cargo sqlx --version 2>/dev/null | awk '{ print $NF }') || true
+  if [[ "$installed" == "$version" ]]; then
+    return 0
+  fi
+  tool_dir="$REPO_ROOT/target/ci-tools/sqlx-cli-$version"
+  if [[ ! -x "$tool_dir/bin/cargo-sqlx" ]]; then
+    echo -e "${YELLOW}  ! installing sqlx-cli $version into ${tool_dir#"$REPO_ROOT"/} (found ${installed:-none})${RESET}"
+    cargo install sqlx-cli --version "$version" --locked \
+      --no-default-features --features sqlite,postgres \
+      --root "$tool_dir" || return 1
+  fi
+  export PATH="$tool_dir/bin:$PATH"
+}
+
 # ---------------------------------------------------------------------------
 # Individual job implementations
 # ---------------------------------------------------------------------------
@@ -86,7 +113,11 @@ job_backend_schema() {
   local failed=0
   log_job "backend-schema-checks" "generated types + sqlx"
   run_step "Check generated TS types" npm run generate-types:check || failed=1
-  run_step "SQLx offline check"       npm run prepare-db:check      || failed=1
+  if run_step "Use sqlx-cli matching Cargo.lock" use_matching_sqlx_cli Cargo.lock; then
+    run_step "SQLx offline check"     npm run prepare-db:check      || failed=1
+  else
+    failed=1
+  fi
   return $failed
 }
 
@@ -119,7 +150,11 @@ job_backend_remote() {
   run_step "cargo clippy (remote)"       cargo clippy --all-targets --manifest-path crates/remote/Cargo.toml -- -D warnings                                            || failed=1
   run_step "cargo clippy (relay-tunnel)" cargo clippy --all-targets --manifest-path crates/relay-tunnel/Cargo.toml -- -D warnings                                      || failed=1
   run_step "Check remote generated TS types" npm run remote:generate-types:check || failed=1
-  run_step "Remote SQLx offline check"       npm run remote:prepare-db:check      || failed=1
+  if run_step "Use sqlx-cli matching crates/remote/Cargo.lock" use_matching_sqlx_cli crates/remote/Cargo.lock; then
+    run_step "Remote SQLx offline check"     npm run remote:prepare-db:check      || failed=1
+  else
+    failed=1
+  fi
   return $failed
 }
 
