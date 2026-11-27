@@ -87,12 +87,14 @@ RUN mkdir -p /app/bin
 
 # When building without FEATURES (self-hosted), strip the private billing dependency
 # and its feature flag from Cargo.toml so cargo doesn't try to fetch the private git repo.
-# Also remove the Cargo.lock which references the private repo.
+# Keep Cargo.lock: cargo drops the now-unused billing entries from it and keeps every
+# other version pinned. Without it, cargo resolves fresh and can pick crate versions
+# that don't build on the pinned toolchain. The build can't use --locked here because
+# the lock still lists the billing package before cargo prunes it.
 RUN if [ -z "${FEATURES}" ]; then \
       sed -i '/^billing = {.*vibe-kanban-private.*/d' crates/remote/Cargo.toml; \
       sed -i '/^# private crate for billing/d' crates/remote/Cargo.toml; \
       sed -i 's/^vk-billing = \["dep:billing"\]/vk-billing = []/' crates/remote/Cargo.toml; \
-      rm -f crates/remote/Cargo.lock; \
     fi
 
 RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
