@@ -2,7 +2,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::{
     Json,
-    body::{Body, to_bytes},
+    body::{Body, HttpBody as _, to_bytes},
     extract::{OriginalUri, Request, State},
     http::{HeaderValue, Method, StatusCode},
     middleware::Next,
@@ -25,9 +25,14 @@ use crate::{DeploymentImpl, error::ApiError};
 
 pub type RelayRequestSignatureContext = RequestSignature;
 
-/// Maximum body size (50 MiB) for relay-signed requests. Both the request body
-/// (for signature verification) and the response body (for signing) are buffered
-/// into memory. This cap prevents a large payload from causing OOM.
+/// Maximum body size (50 MiB) buffered for relay signing.
+///
+/// Request bodies are always buffered: the request signature covers a hash of
+/// the body, so it has to be checked before the handler sees any of it. Larger
+/// requests get 413. Every upload route in the app is limited to 20 MiB.
+///
+/// Response bodies are buffered and signed only when their length is already
+/// known and within this cap (see [`sign_response`]).
 const RELAY_SIGNED_BODY_MAX_BYTES: usize = 50 * 1024 * 1024;
 
 /// How a relayed request to an `/api` route is handled. Paths are the ones the
@@ -184,12 +189,29 @@ async fn verify_relay_request(
     Ok((request, request_signature, path_and_query))
 }
 
+/// Add `x-vk-resp-*` signature headers to a relayed response.
+///
+/// Only bodies whose length is already known and within
+/// [`RELAY_SIGNED_BODY_MAX_BYTES`] are signed: handler responses built from
+/// bytes, strings or JSON, error responses, and WebSocket upgrades. Any other
+/// body is a stream (SSE, the preview proxy, file downloads). It is passed
+/// through without signature headers, so it reaches the client as it is
+/// produced instead of being held until it ends, and has no size cap.
+///
+/// No shipped client checks response signatures today. A client that starts
+/// checking them must treat a response without these headers as an unsigned
+/// stream, or a signature format for streams has to be added first.
 async fn sign_response(
     signing: &RelaySigningService,
     response: Response,
     request_signature: &RequestSignature,
     path_and_query: &str,
 ) -> Result<Response, ApiError> {
+    let known_len = response.body().size_hint().exact();
+    if !known_len.is_some_and(|len| len <= RELAY_SIGNED_BODY_MAX_BYTES as u64) {
+        return Ok(response);
+    }
+
     let (mut parts, body) = response.into_parts();
     let body_bytes = to_bytes(body, RELAY_SIGNED_BODY_MAX_BYTES)
         .await
@@ -831,5 +853,169 @@ mod tests {
             .insert(WEBRTC_PEER_HEADER, "1".parse().unwrap());
 
         assert_eq!(status(&app, request).await, StatusCode::UNAUTHORIZED);
+    }
+}
+
+#[cfg(test)]
+mod response_streaming_tests {
+    use std::{convert::Infallible, time::Duration};
+
+    use axum::{
+        body::{Body, Bytes, to_bytes},
+        http::StatusCode,
+        response::{
+            IntoResponse, Response,
+            sse::{Event, Sse},
+        },
+    };
+    use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+    use ed25519_dalek::{Signature, SigningKey, Verifier};
+    use futures_util::{StreamExt, stream};
+    use relay_control::signing::{
+        RESPONSE_NONCE_HEADER, RESPONSE_SIGNATURE_HEADER, RESPONSE_TIMESTAMP_HEADER,
+        RelaySigningService, RequestSignature, build_response_signing_message,
+    };
+    use tokio::{sync::mpsc, time::timeout};
+    use uuid::Uuid;
+
+    use super::{RELAY_SIGNED_BODY_MAX_BYTES, sign_response};
+
+    const PATH: &str = "/api/preview/3000/stream?x=1";
+    const WAIT: Duration = Duration::from_secs(5);
+
+    fn request_signature() -> RequestSignature {
+        RequestSignature {
+            signing_session_id: Uuid::new_v4(),
+            timestamp: 0,
+            nonce: Uuid::new_v4(),
+            signature_b64: String::new(),
+        }
+    }
+
+    fn signing() -> RelaySigningService {
+        RelaySigningService::new(SigningKey::from_bytes(&[1; 32]))
+    }
+
+    fn assert_unsigned(response: &Response) {
+        for name in [
+            RESPONSE_TIMESTAMP_HEADER,
+            RESPONSE_NONCE_HEADER,
+            RESPONSE_SIGNATURE_HEADER,
+        ] {
+            assert!(response.headers().get(name).is_none(), "{name} was set");
+        }
+    }
+
+    fn header<'a>(response: &'a Response, name: &str) -> &'a str {
+        response
+            .headers()
+            .get(name)
+            .unwrap_or_else(|| panic!("missing {name}"))
+            .to_str()
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn known_length_response_is_signed() {
+        let signing = signing();
+        let request_signature = request_signature();
+        let response = (StatusCode::CREATED, "hello").into_response();
+
+        let response = sign_response(&signing, response, &request_signature, PATH)
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+        let timestamp: i64 = header(&response, RESPONSE_TIMESTAMP_HEADER)
+            .parse()
+            .unwrap();
+        let response_nonce: Uuid = header(&response, RESPONSE_NONCE_HEADER).parse().unwrap();
+        let signature_bytes = BASE64_STANDARD
+            .decode(header(&response, RESPONSE_SIGNATURE_HEADER))
+            .unwrap();
+        let signature = Signature::from_slice(&signature_bytes).unwrap();
+
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        assert_eq!(&body[..], b"hello");
+
+        let message = build_response_signing_message(
+            timestamp,
+            StatusCode::CREATED.as_u16(),
+            PATH,
+            request_signature.signing_session_id,
+            request_signature.nonce,
+            response_nonce,
+            &body,
+        );
+        signing
+            .server_public_key()
+            .verify(message.as_bytes(), &signature)
+            .expect("response signature verifies");
+    }
+
+    #[tokio::test]
+    async fn streaming_response_is_passed_through_unsigned() {
+        let (sender, receiver) = mpsc::channel::<Bytes>(1);
+        let chunks = stream::unfold(receiver, |mut receiver| async move {
+            receiver
+                .recv()
+                .await
+                .map(|chunk| (Ok::<_, Infallible>(chunk), receiver))
+        });
+        let response = Response::new(Body::from_stream(chunks));
+
+        // Buffering would wait for the stream to end, which never happens here.
+        let response = timeout(
+            WAIT,
+            sign_response(&signing(), response, &request_signature(), PATH),
+        )
+        .await
+        .expect("response is not buffered")
+        .unwrap();
+        assert_unsigned(&response);
+
+        let mut body = response.into_body().into_data_stream();
+        sender.send(Bytes::from_static(b"first")).await.unwrap();
+        let first = timeout(WAIT, body.next())
+            .await
+            .expect("first chunk arrives before the stream ends")
+            .unwrap()
+            .unwrap();
+        assert_eq!(&first[..], b"first");
+
+        drop(sender);
+        assert!(timeout(WAIT, body.next()).await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn sse_response_is_passed_through_unsigned() {
+        let events = stream::pending::<Result<Event, Infallible>>();
+        let response = Sse::new(events).into_response();
+
+        let response = timeout(
+            WAIT,
+            sign_response(&signing(), response, &request_signature(), PATH),
+        )
+        .await
+        .expect("SSE response is not buffered")
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_unsigned(&response);
+    }
+
+    #[tokio::test]
+    async fn known_length_body_over_cap_is_passed_through_unsigned() {
+        let len = RELAY_SIGNED_BODY_MAX_BYTES + 1;
+        let response = Response::new(Body::from(vec![0u8; len]));
+
+        let response = sign_response(&signing(), response, &request_signature(), PATH)
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_unsigned(&response);
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        assert_eq!(body.len(), len);
     }
 }
