@@ -15,10 +15,10 @@ use webrtc::{
         sdp::session_description::RTCSessionDescription,
     },
 };
-use ws_bridge::{bridge_tungstenite_ws, connect_upstream_ws};
+use ws_bridge::{bridge_tungstenite_ws, connect_upstream_ws_with_headers};
 
 use crate::{
-    WebRtcError, fragment,
+    WEBRTC_PEER_HEADER, WebRtcError, fragment,
     proxy::{
         DataChannelMessage, DataChannelRequest, DataChannelResponse, DataChannelWsStream, WsError,
         WsFrame, WsOpen, WsOpened,
@@ -321,13 +321,14 @@ async fn proxy_request(
 
     for (key, values) in &request.headers {
         let k = key.to_ascii_lowercase();
-        if k == "origin" || k == "host" || k == "x-vk-relayed" {
+        if k == "origin" || k == "host" || k == "x-vk-relayed" || k == WEBRTC_PEER_HEADER {
             continue;
         }
         for value in values {
             req_builder = req_builder.header(key.as_str(), value.as_str());
         }
     }
+    req_builder = req_builder.header(WEBRTC_PEER_HEADER, "1");
 
     if let Some(body_b64) = &request.body_b64 {
         use base64::Engine as _;
@@ -436,8 +437,12 @@ async fn run_ws_bridge(
 ) -> Result<(), WebRtcError> {
     let conn_id = ws_open.conn_id;
     let url = format!("ws://{}{}", local_backend_addr, ws_open.path);
-    let (ws_stream, selected_protocol) =
-        connect_upstream_ws(url, ws_open.protocols.as_deref()).await?;
+    let (ws_stream, selected_protocol) = connect_upstream_ws_with_headers(
+        url,
+        ws_open.protocols.as_deref(),
+        &[(WEBRTC_PEER_HEADER, "1")],
+    )
+    .await?;
 
     let opened_msg = DataChannelMessage::WsOpened(WsOpened {
         conn_id,
@@ -458,4 +463,79 @@ async fn run_ws_bridge(
     bridge_tungstenite_ws(ws_stream, bridge)
         .await
         .map_err(WebRtcError::from)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use base64::Engine as _;
+    use tokio::{
+        io::{AsyncReadExt, AsyncWriteExt},
+        net::TcpListener,
+    };
+    use uuid::Uuid;
+
+    use super::proxy_request;
+    use crate::{WEBRTC_PEER_HEADER, proxy::DataChannelRequest};
+
+    /// Accepts one HTTP request and answers with its lowercased header block.
+    async fn echo_headers_server() -> (std::net::SocketAddr, tokio::task::JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let task = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut head = Vec::new();
+            let mut chunk = [0u8; 1024];
+            while !head.windows(4).any(|w| w == b"\r\n\r\n") {
+                let n = stream.read(&mut chunk).await.unwrap();
+                if n == 0 {
+                    break;
+                }
+                head.extend_from_slice(&chunk[..n]);
+            }
+            let head = String::from_utf8_lossy(&head).to_lowercase();
+            let response = format!(
+                "HTTP/1.1 200 OK\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{head}",
+                head.len()
+            );
+            stream.write_all(response.as_bytes()).await.unwrap();
+        });
+        (addr, task)
+    }
+
+    #[tokio::test]
+    async fn proxied_requests_are_marked_as_coming_from_a_peer() {
+        let (addr, server) = echo_headers_server().await;
+        let headers = HashMap::from([
+            ("X-VK-WebRTC-Peer".to_string(), vec!["0".to_string()]),
+            ("x-vk-relayed".to_string(), vec!["1".to_string()]),
+            ("x-test".to_string(), vec!["kept".to_string()]),
+        ]);
+        let client = reqwest::Client::builder().no_proxy().build().unwrap();
+
+        let response = proxy_request(
+            &client,
+            addr,
+            DataChannelRequest {
+                id: Uuid::new_v4(),
+                method: "GET".to_string(),
+                path: "/api/health".to_string(),
+                headers,
+                body_b64: None,
+            },
+        )
+        .await;
+        server.await.unwrap();
+
+        assert_eq!(response.status, 200);
+        let body = base64::engine::general_purpose::STANDARD
+            .decode(response.body_b64.unwrap())
+            .unwrap();
+        let head = String::from_utf8(body).unwrap();
+        assert_eq!(head.matches(&format!("{WEBRTC_PEER_HEADER}:")).count(), 1);
+        assert!(head.contains(&format!("{WEBRTC_PEER_HEADER}: 1\r\n")));
+        assert!(!head.contains("x-vk-relayed"));
+        assert!(head.contains("x-test: kept\r\n"));
+    }
 }

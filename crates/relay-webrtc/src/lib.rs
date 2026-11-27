@@ -15,6 +15,11 @@ pub use proxy::{
 };
 pub use signaling::{IceCandidate, SdpAnswer, SdpOffer};
 
+/// Set on every request the host proxies from a WebRTC data channel to its
+/// local backend, so the backend can tell it came from a paired device rather
+/// than from this machine. Any copy the peer sends is dropped first.
+pub const WEBRTC_PEER_HEADER: &str = "x-vk-webrtc-peer";
+
 /// Build a webrtc API restricted to UDP4 (IPv4 only).
 ///
 /// Without this, the ICE agent tries IPv6 STUN which times out on most

@@ -25,6 +25,10 @@ export interface LocalApiTransport {
   ) => Promise<WebSocket> | WebSocket;
 }
 
+// Routes that are never sent to another host. The server refuses these over
+// relay and WebRTC (`is_local_only_path` in
+// crates/server/src/middleware/relay_request_signature.rs), apart from the
+// pairing routes under /api/relay-auth/server/; keep the two in step.
 const LOCAL_ONLY_API_PREFIXES = [
   '/api/open-remote-editor/',
   '/api/relay-auth/server/',

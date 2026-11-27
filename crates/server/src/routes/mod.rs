@@ -35,7 +35,7 @@ pub mod webrtc;
 pub mod workspaces;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
-    let relay_signed_routes = Router::new()
+    let api_routes = Router::new()
         .route("/health", get(health::health_check))
         .merge(config::router())
         .merge(acp_registry::router())
@@ -59,20 +59,15 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .nest("/remote", remote::router())
         .merge(webrtc::router())
         .nest("/attachments", attachments::routes())
-        .layer(axum::middleware::from_fn_with_state(
-            deployment.clone(),
-            middleware::sign_relay_response,
-        ))
-        .layer(axum::middleware::from_fn_with_state(
-            deployment.clone(),
-            middleware::require_relay_request_signature,
-        ))
-        .with_state(deployment.clone());
-
-    let api_routes = Router::new()
         .merge(relay_auth::router())
-        .merge(host_relay::router(&deployment))
-        .merge(relay_signed_routes)
+        .merge(host_relay::router())
+        // Relayed requests need a valid signature on every `/api` route,
+        // except the few that pairing needs (see
+        // `middleware::relay_route_policy`).
+        .layer(axum::middleware::from_fn_with_state(
+            deployment.clone(),
+            middleware::relay_request_guard,
+        ))
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,
         ))
