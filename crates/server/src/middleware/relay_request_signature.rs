@@ -1,9 +1,10 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum::{
+    Json,
     body::{Body, to_bytes},
     extract::{OriginalUri, Request, State},
-    http::{HeaderValue, Method},
+    http::{HeaderValue, Method, StatusCode},
     middleware::Next,
     response::{IntoResponse, Response},
 };
@@ -15,7 +16,9 @@ use relay_control::signing::{
     RESPONSE_TIMESTAMP_HEADER, RelaySigningService, RequestSignature, SIGNING_SESSION_HEADER,
     TIMESTAMP_HEADER, build_response_signing_message,
 };
+use relay_webrtc::WEBRTC_PEER_HEADER;
 use url::form_urlencoded;
+use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
@@ -36,8 +39,8 @@ pub enum RelayRoutePolicy {
     Unsigned,
     /// Requires a valid signature from a paired device; the response is signed.
     Signed,
-    /// Requires a valid signature, then is refused: only the local machine may
-    /// use it.
+    /// Requires a valid signature, then is refused with 404: only the local
+    /// machine may use it. Also refused for requests from a WebRTC peer.
     LocalOnly,
 }
 
@@ -69,19 +72,28 @@ pub fn relay_route_policy(method: &Method, path: &str) -> RelayRoutePolicy {
     RelayRoutePolicy::Signed
 }
 
-/// Routes that nothing calls over the relay: managing this host's paired
-/// devices, the enrollment code, and proxying on to other hosts (which would
-/// sign with this host's keys).
+/// Routes only this machine may use: managing this host's paired devices and
+/// the enrollment code, pairing this machine with other hosts, and anything
+/// that contacts another host with this host's keys (`/host/*`,
+/// `/open-remote-editor/*`, which also opens an editor here).
+///
+/// The frontend's `LOCAL_ONLY_API_PREFIXES` (`localApiTransport.ts`) lists the
+/// routes it never sends to another host. Every route there is either listed
+/// here or is one of the pairing routes in `UNSIGNED_RELAY_ROUTES`; keep the
+/// two in step.
 fn is_local_only_path(path: &str) -> bool {
     path == "/relay-auth/server/enrollment-code"
         || path == "/relay-auth/server/clients"
         || path.starts_with("/relay-auth/server/clients/")
+        || path.starts_with("/relay-auth/client/")
         || path.starts_with("/host/")
+        || path.starts_with("/open-remote-editor/")
 }
 
-/// Guard for every `/api` route. Requests that did not come through the relay
-/// pass through untouched. Relayed requests are handled by
+/// Guard for every `/api` route. Relayed requests are handled by
 /// [`relay_route_policy`], so a new route requires a signature by default.
+/// Requests from a WebRTC peer are refused on local-only routes. All other
+/// requests pass through untouched.
 pub async fn relay_request_guard(
     State(deployment): State<DeploymentImpl>,
     request: Request,
@@ -95,25 +107,46 @@ pub(crate) async fn guard_relay_request(
     request: Request,
     next: Next,
 ) -> Result<Response, ApiError> {
-    if !is_relay_request(&request) {
-        return Ok(next.run(request).await);
-    }
-
     let policy = relay_route_policy(request.method(), request.uri().path());
-    if policy == RelayRoutePolicy::Unsigned {
-        return Ok(next.run(request).await);
+
+    if is_relay_request(&request) {
+        if policy == RelayRoutePolicy::Unsigned {
+            return Ok(next.run(request).await);
+        }
+
+        let (request, request_signature, path_and_query) =
+            verify_relay_request(signing, request).await?;
+
+        let response = if policy == RelayRoutePolicy::LocalOnly {
+            local_only_response()
+        } else {
+            next.run(request).await
+        };
+
+        return sign_response(signing, response, &request_signature, &path_and_query).await;
     }
 
-    let (request, request_signature, path_and_query) =
-        verify_relay_request(signing, request).await?;
+    // A WebRTC data channel can only be opened by a paired device (the offer
+    // goes through `/webrtc/offer`, which needs a signature), so requests over
+    // it carry no signature of their own. They still come from another device.
+    if is_webrtc_peer_request(&request) && policy == RelayRoutePolicy::LocalOnly {
+        return Ok(local_only_response());
+    }
 
-    let response = if policy == RelayRoutePolicy::LocalOnly {
-        ApiError::Forbidden("This route is not available over relay.".to_string()).into_response()
-    } else {
-        next.run(request).await
-    };
+    Ok(next.run(request).await)
+}
 
-    sign_response(signing, response, &request_signature, &path_and_query).await
+/// 404 rather than 401/403: relay clients read those as an expired signing
+/// session and re-handshake, and the remote web app's settings still request
+/// `/relay-auth/client/hosts` from the host it is viewing.
+fn local_only_response() -> Response {
+    (
+        StatusCode::NOT_FOUND,
+        Json(ApiResponse::<()>::error(
+            "This route is only available on the host machine.",
+        )),
+    )
+        .into_response()
 }
 
 async fn verify_relay_request(
@@ -368,6 +401,10 @@ fn unix_timestamp_now() -> Result<i64, ()> {
     i64::try_from(duration.as_secs()).map_err(|_| ())
 }
 
+fn is_webrtc_peer_request(request: &Request) -> bool {
+    request.headers().contains_key(WEBRTC_PEER_HEADER)
+}
+
 fn is_relay_request(request: &Request) -> bool {
     request
         .headers()
@@ -395,6 +432,7 @@ mod tests {
         RESPONSE_TIMESTAMP_HEADER, RelaySigningService, SIGNING_SESSION_HEADER, TIMESTAMP_HEADER,
         build_response_signing_message,
     };
+    use relay_webrtc::WEBRTC_PEER_HEADER;
     use tower::ServiceExt;
     use uuid::Uuid;
 
@@ -422,11 +460,8 @@ mod tests {
     fn other_routes_are_signed() {
         for (method, path) in [
             (Method::GET, "/health"),
-            (Method::GET, "/relay-auth/client/hosts"),
-            (Method::POST, "/relay-auth/client/pair"),
-            (Method::DELETE, "/relay-auth/client/hosts/abc"),
             (Method::GET, "/terminal/ws"),
-            (Method::POST, "/open-remote-editor/workspace"),
+            (Method::POST, "/webrtc/offer"),
             (Method::GET, "/does-not-exist"),
             (Method::GET, "/"),
             (Method::GET, ""),
@@ -440,12 +475,16 @@ mod tests {
     }
 
     #[test]
-    fn device_management_and_host_proxy_are_local_only() {
+    fn device_management_and_onward_proxying_are_local_only() {
         let host_path = format!("/host/{HOST_ID}/api/health");
         for (method, path) in [
             (Method::GET, "/relay-auth/server/clients"),
             (Method::DELETE, "/relay-auth/server/clients/abc"),
             (Method::POST, "/relay-auth/server/enrollment-code"),
+            (Method::POST, "/relay-auth/client/pair"),
+            (Method::GET, "/relay-auth/client/hosts"),
+            (Method::DELETE, "/relay-auth/client/hosts/abc"),
+            (Method::POST, "/open-remote-editor/workspace"),
             (Method::GET, host_path.as_str()),
             (Method::POST, host_path.as_str()),
         ] {
@@ -521,6 +560,7 @@ mod tests {
                 post(|| async { "start" }),
             )
             .route("/relay-auth/server/clients", get(|| async { "clients" }))
+            .route("/relay-auth/client/hosts", get(|| async { "hosts" }))
             .route("/host/{host_id}/{*tail}", get(|| async { "proxied" }))
             .layer(from_fn_with_state(signing, test_guard));
         Router::new().nest("/api", api)
@@ -565,6 +605,7 @@ mod tests {
         for uri in [
             "/api/health",
             "/api/relay-auth/server/clients",
+            "/api/relay-auth/client/hosts",
             &format!("/api/host/{HOST_ID}/api/health"),
         ] {
             let response = app
@@ -732,6 +773,7 @@ mod tests {
 
         for uri in [
             "/api/relay-auth/server/clients".to_string(),
+            "/api/relay-auth/client/hosts".to_string(),
             format!("/api/host/{HOST_ID}/api/health"),
         ] {
             let response = app
@@ -739,8 +781,55 @@ mod tests {
                 .oneshot(signed_request(&peer, Method::GET, &uri))
                 .await
                 .unwrap();
-            assert_eq!(response.status(), StatusCode::FORBIDDEN, "{uri}");
+            assert_eq!(response.status(), StatusCode::NOT_FOUND, "{uri}");
             assert!(response.headers().get(RESPONSE_SIGNATURE_HEADER).is_some());
         }
+    }
+
+    fn webrtc_peer_request(uri: &str) -> Request {
+        Request::builder()
+            .method(Method::GET)
+            .uri(uri)
+            .header(WEBRTC_PEER_HEADER, "1")
+            .body(Body::empty())
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn webrtc_peer_requests_skip_signatures_but_not_local_only_routes() {
+        let peer = paired_peer().await;
+        let app = app(peer.server.clone());
+
+        let response = app
+            .clone()
+            .oneshot(webrtc_peer_request("/api/health"))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(response.headers().get(RESPONSE_SIGNATURE_HEADER).is_none());
+
+        for uri in [
+            "/api/relay-auth/server/clients".to_string(),
+            "/api/relay-auth/client/hosts".to_string(),
+            format!("/api/host/{HOST_ID}/api/health"),
+        ] {
+            assert_eq!(
+                status(&app, webrtc_peer_request(&uri)).await,
+                StatusCode::NOT_FOUND,
+                "{uri}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn relayed_and_webrtc_markers_together_still_need_a_signature() {
+        let peer = paired_peer().await;
+        let app = app(peer.server.clone());
+        let mut request = request(Method::GET, "/api/health", true);
+        request
+            .headers_mut()
+            .insert(WEBRTC_PEER_HEADER, "1".parse().unwrap());
+
+        assert_eq!(status(&app, request).await, StatusCode::UNAUTHORIZED);
     }
 }

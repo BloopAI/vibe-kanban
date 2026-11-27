@@ -41,7 +41,24 @@ pub async fn connect_upstream_ws(
     ws_url: String,
     protocols: Option<&str>,
 ) -> Result<(UpstreamWebSocket, Option<String>), UpstreamWsConnectError> {
+    connect_upstream_ws_with_headers(ws_url, protocols, &[]).await
+}
+
+/// Like [`connect_upstream_ws`], adding `headers` to the upgrade request.
+/// Header names must be lowercase.
+pub async fn connect_upstream_ws_with_headers(
+    ws_url: String,
+    protocols: Option<&str>,
+    headers: &[(&'static str, &'static str)],
+) -> Result<(UpstreamWebSocket, Option<String>), UpstreamWsConnectError> {
     let mut ws_request = ws_url.into_client_request()?;
+
+    for (name, value) in headers {
+        ws_request.headers_mut().insert(
+            http::HeaderName::from_static(name),
+            http::HeaderValue::from_static(value),
+        );
+    }
 
     if let Some(protocols) = protocols
         && !protocols.trim().is_empty()
@@ -144,4 +161,44 @@ where
     EB: Into<BridgeSourceError>,
 {
     ws_copy_bidirectional(a, b, std::convert::identity, std::convert::identity).await
+}
+
+#[cfg(test)]
+mod tests {
+    use tokio::net::TcpListener;
+    use tokio_tungstenite::tungstenite::handshake::server::{Request, Response};
+
+    use super::connect_upstream_ws_with_headers;
+
+    #[tokio::test]
+    #[allow(clippy::result_large_err)] // tungstenite's handshake callback signature
+    async fn extra_headers_reach_the_upstream_handshake() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut seen = None;
+            let _ws =
+                tokio_tungstenite::accept_hdr_async(stream, |req: &Request, res: Response| {
+                    seen = req
+                        .headers()
+                        .get("x-test-marker")
+                        .map(|v| v.to_str().unwrap().to_string());
+                    Ok(res)
+                })
+                .await
+                .unwrap();
+            seen
+        });
+
+        let _upstream = connect_upstream_ws_with_headers(
+            format!("ws://{addr}/socket"),
+            None,
+            &[("x-test-marker", "1")],
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(server.await.unwrap().as_deref(), Some("1"));
+    }
 }
