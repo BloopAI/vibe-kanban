@@ -98,6 +98,12 @@ async fn proxy_to_local(
     request
         .headers_mut()
         .insert("x-vk-relayed", http::HeaderValue::from_static("1"));
+    // The relay forwards the client's Host, which is the relay's public
+    // hostname. Address the request to the local server instead, so it passes
+    // the local server's Host check (DNS rebinding protection).
+    request
+        .headers_mut()
+        .insert(http::header::HOST, local_host_header(local_addr));
 
     // TODO: fix dev servers
     let local_stream = match TcpStream::connect(local_addr).await {
@@ -166,4 +172,28 @@ fn simple_response(status: StatusCode, body: &'static str) -> Response<Body> {
         .status(status)
         .body(Body::from(body))
         .unwrap_or_else(|_| Response::new(Body::from(body)))
+}
+
+/// `Host` for a request forwarded to the local server: its IP and port, which
+/// the local server always accepts.
+fn local_host_header(local_addr: SocketAddr) -> http::HeaderValue {
+    http::HeaderValue::from_str(&local_addr.to_string())
+        .expect("a socket address is a valid header value")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn local_host_header_is_the_socket_address() {
+        assert_eq!(
+            local_host_header("127.0.0.1:3001".parse().unwrap()),
+            "127.0.0.1:3001"
+        );
+        assert_eq!(
+            local_host_header("[::1]:3001".parse().unwrap()),
+            "[::1]:3001"
+        );
+    }
 }

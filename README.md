@@ -125,6 +125,7 @@ The following environment variables can be configured at build time or runtime:
 | `MCP_PORT` | Runtime | Value of `BACKEND_PORT` | MCP server connection port |
 | `DISABLE_WORKTREE_CLEANUP` | Runtime | Not set | Disable all git worktree cleanup including orphan and expired workspace cleanup (for debugging) |
 | `VK_ALLOWED_ORIGINS` | Runtime | Not set | Comma-separated list of origins that are allowed to make backend API requests (e.g., `https://my-vibekanban-frontend.com`) |
+| `VK_ALLOWED_HOSTS` | Runtime | Not set | Comma-separated list of hostnames you open Vibe Kanban through, besides `localhost`, `*.localhost` and IP addresses (e.g., `mybox.lan,vk.example.com`). Requests with any other `Host` header get 403 |
 | `VK_SHARED_API_BASE` | Runtime | Not set | Base URL for the remote/cloud API used by the local desktop app |
 | `VK_SHARED_RELAY_API_BASE` | Runtime | Not set | Base URL for the relay API used by tunnel-mode connections |
 | `VK_TUNNEL` | Runtime | Not set | Enable relay tunnel mode when set (requires relay API base URL) |
@@ -145,11 +146,23 @@ VK_ALLOWED_ORIGINS=https://vk.example.com
 VK_ALLOWED_ORIGINS=https://vk.example.com,https://vk-staging.example.com
 ```
 
+#### Opening Vibe Kanban by Hostname
+
+To protect against [DNS rebinding](https://en.wikipedia.org/wiki/DNS_rebinding), the server only answers requests whose `Host` header is `localhost`, a `*.localhost` name, an IP address, or a hostname you allowed. Hostnames in `VK_ALLOWED_ORIGINS` and a hostname set as `HOST` are allowed automatically.
+
+If you open Vibe Kanban through any other hostname (for example a LAN name like `mybox.lan`, a Tailscale name, or a Cloudflare Tunnel or ngrok URL), add it to `VK_ALLOWED_HOSTS`. Otherwise every request gets 403 with a message that names this variable.
+
+```bash
+VK_ALLOWED_HOSTS=mybox.lan,vk.example.com
+```
+
+Ports are ignored. Opening Vibe Kanban by IP address (for example `http://192.168.1.20:8080` with `HOST=0.0.0.0`) needs no configuration.
+
 ### Remote Deployment
 
 When running Vibe Kanban on a remote server (e.g., via systemctl, Docker, or cloud hosting), you can configure your editor to open projects via SSH:
 
-1. **Access via tunnel**: Use Cloudflare Tunnel, ngrok, or similar to expose the web UI
+1. **Access via tunnel**: Use Cloudflare Tunnel, ngrok, or similar to expose the web UI, and add the tunnel's hostname to `VK_ALLOWED_HOSTS` (see [Opening Vibe Kanban by Hostname](#opening-vibe-kanban-by-hostname))
 2. **Configure remote SSH** in Settings → Editor Integration:
    - Set **Remote SSH Host** to your server hostname or IP
    - Set **Remote SSH User** to your SSH username (optional)

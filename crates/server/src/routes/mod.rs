@@ -78,6 +78,11 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .route("/", get(frontend::serve_frontend_root))
         .route("/{*path}", get(frontend::serve_frontend))
         .nest("/api", api_routes)
+        // Every request, the frontend included, must name an allowed Host
+        // (DNS rebinding protection). `/api` also checks Origin above.
+        .layer(ValidateRequestHeaderLayer::custom(
+            middleware::validate_host,
+        ))
         .layer(CompressionLayer::new())
         .into_make_service()
 }
