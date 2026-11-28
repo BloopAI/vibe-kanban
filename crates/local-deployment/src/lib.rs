@@ -87,6 +87,11 @@ struct PendingHandoff {
     app_verifier: String,
 }
 
+/// An empty address counts as not configured.
+fn non_empty(value: Option<String>) -> Option<String> {
+    value.filter(|value| !value.trim().is_empty())
+}
+
 #[async_trait]
 impl Deployment for LocalDeployment {
     async fn new(shutdown: CancellationToken) -> Result<Self, DeploymentError> {
@@ -168,12 +173,12 @@ impl Deployment for LocalDeployment {
         let profile_cache = Arc::new(RwLock::new(None));
         let auth_context = AuthContext::new(oauth_credentials.clone(), profile_cache.clone());
 
-        let api_base = std::env::var("VK_SHARED_API_BASE")
-            .ok()
-            .or_else(|| option_env!("VK_SHARED_API_BASE").map(|s| s.to_string()));
-        let relay_api_base = std::env::var("VK_SHARED_RELAY_API_BASE")
-            .ok()
-            .or_else(|| option_env!("VK_SHARED_RELAY_API_BASE").map(|s| s.to_string()));
+        // Runtime first, then the value built in. Empty means not configured:
+        // release builds compile with these set to "" so .env can't fill them in.
+        let api_base = non_empty(std::env::var("VK_SHARED_API_BASE").ok())
+            .or_else(|| non_empty(option_env!("VK_SHARED_API_BASE").map(String::from)));
+        let relay_api_base = non_empty(std::env::var("VK_SHARED_RELAY_API_BASE").ok())
+            .or_else(|| non_empty(option_env!("VK_SHARED_RELAY_API_BASE").map(String::from)));
         let remote_info = RemoteInfo::new();
         if let Some(api_base) = api_base.clone() {
             remote_info
@@ -484,5 +489,21 @@ impl LocalDeployment {
 
     pub fn trigger_pr_sync(&self) {
         self.pr_sync_notify.notify_one();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::non_empty;
+
+    #[test]
+    fn empty_address_is_not_configured() {
+        assert_eq!(non_empty(None), None);
+        assert_eq!(non_empty(Some(String::new())), None);
+        assert_eq!(non_empty(Some("  ".to_string())), None);
+        assert_eq!(
+            non_empty(Some("https://example.com".to_string())),
+            Some("https://example.com".to_string())
+        );
     }
 }

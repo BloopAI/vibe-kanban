@@ -21,10 +21,16 @@ fn main() {
     if let Ok(api_endpoint) = std::env::var("POSTHOG_API_ENDPOINT") {
         println!("cargo:rustc-env=POSTHOG_API_ENDPOINT={}", api_endpoint);
     }
-    if let Ok(vk_shared_api_base) = std::env::var("VK_SHARED_API_BASE") {
+    // An empty value means none; dotenv above never replaces it, so release
+    // builds set these to "" to keep .env's values out.
+    if let Ok(vk_shared_api_base) = std::env::var("VK_SHARED_API_BASE")
+        && !vk_shared_api_base.is_empty()
+    {
         println!("cargo:rustc-env=VK_SHARED_API_BASE={}", vk_shared_api_base);
     }
-    if let Ok(vk_shared_relay_api_base) = std::env::var("VK_SHARED_RELAY_API_BASE") {
+    if let Ok(vk_shared_relay_api_base) = std::env::var("VK_SHARED_RELAY_API_BASE")
+        && !vk_shared_relay_api_base.is_empty()
+    {
         println!(
             "cargo:rustc-env=VK_SHARED_RELAY_API_BASE={}",
             vk_shared_relay_api_base

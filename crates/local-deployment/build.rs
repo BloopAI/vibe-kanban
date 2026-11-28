@@ -12,8 +12,12 @@ fn main() {
         println!("cargo:rerun-if-changed={}", env_file.display());
     }
 
-    // Pass VK_SHARED_API_BASE to the compiler so option_env!() sees it
-    if let Ok(val) = std::env::var("VK_SHARED_API_BASE") {
+    // Pass VK_SHARED_API_BASE to the compiler so option_env!() sees it. An
+    // empty value means none; dotenv above never replaces it, so release
+    // builds set it to "" to keep .env's value out.
+    if let Ok(val) = std::env::var("VK_SHARED_API_BASE")
+        && !val.is_empty()
+    {
         println!("cargo:rustc-env=VK_SHARED_API_BASE={}", val);
     }
 }
