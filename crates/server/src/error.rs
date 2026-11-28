@@ -91,6 +91,8 @@ pub enum ApiError {
     PayloadTooLarge,
     #[error("Bad gateway: {0}")]
     BadGateway(String),
+    #[error("{0}")]
+    CloudNotConfigured(&'static str),
     #[error(transparent)]
     CommandBuilder(#[from] CommandBuildError),
     #[error(transparent)]
@@ -105,15 +107,22 @@ impl From<&'static str> for ApiError {
     }
 }
 
+/// Returned by cloud routes when no cloud address is configured, so they fail
+/// at once with a clear message instead of making a network call.
+const CLOUD_NOT_CONFIGURED: &str =
+    "Cloud features are not configured. Set VK_SHARED_API_BASE to use a self-hosted server.";
+const RELAY_NOT_CONFIGURED: &str =
+    "The relay is not configured. Set VK_SHARED_RELAY_API_BASE to use a self-hosted relay.";
+
 impl From<RemoteClientNotConfigured> for ApiError {
     fn from(_: RemoteClientNotConfigured) -> Self {
-        ApiError::BadRequest("Remote client not configured".to_string())
+        ApiError::CloudNotConfigured(CLOUD_NOT_CONFIGURED)
     }
 }
 
 impl From<RelayHostsNotConfigured> for ApiError {
     fn from(_: RelayHostsNotConfigured) -> Self {
-        ApiError::BadRequest("Remote relay API is not configured".to_string())
+        ApiError::CloudNotConfigured(RELAY_NOT_CONFIGURED)
     }
 }
 
@@ -468,6 +477,7 @@ impl IntoResponse for ApiError {
                 "Unauthorized. Please sign in again.",
             ),
             ApiError::BadRequest(msg) => ErrorInfo::bad_request("BadRequest", msg.clone()),
+            ApiError::CloudNotConfigured(msg) => ErrorInfo::bad_request("CloudNotConfigured", *msg),
             ApiError::Conflict(msg) => ErrorInfo::conflict("ConflictError", msg.clone()),
             ApiError::Forbidden(msg) => {
                 ErrorInfo::with_status(StatusCode::FORBIDDEN, "ForbiddenError", msg.clone())
@@ -595,7 +605,9 @@ impl From<RelayHostLookupError> for ApiError {
 impl From<RelayConnectionError> for ApiError {
     fn from(err: RelayConnectionError) -> Self {
         match err {
-            RelayConnectionError::NotConfigured => ApiError::BadRequest(err.to_string()),
+            RelayConnectionError::NotConfigured => {
+                ApiError::CloudNotConfigured(RELAY_NOT_CONFIGURED)
+            }
             RelayConnectionError::RemoteClient(ref inner) => {
                 tracing::warn!(%inner, "Relay connection authentication failed");
                 ApiError::Unauthorized
@@ -615,7 +627,9 @@ impl From<RelayApiError> for ApiError {
 impl From<RelayPairingClientError> for ApiError {
     fn from(err: RelayPairingClientError) -> Self {
         match err {
-            RelayPairingClientError::NotConfigured => ApiError::BadRequest(err.to_string()),
+            RelayPairingClientError::NotConfigured => {
+                ApiError::CloudNotConfigured(RELAY_NOT_CONFIGURED)
+            }
             RelayPairingClientError::RemoteClient(ref inner) => {
                 tracing::warn!(%inner, "Relay host pairing authentication failed");
                 ApiError::Unauthorized
@@ -633,5 +647,21 @@ impl From<RelayPairingClientError> for ApiError {
                 ApiError::BadGateway(err.to_string())
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::response::IntoResponse;
+
+    use super::*;
+
+    #[test]
+    fn unconfigured_cloud_is_a_clear_bad_request() {
+        let response = ApiError::from(RemoteClientNotConfigured).into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+        let response = ApiError::from(RelayHostsNotConfigured).into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 }

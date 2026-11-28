@@ -32,6 +32,8 @@
         "machineSettings": "Machine Settings",
         "accountSettings": "Account Settings",
         "pairOtherMachines": "Pair other machines",
+        "cloudShutdown": "호스팅 클라우드 서비스가 종료되었습니다.",
+        "cloudShutdownLink": "자세히 알아보기",
         "selectHost": "Select host"
       }
     },

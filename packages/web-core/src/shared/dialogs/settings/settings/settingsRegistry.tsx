@@ -8,6 +8,7 @@ import {
   BroadcastIcon,
 } from '@phosphor-icons/react';
 import type { Icon } from '@phosphor-icons/react';
+import type { CloudAvailability } from '@/shared/hooks/useCloudAvailability';
 import { GeneralSettingsSection } from './GeneralSettingsSection';
 import { ReposSettingsSection } from './ReposSettingsSection';
 import { OrganizationsSettingsSection } from './OrganizationsSettingsSection';
@@ -42,6 +43,8 @@ export interface SettingsSectionDefinition {
   id: SettingsSectionType;
   icon: Icon;
   group: SettingsSectionGroup;
+  /** Shown only when this is configured. */
+  requires?: keyof CloudAvailability;
 }
 
 export const SETTINGS_SECTION_DEFINITIONS: SettingsSectionDefinition[] = [
@@ -49,10 +52,28 @@ export const SETTINGS_SECTION_DEFINITIONS: SettingsSectionDefinition[] = [
   { id: 'repos', icon: GitBranchIcon, group: 'host' },
   { id: 'agents', icon: CpuIcon, group: 'host' },
   { id: 'mcp', icon: PlugIcon, group: 'host' },
-  { id: 'organizations', icon: BuildingsIcon, group: 'universal' },
-  { id: 'remote-projects', icon: CloudIcon, group: 'universal' },
-  { id: 'relay', icon: BroadcastIcon, group: 'universal' },
+  {
+    id: 'organizations',
+    icon: BuildingsIcon,
+    group: 'universal',
+    requires: 'cloud',
+  },
+  {
+    id: 'remote-projects',
+    icon: CloudIcon,
+    group: 'universal',
+    requires: 'cloud',
+  },
+  { id: 'relay', icon: BroadcastIcon, group: 'universal', requires: 'relay' },
 ];
+
+export function getAvailableSettingsSections(
+  availability: CloudAvailability
+): SettingsSectionDefinition[] {
+  return SETTINGS_SECTION_DEFINITIONS.filter(
+    (section) => !section.requires || availability[section.requires]
+  );
+}
 
 export function isHostSpecificSettingsSection(
   type: SettingsSectionType

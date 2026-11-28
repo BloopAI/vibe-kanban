@@ -1,3 +1,5 @@
+import type { CloudAvailability } from '@/shared/hooks/useCloudAvailability';
+
 export type AppDestination =
   | { kind: 'root' }
   | { kind: 'onboarding' }
@@ -175,6 +177,28 @@ export function isRemoteWorkspacesDestination(
     isWorkspacesDestination(destination) &&
     getDestinationHostId(destination) !== null
   );
+}
+
+/**
+ * Whether a destination can be shown: cloud projects and export need a cloud,
+ * and another machine's workspaces need the relay.
+ */
+export function isDestinationAvailable(
+  destination: AppDestination,
+  availability: CloudAvailability
+): boolean {
+  if (
+    (isProjectDestination(destination) || destination.kind === 'export') &&
+    !availability.cloud
+  ) {
+    return false;
+  }
+
+  if (getDestinationHostId(destination) !== null && !availability.relay) {
+    return false;
+  }
+
+  return true;
 }
 
 export function getProjectDestination(

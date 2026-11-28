@@ -32,6 +32,8 @@
         "machineSettings": "Machine Settings",
         "accountSettings": "Account Settings",
         "pairOtherMachines": "Pair other machines",
+        "cloudShutdown": "ホスト型クラウドは終了しました。",
+        "cloudShutdownLink": "詳細",
         "selectHost": "Select host"
       }
     },

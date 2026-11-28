@@ -13,9 +13,14 @@ import type {
   SettingsSectionInitialState,
 } from './settings/SettingsSection';
 import {
-  SETTINGS_SECTION_DEFINITIONS,
+  getAvailableSettingsSections,
   isHostSpecificSettingsSection,
+  type SettingsSectionDefinition,
 } from './settings/settingsRegistry';
+import {
+  useCloudAvailable,
+  useRelayAvailable,
+} from '@/shared/hooks/useCloudAvailability';
 import {
   SettingsDirtyProvider,
   useSettingsDirty,
@@ -31,6 +36,17 @@ export interface SettingsDialogProps {
   initialSection?: SettingsSectionType;
   initialState?: SettingsSectionInitialState[SettingsSectionType];
   initialHostId?: string | 'local';
+}
+
+const CLOUD_SHUTDOWN_URL = 'https://vibekanban.com/shutdown';
+
+function useAvailableSettingsSections(): SettingsSectionDefinition[] {
+  const cloud = useCloudAvailable();
+  const relay = useRelayAvailable();
+  return useMemo(
+    () => getAvailableSettingsSections({ cloud, relay }),
+    [cloud, relay]
+  );
 }
 
 interface SettingsDialogContentProps {
@@ -54,10 +70,11 @@ function SettingsDialogNavigation({
     selectedHostId,
     setSelectedHostId,
   } = useSettingsHost();
-  const hostSections = SETTINGS_SECTION_DEFINITIONS.filter(
-    (section) => section.group === 'host'
-  );
-  const universalSections = SETTINGS_SECTION_DEFINITIONS.filter(
+  const cloudAvailable = useCloudAvailable();
+  const relayAvailable = useRelayAvailable();
+  const sections = useAvailableSettingsSections();
+  const hostSections = sections.filter((section) => section.group === 'host');
+  const universalSections = sections.filter(
     (section) => section.group === 'universal'
   );
   const hostOptions = availableHosts.map((host) => ({
@@ -76,9 +93,7 @@ function SettingsDialogNavigation({
   };
 
   const renderSectionButton = (sectionId: SettingsSectionType) => {
-    const section = SETTINGS_SECTION_DEFINITIONS.find(
-      (item) => item.id === sectionId
-    );
+    const section = sections.find((item) => item.id === sectionId);
     if (!section) return null;
     const Icon = section.icon;
     const isActive = activeSection === section.id;
@@ -116,38 +131,57 @@ function SettingsDialogNavigation({
             {t('settings.layout.nav.machineSettings')}
           </div>
         </div>
-        <div className="px-2">
-          <SettingsSelect
-            value={selectedHostId ?? undefined}
-            options={hostOptions}
-            actions={[
-              {
-                label: t('settings.layout.nav.pairOtherMachines'),
-                icon: PlusIcon,
-                onClick: handlePairOtherMachines,
-              },
-            ]}
-            onChange={setSelectedHostId}
-            placeholder={t('settings.layout.nav.selectHost')}
-          />
-          {hostSettingsDisabled && (
-            <p className="mt-2 px-1 text-xs text-low">{hostHint}</p>
-          )}
-        </div>
+        {relayAvailable && (
+          <div className="px-2">
+            <SettingsSelect
+              value={selectedHostId ?? undefined}
+              options={hostOptions}
+              actions={[
+                {
+                  label: t('settings.layout.nav.pairOtherMachines'),
+                  icon: PlusIcon,
+                  onClick: handlePairOtherMachines,
+                },
+              ]}
+              onChange={setSelectedHostId}
+              placeholder={t('settings.layout.nav.selectHost')}
+            />
+            {hostSettingsDisabled && (
+              <p className="mt-2 px-1 text-xs text-low">{hostHint}</p>
+            )}
+          </div>
+        )}
         <div className="flex flex-col gap-1">
           {hostSections.map((section) => renderSectionButton(section.id))}
         </div>
       </div>
-      <div className="space-y-2">
-        <div className="px-3 pt-1">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-low">
-            {t('settings.layout.nav.accountSettings')}
+      {universalSections.length > 0 && (
+        <div className="space-y-2">
+          <div className="px-3 pt-1">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-low">
+              {t('settings.layout.nav.accountSettings')}
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            {universalSections.map((section) =>
+              renderSectionButton(section.id)
+            )}
           </div>
         </div>
-        <div className="flex flex-col gap-1">
-          {universalSections.map((section) => renderSectionButton(section.id))}
-        </div>
-      </div>
+      )}
+      {!cloudAvailable && (
+        <p className="mt-auto px-3 pb-1 text-xs text-low">
+          {t('settings.layout.nav.cloudShutdown')}{' '}
+          <a
+            href={CLOUD_SHUTDOWN_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-brand hover:underline"
+          >
+            {t('settings.layout.nav.cloudShutdownLink')}
+          </a>
+        </p>
+      )}
     </nav>
   );
 }
@@ -160,23 +194,31 @@ function SettingsDialogContent({
   const { t } = useTranslation('settings');
   const { isDirty } = useSettingsDirty();
   const { availableHosts, hostsResolved, selectedHost } = useSettingsHost();
+  const sections = useAvailableSettingsSections();
+  // Where to go when no machine is available for host settings.
+  const fallbackSection: SettingsSectionType =
+    sections.find((section) => section.group === 'universal')?.id ?? 'general';
 
   const resolvedInitialSection = useMemo<SettingsSectionType>(() => {
     if (
       initialSection &&
-      SETTINGS_SECTION_DEFINITIONS.some(
-        (section) => section.id === initialSection
-      )
+      sections.some((section) => section.id === initialSection)
     ) {
       return initialSection;
     }
 
     if (hostsResolved && availableHosts.length === 0) {
-      return 'organizations';
+      return fallbackSection;
     }
 
     return 'general';
-  }, [availableHosts.length, hostsResolved, initialSection]);
+  }, [
+    availableHosts.length,
+    fallbackSection,
+    hostsResolved,
+    initialSection,
+    sections,
+  ]);
 
   const [activeSection, setActiveSection] = useState<SettingsSectionType>(
     resolvedInitialSection
@@ -222,9 +264,9 @@ function SettingsDialogContent({
       isHostSpecificSettingsSection(activeSection) &&
       availableHosts.length === 0
     ) {
-      setActiveSection('organizations');
+      setActiveSection(fallbackSection);
     }
-  }, [activeSection, availableHosts.length, hostsResolved]);
+  }, [activeSection, availableHosts.length, fallbackSection, hostsResolved]);
 
   const handleMobileBack = () => {
     setMobileShowContent(false);

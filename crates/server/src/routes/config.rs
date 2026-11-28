@@ -98,6 +98,7 @@ pub struct UserSystemInfo {
     /// Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
     pub capabilities: HashMap<String, Vec<BaseAgentCapability>>,
     pub shared_api_base: Option<String>,
+    pub shared_relay_api_base: Option<String>,
     pub preview_proxy_port: Option<u16>,
 }
 
@@ -171,6 +172,7 @@ async fn get_user_system_info(
             caps
         },
         shared_api_base: deployment.remote_info().get_api_base(),
+        shared_relay_api_base: deployment.remote_info().get_relay_api_base(),
         preview_proxy_port: deployment.client_info().get_preview_proxy_port(),
     };
 

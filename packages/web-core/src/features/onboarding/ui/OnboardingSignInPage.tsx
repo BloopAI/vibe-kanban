@@ -17,6 +17,7 @@ import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { isTauriApp } from '@/shared/lib/platform';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useCloudAvailable } from '@/shared/hooks/useCloudAvailability';
 
 type OnboardingDestination =
   { kind: 'workspaces-create' } | { kind: 'project'; projectId: string };
@@ -71,6 +72,44 @@ function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
 }
 
 export function OnboardingSignInPage() {
+  const cloudAvailable = useCloudAvailable();
+  return cloudAvailable ? (
+    <CloudOnboardingSignInPage />
+  ) : (
+    <NoCloudOnboardingRedirect />
+  );
+}
+
+/** Without a cloud there is nothing to sign in to: finish onboarding. */
+function NoCloudOnboardingRedirect() {
+  const appNavigation = useAppNavigation();
+  const { config, loading, updateAndSaveConfig } = useUserSystem();
+  const hasStartedRef = useRef(false);
+
+  useEffect(() => {
+    if (loading || !config || hasStartedRef.current) return;
+    hasStartedRef.current = true;
+
+    void (async () => {
+      if (!config.remote_onboarding_acknowledged) {
+        await updateAndSaveConfig({
+          remote_onboarding_acknowledged: true,
+          onboarding_acknowledged: true,
+          disclaimer_acknowledged: true,
+        });
+      }
+      appNavigation.goToWorkspacesCreate({ replace: true });
+    })();
+  }, [appNavigation, config, loading, updateAndSaveConfig]);
+
+  return (
+    <div className="h-screen bg-primary flex items-center justify-center">
+      <p className="text-low">Loading...</p>
+    </div>
+  );
+}
+
+function CloudOnboardingSignInPage() {
   const appNavigation = useAppNavigation();
   const { t } = useTranslation('common');
   const { theme } = useTheme();

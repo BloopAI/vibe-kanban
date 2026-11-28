@@ -32,6 +32,8 @@
         "machineSettings": "Machine Settings",
         "accountSettings": "Account Settings",
         "pairOtherMachines": "Pair other machines",
+        "cloudShutdown": "La nube alojada se ha cerrado.",
+        "cloudShutdownLink": "Más información",
         "selectHost": "Select host"
       }
     },

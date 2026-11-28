@@ -16,6 +16,8 @@
         "machineSettings": "Machine Settings",
         "accountSettings": "Account Settings",
         "pairOtherMachines": "Pair other machines",
+        "cloudShutdown": "The hosted cloud has shut down.",
+        "cloudShutdownLink": "Learn more",
         "selectHost": "Select host",
         "general": "General",
         "generalDesc": "Theme, notifications, and preferences",
