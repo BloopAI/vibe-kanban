@@ -1,0 +1,109 @@
+---
+title: "Self-Hosting Overview"
+description: "Run your own Vibe Kanban Cloud server and connect Vibe Kanban to it for team projects, issues and remote access"
+sidebarTitle: "Overview"
+---
+
+Vibe Kanban runs locally. Workspaces, coding agents, code review and git operations work on your machine with no account and no server.
+
+Team features need a server that you host yourself:
+
+- Organisations, team members and shared projects
+- Issues, the kanban board and list view
+- [Remote access](/remote-access) to your machine from another device
+
+<Info>
+The hosted Vibe Kanban Cloud is being shut down. From 0.1.47, release builds of Vibe Kanban no longer connect to it, and hide the features above until you point them at your own server.
+</Info>
+
+<Warning>
+**Used the hosted cloud?** Vibe Kanban 0.1.47 and newer no longer include the in-app export of hosted-cloud projects. To export that data, use Vibe Kanban 0.1.46 or older while the hosted service is still running.
+</Warning>
+
+## How it fits together
+
+| Component | Where it runs | What it does |
+|-----------|---------------|--------------|
+| **Vibe Kanban** (`npx vibe-kanban`) | Each developer's machine | Runs workspaces and coding agents. Connects to your server for team features. |
+| **Remote server** | Your server | Stores organisations, projects and issues, handles sign-in, and serves the web app. |
+| **Relay server** (optional) | Your server | Lets paired devices reach a machine running Vibe Kanban, for [remote access](/remote-access). |
+
+## 1. Deploy the server
+
+<CardGroup cols={2}>
+<Card title="Deploy with Docker Compose" icon="server" href="/self-hosting/deploy-docker">
+  Run the remote server, and optionally the relay, on your own server
+</Card>
+
+<Card title="Local Development" icon="laptop-code" href="/self-hosting/local-development">
+  Run the whole stack on your machine for development and testing
+</Card>
+</CardGroup>
+
+## 2. Connect Vibe Kanban to your server
+
+Set these environment variables when you start Vibe Kanban. You don't need to rebuild anything: the released `npx vibe-kanban` package reads them at startup.
+
+| Variable | Required | Value |
+|----------|----------|-------|
+| `VK_SHARED_API_BASE` | Yes, for team features | The public URL of your remote server, for example `https://vk.example.com` |
+| `VK_SHARED_RELAY_API_BASE` | Only for remote access | The public URL of your relay server, for example `https://relay.vk.example.com` |
+
+<Tabs>
+<Tab title="macOS / Linux">
+  ```bash
+  VK_SHARED_API_BASE=https://vk.example.com \
+  VK_SHARED_RELAY_API_BASE=https://relay.vk.example.com \
+  npx vibe-kanban
+  ```
+</Tab>
+
+<Tab title="Windows (PowerShell)">
+  ```powershell
+  $env:VK_SHARED_API_BASE = "https://vk.example.com"
+  $env:VK_SHARED_RELAY_API_BASE = "https://relay.vk.example.com"
+  npx vibe-kanban
+  ```
+</Tab>
+</Tabs>
+
+Leave out `VK_SHARED_RELAY_API_BASE` if you don't run a relay server. Remote access needs both variables.
+
+<Note>
+These variables apply to the default browser mode of `npx vibe-kanban`. The desktop app (`npx vibe-kanban --desktop`) may not receive variables from your shell. On macOS it never does, so use browser mode with a self-hosted server.
+</Note>
+
+<Check>
+Once Vibe Kanban starts, the app bar shows a sign-in button. Sign in with the method your server is configured for (GitHub, Google, or the bootstrap local login). Projects, issues and organisation settings then appear.
+</Check>
+
+If the sign-in button doesn't appear, check that `VK_SHARED_API_BASE` is set in the same shell that runs `npx vibe-kanban` and that the URL has no typos. When it isn't set, the server log shows `VK_SHARED_API_BASE not set; remote features disabled`.
+
+## 3. Set up remote access (optional)
+
+Remote access goes through your relay server. To use it:
+
+1. Deploy the relay server. See [Enable the relay for remote access](/self-hosting/deploy-docker#optional-enable-the-relay-for-remote-access) for the wildcard DNS and TLS it needs, and for `VITE_RELAY_API_BASE_URL`.
+2. Start Vibe Kanban with both `VK_SHARED_API_BASE` and `VK_SHARED_RELAY_API_BASE`.
+3. Follow [Remote Access](/remote-access) to pair a device.
+
+<Warning>
+Run Vibe Kanban 0.1.47 or newer on every machine you make reachable through the relay. From 0.1.47, Vibe Kanban requires a valid signature from a paired device on every relayed request except the pairing steps themselves. Older versions don't check every route.
+</Warning>
+
+## Opening Vibe Kanban by hostname
+
+From 0.1.47, Vibe Kanban protects against [DNS rebinding](https://en.wikipedia.org/wiki/DNS_rebinding) by checking the `Host` header of every request. It answers requests for `localhost`, `*.localhost` names and IP addresses, plus any hostname you allow.
+
+If you open Vibe Kanban in the browser through another hostname, such as a LAN name like `mybox.lan`, a Tailscale name, or a Cloudflare Tunnel or ngrok URL, add that hostname to `VK_ALLOWED_HOSTS`:
+
+```bash
+VK_ALLOWED_HOSTS=mybox.lan,vk-tunnel.example.com npx vibe-kanban
+```
+
+- Separate hostnames with commas. Ports are ignored.
+- Hostnames in `VK_ALLOWED_ORIGINS`, and a hostname set as `HOST`, are allowed automatically.
+- Opening Vibe Kanban by IP address (for example `http://192.168.1.20:8080` with `HOST=0.0.0.0`) needs no configuration.
+- Remote access through the relay needs no configuration.
+
+Without this, every request through an unlisted hostname gets a 403 response whose message names `VK_ALLOWED_HOSTS`.

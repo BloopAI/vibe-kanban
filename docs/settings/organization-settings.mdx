@@ -3,7 +3,11 @@ title: "Organisation Settings"
 description: "Manage your organisation, members, and invitations"
 ---
 
-The Organisation Settings page lets you manage your Cloud organisations, invite team members, and configure organisation-level settings.
+<Note>
+This feature needs a self-hosted Vibe Kanban Cloud server. Vibe Kanban no longer uses the hosted cloud. See the [self-hosting overview](/self-hosting/overview) to deploy a server and connect Vibe Kanban to it.
+</Note>
+
+The Organisation Settings page lets you manage the organisations on your self-hosted cloud, invite team members, and configure organisation-level settings.
 
 <Frame>
   <img src="/images/cloud/organization-settings-page.png" alt="Organization Settings page showing members and settings" />
@@ -118,20 +122,7 @@ To invite someone to your organisation:
   <img src="/images/cloud/invite-member-dialog.png" alt="Invite Member dialog with email and role fields" />
 </Frame>
 
-They'll receive an email with a link to join. The invitation expires after 7 days.
-
-## Billing
-
-<Note>
-This section is only visible to **Admins** of non-personal organisations.
-</Note>
-
-The Billing section provides a link for existing customers to manage billing in the Vibe Kanban account portal.
-
-Click **Manage Billing** to open the billing portal in a new tab where you can:
-- View your current subscription
-- Update payment methods
-- View invoices and billing history
+If your server has email configured (`LOOPS_EMAIL_API_KEY`), they'll receive an email with a link to join. The invitation expires after 7 days.
 
 ## Danger Zone
 

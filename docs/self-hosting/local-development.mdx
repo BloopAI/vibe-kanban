@@ -118,7 +118,15 @@ This starts:
 - **PostgreSQL** on port 5433 (external) / 5432 (internal)
 - **ElectricSQL** on port 3000 (internal only, used by Remote Server for real-time sync)
 - **Remote Server** on port 3000 (external) / 8081 (internal)
-- **Relay Server** on port 8082 (external and internal)
+
+To also start the **Relay Server** on port 8082 (external and internal), add the `relay` profile:
+
+```bash
+cd crates/remote
+docker compose --env-file .env.remote --profile relay up --build
+```
+
+Or run `pnpm run remote:dev:full` from the repo root, which also enables local attachment storage.
 
 <Warning>
 The remote server binds to `127.0.0.1:3000` only - it's not accessible from other machines. For production, use a reverse proxy.
@@ -135,9 +143,9 @@ Open [http://localhost:3000](http://localhost:3000) in your browser. You should 
 
 Sign in with your configured OAuth provider (GitHub or Google).
 
-## Step 6: Connect the Desktop Client (Optional)
+## Step 6: Connect Vibe Kanban (Optional)
 
-To use the desktop client with your local server:
+Vibe Kanban only shows cloud features when `VK_SHARED_API_BASE` is set. To use a development build with your local server:
 
 ```bash
 # In a new terminal, from the repository root
@@ -147,14 +155,17 @@ pnpm install
 pnpm run dev
 ```
 
-The desktop client will now connect to your local Cloud instance instead of the hosted version.
+You can also point a released build at it, with no rebuild:
 
-To test relay/tunnel mode end-to-end, add:
+```bash
+VK_SHARED_API_BASE=http://localhost:3000 npx vibe-kanban
+```
+
+To test relay/tunnel mode end-to-end, start the stack with the `relay` profile and set:
 
 ```bash
 export VK_SHARED_API_BASE=https://localhost:3001
 export VK_SHARED_RELAY_API_BASE=https://relay.localhost:3001
-export VK_TUNNEL=1
 ```
 
 This mode requires local HTTPS + Caddy routing (next step).
@@ -252,5 +263,5 @@ Update your OAuth callback URLs accordingly.
 
 Once you have local development working, you can:
 
-- Deploy to Fly.io for production (coming soon)
-- Deploy with Docker Compose on your own server (coming soon)
+- [Deploy with Docker Compose](/self-hosting/deploy-docker) on your own server
+- Read the [self-hosting overview](/self-hosting/overview) for how to connect Vibe Kanban and set up remote access

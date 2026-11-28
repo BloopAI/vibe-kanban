@@ -1,12 +1,18 @@
 ---
-title: "Vibe Kanban Cloud"
-description: "Collaborate with your team in real-time with Cloud features"
+title: "Self-Hosted Cloud"
+description: "Add team projects, issues and real-time collaboration to Vibe Kanban with your own server"
 sidebarTitle: "Overview"
 ---
 
-## What is Vibe Kanban Cloud?
+<Note>
+Cloud features need a self-hosted Vibe Kanban Cloud server. Vibe Kanban no longer uses the hosted cloud. See the [self-hosting overview](/self-hosting/overview) to deploy a server and connect Vibe Kanban to it.
+</Note>
 
-**Vibe Kanban Cloud** adds team collaboration to Vibe Kanban. Your projects, issues, and progress sync to the cloud so your entire team stays in sync.
+## What is a self-hosted cloud?
+
+A **self-hosted Vibe Kanban Cloud** adds team collaboration to Vibe Kanban. Your projects, issues and progress sync to a server you run, so your entire team stays in sync.
+
+Without a server, Vibe Kanban runs fully locally: you create workspaces, run coding agents and review their changes, with no sign-in.
 
 ### Key Benefits
 
@@ -16,7 +22,7 @@ sidebarTitle: "Overview"
 </Card>
 
 <Card title="Work From Anywhere" icon="globe">
-  Your data syncs to the cloud. Access your projects from any computer by signing in.
+  Your data syncs to your server. Access your projects from any computer by signing in.
 </Card>
 
 <Card title="Real-Time Sync" icon="bolt">
@@ -24,33 +30,31 @@ sidebarTitle: "Overview"
 </Card>
 
 <Card title="Same Interface" icon="desktop">
-  Cloud uses the same Vibe Kanban interface you already know. No new tools to learn.
+  Cloud features use the same Vibe Kanban interface you already know. No new tools to learn.
 </Card>
 </CardGroup>
 
-### Cloud vs Local
+### Local only vs self-hosted cloud
 
-| Feature | Local | Cloud |
-|---------|-------|-------|
-| **Data storage** | On your computer | Synced to cloud |
+| Feature | Local only | Self-hosted cloud |
+|---------|------------|-------------------|
+| **Workspaces and coding agents** | Yes | Yes |
+| **Projects, issues and kanban board** | No | Yes |
+| **Data storage** | On your computer | Workspaces on your computer; projects and issues on your server |
 | **Team access** | Only you | Invite team members |
-| **Sign-in required** | No | Yes (GitHub or Google) |
-| **Real-time collaboration** | No | Yes |
-| **Works offline** | Yes | Requires internet |
-
-<Info>
-You can use both Local and Cloud projects in the same Vibe Kanban installation. They appear in separate sections of the sidebar.
-</Info>
+| **Sign-in required** | No | Yes (the method your server is configured for) |
+| **Works offline** | Yes | Projects and issues need a connection to your server |
 
 ## How It Works
 
-1. **Run Vibe Kanban** as usual with `npx vibe-kanban`
-2. **Sign in** with your GitHub or Google account (a personal organisation is created automatically)
-3. **Create projects** in your personal workspace
-4. **Create a team organisation** if you want to collaborate (optional)
-5. **Invite team members** via email and collaborate in real-time
+1. **Deploy a server** with [Docker Compose](/self-hosting/deploy-docker)
+2. **Run Vibe Kanban** with `VK_SHARED_API_BASE` set to your server's URL (see [Connect Vibe Kanban to your server](/self-hosting/overview#2-connect-vibe-kanban-to-your-server))
+3. **Sign in** (a personal organisation is created automatically)
+4. **Create projects** in your personal organisation
+5. **Create a team organisation** if you want to collaborate (optional)
+6. **Invite team members** and collaborate in real-time
 
-Your local projects remain untouched. Cloud projects are stored separately and sync automatically.
+Your local workspaces remain on your machine. Projects and issues are stored on your server and sync automatically.
 
 ## Key Concepts
 
@@ -72,7 +76,7 @@ A **project** is a kanban board for a specific initiative. Each project has:
 
 ### Issues
 
-An **issue** is a single piece of work. Unlike local tasks, Cloud issues have:
+An **issue** is a single piece of work. Issues have:
 - Simple IDs (like `TASK-123`) for easy reference
 - Multiple assignees
 - Priority levels
@@ -82,7 +86,7 @@ An **issue** is a single piece of work. Unlike local tasks, Cloud issues have:
 ## Features
 
 ### Team Collaboration
-- Invite members via email
+- Invite members by email
 - Role-based permissions (Admin and Member)
 - See who's assigned to what
 
@@ -105,14 +109,18 @@ An **issue** is a single piece of work. Unlike local tasks, Cloud issues have:
 ## Getting Started
 
 <Steps>
-<Step title="Run Vibe Kanban">
+<Step title="Deploy your server">
+  Follow [Deploy with Docker Compose](/self-hosting/deploy-docker).
+</Step>
+
+<Step title="Run Vibe Kanban against your server">
   ```bash
-  npx vibe-kanban
+  VK_SHARED_API_BASE=https://vk.example.com npx vibe-kanban
   ```
 </Step>
 
 <Step title="Sign in">
-  Click **Login** and sign in with GitHub or Google. A personal organisation is created automatically.
+  Click **Login** and sign in with the method your server is configured for. A personal organisation is created automatically.
 </Step>
 
 <Step title="Create a project">
@@ -125,7 +133,7 @@ An **issue** is a single piece of work. Unlike local tasks, Cloud issues have:
 </Steps>
 
 <Card title="Full Getting Started Guide" icon="rocket" href="/cloud/getting-started">
-  Step-by-step instructions for setting up Cloud
+  Step-by-step instructions for connecting to your self-hosted cloud
 </Card>
 
 ## Learn More

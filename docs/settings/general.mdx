@@ -87,6 +87,10 @@ The context bar shows your configured IDE's logo. For more details, see the [Wor
 
 When running Vibe Kanban on a remote server (e.g., accessed via Cloudflare tunnel, ngrok, or as a systemctl service), you can configure VSCode-based editors to open projects via SSH instead of assuming localhost.
 
+<Note>
+If you open Vibe Kanban through a hostname, such as a tunnel URL or a LAN name, add that hostname to the `VK_ALLOWED_HOSTS` environment variable. Otherwise requests get a 403 response. See [Opening Vibe Kanban by hostname](/self-hosting/overview#opening-vibe-kanban-by-hostname).
+</Note>
+
 This feature is available for **VS Code**, **Cursor**, and **Windsurf** editors.
 
 ### When to Use Remote SSH

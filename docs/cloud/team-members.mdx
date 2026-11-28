@@ -3,6 +3,10 @@ title: "Team Members"
 description: "Invite colleagues and manage team access to your organisation"
 ---
 
+<Note>
+This feature needs a self-hosted Vibe Kanban Cloud server. Vibe Kanban no longer uses the hosted cloud. See the [self-hosting overview](/self-hosting/overview) to deploy a server and connect Vibe Kanban to it.
+</Note>
+
 Collaborate with your team by inviting members to your organisation. Members can view projects, work on tasks, and receive real-time updates.
 
 ## Inviting Team Members
@@ -38,7 +42,11 @@ Only organisation **Admins** can invite new members.
 </Step>
 
 <Step title="Send invitation">
-  Click **Send Invitation**. They'll receive an email with instructions to join.
+  Click **Send Invitation**. If your server has email configured, they'll receive an email with instructions to join.
+
+  <Info>
+  Invitation emails need `LOOPS_EMAIL_API_KEY` set on your server. Without it, the server sends no emails. See [Deploy with Docker Compose](/self-hosting/deploy-docker#step-3-create-environment-file).
+  </Info>
 
   <Frame>
     <img src="/images/cloud/invite-member-dialog.png" alt="Invite Member dialog with email and role fields" />
@@ -212,10 +220,11 @@ If you need to transfer full ownership of an organisation (e.g., you're leaving 
 **Problem:** The person you invited says they didn't get an email.
 
 **Solutions:**
-1. Ask them to check their spam/junk folder
-2. Verify you entered the correct email address
-3. Revoke the old invitation and send a new one
-4. Have them check if emails from your domain are blocked
+1. Check that your server has `LOOPS_EMAIL_API_KEY` set. Without it, no invitation emails are sent.
+2. Ask them to check their spam/junk folder
+3. Verify you entered the correct email address
+4. Revoke the old invitation and send a new one
+5. Have them check if emails from your domain are blocked
 </Accordion>
 
 <Accordion title="Invitation link doesn't work">

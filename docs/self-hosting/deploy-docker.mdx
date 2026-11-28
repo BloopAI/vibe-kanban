@@ -5,6 +5,8 @@ description: "Deploy Vibe Kanban Cloud on any server using Docker Compose"
 
 This guide covers deploying Vibe Kanban Cloud on any Linux server using Docker Compose. This approach works with any cloud provider (AWS, DigitalOcean, Hetzner, etc.) or on-premises server.
 
+A self-hosted server gives Vibe Kanban its team features: organisations, projects, issues and, with the optional relay, [remote access](/remote-access). Vibe Kanban no longer uses the hosted cloud, so a server you run is the only way to use these features. See the [self-hosting overview](/self-hosting/overview) for how the pieces fit together.
+
 ## Prerequisites
 
 - A Linux server with:
@@ -255,9 +257,19 @@ The first build takes 10-15 minutes. Subsequent deployments are faster as Docker
 3. Sign in with your configured auth method
 4. Create your first organisation and project
 
-## Optional: Enable Relay/Tunnel in Production
+## Step 8: Connect Vibe Kanban to Your Server
 
-Relay/tunnel support requires:
+On each developer's machine, start Vibe Kanban with `VK_SHARED_API_BASE` set to your domain. The released `npx vibe-kanban` package reads it at startup, so you don't need to rebuild anything:
+
+```bash
+VK_SHARED_API_BASE=https://your-domain.com npx vibe-kanban
+```
+
+Sign in with the same auth method as in Step 7. Projects, issues and organisation settings then appear in the app. For Windows and other options, see [Connect Vibe Kanban to your server](/self-hosting/overview#2-connect-vibe-kanban-to-your-server).
+
+## Optional: Enable the relay for remote access
+
+The relay lets paired devices reach a machine running Vibe Kanban, for [remote access](/remote-access). Relay/tunnel support requires:
 
 1. A running `relay-server` service
 2. Reverse proxy routing for both `relay.your-domain.com` and `*.relay.your-domain.com`
@@ -291,6 +303,22 @@ Your reverse proxy must route:
 
 <Warning>
 Standard ACME HTTP challenge does not issue wildcard certificates. For wildcard relay hostnames, use a DNS-based ACME challenge or another edge provider that can terminate wildcard TLS certificates.
+</Warning>
+
+### Connect Vibe Kanban to the relay
+
+Start Vibe Kanban on each host machine with both your server and relay URLs. No rebuild is needed:
+
+```bash
+VK_SHARED_API_BASE=https://your-domain.com \
+VK_SHARED_RELAY_API_BASE=https://relay.your-domain.com \
+npx vibe-kanban
+```
+
+`VK_SHARED_RELAY_API_BASE` must match the `VITE_RELAY_API_BASE_URL` you built `remote-server` with.
+
+<Warning>
+Run Vibe Kanban 0.1.47 or newer on every host machine you make reachable through the relay. From 0.1.47, Vibe Kanban requires a valid signature from a paired device on every relayed request except the pairing steps themselves. Older versions don't check every route.
 </Warning>
 
 ## Updating

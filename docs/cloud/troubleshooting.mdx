@@ -1,13 +1,23 @@
 ---
 title: "Troubleshooting"
-description: "Solutions for common issues with Vibe Kanban Cloud"
+description: "Solutions for common issues with a self-hosted Vibe Kanban Cloud"
 ---
 
-This page covers common issues you might encounter with Vibe Kanban Cloud and how to resolve them.
+<Note>
+This feature needs a self-hosted Vibe Kanban Cloud server. Vibe Kanban no longer uses the hosted cloud. See the [self-hosting overview](/self-hosting/overview) to deploy a server and connect Vibe Kanban to it.
+</Note>
+
+This page covers common issues you might encounter with a self-hosted Vibe Kanban Cloud and how to resolve them. For problems with the server itself, see the troubleshooting sections of [Deploy with Docker Compose](/self-hosting/deploy-docker#troubleshooting) and [Local Development](/self-hosting/local-development#troubleshooting).
 
 ## Sign-In Issues
 
 <AccordionGroup>
+<Accordion title="There's no sign-in button">
+**Cause:** Vibe Kanban hides sign-in and all cloud features when no cloud server is configured.
+
+**Solution:** Restart Vibe Kanban with `VK_SHARED_API_BASE` set to your server's URL, in the same shell that runs `npx vibe-kanban`. See [Connect Vibe Kanban to your server](/self-hosting/overview#2-connect-vibe-kanban-to-your-server).
+</Accordion>
+
 <Accordion title="I can't sign in">
 **Possible causes:**
 - Pop-up blocker preventing the OAuth window
