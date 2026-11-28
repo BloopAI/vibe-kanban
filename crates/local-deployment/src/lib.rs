@@ -408,6 +408,12 @@ impl LocalDeployment {
     }
 
     pub async fn get_login_status(&self) -> LoginStatus {
+        // With no cloud configured, credentials left by an older version (for
+        // the hosted cloud) are ignored, not deleted.
+        let Ok(client) = self.remote_client() else {
+            return LoginStatus::LoggedOut;
+        };
+
         if self.auth_context.get_credentials().await.is_none() {
             self.auth_context.clear_profile().await;
             self.auth_context.clear_remote_auth_degraded_slug().await;
@@ -419,10 +425,6 @@ impl LocalDeployment {
                 profile: Some(cached_profile),
             };
         }
-
-        let Ok(client) = self.remote_client() else {
-            return LoginStatus::LoggedOut;
-        };
 
         match client.profile().await {
             Ok(profile) => {

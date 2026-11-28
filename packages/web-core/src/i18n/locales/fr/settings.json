@@ -32,6 +32,8 @@
         "machineSettings": "Machine Settings",
         "accountSettings": "Account Settings",
         "pairOtherMachines": "Pair other machines",
+        "cloudShutdown": "Le cloud hébergé a fermé.",
+        "cloudShutdownLink": "En savoir plus",
         "selectHost": "Select host"
       }
     },

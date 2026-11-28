@@ -22,6 +22,10 @@ import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
+import {
+  useCloudAvailable,
+  useRelayAvailable,
+} from '@/shared/hooks/useCloudAvailability';
 import { useDiscordOnlineCount } from '@/shared/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/shared/hooks/useGitHubStars';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
@@ -31,6 +35,7 @@ import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestinatio
 import {
   getDestinationHostId,
   getProjectDestination,
+  isDestinationAvailable,
   isProjectDestination,
   isLocalWorkspacesDestination,
 } from '@/shared/lib/routes/appNavigation';
@@ -65,7 +70,9 @@ export function SharedAppLayout() {
     (s) => s.isLeftSidebarVisible
   );
   const { isSignedIn } = useAuth();
-  const { appVersion } = useUserSystem();
+  const cloudAvailable = useCloudAvailable();
+  const relayAvailable = useRelayAvailable();
+  const { appVersion, config, loading: userSystemLoading } = useUserSystem();
   const updateVersion = useAppUpdateStore((s) => s.updateVersion);
   const restartForUpdate = useAppUpdateStore((s) => s.restart);
   const { data: onlineCount } = useDiscordOnlineCount();
@@ -166,6 +173,22 @@ export function SharedAppLayout() {
     }
   }, [selectedOrgId, sortedProjects, isLoading, appNavigation]);
 
+  // Cloud-only pages (projects, export, other machines) have nothing to show
+  // without a cloud or relay: send the user to local workspaces instead.
+  const isDestinationUnavailable =
+    !userSystemLoading &&
+    !!config &&
+    !!currentDestination &&
+    !isDestinationAvailable(currentDestination, {
+      cloud: cloudAvailable,
+      relay: relayAvailable,
+    });
+  useEffect(() => {
+    if (isDestinationUnavailable) {
+      appNavigation.goToWorkspacesCreate({ replace: true });
+    }
+  }, [appNavigation, isDestinationUnavailable]);
+
   // Navigation state for AppBar active indicators
   const projectDestination = useMemo(
     () => getProjectDestination(currentDestination),
@@ -174,7 +197,9 @@ export function SharedAppLayout() {
   const isWorkspacesActive = isLocalWorkspacesDestination(currentDestination);
   const isExportActive = currentDestination?.kind === 'export';
   const showCloudShutdownBanner =
-    isExportActive || (isSignedIn && isProjectDestination(currentDestination));
+    cloudAvailable &&
+    (isExportActive ||
+      (isSignedIn && isProjectDestination(currentDestination)));
   const isWorkspaceSidebarPreviewEnabled =
     !isMobile && isWorkspacesActive && !isLeftSidebarVisible;
   const activeProjectId = projectDestination?.projectId ?? null;
@@ -335,10 +360,10 @@ export function SharedAppLayout() {
               hosts={remoteCloudHosts}
               activeHostId={activeHostId}
               onCreateProject={handleCreateProject}
-              onExportClick={handleExportClick}
+              onExportClick={cloudAvailable ? handleExportClick : undefined}
               onWorkspacesClick={handleWorkspacesClick}
               onHostClick={handleHostClick}
-              onPairHostClick={handlePairHostClick}
+              onPairHostClick={relayAvailable ? handlePairHostClick : undefined}
               onProjectClick={handleProjectClick}
               onProjectsDragEnd={handleProjectsDragEnd}
               isSavingProjectOrder={isSavingProjectOrder}
@@ -347,18 +372,20 @@ export function SharedAppLayout() {
               activeProjectId={activeProjectId}
               isSignedIn={isSignedIn}
               isLoadingProjects={isLoading}
-              onSignIn={handleSignIn}
+              onSignIn={cloudAvailable ? handleSignIn : undefined}
               onHoverStart={() => setIsAppBarHovered(true)}
               onHoverEnd={() => setIsAppBarHovered(false)}
               notificationBell={
                 isSignedIn ? <AppBarNotificationBellContainer /> : undefined
               }
               userPopover={
-                <AppBarUserPopoverContainer
-                  organizations={organizations}
-                  selectedOrgId={selectedOrgId ?? ''}
-                  onOrgSelect={setSelectedOrgId}
-                />
+                cloudAvailable ? (
+                  <AppBarUserPopoverContainer
+                    organizations={organizations}
+                    selectedOrgId={selectedOrgId ?? ''}
+                    onOrgSelect={setSelectedOrgId}
+                  />
+                ) : undefined
               }
               starCount={starCount}
               onlineCount={onlineCount}
@@ -428,8 +455,10 @@ export function SharedAppLayout() {
             {/* Header: org name + close button */}
             <div className="flex items-center justify-between p-4 border-b border-border">
               <span className="text-sm font-medium text-high truncate">
-                {organizations.find((o) => o.id === selectedOrgId)?.name ??
-                  'Organization'}
+                {cloudAvailable
+                  ? (organizations.find((o) => o.id === selectedOrgId)?.name ??
+                    'Organization')
+                  : null}
               </span>
               <button
                 type="button"
@@ -503,7 +532,7 @@ export function SharedAppLayout() {
                     <span className="truncate">{project.name}</span>
                   </button>
                 ))
-              ) : (
+              ) : cloudAvailable ? (
                 <div className="px-4 py-6 text-center">
                   <KanbanIcon
                     className="h-8 w-8 mx-auto text-low"
@@ -528,7 +557,7 @@ export function SharedAppLayout() {
                     </button>
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
 
             {/* Create Project button */}

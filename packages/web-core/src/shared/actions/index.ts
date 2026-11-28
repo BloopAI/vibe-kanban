@@ -445,7 +445,7 @@ export const Actions = {
     label: 'Sign In',
     icon: SignInIcon,
     requiresTarget: ActionTargetType.NONE,
-    isVisible: (ctx) => !ctx.isSignedIn,
+    isVisible: (ctx) => ctx.isCloudAvailable && !ctx.isSignedIn,
     execute: async () => {
       const { OAuthDialog } =
         await import('@/shared/dialogs/global/OAuthDialog');

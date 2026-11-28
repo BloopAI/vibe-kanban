@@ -283,7 +283,8 @@ export function AppBar({
 
   const projectSectionItems: AppBarSectionItem[] = [];
 
-  if (!isSignedIn) {
+  // No sign-in handler means there is nothing to sign in to (no cloud).
+  if (!isSignedIn && onSignIn) {
     projectSectionItems.push({
       key: 'kanban-cta',
       kind: 'kanban-cta',

@@ -32,6 +32,8 @@
         "machineSettings": "Machine Settings",
         "accountSettings": "Account Settings",
         "pairOtherMachines": "Pair other machines",
+        "cloudShutdown": "託管雲端服務已關閉。",
+        "cloudShutdownLink": "了解更多",
         "selectHost": "Select host"
       }
     },

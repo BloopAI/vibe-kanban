@@ -32,6 +32,7 @@ import {
   ThemeMode,
 } from 'shared/types';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
+import { useCloudAvailable } from '@/shared/hooks/useCloudAvailability';
 import { useTheme } from '@/shared/hooks/useTheme';
 import { AgentIcon, getAgentName } from '@/shared/components/AgentIcon';
 import { IdeIcon } from '@/shared/components/IdeIcon';
@@ -150,6 +151,7 @@ export function LandingPage() {
   const appNavigation = useAppNavigation();
   const { theme } = useTheme();
   const { config, profiles, updateAndSaveConfig, loading } = useUserSystem();
+  const cloudAvailable = useCloudAvailable();
   const posthog = usePostHog();
 
   const [initialized, setInitialized] = useState(false);
@@ -265,8 +267,16 @@ export function LandingPage() {
       sound_file: soundEnabled ? soundFile : null,
     });
 
+    // Without a cloud there is no sign-in step, so this finishes onboarding.
+    // Navigate from here rather than through the redirect-to-root effect.
+    const finishesOnboarding = !cloudAvailable;
+    if (finishesOnboarding) {
+      hasRedirectedToRootRef.current = true;
+    }
+
     setSaving(true);
     const success = await updateAndSaveConfig({
+      ...(finishesOnboarding ? { remote_onboarding_acknowledged: true } : {}),
       onboarding_acknowledged: true,
       disclaimer_acknowledged: true,
       executor_profile: {
@@ -285,12 +295,22 @@ export function LandingPage() {
     if (success) {
       trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.STAGE_COMPLETED, {
         stage: 'landing',
-        destination: '/onboarding/sign-in',
+        destination: finishesOnboarding
+          ? '/workspaces/create'
+          : '/onboarding/sign-in',
       });
-      appNavigation.goToOnboardingSignIn({
-        replace: true,
-      });
+      if (finishesOnboarding) {
+        appNavigation.goToWorkspacesCreate({ replace: true });
+      } else {
+        appNavigation.goToOnboardingSignIn({
+          replace: true,
+        });
+      }
       return;
+    }
+
+    if (finishesOnboarding) {
+      hasRedirectedToRootRef.current = false;
     }
 
     trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.STAGE_FAILED, {

@@ -8,6 +8,7 @@ import { create, useModal } from '@ebay/nice-modal-react';
 import { useMachineRepoBranches } from '@/shared/hooks/useRepoBranches';
 import { useScriptPlaceholders } from '@/shared/hooks/useScriptPlaceholders';
 import { useAllOrganizationProjects } from '@/shared/hooks/useAllOrganizationProjects';
+import { useCloudAvailable } from '@/shared/hooks/useCloudAvailability';
 import { getProjectRepoDefaults } from '@/shared/hooks/useProjectRepoDefaults';
 import { ApiError } from '@/shared/lib/api';
 import { defineModal } from '@/shared/lib/modals';
@@ -189,6 +190,7 @@ export function ReposSettingsSection({
   const placeholders = useScriptPlaceholders();
 
   // Linked projects: find which remote projects reference this repo
+  const cloudAvailable = useCloudAvailable();
   const { data: allProjects, isLoading: projectsLoading } =
     useAllOrganizationProjects();
   const [linkedProjectNames, setLinkedProjectNames] = useState<string[]>([]);
@@ -591,37 +593,39 @@ export function ReposSettingsSection({
           </SettingsCard>
 
           {/* Linked projects (read-only) */}
-          <SettingsCard
-            title={t('settings.repos.linkedProjects.title')}
-            description={t('settings.repos.linkedProjects.description')}
-          >
-            {linkedProjectsLoading || projectsLoading ? (
-              <div className="flex items-center gap-2 py-half">
-                <SpinnerIcon
-                  className="size-icon-xs animate-spin text-low"
-                  weight="bold"
-                />
-                <span className="text-sm text-low">
-                  {t('settings.repos.linkedProjects.loading')}
-                </span>
-              </div>
-            ) : linkedProjectNames.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {linkedProjectNames.map((name) => (
-                  <span
-                    key={name}
-                    className="inline-flex items-center rounded-sm bg-secondary px-2 py-0.5 text-sm text-normal"
-                  >
-                    {name}
+          {cloudAvailable && (
+            <SettingsCard
+              title={t('settings.repos.linkedProjects.title')}
+              description={t('settings.repos.linkedProjects.description')}
+            >
+              {linkedProjectsLoading || projectsLoading ? (
+                <div className="flex items-center gap-2 py-half">
+                  <SpinnerIcon
+                    className="size-icon-xs animate-spin text-low"
+                    weight="bold"
+                  />
+                  <span className="text-sm text-low">
+                    {t('settings.repos.linkedProjects.loading')}
                   </span>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-low">
-                {t('settings.repos.linkedProjects.none')}
-              </p>
-            )}
-          </SettingsCard>
+                </div>
+              ) : linkedProjectNames.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {linkedProjectNames.map((name) => (
+                    <span
+                      key={name}
+                      className="inline-flex items-center rounded-sm bg-secondary px-2 py-0.5 text-sm text-normal"
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-low">
+                  {t('settings.repos.linkedProjects.none')}
+                </p>
+              )}
+            </SettingsCard>
+          )}
 
           {/* Scripts settings */}
           <SettingsCard

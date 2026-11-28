@@ -147,6 +147,8 @@ export interface ActionVisibilityContext {
 
   // Auth state
   isSignedIn: boolean;
+  // Whether a cloud address is configured (see useCloudAvailable)
+  isCloudAvailable: boolean;
 }
 
 // Enum discriminant for action target types
