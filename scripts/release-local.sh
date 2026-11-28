@@ -30,10 +30,15 @@ ENV_FILES=("$ROOT/.env.release" "$ROOT/.env")
 IMAGE="vibe-kanban-release-cross"
 PLATFORMS=(macos-arm64 macos-x64 linux-x64 linux-arm64 windows-x64 windows-arm64)
 BINARIES=(vibe-kanban vibe-kanban-mcp vibe-kanban-review)
-REQUIRED_ENV=(VK_SHARED_API_BASE VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY)
-# Relay is sunset along with the other remote features; builds without it
-# just report relay as unavailable.
-OPTIONAL_ENV=(VITE_VK_SHARED_API_BASE VK_SHARED_RELAY_API_BASE)
+REQUIRED_ENV=(VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY)
+# The hosted cloud (api/cloud/relay.vibekanban.com) has shut down, so releases
+# build in no cloud address. Self-hosters set VK_SHARED_API_BASE and
+# VK_SHARED_RELAY_API_BASE when they run the app. These are exported as empty
+# rather than unset: the build.rs scripts load .env, which only fills in unset
+# variables, and the app treats an empty address as not configured.
+CLOUD_ENV=(VK_SHARED_API_BASE VK_SHARED_RELAY_API_BASE VITE_VK_SHARED_API_BASE)
+# A build fails if any of these turn up in a binary or the frontend bundle.
+HOSTED_CLOUD_HOSTS='(api|cloud|relay)\.vibekanban\.com'
 # Releases never include analytics or crash reporting. These are cleared
 # before every build so nothing from .env or the shell can switch them on.
 ANALYTICS_ENV=(POSTHOG_API_KEY POSTHOG_API_ENDPOINT SENTRY_DSN SENTRY_DSN_REMOTE
@@ -125,27 +130,21 @@ resolve_env() {
 
 load_env() {
   local name
-  for name in "${REQUIRED_ENV[@]}" "${OPTIONAL_ENV[@]}"; do
-    resolve_env "$name"
-  done
   for name in "${REQUIRED_ENV[@]}"; do
+    resolve_env "$name"
     [[ -n "${!name:-}" ]] || die "$name is not set (environment, .env.release or .env)"
   done
-  export VITE_VK_SHARED_API_BASE="${VITE_VK_SHARED_API_BASE:-$VK_SHARED_API_BASE}"
+  for name in "${CLOUD_ENV[@]}"; do
+    export "$name="
+  done
   for name in "${ANALYTICS_ENV[@]}"; do
     unset "$name"
   done
   export SQLX_OFFLINE=true
 
   echo "Build settings:"
-  echo "  VK_SHARED_API_BASE=$VK_SHARED_API_BASE"
-  for name in VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY VK_SHARED_RELAY_API_BASE; do
-    if [[ -n "${!name:-}" ]]; then
-      echo "  $name: set"
-    else
-      echo "  $name: not set"
-    fi
-  done
+  echo "  VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY: set"
+  echo "  cloud address: none (self-hosters set VK_SHARED_API_BASE at runtime)"
   echo "  analytics and crash reporting: off (always, for releases)"
 }
 
@@ -238,8 +237,11 @@ build_cross() {
   docker build -t "$IMAGE" --build-arg RUST_TOOLCHAIN="$toolchain" scripts/release
   mkdir -p "$OUT/build"
   local env_args=() name
-  for name in "${REQUIRED_ENV[@]}" "${OPTIONAL_ENV[@]}"; do
+  for name in "${REQUIRED_ENV[@]}"; do
     env_args+=(-e "$name")
+  done
+  for name in "${CLOUD_ENV[@]}"; do
+    env_args+=(-e "$name=")
   done
   docker run --rm \
     -v "$ROOT:/src" \
@@ -263,6 +265,20 @@ verify_no_analytics() {
   local hits
   hits="$(grep -rlE --exclude='*.map' "$pattern" packages/local-web/dist "$OUT/build" 2>/dev/null || true)"
   [[ -z "$hits" ]] || die "found a PostHog key or Sentry DSN in: $hits"
+  echo "  none found"
+}
+
+# Check the output rather than trusting the environment: an address can also
+# be hard-coded in the source. Source maps count too, since the server embeds
+# them. Plain vibekanban.com links (docs, shutdown notice) are fine.
+verify_no_hosted_cloud() {
+  step "Checking that no hosted cloud address was built in"
+  local dirs=(packages/local-web/dist) platform hits
+  for platform in "$@"; do dirs+=("$OUT/build/$platform"); done
+  hits="$(grep -rlaE "$HOSTED_CLOUD_HOSTS" "${dirs[@]}" 2>/dev/null || true)"
+  [[ -z "$hits" ]] || die "found a hosted cloud address ($HOSTED_CLOUD_HOSTS) in:
+$hits
+Releases must not depend on the hosted cloud; remove the address from the source."
   echo "  none found"
 }
 
@@ -365,6 +381,7 @@ cmd_build() {
   [[ ${#cross[@]} -eq 0 ]] || build_cross "${cross[@]}"
 
   verify_no_analytics
+  verify_no_hosted_cloud "${selected[@]}"
   package_binaries "${selected[@]}"
   write_manifest
   pack_npm
@@ -438,13 +455,15 @@ run_smoke() {
   npm install --silent --no-audit --no-fund --prefix "$tmp/app" "$TGZ"
   local cli="$tmp/app/node_modules/$NPM_PACKAGE/bin/cli.js"
 
-  # Flags after `review` are swallowed by the wrapper's own parser, so run it
-  # bare: clap then exits with a missing-argument error, which proves it ran.
+  # Flags after `review` are swallowed by the wrapper's own parser, so pass
+  # only a PR URL: with no --api-url the binary says the hosted service has
+  # shut down and exits, which proves it ran.
   step "Review CLI: download, checksum, extract, run"
   local review_out
-  review_out="$(env "${run_env[@]}" node "$cli" review 2>&1 || true)"
+  review_out="$(env -u REVIEW_API_URL "${run_env[@]}" node "$cli" review \
+    https://github.com/BloopAI/vibe-kanban/pull/1 2>&1 </dev/null || true)"
   echo "$review_out" | tail -3
-  echo "$review_out" | grep -q "PR_URL" || die "review binary did not run"
+  echo "$review_out" | grep -q "review service has shut down" || die "review binary did not run"
   [[ -x "$tmp/home/.vibe-kanban/bin/$TAG/$platform/vibe-kanban-review" ]] \
     || die "review binary was not extracted into the cache"
 

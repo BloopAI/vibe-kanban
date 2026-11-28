@@ -11,6 +11,10 @@ published locally with `scripts/release-local.sh`:
 - The desktop app is not released (no signing certificates). `--desktop` falls
   back to browser mode.
 - Analytics and crash reporting are always off in these builds.
+- No cloud address is built in. The hosted cloud (`api.vibekanban.com`,
+  `cloud.vibekanban.com`, `relay.vibekanban.com`) has shut down, so the app
+  starts with cloud features off. Self-hosters turn them on at runtime (see
+  [Self-hosted cloud](#self-hosted-cloud)).
 
 Versions up to 0.1.44 still download from `npm-cdn.vibekanban.com` (R2), which
 is read-only now but still serving. Leave it alone so they keep working.
@@ -36,11 +40,18 @@ is read-only now but still serving. Leave it alone so they keep working.
 4. Build-time values come from the environment, then `.env.release`, then
    `.env`. Only the lines the script needs are read, so other secrets in `.env`
    stay out of it. Required:
-   - `VK_SHARED_API_BASE` (`https://api.vibekanban.com`)
    - `VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY` (the log viewer needs it)
 
-   `VK_SHARED_RELAY_API_BASE` is left unset: the relay is sunset with the rest
-   of the remote features, and the app then just reports relay as unavailable.
+   `VK_SHARED_API_BASE`, `VK_SHARED_RELAY_API_BASE` and
+   `VITE_VK_SHARED_API_BASE` are no longer used, and can stay in `.env` for
+   development. `build` sets all three to empty before compiling. Empty
+   rather than unset matters: `crates/server/build.rs` and
+   `crates/local-deployment/build.rs` load `.env` themselves, and that only
+   fills in variables that are unset. The app treats an empty address as not
+   configured. `build` then fails if `api.vibekanban.com`,
+   `cloud.vibekanban.com` or `relay.vibekanban.com` turns up in a binary or in
+   `packages/local-web/dist` (source maps included, since the server embeds
+   them). Plain `vibekanban.com` links such as the docs are fine.
 
    Releases never include analytics or crash reporting. `build` clears every
    `POSTHOG_*` and `SENTRY_*` variable before compiling, whatever `.env` or your
@@ -161,6 +172,24 @@ at the start of each build; for anything else, start over:
 ```bash
 scripts/release-local.sh reset-cache
 ```
+
+## Self-hosted cloud
+
+Releases still contain every cloud feature. A self-hoster points the released
+app at their own server when they start it, with no rebuild:
+
+```bash
+VK_SHARED_API_BASE=https://cloud.example.com \
+VK_SHARED_RELAY_API_BASE=https://relay.example.com \
+npx vibe-kanban
+```
+
+The backend reads these before any built-in value, and `/api/info` passes
+`shared_api_base` on to the UI. The review CLI has no built-in server either:
+`npx vibe-kanban review <pr-url>` says the hosted review service has shut down
+unless `REVIEW_API_URL` names one (the binary also takes `--api-url`, but the
+npx wrapper does not pass flags through). The smoke test checks for that
+message.
 
 ## Testing against a mirror
 

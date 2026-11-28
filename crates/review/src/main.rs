@@ -18,7 +18,6 @@ use tempfile::TempDir;
 use tracing::debug;
 use tracing_subscriber::EnvFilter;
 
-const DEFAULT_API_URL: &str = "https://api.vibekanban.com";
 const POLL_INTERVAL: Duration = Duration::from_secs(10);
 const TIMEOUT: Duration = Duration::from_secs(600); // 10 minutes
 
@@ -46,9 +45,9 @@ struct Args {
     #[arg(short, long, default_value_t = false)]
     verbose: bool,
 
-    /// API base URL
-    #[arg(long, env = "REVIEW_API_URL", default_value = DEFAULT_API_URL)]
-    api_url: String,
+    /// API base URL of a self-hosted review server (the hosted service has shut down)
+    #[arg(long, env = "REVIEW_API_URL")]
+    api_url: Option<String>,
 }
 
 fn show_disclaimer() {
@@ -107,6 +106,13 @@ async fn main() -> Result<()> {
 
     let args = Args::parse();
 
+    let Some(api_url) = args.api_url.clone().filter(|url| !url.trim().is_empty()) else {
+        eprintln!(
+            "The hosted Vibe Kanban review service has shut down. To use a self-hosted review server, set REVIEW_API_URL=<URL> or pass --api-url <URL>."
+        );
+        std::process::exit(1);
+    };
+
     // Initialize tracing
     let filter = if args.verbose {
         EnvFilter::new("debug")
@@ -122,7 +128,7 @@ async fn main() -> Result<()> {
     debug!("Args: {:?}", args);
 
     // Run the main flow and handle errors
-    if let Err(e) = run(args).await {
+    if let Err(e) = run(args, api_url).await {
         eprintln!("Error: {e}");
         std::process::exit(1);
     }
@@ -130,7 +136,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn run(args: Args) -> Result<(), ReviewError> {
+async fn run(args: Args, api_url: String) -> Result<(), ReviewError> {
     // 1. Load config and prompt for email
     let mut config = config::Config::load();
     let email = prompt_email(&mut config);
@@ -191,7 +197,7 @@ async fn run(args: Args) -> Result<(), ReviewError> {
     spinner.finish_with_message(format!("Archive created ({size_mb:.2} MB)"));
 
     // 8. Initialize review
-    let client = ReviewApiClient::new(args.api_url.clone());
+    let client = ReviewApiClient::new(api_url);
     let spinner = create_spinner("Initializing review...");
     let init_response = client.init(&args.pr_url, &email, &pr_info.title).await?;
     spinner.finish_with_message(format!("Review ID: {}", init_response.review_id));
