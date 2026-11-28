@@ -8,6 +8,11 @@ use ts_rs::TS;
 use workspace_utils::msg_store::MsgStore;
 
 pub use super::acp::AcpAgentHarness;
+use super::acp::{
+    AcpAgentHarnessV2,
+    registry::{self, NpxDistribution, npx_command},
+    session_config::DesiredConfig,
+};
 use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
@@ -21,6 +26,16 @@ use crate::{
     model_selector::{ModelInfo, ModelSelectorConfig, PermissionPolicy},
     profile::ExecutorConfig,
 };
+
+/// Gemini's entry in the ACP registry, which gives the package and args to run.
+const REGISTRY_ID: &str = "gemini";
+
+/// Used only when there's no registry copy in memory or on disk. Unversioned, so there's no pin
+/// to bump.
+const FALLBACK_PACKAGE: &str = "@google/gemini-cli";
+
+/// Gemini's approval mode that auto-approves every tool, set over ACP for Auto.
+const YOLO_MODE: &str = "yolo";
 
 const SUPPRESSED_STDERR_PATTERNS: &[&str] = &[
     "was started but never ended. Skipping metrics.",
@@ -45,22 +60,53 @@ pub struct Gemini {
 }
 
 impl Gemini {
-    fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
-        let mut builder = CommandBuilder::new("npx -y @google/gemini-cli@0.29.3");
-
-        if let Some(model) = &self.model {
-            builder = builder.extend_params(["--model", model.as_str()]);
-        }
-
+    fn permission_policy(&self) -> PermissionPolicy {
         if self.yolo.unwrap_or(false) {
-            builder = builder.extend_params(["--yolo"]);
-            builder = builder.extend_params(["--allowed-tools", "run_shell_command"]);
+            PermissionPolicy::Auto
+        } else {
+            PermissionPolicy::Supervised
         }
-
-        builder = builder.extend_params(["--experimental-acp"]);
-
-        apply_overrides(builder, &self.cmd)
     }
+
+    /// The registry command, or the fallback when an override replaces the base anyway.
+    async fn base_command(&self) -> CommandBuilder {
+        if self.cmd.base_command_override.is_some() {
+            command_from(None)
+        } else {
+            command_from(registry::find_npx(REGISTRY_ID).await.as_ref())
+        }
+    }
+
+    /// `base` already carries the registry args (`--acp`). Model and permissions are set over ACP
+    /// after the session opens (`desired_config`), not as flags.
+    fn build_command_builder(
+        &self,
+        base: CommandBuilder,
+    ) -> Result<CommandBuilder, CommandBuildError> {
+        apply_overrides(base, &self.cmd)
+    }
+
+    /// Auto switches Gemini to its YOLO mode, so it doesn't ask in the first place.
+    fn desired_config(&self) -> DesiredConfig {
+        let permission = self.permission_policy();
+        DesiredConfig {
+            model: self.model.clone(),
+            mode: (permission == PermissionPolicy::Auto).then(|| YOLO_MODE.to_string()),
+            permission: Some(permission),
+            ..Default::default()
+        }
+    }
+}
+
+/// The registry's package and args, else `npx -y @google/gemini-cli --acp`.
+fn command_from(npx: Option<&NpxDistribution>) -> CommandBuilder {
+    if let Some(npx) = npx {
+        match npx_command(REGISTRY_ID, npx) {
+            Ok(command) => return command,
+            Err(e) => tracing::warn!("{e}; using {FALLBACK_PACKAGE}"),
+        }
+    }
+    CommandBuilder::new(format!("npx -y {FALLBACK_PACKAGE}")).extend_params(["--acp"])
 }
 
 #[async_trait]
@@ -69,11 +115,8 @@ impl StandardCodingAgentExecutor for Gemini {
         if let Some(model_id) = &executor_config.model_id {
             self.model = Some(model_id.clone());
         }
-        if let Some(permission_policy) = executor_config.permission_policy.clone() {
-            self.yolo = Some(matches!(
-                permission_policy,
-                crate::model_selector::PermissionPolicy::Auto
-            ));
+        if let Some(permission_policy) = &executor_config.permission_policy {
+            self.yolo = Some(matches!(permission_policy, PermissionPolicy::Auto));
         }
     }
 
@@ -87,14 +130,11 @@ impl StandardCodingAgentExecutor for Gemini {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let harness = AcpAgentHarness::new("gemini_sessions");
+        let harness = AcpAgentHarnessV2::new().with_config(self.desired_config());
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let gemini_command = self.build_command_builder()?.build_initial()?;
-        let approvals = if self.yolo.unwrap_or(false) {
-            None
-        } else {
-            self.approvals.clone()
-        };
+        let gemini_command = self
+            .build_command_builder(self.base_command().await)?
+            .build_initial()?;
         harness
             .spawn_with_command(
                 current_dir,
@@ -102,7 +142,7 @@ impl StandardCodingAgentExecutor for Gemini {
                 gemini_command,
                 env,
                 &self.cmd,
-                approvals,
+                self.approvals.clone(),
             )
             .await
     }
@@ -115,14 +155,13 @@ impl StandardCodingAgentExecutor for Gemini {
         _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let harness = AcpAgentHarness::new("gemini_sessions");
+        let harness = AcpAgentHarnessV2::new()
+            .with_legacy_sessions("gemini_sessions")
+            .with_config(self.desired_config());
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let gemini_command = self.build_command_builder()?.build_follow_up(&[])?;
-        let approvals = if self.yolo.unwrap_or(false) {
-            None
-        } else {
-            self.approvals.clone()
-        };
+        let gemini_command = self
+            .build_command_builder(self.base_command().await)?
+            .build_follow_up(&[])?;
         harness
             .spawn_follow_up_with_command(
                 current_dir,
@@ -131,7 +170,7 @@ impl StandardCodingAgentExecutor for Gemini {
                 gemini_command,
                 env,
                 &self.cmd,
-                approvals,
+                self.approvals.clone(),
             )
             .await
     }
@@ -181,18 +220,13 @@ impl StandardCodingAgentExecutor for Gemini {
     }
 
     fn get_preset_options(&self) -> ExecutorConfig {
-        use crate::model_selector::*;
         ExecutorConfig {
             executor: BaseCodingAgent::gemini(),
             variant: None,
             model_id: self.model.clone(),
             agent_id: None,
             reasoning_id: None,
-            permission_policy: Some(if self.yolo.unwrap_or(false) {
-                PermissionPolicy::Auto
-            } else {
-                PermissionPolicy::Supervised
-            }),
+            permission_policy: Some(self.permission_policy()),
         }
     }
 
@@ -232,5 +266,91 @@ impl StandardCodingAgentExecutor for Gemini {
         Ok(Box::pin(futures::stream::once(async move {
             patch::executor_discovered_options(options)
         })))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn gemini() -> Gemini {
+        serde_json::from_value(serde_json::json!({})).unwrap()
+    }
+
+    fn registry_entry() -> NpxDistribution {
+        NpxDistribution {
+            package: "@google/gemini-cli@0.68.0".into(),
+            args: vec!["--acp".into()],
+            env: Default::default(),
+        }
+    }
+
+    #[test]
+    fn command_from_registry_entry() {
+        let command = command_from(Some(&registry_entry()));
+        assert_eq!(command.base, "npx -y @google/gemini-cli@0.68.0");
+        assert_eq!(command.params, Some(vec!["--acp".to_string()]));
+    }
+
+    #[test]
+    fn command_falls_back_without_registry() {
+        let command = command_from(None);
+        assert_eq!(command.base, "npx -y @google/gemini-cli");
+        assert_eq!(command.params, Some(vec!["--acp".to_string()]));
+    }
+
+    #[test]
+    fn invalid_registry_package_falls_back() {
+        let npx = NpxDistribution {
+            package: "@google/gemini-cli --evil".into(),
+            ..registry_entry()
+        };
+        assert_eq!(command_from(Some(&npx)).base, "npx -y @google/gemini-cli");
+    }
+
+    /// Model and permissions go over ACP only, never as CLI flags.
+    #[test]
+    fn run_command_has_no_model_or_yolo_flags() {
+        let mut g = gemini();
+        g.model = Some("gemini-3-flash-preview".into());
+        g.yolo = Some(true);
+        let command = g
+            .build_command_builder(command_from(Some(&registry_entry())))
+            .unwrap();
+        assert_eq!(command.params, Some(vec!["--acp".to_string()]));
+    }
+
+    #[test]
+    fn base_command_override_keeps_acp() {
+        let mut g = gemini();
+        g.cmd.base_command_override = Some("my-gemini-wrapper".into());
+        let command = g.build_command_builder(command_from(None)).unwrap();
+        assert_eq!(command.base, "my-gemini-wrapper");
+        assert_eq!(command.params, Some(vec!["--acp".to_string()]));
+    }
+
+    #[test]
+    fn auto_selects_yolo_mode() {
+        let mut g = gemini();
+        g.apply_overrides(&ExecutorConfig {
+            executor: BaseCodingAgent::gemini(),
+            variant: None,
+            model_id: Some("gemini-3-flash-preview".into()),
+            agent_id: None,
+            reasoning_id: None,
+            permission_policy: Some(PermissionPolicy::Auto),
+        });
+        let desired = g.desired_config();
+        assert_eq!(desired.model.as_deref(), Some("gemini-3-flash-preview"));
+        assert_eq!(desired.mode.as_deref(), Some("yolo"));
+        assert!(desired.auto_approve());
+    }
+
+    #[test]
+    fn supervised_leaves_the_mode_alone() {
+        let desired = gemini().desired_config();
+        assert_eq!(desired.permission, Some(PermissionPolicy::Supervised));
+        assert_eq!(desired.mode, None);
+        assert!(!desired.auto_approve());
     }
 }
