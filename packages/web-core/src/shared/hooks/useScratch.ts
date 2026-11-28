@@ -29,7 +29,7 @@ interface UseScratchOptions {
  * - Local runtime: streams a single scratch item via WebSocket (JSON Patch)
  *   backed by the server-side SQLite scratch table.
  * - Remote runtime: persists scratch data in localStorage for the stable
- *   cloud domain (cloud.vibekanban.com).
+ *   remote web app domain.
  */
 export const useScratch = (
   scratchType: ScratchType,
