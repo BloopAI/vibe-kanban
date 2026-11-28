@@ -1,5 +1,6 @@
 pub mod client;
 pub mod discovery;
+pub mod executor;
 pub mod harness;
 pub mod harness_v2;
 pub mod normalize_logs;
@@ -11,6 +12,7 @@ pub mod session_config;
 use std::{fmt::Display, str::FromStr};
 
 pub use client::AcpClient;
+pub use executor::Acp;
 pub use harness::AcpAgentHarness;
 pub use harness_v2::AcpAgentHarnessV2;
 pub use normalize_logs::*;

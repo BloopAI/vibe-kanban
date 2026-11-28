@@ -29,6 +29,8 @@ export function getAgentName(
       return 'Copilot';
     case 'DROID':
       return 'Droid';
+    case 'ACP':
+      return 'Oh My Pi';
     default:
       return agent;
   }
@@ -74,6 +76,9 @@ export function AgentIcon({ agent, className = 'h-4 w-4' }: AgentIconProps) {
       break;
     case 'DROID':
       iconPath = `/agents/droid${suffix}.svg`;
+      break;
+    case 'ACP':
+      iconPath = `/agents/oh-my-pi${suffix}.svg`;
       break;
     default:
       return null;

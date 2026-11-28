@@ -21,8 +21,9 @@ use crate::{
     command::CommandBuildError,
     env::ExecutionEnv,
     executors::{
-        acp_server::AcpServer, amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot,
-        cursor::CursorAgent, droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
+        acp::Acp, acp_server::AcpServer, amp::Amp, claude::ClaudeCode, codex::Codex,
+        copilot::Copilot, cursor::CursorAgent, droid::Droid, gemini::Gemini, opencode::Opencode,
+        qwen::QwenCode,
     },
     logs::utils::patch,
     mcp_config::McpConfig,
@@ -115,6 +116,7 @@ pub enum CodingAgent {
     Copilot,
     Droid,
     AcpServer,
+    Acp,
     #[cfg(feature = "qa-mode")]
     QaMock(QaMockExecutor),
 }
@@ -176,6 +178,9 @@ impl BaseCodingAgent {
     pub fn droid() -> Self {
         Self("DROID".into())
     }
+    pub fn acp() -> Self {
+        Self("ACP".into())
+    }
     #[cfg(feature = "qa-mode")]
     pub fn qa_mock() -> Self {
         Self("QA_MOCK".into())
@@ -196,6 +201,7 @@ impl BaseCodingAgent {
             Self::cursor_agent(),
             Self::droid(),
             Self::qwen_code(),
+            Self::acp(),
             #[cfg(feature = "qa-mode")]
             Self::qa_mock(),
         ]
@@ -282,7 +288,7 @@ impl CodingAgent {
             }
             Self::CursorAgent(_) | Self::Copilot(_) => vec![BaseAgentCapability::SetupHelper],
             Self::Amp(_) | Self::Droid(_) => vec![],
-            Self::AcpServer(_) => vec![],
+            Self::AcpServer(_) | Self::Acp(_) => vec![],
             #[cfg(feature = "qa-mode")]
             Self::QaMock(_) => vec![], // QA mock doesn't need special capabilities
         }

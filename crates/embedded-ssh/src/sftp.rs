@@ -377,7 +377,7 @@ impl russh_sftp::server::Handler for SftpHandler {
                 .await
                 .map_err(SftpError::from)?;
             #[cfg(not(unix))]
-            let _ = perms;
+            let _ = (&path, perms);
         }
 
         Ok(self.ok_status(id))

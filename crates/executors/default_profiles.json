@@ -63,6 +63,20 @@
           "autonomy": "skip-permissions-unsafe"
         }
       }
+    },
+    "ACP": {
+      "DEFAULT": {
+        "ACP": {
+          "command": "omp",
+          "args": ["acp"]
+        }
+      },
+      "YOLO": {
+        "ACP": {
+          "command": "omp",
+          "args": ["--approval-mode", "yolo", "acp"]
+        }
+      }
     }
   }
 }
