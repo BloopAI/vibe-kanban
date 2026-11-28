@@ -3,7 +3,15 @@ title: "Authentication"
 description: "Sign in with GitHub or Google and manage your sessions"
 ---
 
-Vibe Kanban Cloud uses OAuth authentication, allowing you to sign in with your existing GitHub or Google account instead of creating a new password.
+<Note>
+This feature needs a self-hosted Vibe Kanban Cloud server. Vibe Kanban no longer uses the hosted cloud. See the [self-hosting overview](/self-hosting/overview) to deploy a server and connect Vibe Kanban to it.
+</Note>
+
+A self-hosted Vibe Kanban Cloud server can use OAuth authentication, allowing you to sign in with your existing GitHub or Google account instead of creating a new password. Which providers appear depends on how your server is configured.
+
+<Info>
+A server can also use a bootstrap local login: a single email and password set with `SELF_HOST_LOCAL_AUTH_EMAIL` and `SELF_HOST_LOCAL_AUTH_PASSWORD`. See [Deploy with Docker Compose](/self-hosting/deploy-docker#option-b-bootstrap-local-auth). The rest of this page covers OAuth sign-in.
+</Info>
 
 ## How Authentication Works
 
@@ -99,7 +107,7 @@ Currently, there's no way to sign out of all devices at once. If you need to rev
 1. Go to your OAuth provider's settings:
    - **GitHub:** [github.com/settings/applications](https://github.com/settings/applications)
    - **Google:** [myaccount.google.com/permissions](https://myaccount.google.com/permissions)
-2. Find "Vibe Kanban Cloud" and revoke access
+2. Find the OAuth app your server administrator registered and revoke access
 3. All sessions will be invalidated
 
 ## Multiple Accounts
@@ -204,5 +212,6 @@ Just sign in again - you'll be prompted to re-authorise the application.
 
 ## Related Documentation
 
-- [Getting Started](/cloud/getting-started) - Initial setup including OAuth app creation
+- [Getting Started](/cloud/getting-started) - Connecting Vibe Kanban to your server
+- [Deploy with Docker Compose](/self-hosting/deploy-docker) - Server setup including OAuth app configuration
 - [Team Members](/cloud/team-members) - Managing user access within your organisation

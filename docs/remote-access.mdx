@@ -5,9 +5,26 @@ description: "Access your local Vibe Kanban instance from another device"
 
 Remote Access allows you to access a host instance of Vibe Kanban from another device, like your mobile phone.
 
+<Note>
+Remote access needs a self-hosted Vibe Kanban Cloud server and relay server. Vibe Kanban no longer uses the hosted cloud and relay. See the [self-hosting overview](/self-hosting/overview) to deploy them.
+</Note>
+
+## Prerequisites
+
+- A self-hosted Vibe Kanban Cloud server with the relay enabled. See [Enable the relay for remote access](/self-hosting/deploy-docker#optional-enable-the-relay-for-remote-access).
+- Vibe Kanban 0.1.47 or newer on the host device. From 0.1.47, Vibe Kanban requires a valid signature from a paired device on every relayed request except the pairing steps themselves.
+
 # 1. Launch Vibe Kanban on the host device
 
-Make sure you've started Vibe Kanban and logged in.
+Start Vibe Kanban with your server and relay URLs. You don't need to rebuild Vibe Kanban:
+
+```bash
+VK_SHARED_API_BASE=https://vk.example.com \
+VK_SHARED_RELAY_API_BASE=https://relay.vk.example.com \
+npx vibe-kanban
+```
+
+Then sign in to your server. Remote access is on by default; you can turn it off with **Enable remote access** in the `Remote Access` settings tab.
 
 # 2. Generate a pairing code
 
@@ -23,9 +40,9 @@ Make a note of the pairing code:
   <img src="/images/remote-access-generate-pairing-code-modal.png" alt="Pairing code modal on the host device showing the generated code" />
 </Frame>
 
-# 3. Log into Vibe Kanban cloud
+# 3. Sign in to your server on the client device
 
-On the client device where you'd now like to access your host machine from, navigate to [cloud.vibekanban.com](https://cloud.vibekanban.com) in a browser and log in.
+On the client device where you'd now like to access your host machine from, open your self-hosted server's URL (for example `https://vk.example.com`) in a browser and sign in with the same account.
 
 # 4. Pair your client with your host
 
@@ -46,5 +63,5 @@ Enter the pairing code you generated earlier and click `Pair host`:
 You can now exit the settings page. You should see the paired host, clicking on the host will list the host's workspaces.
 
 <Frame>
-  <img style={{maxHeight: "500px"}} src="/images/remote-access-cloud-mobile.png" alt="Vibe Kanban cloud remote access page on mobile showing a paired host and workspaces" />
+  <img style={{maxHeight: "500px"}} src="/images/remote-access-cloud-mobile.png" alt="Vibe Kanban web app remote access page on mobile showing a paired host and workspaces" />
 </Frame>

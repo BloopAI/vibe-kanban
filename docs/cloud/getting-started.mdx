@@ -1,24 +1,28 @@
 ---
-title: "Getting Started with Cloud"
-description: "Sign in and start collaborating with your team"
+title: "Getting Started with a Self-Hosted Cloud"
+description: "Connect Vibe Kanban to your self-hosted server, sign in and start collaborating with your team"
 sidebarTitle: "Getting Started"
 ---
 
-Vibe Kanban Cloud lets you collaborate with your team in real-time. Your data syncs to the cloud, so everyone sees the same projects, issues, and updates.
+<Note>
+This guide needs a self-hosted Vibe Kanban Cloud server. Vibe Kanban no longer uses the hosted cloud. To set one up, see [Deploy with Docker Compose](/self-hosting/deploy-docker).
+</Note>
+
+A self-hosted cloud lets you collaborate with your team in real-time. Your projects and issues sync to your server, so everyone sees the same projects, issues, and updates.
 
 <Info>
-**Already using Vibe Kanban locally?** Cloud uses the same interface you're familiar with. The difference is your data syncs to the cloud and you can invite team members.
+**Already using Vibe Kanban locally?** Cloud features use the same interface you're familiar with. The difference is your projects and issues sync to your server and you can invite team members.
 </Info>
 
-## Step 1: Launch Vibe Kanban
+## Step 1: Launch Vibe Kanban against your server
 
-If you haven't already, start Vibe Kanban:
+Start Vibe Kanban with `VK_SHARED_API_BASE` set to the public URL of your server. You don't need to rebuild Vibe Kanban.
 
 ```bash
-npx vibe-kanban
+VK_SHARED_API_BASE=https://vk.example.com npx vibe-kanban
 ```
 
-The application opens in your browser at `http://localhost:...`.
+The application opens in your browser at `http://localhost:...`. For Windows, remote access and other options, see [Connect Vibe Kanban to your server](/self-hosting/overview#2-connect-vibe-kanban-to-your-server).
 
 ## Step 2: Sign In
 
@@ -30,9 +34,10 @@ To access Cloud features, you need to sign in.
 </Step>
 
 <Step title="Choose a sign-in method">
-  Select how you want to sign in:
+  Select one of the sign-in methods your server is configured for:
   - **Sign in with GitHub** - Use your GitHub account
   - **Sign in with Google** - Use your Google account
+  - **Email and password** - Use the bootstrap local login (`SELF_HOST_LOCAL_AUTH_EMAIL` and `SELF_HOST_LOCAL_AUTH_PASSWORD`) set on the server
 
   <Frame>
     <img src="/images/cloud/sign-in-dialog.png" alt="Sign in dialog with GitHub and Google options" />
@@ -40,7 +45,7 @@ To access Cloud features, you need to sign in.
 </Step>
 
 <Step title="Authorise the application">
-  You'll be redirected to GitHub or Google. Sign in if needed, then click **Authorize** or **Allow** to grant Vibe Kanban access.
+  If you chose GitHub or Google, you'll be redirected there. Sign in if needed, then click **Authorize** or **Allow** to grant Vibe Kanban access.
 
   <Info>
   Vibe Kanban only requests access to your basic profile (name, email, avatar). It cannot access your private repositories or post on your behalf.
@@ -89,7 +94,7 @@ Now create a project to organise your work.
 
 ## Step 5: Invite Team Members (Optional)
 
-Create a team organisation to collaborate with others, then invite as many members as you need. Team organisations and member invites are free, but new paid subscriptions are closed.
+Create a team organisation to collaborate with others, then invite as many members as you need.
 
 <Steps>
 <Step title="Invite team members">
@@ -105,12 +110,12 @@ Create a team organisation to collaborate with others, then invite as many membe
 </Step>
 </Steps>
 
-They'll receive an email with a link to join your organisation.
+If your server has email configured (`LOOPS_EMAIL_API_KEY`), they'll receive an email with a link to join your organisation.
 
 ## You're Ready!
 
 You now have:
-- ✅ A Cloud account
+- ✅ An account on your self-hosted cloud
 - ✅ An organisation for your team
 - ✅ A project with a kanban board
 
@@ -130,20 +135,20 @@ To sign out:
   <img style={{maxHeight: "350px"}} src="/images/cloud/user-menu.png" alt="User menu showing Sign out option" />
 </Frame>
 
-Your data remains safe in the cloud. Sign in again anytime to continue where you left off.
+Your data remains on your server. Sign in again anytime to continue where you left off.
 
-## Switching Between Local and Cloud
+## Local Workspaces and Cloud Projects
 
-You can use both local projects and Cloud projects:
+Workspaces always run on your machine. Projects and issues live on your server:
 
-| Local Projects | Cloud Projects |
-|----------------|----------------|
-| Data stored on your machine | Data synced to cloud |
+| Local workspaces | Cloud projects and issues |
+|------------------|---------------------------|
+| Data stored on your machine | Data synced to your server |
 | Only you can access | Team members can collaborate |
 | No sign-in required | Requires sign-in |
-| Works offline | Requires internet connection |
+| Works offline | Requires a connection to your server |
 
-Both appear in the same Vibe Kanban interface. Local projects show in one section, Cloud projects in another.
+Both appear in the same Vibe Kanban interface.
 
 ## Troubleshooting
 
@@ -155,17 +160,19 @@ Both appear in the same Vibe Kanban interface. Local projects show in one sectio
 
 **Solutions:**
 1. Disable pop-up blocker for localhost
-2. Check your internet connection
+2. Check that your server is reachable at the URL in `VK_SHARED_API_BASE`
 3. Try a different browser
 </Accordion>
 
 <Accordion title="I don't see Cloud features">
 **Possible causes:**
+- `VK_SHARED_API_BASE` isn't set, so Vibe Kanban hides sign-in and all cloud features
 - You're not signed in
 
 **Solutions:**
-1. Click **Login** in the sidebar
-2. Complete the sign-in process
+1. Restart Vibe Kanban with `VK_SHARED_API_BASE` set to your server's URL, in the same shell that runs `npx vibe-kanban`
+2. Click **Login** in the sidebar
+3. Complete the sign-in process
 </Accordion>
 
 <Accordion title="My teammate can't see our projects">

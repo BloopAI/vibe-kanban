@@ -60,6 +60,10 @@ The Vibe Kanban MCP server provides tools for managing organisations, projects, 
 Many tools accept an optional `project_id` or `organization_id` parameter. When running inside a workspace linked to a remote project, these are inferred automatically from context and can be omitted. The exception is `list_projects`, which always requires an explicit `organization_id`.
 </Note>
 
+<Info>
+Tools for organisations, members, projects, issues and tags work only when Vibe Kanban is connected to a self-hosted cloud. Without one, they return an error. Workspace, session and repository tools work locally. See the [self-hosting overview](/self-hosting/overview).
+</Info>
+
 ### Context
 
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |

@@ -26,9 +26,7 @@
           "index",
           "getting-started",
           "browser-testing",
-          "issue-management",
           "reviewing-code",
-          "remote-access",
           {
             "group": "Supported Coding Agents",
             "expanded": true,
@@ -66,23 +64,6 @@
         ]
       },
       {
-        "group": "Cloud",
-        "pages": [
-          "cloud/index",
-          "cloud/getting-started",
-          "cloud/authentication",
-          "cloud/organizations",
-          "cloud/team-members",
-          "cloud/projects",
-          "cloud/issues",
-          "cloud/kanban-board",
-          "cloud/list-view",
-          "cloud/filtering",
-          "cloud/customisation",
-          "cloud/troubleshooting"
-        ]
-      },
-      {
         "group": "Settings",
         "pages": [
           "settings/index",
@@ -103,8 +84,28 @@
       {
         "group": "Self-Hosting",
         "pages": [
+          "self-hosting/overview",
+          "self-hosting/deploy-docker",
           "self-hosting/local-development",
-          "self-hosting/deploy-docker"
+          "remote-access",
+          {
+            "group": "Self-hosted cloud",
+            "pages": [
+              "cloud/index",
+              "cloud/getting-started",
+              "issue-management",
+              "cloud/authentication",
+              "cloud/organizations",
+              "cloud/team-members",
+              "cloud/projects",
+              "cloud/issues",
+              "cloud/kanban-board",
+              "cloud/list-view",
+              "cloud/filtering",
+              "cloud/customisation",
+              "cloud/troubleshooting"
+            ]
+          }
         ]
       },
       {

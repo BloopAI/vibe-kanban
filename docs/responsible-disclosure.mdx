@@ -3,19 +3,24 @@ title: "Responsible Disclosure"
 description: "How to report security vulnerabilities to Vibe Kanban responsibly"
 ---
 
-**Last updated:** *February 28, 2026*
+**Last updated:** *November 28, 2026*
 
 At **Vibe Kanban**, we take the security of our platform and the safety of
-our customers' data seriously. We welcome responsible reports of potential
+our users' data seriously. We welcome responsible reports of potential
 security vulnerabilities to help us identify and resolve issues quickly and
 securely.
 
 ## How to Report a Security Issue
 
 If you believe you've discovered a vulnerability in Vibe Kanban that falls
-within scope, please send an email to:
+within scope, report it privately through GitHub:
 
-[**security@bloop.com**](mailto:security@bloop.com)
+1. Open the [**Security** tab of the BloopAI/vibe-kanban repository](https://github.com/BloopAI/vibe-kanban/security).
+2. Click **Report a vulnerability**.
+3. Fill in the advisory form and submit it.
+
+Your report is visible only to you and the repository maintainers. Please don't
+report vulnerabilities in public GitHub issues.
 
 When submitting a report, include the following where possible:
 
@@ -33,11 +38,15 @@ Upon receipt of your report, we will:
 
 ## What's In Scope
 
-The following services and assets are currently in scope for responsible
-disclosure:
+The following software is currently in scope for responsible disclosure:
 
-- https://cloud.vibekanban.com (remote server)
-- https://relay.vibekanban.com (relay server)
+- The Vibe Kanban application (`npx vibe-kanban`), including its local server
+- The self-hostable remote server (`crates/remote`)
+- The self-hostable relay server (`crates/relay-tunnel`)
+
+The hosted Vibe Kanban Cloud and relay services are being shut down and are
+no longer in scope. Test against your own installation, not against servers you
+don't own.
 
 In most cases, we will only reward the following types of vulnerabilities:
 - Arbitrary code execution
