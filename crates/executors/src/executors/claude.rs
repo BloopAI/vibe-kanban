@@ -641,6 +641,7 @@ impl ClaudeCode {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .env("NPM_CONFIG_LOGLEVEL", "error")
+            .env("CLAUDE_CODE_ENTRYPOINT", "vibe-kanban")
             .args(&args);
 
         env.clone()
