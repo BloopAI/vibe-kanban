@@ -52,6 +52,7 @@ pub fn router() -> Router<DeploymentImpl> {
             get(check_editor_availability),
         )
         .route("/agents/check-availability", get(check_agent_availability))
+        .route("/agents/opencode-version", get(get_opencode_version))
         .route("/agents/preset-options", get(get_agent_preset_options))
         .route(
             "/agents/discovered-options/ws",
@@ -558,6 +559,15 @@ async fn check_agent_availability(
     };
 
     ResponseJson(ApiResponse::success(info))
+}
+
+/// Which OpenCode CLI is installed, so the agent picker can choose between the
+/// V1 and V2 executors without asking the user.
+async fn get_opencode_version()
+-> ResponseJson<ApiResponse<executors::executors::opencode::detect::OpencodeVersion>> {
+    ResponseJson(ApiResponse::success(
+        executors::executors::opencode::detect::detect_installed().await,
+    ))
 }
 
 #[derive(Debug, Deserialize, TS)]

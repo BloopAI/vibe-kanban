@@ -27,6 +27,7 @@ use crate::{
     stdout_dup::create_stdout_pipe_writer,
 };
 
+pub mod detect;
 mod models;
 mod normalize_logs;
 pub(crate) mod sdk;

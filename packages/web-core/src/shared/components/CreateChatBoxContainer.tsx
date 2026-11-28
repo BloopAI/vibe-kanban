@@ -9,11 +9,11 @@ import { useCreateWorkspace } from '@/shared/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/shared/hooks/useCreateAttachments';
 import { useExecutorConfig } from '@/shared/hooks/useExecutorConfig';
 import { saveProjectRepoDefaults } from '@/shared/hooks/useProjectRepoDefaults';
-import { getSortedExecutorVariantKeys } from '@/shared/lib/executor';
 import {
-  toPrettyCase,
-  splitMessageToTitleDescription,
-} from '@/shared/lib/string';
+  formatExecutorLabel,
+  getSortedExecutorVariantKeys,
+} from '@/shared/lib/executor';
+import { splitMessageToTitleDescription } from '@/shared/lib/string';
 import type { BaseCodingAgent, Repo } from 'shared/types';
 import { CreateChatBox } from '@vibe/ui/components/CreateChatBox';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
@@ -133,6 +133,7 @@ export function CreateChatBoxContainer({
     scratchConfig,
     configExecutorProfile: config?.executor_profile,
     onPersist: (cfg) => setDraftConfig(cfg),
+    autoOpencodeVersion: true,
   });
 
   const repoId = repos.length === 1 ? repos[0]?.id : undefined;
@@ -366,7 +367,7 @@ export function CreateChatBoxContainer({
                     options: executorOptions,
                     onChange: handleExecutorChange,
                   }}
-                  formatExecutorLabel={toPrettyCase}
+                  formatExecutorLabel={formatExecutorLabel}
                   error={displayError}
                   repoIds={repos.map((r) => r.id)}
                   repoId={repoId}

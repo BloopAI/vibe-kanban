@@ -10,7 +10,10 @@ use deployment::Deployment;
 use executors::{
     executors::{
         BaseCodingAgent, CodingAgent,
-        acp::registry::{self, RegistryAgent, registry_key},
+        acp::{
+            install,
+            registry::{self, RegistryAgent, registry_key},
+        },
         acp_server::AcpServer,
     },
     profile::{ExecutorConfigs, ExecutorProfile},
@@ -32,6 +35,10 @@ pub fn router() -> Router<DeploymentImpl> {
         .route(
             "/acp-registry/agents/{id}",
             post(install_agent).delete(uninstall_agent),
+        )
+        .route(
+            "/acp-registry/agents/{id}/install-progress",
+            get(install_progress),
         )
 }
 
@@ -79,8 +86,6 @@ async fn list_agents() -> Result<ResponseJson<ApiResponse<Vec<AcpRegistryAgent>>
 async fn install_agent(
     Path(id): Path<String>,
 ) -> Result<ResponseJson<ApiResponse<AcpRegistryAgent>>, ApiError> {
-    let _guard = PROFILES_WRITE_LOCK.lock().await;
-
     // The visible list excludes hidden ids, so built-ins can't be installed
     let agent = registry::cached()
         .await?
@@ -90,6 +95,31 @@ async fn install_agent(
 
     // Refuse built-ins, already installed agents and key collisions alike
     let key = registry_key(&agent.id);
+    if ExecutorConfigs::get_cached().executors.contains_key(&key) {
+        return Err(ApiError::Conflict(format!(
+            "An executor named '{key}' already exists"
+        )));
+    }
+
+    // Binary agents need their archive before they can run. Download it here, so
+    // the dialog can show progress and the first run does not block on it. The
+    // download runs in its own task: closing the dialog must not abort it, and a
+    // retry joins the install already in flight.
+    if let (Some(platform), Some(target)) = (install::platform_key(), agent.binary_target()) {
+        let agent_id = agent.id.clone();
+        let version = agent.version.clone();
+        let target = target.clone();
+        tokio::spawn(async move {
+            install::ensure_installed(&agent_id, &version, platform, &target).await
+        })
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Install task failed: {e}")))?
+        .map_err(|e| ApiError::BadRequest(format!("Failed to install '{}': {e}", agent.name)))?;
+    }
+
+    let _guard = PROFILES_WRITE_LOCK.lock().await;
+
+    // Re-check under the lock: a concurrent install may have won the race.
     let mut profiles = ExecutorConfigs::get_cached();
     if profiles.executors.contains_key(&key) {
         return Err(ApiError::Conflict(format!(
@@ -110,6 +140,27 @@ async fn install_agent(
         agent,
         &ExecutorConfigs::get_cached(),
     ))))
+}
+
+/// Download progress of a binary agent install, polled by the settings card.
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct AcpRegistryInstallProgress {
+    pub downloaded: u64,
+    pub total: Option<u64>,
+    pub done: bool,
+    pub error: Option<String>,
+}
+
+async fn install_progress(
+    Path(id): Path<String>,
+) -> ResponseJson<ApiResponse<Option<AcpRegistryInstallProgress>>> {
+    let progress = install::progress(&id).map(|progress| AcpRegistryInstallProgress {
+        downloaded: progress.downloaded,
+        total: progress.total,
+        done: progress.done,
+        error: progress.error,
+    });
+    ResponseJson(ApiResponse::success(progress))
 }
 
 async fn uninstall_agent(

@@ -22,7 +22,10 @@ import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import { useReviewOptional } from '@/shared/hooks/useReview';
 import { useActions } from '@/shared/hooks/useActions';
 import { useTodos } from '../model/hooks/useTodos';
-import { getLatestConfigFromProcesses } from '@/shared/lib/executor';
+import {
+  formatExecutorLabel,
+  getLatestConfigFromProcesses,
+} from '@/shared/lib/executor';
 import { useExecutorConfig } from '@/shared/hooks/useExecutorConfig';
 import { useSessionMessageEditor } from '../model/hooks/useSessionMessageEditor';
 import { useSessionQueueInteraction } from '../model/hooks/useSessionQueueInteraction';
@@ -37,7 +40,6 @@ import { ResolveConflictsDialog } from '@/shared/dialogs/tasks/ResolveConflictsD
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import { buildAgentPrompt } from '@/shared/lib/promptMessage';
 import { formatDateShortWithTime } from '@/shared/lib/date';
-import { toPrettyCase } from '@/shared/lib/string';
 import {
   SessionChatBox,
   type ExecutionStatus,
@@ -956,7 +958,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         repoIds={repoIds}
         tokenUsageInfo={tokenUsageInfo}
         supportsContextUsage={false}
-        formatExecutorLabel={toPrettyCase}
+        formatExecutorLabel={formatExecutorLabel}
         formatSessionDate={(createdAt) =>
           formatDateShortWithTime(
             createdAt instanceof Date ? createdAt.toISOString() : createdAt
@@ -1011,7 +1013,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       repoIds={repoIds}
       tokenUsageInfo={tokenUsageInfo}
       supportsContextUsage={supportsContextUsage}
-      formatExecutorLabel={toPrettyCase}
+      formatExecutorLabel={formatExecutorLabel}
       formatSessionDate={(createdAt) =>
         formatDateShortWithTime(
           createdAt instanceof Date ? createdAt.toISOString() : createdAt

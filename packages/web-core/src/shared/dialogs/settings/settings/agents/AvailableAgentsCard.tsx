@@ -126,6 +126,7 @@ export function AvailableAgentsCard({
               pendingIds={pendingIds}
               defaultExecutor={config?.executor_profile?.executor ?? null}
               locked={hasUnsavedChanges}
+              machineClient={machineClient}
               onToggleInstall={handleToggleInstall}
             />
           </>

@@ -5,7 +5,10 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import type { MachineClient } from '@/shared/lib/machineClient';
-import type { AcpRegistryAgent } from 'shared/types';
+import type {
+  AcpRegistryAgent,
+  AcpRegistryInstallProgress,
+} from 'shared/types';
 
 function machineScope(machineClient: MachineClient | null) {
   return machineClient?.queryScopeKey ?? (['machine', 'unselected'] as const);
@@ -87,4 +90,29 @@ export function usePendingAcpRegistryInstalls(
     select: (mutation) => (mutation.state.variables as InstallVariables).id,
   });
   return new Set(ids);
+}
+
+/** Download progress of an install, polled only while it is in flight. */
+export function useMachineAcpRegistryInstallProgress(
+  machineClient: MachineClient | null,
+  id: string,
+  enabled: boolean
+) {
+  return useQuery<AcpRegistryInstallProgress | null>({
+    queryKey: [
+      'acp-registry-install-progress',
+      ...machineScope(machineClient),
+      id,
+    ],
+    queryFn: () => {
+      if (!machineClient) {
+        throw new Error('Machine client is required');
+      }
+
+      return machineClient.getAcpRegistryInstallProgress(id);
+    },
+    enabled: machineClient != null && enabled,
+    refetchInterval: 500,
+    staleTime: 0,
+  });
 }
